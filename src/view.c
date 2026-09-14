@@ -151,6 +151,59 @@ static const unsigned char *scale_glyph(const unsigned char *g, int sw, int sh,
 /* 1def:23c5 -- walk a Shift-JIS string, one glyph at a time.  The original
  * works on a character grid; here the baseline the .JWC record carries sets
  * the position and the size, so the glyphs follow the text's own box. */
+/* JW_CAD's ten character sizes, in tenths of a millimetre on the paper, and the
+ * gap it leaves between characters.  Index 0 is the size currently selected for
+ * drawing with; 1-10 are the sizes a record can name.  Read straight out of the
+ * running original -- three word tables at DGROUP 0x182, 0x198 and 0x1ae, which
+ * FUN_28b3_0a63 indexes with the record's size byte.
+ *
+ * The heights are the same numbers as the widths, so only one table is kept. */
+static const short TEXT_MM[11]  = {30, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100};
+static const short TEXT_GAP[11] = { 5,  0,  0,  5,  5,  5, 10, 10, 10, 10,  10};
+
+/* Below this many pixels the original does not draw the glyphs at all -- it
+ * draws the box they would have filled.  The threshold is a word at DGROUP
+ * 0x1c6, and it is 6. */
+#define TEXT_GLYPH_MIN 6
+
+/* How tall the string is on screen, in pixels.
+ *
+ * The size table is in millimetres of paper and the record is in screen units,
+ * so the two are bridged by the string's own width: it is `cells/2` characters
+ * of `width + gap` millimetres, and it covers `x1 - x0` units.  That ratio is
+ * the same for the height. */
+static int text_height(const JwcText *t, const JwView *w, int cells)
+{
+    int size = t->size <= 10 ? t->size : 0;
+    double mm = (TEXT_MM[size] + TEXT_GAP[size]) / 10.0 * (cells / 2.0);
+    double px = (double)(t->x1 - t->x0) * w->scale;
+
+    if (mm <= 0.0 || px <= 0.0) {
+        return 0;
+    }
+    return (int)(TEXT_MM[size] / 10.0 * (px / mm));
+}
+
+/* The box the original draws in place of a string too small to read: the
+ * rectangle the characters would have stood in, plus a line along the baseline.
+ * Measured from its own line calls -- for SAMPLE1's title block it draws
+ * (173,410)-(215,410)-(215,405)-(173,405) and then (173,409)-(215,409), with
+ * the baseline at 409 and a height of 5. */
+static void draw_text_box(VGA *v, const JwView *w, int x0, int x1, int base,
+                          int h, unsigned colour)
+{
+    int top = base - h + 1, bottom = base + 1;
+
+    if (!inside(w, x0, top) || !inside(w, x1, bottom)) {
+        return;
+    }
+    jw_line(v, x0, bottom, x1, bottom, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, x1, bottom, x1, top, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, x1, top, x0, top, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, x0, top, x0, bottom, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, x0, base, x1, base, colour, ROP_REPLACE, JW_STYLE_SOLID);
+}
+
 static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour)
 {
     const unsigned char *p = (const unsigned char *)t->text;
@@ -176,6 +229,16 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
         return;
     }
     len = len > 0.0 ? len : 1.0;
+
+    {
+        const int h = text_height(t, w, cells);
+
+        if (h < TEXT_GLYPH_MIN) {
+            draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1),
+                          to_y(v, w, t->y0), h, colour);
+            return;
+        }
+    }
 
     /* Through the view, not a copy of its arithmetic: this used to inline the
      * old fit-only formula and put every string in the wrong place the moment
@@ -306,7 +369,11 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         if (!jwc_visible(d, d->texts[k].layer)) {
             continue;
         }
-        draw_text(v, &d->texts[k], w, 15);
+        /* 7 (white), not 15: it is what the original puts on the screen for
+         * every text in SAMPLE1 and SAMPLE2 and for most of SAMPLE3.  Where a
+         * text's colour comes from is not settled -- SAMPLE3 has a few in 5 and
+         * TEST6 draws its in 3 -- and it is not any byte of the record. */
+        draw_text(v, &d->texts[k], w, 7);
     }
     for (k = 0; k < d->n_points; k++) {
         int x = to_x(w, d->points[k].x);
