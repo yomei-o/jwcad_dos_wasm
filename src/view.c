@@ -302,24 +302,30 @@ static double text_step(const JwcText *t, double unit)
     return (TEXT_MM[size] + TEXT_GAP[size]) / 10.0 * unit / 2.0;
 }
 
-/* The box the original draws in place of a string too small to read: the
- * rectangle the characters would have stood in, plus a line along the baseline.
- * Measured from its own line calls -- for SAMPLE1's title block it draws
- * (173,410)-(215,410)-(215,405)-(173,405) and then (173,409)-(215,409), with
- * the baseline at 409 and a height of 5. */
+/* The box the original draws in place of a string too small to read.
+ *
+ * Read out of its own line calls, for SAMPLE3's first string -- the record puts
+ * its baseline at 316 and asks for a 3.083-pixel character:
+ *
+ *     (309,316)-(318,316)  (318,316)-(318,313)  (318,313)-(309,313)
+ *     (309,313)-(309,316)  (309,315)-(318,315)
+ *
+ * so the rectangle stands *on* the baseline and is `floor(height)` tall, and
+ * the fifth line is one row above it.  (The old reading had the rectangle a row
+ * higher and a row taller, and the fifth line on the baseline itself.) */
 static void draw_text_box(VGA *v, const JwView *w, int x0, int x1, int base,
                           int h, unsigned colour)
 {
-    int top = base - h + 1, bottom = base + 1;
+    const int top = base - h;
 
-    if (!inside(w, x0, top) || !inside(w, x1, bottom)) {
+    if (!inside(w, x0, top) || !inside(w, x1, base)) {
         return;
     }
-    jw_line(v, x0, bottom, x1, bottom, colour, ROP_REPLACE, JW_STYLE_SOLID);
-    jw_line(v, x1, bottom, x1, top, colour, ROP_REPLACE, JW_STYLE_SOLID);
-    jw_line(v, x1, top, x0, top, colour, ROP_REPLACE, JW_STYLE_SOLID);
-    jw_line(v, x0, top, x0, bottom, colour, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, x0, base, x1, base, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, x1, base, x1, top, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, x1, top, x0, top, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, x0, top, x0, base, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, x0, base - 1, x1, base - 1, colour, ROP_REPLACE, JW_STYLE_SOLID);
 }
 
 static void draw_text(VGA *v, const JwcText *t, const JwView *w, double unit,
@@ -361,14 +367,8 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, double unit,
 
     height = text_height(t, unit);
     if ((int)height < TEXT_GLYPH_MIN) {
-        /* The box keeps the truncated baseline: rounding it moves the boxes
-         * of SAMPLE1, SAMPLE2 and SAMPLE3 -- whose baselines are fractions --
-         * off by a row and costs 3,000 pixels.  Whether that is the original
-         * using two different rules or this box being a pixel out in the other
-         * direction is not settled; what is measured is that the glyphs want
-         * the rounded one and the boxes want this one. */
-        draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1),
-                      to_y(v, w, t->y0), (int)height, colour);
+        draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1), y, (int)height,
+                      colour);
         return;
     }
     /* The original draws text upright on a 16x16 grid; the baseline gives the
