@@ -147,9 +147,18 @@ static int is_lead(unsigned char c)
  * screen the font is whatever DOS/V hands over, 16 dots tall.  A .JWC text
  * record carries a baseline whose length is the string's width in drawing
  * units, though, so a viewer that can zoom has to fit the glyph to it.  This
- * is nearest-neighbour, and it is a decision of the port, not the original's:
- * what the original actually puts on screen at a given zoom is one of the
- * things to settle against the emulator.
+ * Shrinking is done the other way round from the obvious one: instead of
+ * asking each destination dot which source dot it stands on -- which at 16 to 9
+ * throws away five of every sixteen rows and breaks the glyph into confetti --
+ * every *source* dot lights the destination cell it lands in.  Nothing is lost,
+ * and the result is legible at nine pixels, which is what the original's own
+ * screen shows.  Measured against it, this agrees on 60% of the lit pixels of
+ * TEST6's two banner lines where nearest-neighbour agreed on 25%.  The last
+ * 40% is a rounding rule inside the original that has not been pinned down: a
+ * search over `(x*dw + k)/sw` for every k finds nothing that fits both TEST6's
+ * kanji and TEST7's, so it is not a plain offset.
+ *
+ * Growing is still nearest-neighbour, which is exact when the factor is whole.
  */
 static const unsigned char *scale_glyph(const unsigned char *g, int sw, int sh,
                                         int dw, int dh)
@@ -165,6 +174,21 @@ static const unsigned char *scale_glyph(const unsigned char *g, int sw, int sh,
         return NULL;
     }
     memset(out, 0, (size_t)(dstride * dh));
+    if (dw <= sw && dh <= sh) {
+        for (y = 0; y < sh; y++) {
+            int dy = y * dh / sh;
+
+            for (x = 0; x < sw; x++) {
+                int dx = x * dw / sw;
+
+                if (g[y * sstride + (x >> 3)] & (0x80 >> (x & 7))) {
+                    out[dy * dstride + (dx >> 3)] |=
+                        (unsigned char)(0x80 >> (dx & 7));
+                }
+            }
+        }
+        return out;
+    }
     for (y = 0; y < dh; y++) {
         int sy = y * sh / dh;
 
@@ -191,6 +215,35 @@ static const unsigned char *scale_glyph(const unsigned char *g, int sw, int sh,
  * The heights are the same numbers as the widths, so only one table is kept. */
 static const short TEXT_MM[11]  = {30, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100};
 static const short TEXT_GAP[11] = { 5,  0,  0,  5,  5,  5, 10, 10, 10, 10,  10};
+
+static unsigned pen_colour(unsigned pen)
+{
+    static const unsigned char LCOLLOR[9] = { 5, 5, 7, 4, 6, 3, 1, 2, 1 };
+
+    return LCOLLOR[pen < 9 ? pen : 0];
+}
+
+/* What colour a text comes out in.  It is not any byte of the record: the
+ * record names a character type, 1 to 10, and the environment file gives each
+ * type a pen --
+ *
+ *     MPEN   =  1  1  2  2  3  3  4  4  5  5          (JW_CAD.JWF / SAMPLE.JWF)
+ *
+ * -- which LCOLLOR then turns into a colour, the same table the lines use.  So
+ * a type-1 text is pen 1 is magenta and a type-3 text is pen 2 is white, and
+ * that is exactly what the original puts on the screen: TEST6 draws its type-1
+ * strings in 5 and its type-10 strings in 3, SAMPLE3 its type-2 in 5 and its
+ * type-3 in 7, SAMPLE1 and SAMPLE2 all type-3 and all white.  Every text in the
+ * six drawings compared agrees.
+ *
+ * (Type 0 means "the size currently selected", whose pen is the one for type 3;
+ * no sample uses it.) */
+static unsigned text_colour(unsigned size)
+{
+    static const unsigned char MPEN[11] = {2, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5};
+
+    return pen_colour(MPEN[size <= 10 ? size : 0]);
+}
 
 /* Below this many pixels the original does not draw the glyphs at all -- it
  * draws the box they would have filled.  The threshold is a word at DGROUP
@@ -241,7 +294,7 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
     double dx = t->x1 - t->x0, dy = t->y1 - t->y0;
     double len = dx * dx + dy * dy;
     int n = 0, cells = 0;
-    int y;
+    int y, height;
 
     if (!p || !*p || !ank.data) {
         return;
@@ -261,14 +314,11 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
     }
     len = len > 0.0 ? len : 1.0;
 
-    {
-        const int h = text_height(t, w, cells);
-
-        if (h < TEXT_GLYPH_MIN) {
-            draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1),
-                          to_y(v, w, t->y0), h, colour);
-            return;
-        }
+    height = text_height(t, w, cells);
+    if (height < TEXT_GLYPH_MIN) {
+        draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1),
+                      to_y(v, w, t->y0), height, colour);
+        return;
     }
 
     /* Through the view, not a copy of its arithmetic: this used to inline the
@@ -301,19 +351,28 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
                 i += 1;
             }
             if (g) {
-                int dw = (int)(step * cw + 0.5);
-                int dh = (int)(step * 2.0 + 0.5);
+                /* The glyph is square and as wide as it is tall -- the gap
+                 * between characters is in the step, not in the character.  A
+                 * half-width one is half of that.
+                 *
+                 * The cell sits *above* the baseline the record gives, rows
+                 * `base-height` to `base-1`: TEST6's two banner strings are 9
+                 * rows tall with their records at 254 and 287, and the original
+                 * lights 245..253 and 278..286. */
+                int dh = height;
+                int dw = (int)(height * cw / 2.0 + 0.5);
                 const unsigned char *sg;
 
                 if (dw < 2) {
                     dw = 2;
                 }
-                if (dh < 2) {
-                    dh = 2;
-                }
                 sg = scale_glyph(g, cw * 8, 16, dw, dh);
                 if (sg) {
-                    jw_glyph(v, (int)fx, y - dh + 1, dw, dh, sg, colour, colour);
+                    /* Rounded, not truncated: of the three ways to turn the
+                     * running position into a column, rounding agrees with the
+                     * original on 60% of the lit pixels, truncating on 45%. */
+                    jw_glyph(v, (int)(fx + 0.5), y - dh, dw, dh, sg,
+                             colour, colour);
                 }
             }
             fx += step * cw;
@@ -354,13 +413,6 @@ static int line_style(unsigned type)
     unsigned short p = PATTERN[type & 15];
 
     return p == 0xFFFF ? JW_STYLE_SOLID : (int)p;
-}
-
-static unsigned pen_colour(unsigned pen)
-{
-    static const unsigned char LCOLLOR[9] = { 5, 5, 7, 4, 6, 3, 1, 2, 1 };
-
-    return LCOLLOR[pen < 9 ? pen : 0];
 }
 
 void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
@@ -411,11 +463,7 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         if (!jwc_visible(d, d->texts[k].layer)) {
             continue;
         }
-        /* 7 (white), not 15: it is what the original puts on the screen for
-         * every text in SAMPLE1 and SAMPLE2 and for most of SAMPLE3.  Where a
-         * text's colour comes from is not settled -- SAMPLE3 has a few in 5 and
-         * TEST6 draws its in 3 -- and it is not any byte of the record. */
-        draw_text(v, &d->texts[k], w, 7);
+        draw_text(v, &d->texts[k], w, text_colour(d->texts[k].size));
     }
     for (k = 0; k < d->n_points; k++) {
         int x = to_x(w, d->points[k].x);

@@ -237,4 +237,6 @@ def main():
         text(jwc, scr)
 
 
-main()
+
+if __name__ == '__main__':
+    main()

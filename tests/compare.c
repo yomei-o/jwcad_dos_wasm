@@ -74,6 +74,7 @@ int main(int argc, char **argv)
     int x0 = 0, y0 = 0, x1 = W - 1, y1 = H - 1;
     int x, y;
     long same = 0, diff = 0, drawn = 0;
+    long only_a = 0, only_b = 0, wrong_colour = 0;
     int dx0 = W, dy0 = H, dx1 = -1, dy1 = -1;
 
     if (argc > 2 && strcmp(argv[1], "-m") == 0) {
@@ -136,6 +137,13 @@ int main(int argc, char **argv)
                 continue;
             }
             diff++;
+            if (!b_lit) {
+                only_a++;
+            } else if (!a_lit) {
+                only_b++;
+            } else {
+                wrong_colour++;
+            }
             map[(long)y * W + x] = (unsigned char)(!b_lit ? 2 : !a_lit ? 3 : 4);
             if (x < dx0) dx0 = x;
             if (y < dy0) dy0 = y;
@@ -158,7 +166,16 @@ int main(int argc, char **argv)
     printf("  %ld pixels compared, %ld the same (%ld of them drawn), %ld different (%.2f%%)\n",
            same + diff, same, drawn, diff,
            same + diff ? 100.0 * (double)diff / (double)(same + diff) : 0.0);
+    /* Split, because one number cannot be read.  A port that draws nothing at
+     * all scores well on `different` -- everything it misses is one pixel of
+     * red, while a port that draws almost the right thing pays twice, red for
+     * the dot it missed and green for the one it put down instead.  So the
+     * count of *drawn pixels agreed on* is the one that says whether a change
+     * helped: shrinking the glyphs the way the original does raised TEST6's
+     * agreement from 7,711 dots to 8,476 while raising `different` too. */
     if (diff) {
+        printf("  %ld only in %s, %ld only in %s, %ld drawn in both but "
+               "different colours\n", only_a, pa, only_b, pb, wrong_colour);
         printf("  the disagreement spans (%d,%d)-(%d,%d)\n", dx0, dy0, dx1, dy1);
     }
     printf("  wrote %s\n", out);
