@@ -26,6 +26,10 @@ void vga_reset(VGA *v, int mode)
         v->height = 480;
     }
     v->stride = v->width / 8;
+    v->clip_x0 = 0;
+    v->clip_y0 = 0;
+    v->clip_x1 = v->width - 1;
+    v->clip_y1 = v->height - 1;
     for (i = 0; i < 16; i++) {
         int c;
 
@@ -133,6 +137,11 @@ void vga_rmw(VGA *v, long offset, unsigned char data)
         v->plane[p][offset] = (unsigned char)
             ((val & mask) | (v->latch[p] & (unsigned char)~mask));
     }
+}
+
+int vga_clipped(const VGA *v, int x, int y)
+{
+    return x < v->clip_x0 || x > v->clip_x1 || y < v->clip_y0 || y > v->clip_y1;
 }
 
 long vga_offset(const VGA *v, int x, int y)

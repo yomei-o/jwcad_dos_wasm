@@ -187,17 +187,45 @@ static const unsigned char *scale_glyph(const unsigned char *g, int sw,
     dstride = (*dw + 7) / 8;
     memset(out, 0, (size_t)(dstride * *dh));
     for (y = 0; y < 16; y++) {
+        /* A source dot covers a *range* of destination dots.  Shrinking, the
+         * range is the one dot the rule above names -- which is what the
+         * original does and what the screen comparison checks.  Growing, it is
+         * the whole block the dot has become; without that a magnified glyph
+         * comes out as a scatter of single pixels, which is what the browser
+         * front end showed when zoomed in. */
         const int dy = (int)(floor(y0 + y * h / 16.0) - top);
+        int dy1 = (int)(floor(y0 + (y + 1) * h / 16.0) - top);
+        int yy;
 
-        if (dy < 0 || dy >= *dh) {
+        if (dy1 <= dy) {
+            dy1 = dy + 1;
+        }
+        if (dy1 > *dh) {
+            dy1 = *dh;
+        }
+        if (dy >= *dh) {
             continue;
         }
         for (x = 0; x < sw; x++) {
             const int dx = (int)(x * cellw / sw);
+            int dx1 = (int)((x + 1) * cellw / sw);
+            int xx;
 
-            if (dx < *dw && (g[y * sstride + (x >> 3)] & (0x80 >> (x & 7)))) {
-                out[dy * dstride + (dx >> 3)] |=
-                    (unsigned char)(0x80 >> (dx & 7));
+            if (dx1 <= dx) {
+                dx1 = dx + 1;
+            }
+            if (dx1 > *dw) {
+                dx1 = *dw;
+            }
+            if (dx >= *dw ||
+                !(g[y * sstride + (x >> 3)] & (0x80 >> (x & 7)))) {
+                continue;
+            }
+            for (yy = dy < 0 ? 0 : dy; yy < dy1; yy++) {
+                for (xx = dx; xx < dx1; xx++) {
+                    out[yy * dstride + (xx >> 3)] |=
+                        (unsigned char)(0x80 >> (xx & 7));
+                }
             }
         }
     }
@@ -424,9 +452,15 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, double unit,
                 const unsigned char *sg = scale_glyph(g, sw, height * cw / 2.0,
                                                       height, top, &dw, &dh);
 
-                if (sg) {
-                    jw_glyph(v, (int)(x0 + floor(walk)), (int)floor(top),
-                             dw, dh, sg, colour, colour);
+                const int gx = (int)(x0 + floor(walk));
+                const int gy = (int)floor(top);
+
+                /* Outside the view's window there is nothing to draw.  The
+                 * browser's window is the whole screen, so this only bites at
+                 * the edges; the original's is the drawing area. */
+                if (sg && gx <= w->x1 && gx + dw > w->x0 &&
+                    gy <= w->y1 && gy + dh > w->y0) {
+                    jw_glyph(v, gx, gy, dw, dh, sg, colour, colour);
                 }
             }
             walk += step * cw;
@@ -518,6 +552,11 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
     long k;
 
     memset(v->plane, 0, sizeof v->plane);
+    /* Everything below draws through the clip, as the original does. */
+    v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+    v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+    v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+    v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
     draw_grid(v, d, w);
 
     for (k = 0; k < d->n_lines; k++) {

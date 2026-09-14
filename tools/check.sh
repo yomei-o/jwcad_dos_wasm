@@ -21,6 +21,16 @@ echo "=== the line routine"
 echo "=== the drawing reader"
 ./tests/jwc_test.exe
 
+# Zoomed in, the browser front end asks the drawing routines to work at the
+# edge of the screen. Nothing may land outside the view's window: a glyph that
+# ran off the right used to reappear on the left of the next scan line.
+echo "=== nothing drawn outside the window, zoomed in"
+for f in orig/SAMPLE1.JWC orig/SAMPLE2.JWC orig/SAMPLE3.JWC orig/SAMPLE6.JWC          orig/TEST6.JWC orig/TEST7.JWC; do
+    for z in 2 8 32; do
+        ./tests/zoom.exe "$f" "$z" || exit 1
+    done
+done
+
 # node runs the WASM half. It is not on PATH on either machine this has been
 # built on; emscripten ships one, so fall back to that rather than asking for
 # an install. Set NODE to override.

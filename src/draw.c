@@ -237,7 +237,16 @@ void jw_line(VGA *v, int x0, int y0, int x1, int y1,
  */
 void jw_point(VGA *v, int x, int y, unsigned colour, unsigned rop)
 {
-    long off = vga_offset(v, x, y);
+    long off;
+
+    /* Outside the clip is not drawn.  vga_rmw only checks that the byte is
+     * inside the buffer, which a byte one past the end of a scan line is -- it
+     * is the first byte of the next one, and drawing there puts a dot on the
+     * far side of the screen. */
+    if (vga_clipped(v, x, y)) {
+        return;
+    }
+    off = vga_offset(v, x, y);
 
     vga_outw(v, 0x3ce, ((unsigned)VGA_PIXEL_BIT(x) << 8) | GC_BIT_MASK);
     vga_outw(v, 0x3ce, 0x0205);
@@ -380,14 +389,36 @@ void jw_glyph(VGA *v, int x, int y, int w, int h,
     vga_outw(v, 0x3ce, 0x0305);                 /* GC 5 = write mode 3 */
 
     for (row = 0; row < h; row++) {
-        long at = vga_offset(v, x, y + row);
+        const int first = x >> 3;           /* arithmetic: floor, for x < 0 */
+        long at;
         unsigned char carry = 0;
 
+        if (y + row < v->clip_y0 || y + row > v->clip_y1) {
+            continue;
+        }
+        at = vga_offset(v, x, y + row);
         for (col = 0; col < bytes; col++) {
             const unsigned char s = col < stride ? bits[row * stride + col] : 0;
-            const unsigned char g = (unsigned char)(carry | (s >> shift));
+            const int bx = (first + col) * 8;
+            unsigned char g = (unsigned char)(carry | (s >> shift));
+            int b;
 
             carry = (unsigned char)(shift ? s << (8 - shift) : 0);
+            /* The byte has to belong to *this* scan line.  Without the test a
+             * glyph running off the right edge carried on into the left of the
+             * next one -- which is what the browser front end showed as
+             * rubbish down the sides and as doubled text when zoomed in. */
+            if (first + col < 0 || first + col >= v->stride) {
+                continue;
+            }
+            for (b = 0; b < 8; b++) {
+                if (bx + b < v->clip_x0 || bx + b > v->clip_x1) {
+                    g &= (unsigned char)~(0x80u >> b);
+                }
+            }
+            if (!g && bg == fg) {
+                continue;
+            }
             vga_outw(v, 0x3ce, (fg << 8) | GC_SET_RESET);
             vga_rmw(v, at + col, g);
             if (bg != fg) {

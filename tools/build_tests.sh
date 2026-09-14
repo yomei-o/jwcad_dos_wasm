@@ -14,4 +14,5 @@ sh tools/cc.sh -O2 -Wall -Wextra -Isrc -Itests -o tests/screen.exe tests/screen.
 sh tools/cc.sh -O2 -Wall -Wextra -Isrc -o tests/jwc_test.exe tests/jwc_test.c src/jwc.c
 sh tools/cc.sh -O2 -Wall -Wextra -Isrc -Itests -o tests/drawing.exe tests/drawing.c tests/png.c src/vga.c src/draw.c src/jwc.c src/view.c src/fontx.c -lm
 sh tools/cc.sh -O2 -Wall -Wextra -Isrc -Itests -o tests/compare.exe tests/compare.c tests/png.c
-echo "built tests/vga_test.exe tests/draw_test.exe tests/jwc_test.exe tests/screen.exe tests/drawing.exe tests/compare.exe"
+sh tools/cc.sh -O2 -Wall -Wextra -Isrc -Itests -o tests/zoom.exe tests/zoom.c tests/png.c src/vga.c src/draw.c src/jwc.c src/view.c src/fontx.c -lm
+echo "built tests/vga_test.exe tests/draw_test.exe tests/jwc_test.exe tests/screen.exe tests/drawing.exe tests/compare.exe tests/zoom.exe"

@@ -55,6 +55,11 @@ typedef struct {
     unsigned char palette[16];          /* attribute controller: index -> DAC entry */
     unsigned char dac[256][3];          /* the DAC itself, six bits per channel */
     int stride;                         /* bytes per scan line */
+    /* Nothing is drawn outside this, inclusive.  The original keeps the same
+     * four numbers in DGROUP (0xc16c, 0xc16e, 0xc270, 0xc276) and its own
+     * pixel routine, 1def:1423, tests them before every dot.  vga_reset opens
+     * it to the whole screen; jw_view_draw narrows it to the view's window. */
+    int clip_x0, clip_y0, clip_x1, clip_y1;
     int width, height;
 } VGA;
 
@@ -89,6 +94,9 @@ unsigned char vga_read(VGA *v, long offset);
 /* The byte offset of a pixel, the way the original computes it:
  *     y * DS:0x1cc2 + (x >> 3) + DS:0x1cc8 */
 long vga_offset(const VGA *v, int x, int y);
+
+/* Is this pixel outside the clip window? */
+int vga_clipped(const VGA *v, int x, int y);
 
 /* The bit mask that selects one pixel inside its byte. */
 #define VGA_PIXEL_BIT(x) ((unsigned char)(0x80u >> ((x) & 7)))
