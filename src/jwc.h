@@ -75,6 +75,10 @@ typedef struct {
      * runs through the drawing's origin in both directions. */
     unsigned char grid_on;
     float grid_x, grid_y;
+    /* How many drawing units a millimetre of paper is: JW_CAD's own drawing
+     * area (518 pixels) over the paper's width.  The character sizes are in
+     * millimetres, so this is what turns them into pixels. */
+    float unit_mm;
 } Jwc;
 
 /* Returns NULL and leaves `why` pointing at a reason on failure. */

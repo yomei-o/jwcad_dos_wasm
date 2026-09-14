@@ -171,14 +171,15 @@ static int is_lead(unsigned char c)
  * It grows as well as it shrinks: at h = 32 the factor is two and each source
  * dot lights one corner of a two-by-two block. */
 static const unsigned char *scale_glyph(const unsigned char *g, int sw,
-                                        double h, double y0, int *dw, int *dh)
+                                        double cellw, double h, double y0,
+                                        int *dw, int *dh)
 {
     static unsigned char out[128 * 128 / 8];
     const int sstride = (sw + 7) / 8;
     const double top = floor(y0);
     int dstride, x, y;
 
-    *dw = (int)((sw - 1) * h / 16.0) + 1;
+    *dw = (int)((sw - 1) * cellw / sw) + 1;
     *dh = (int)(floor(y0 + 15.0 * h / 16.0) - top) + 1;
     if (*dw < 1 || *dh < 1 || *dw > 128 || *dh > 128) {
         return NULL;
@@ -192,7 +193,7 @@ static const unsigned char *scale_glyph(const unsigned char *g, int sw,
             continue;
         }
         for (x = 0; x < sw; x++) {
-            const int dx = (int)(x * h / 16.0);
+            const int dx = (int)(x * cellw / sw);
 
             if (dx < *dw && (g[y * sstride + (x >> 3)] & (0x80 >> (x & 7)))) {
                 out[dy * dstride + (dx >> 3)] |=
@@ -250,22 +251,55 @@ static unsigned text_colour(unsigned size)
  * 0x1c6, and it is 6. */
 #define TEXT_GLYPH_MIN 6
 
-/* How tall the string is on screen, in pixels.
+/* Half-width to full-width, 0x20 to 0x7e.
  *
- * The size table is in millimetres of paper and the record is in screen units,
- * so the two are bridged by the string's own width: it is `cells/2` characters
- * of `width + gap` millimetres, and it covers `x1 - x0` units.  That ratio is
- * the same for the height. */
-static double text_height(const JwcText *t, const JwView *w, int cells)
-{
-    int size = t->size <= 10 ? t->size : 0;
-    double mm = (TEXT_MM[size] + TEXT_GAP[size]) / 10.0 * (cells / 2.0);
-    double px = (double)(t->x1 - t->x0) * w->scale;
+ * The original draws a one-byte character in a drawing from its **full-width**
+ * glyph, squeezed into half a cell.  It is not a guess: TEST7's heading starts
+ * "2.5D", and reading the original's own line calls for the D gives
+ *
+ *     ###..  .###.  .#.#.  .#.##  .#..#  .#.##  .#.#.  .###.  ###..
+ *
+ * which no shrink of the 8x16 D can produce -- a search over every monotone map
+ * from eight columns to five finds nothing -- while the 16x16 full-width D
+ * reproduces it exactly, row for row. */
+static const unsigned short WIDE[95] = {
+    0x8140, 0x8149, 0x8168, 0x8194, 0x8190, 0x8193, 0x8195, 0x8166,
+    0x8169, 0x816A, 0x8196, 0x817B, 0x8143, 0x817C, 0x8144, 0x815E,
+    0x824F, 0x8250, 0x8251, 0x8252, 0x8253, 0x8254, 0x8255, 0x8256,
+    0x8257, 0x8258, 0x8146, 0x8147, 0x8183, 0x8181, 0x8184, 0x8148,
+    0x8197, 0x8260, 0x8261, 0x8262, 0x8263, 0x8264, 0x8265, 0x8266,
+    0x8267, 0x8268, 0x8269, 0x826A, 0x826B, 0x826C, 0x826D, 0x826E,
+    0x826F, 0x8270, 0x8271, 0x8272, 0x8273, 0x8274, 0x8275, 0x8276,
+    0x8277, 0x8278, 0x8279, 0x816D, 0x815F, 0x816E, 0x814F, 0x8151,
+    0x814D, 0x8281, 0x8282, 0x8283, 0x8284, 0x8285, 0x8286, 0x8287,
+    0x8288, 0x8289, 0x828A, 0x828B, 0x828C, 0x828D, 0x828E, 0x828F,
+    0x8290, 0x8291, 0x8292, 0x8293, 0x8294, 0x8295, 0x8296, 0x8297,
+    0x8298, 0x8299, 0x829A, 0x816F, 0x8162, 0x8170, 0x8160,
+};
 
-    if (mm <= 0.0 || px <= 0.0) {
-        return 0.0;
-    }
-    return TEXT_MM[size] / 10.0 * (px / mm);
+/* How tall the string is on screen, in pixels, and how far one half-width cell
+ * carries the pen.
+ *
+ * Both come from the paper, not from the record's own box: the size table is in
+ * millimetres, and `unit` is how many drawing units a millimetre of paper is
+ * (JW_CAD's 518-pixel drawing area over the paper's width -- the same number
+ * the dot grid uses).  The box was the first guess, and it is *close*: TEST6's
+ * heading measures 9.559 units a character where the paper says 9.593.  Reading
+ * the original's own line calls settles it -- of the 116 cells it draws in
+ * TEST6 the paper's step puts 92 in the right place and the box's step 81, and
+ * in TEST7, where every coordinate has been multiplied by 518/678, it is 72
+ * against 42.  Neither ever puts a *wrong* bitmap down; the box's step just
+ * drifts a pixel along a long string. */
+static double text_height(const JwcText *t, double unit)
+{
+    return TEXT_MM[t->size <= 10 ? t->size : 0] / 10.0 * unit;
+}
+
+static double text_step(const JwcText *t, double unit)
+{
+    const int size = t->size <= 10 ? t->size : 0;
+
+    return (TEXT_MM[size] + TEXT_GAP[size]) / 10.0 * unit / 2.0;
 }
 
 /* The box the original draws in place of a string too small to read: the
@@ -288,7 +322,8 @@ static void draw_text_box(VGA *v, const JwView *w, int x0, int x1, int base,
     jw_line(v, x0, base, x1, base, colour, ROP_REPLACE, JW_STYLE_SOLID);
 }
 
-static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour)
+static void draw_text(VGA *v, const JwcText *t, const JwView *w, double unit,
+                      unsigned colour)
 {
     const unsigned char *p = (const unsigned char *)t->text;
     double dx = t->x1 - t->x0, dy = t->y1 - t->y0;
@@ -324,7 +359,7 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
      * have whole-number baselines and do not care either way. */
     y = (int)floor((double)(w->ay - (t->y0 - w->oy) * w->scale) + 0.5);
 
-    height = text_height(t, w, cells);
+    height = text_height(t, unit);
     if ((int)height < TEXT_GLYPH_MIN) {
         /* The box keeps the truncated baseline: rounding it moves the boxes
          * of SAMPLE1, SAMPLE2 and SAMPLE3 -- whose baselines are fractions --
@@ -336,20 +371,17 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
                       to_y(v, w, t->y0), (int)height, colour);
         return;
     }
-    /* The original draws text upright on a 8x16 grid; the baseline gives the
+    /* The original draws text upright on a 16x16 grid; the baseline gives the
      * left edge and the run, so step along it a cell at a time. */
     {
-        double step = ((t->x1 - t->x0) * w->scale) / cells;
+        const double step = text_step(t, unit);
         double fx = (t->x0 - w->ox) * w->scale + w->ax;    /* the exact position */
         int i = 0;
 
-        if (step < 1.0) {
-            step = 8.0;                     /* degenerate box: use the font's */
-        }
         while (p[i]) {
-            const unsigned char *g;
+            const unsigned char *g = NULL;
             unsigned code;
-            int cw;
+            int cw, sw = 16;
 
             if (is_lead(p[i]) && p[i + 1]) {
                 code = (unsigned)(p[i] << 8) | p[i + 1];
@@ -357,8 +389,14 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
                 cw = 2;
                 i += 2;
             } else {
-                g = fontx_glyph(&ank, p[i]);
                 cw = 1;
+                if (p[i] >= 0x20 && p[i] <= 0x7e) {
+                    g = fontx_glyph(&kanji, WIDE[p[i] - 0x20]);
+                }
+                if (!g) {
+                    g = fontx_glyph(&ank, p[i]);
+                    sw = 8;
+                }
                 i += 1;
             }
             if (g) {
@@ -372,8 +410,8 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
                  * running positions of 378.70, 388.26 and 397.82. */
                 const double top = (double)y - height;
                 int dw, dh;
-                const unsigned char *sg = scale_glyph(g, cw * 8, height,
-                                                      top, &dw, &dh);
+                const unsigned char *sg = scale_glyph(g, sw, height * cw / 2.0,
+                                                      height, top, &dw, &dh);
 
                 if (sg) {
                     jw_glyph(v, (int)(fx + 0.5), (int)floor(top), dw, dh, sg,
@@ -513,7 +551,8 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         if (!jwc_visible(d, d->texts[k].layer)) {
             continue;
         }
-        draw_text(v, &d->texts[k], w, text_colour(d->texts[k].size));
+        draw_text(v, &d->texts[k], w, (double)d->unit_mm * w->scale,
+                  text_colour(d->texts[k].size));
     }
     for (k = 0; k < d->n_points; k++) {
         int x = to_x(w, d->points[k].x);

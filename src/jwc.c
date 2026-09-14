@@ -203,21 +203,21 @@ static float saved_width_ratio(const char *line)
 static void grid(const char *line, Jwc *d)
 {
     static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f, 297.0f };
-    const char *f = field(line, 29);
-    int paper;
+    const char *f = field(line, 11);
+    int paper = f ? (int)strtol(f, NULL, 10) : -1;
 
-    if (!f || strtol(f, NULL, 10) == 0) {
-        return;
-    }
-    f = field(line, 11);
-    paper = f ? (int)strtol(f, NULL, 10) : -1;
     if (paper < 0 || paper > 4) {
         return;
     }
+    d->unit_mm = 518.0f / PAPER[paper];
+    f = field(line, 29);
+    if (!f || strtol(f, NULL, 10) == 0) {
+        return;
+    }
     f = field(line, 25);
-    d->grid_x = f ? (float)atof(f) * 518.0f / PAPER[paper] : 0.0f;
+    d->grid_x = f ? (float)atof(f) * d->unit_mm : 0.0f;
     f = field(line, 26);
-    d->grid_y = f ? (float)atof(f) * 518.0f / PAPER[paper] : 0.0f;
+    d->grid_y = f ? (float)atof(f) * d->unit_mm : 0.0f;
     d->grid_on = d->grid_x > 0.0f && d->grid_y > 0.0f;
 }
 
