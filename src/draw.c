@@ -13,6 +13,8 @@
  */
 #include "draw.h"
 
+#include <math.h>
+
 /* FUN_20a9_0732 */
 void jw_set_colour(VGA *v, unsigned colour, unsigned rop)
 {
@@ -219,4 +221,130 @@ void jw_line(VGA *v, int x0, int y0, int x1, int y1,
         bres_y(v, off, bit, major + 1, err, inc_flat, inc_step, ystep, style);
     }
     vga_outw(v, 0x3ce, 0xff08);
+}
+
+/* FUN_20a9_075c -- one pixel.
+ *
+ *     out(0x3ce, (1 << ((x & 7) ^ 7)) << 8 | 8);   // GC 8  bit mask
+ *     out(0x3ce, 0x0205);                          // GC 5  write mode 2
+ *     out(0x3ce, (rop << 8) | 3);                  // GC 3  function
+ *     al = *p;                                     // latch load
+ *     al = colour;
+ *     *p = al;                                     // mode 2: al IS the colour
+ *
+ * Note the mode: the line routine puts the colour in set/reset and writes a
+ * byte the hardware throws away, while this one writes the colour itself.
+ */
+void jw_point(VGA *v, int x, int y, unsigned colour, unsigned rop)
+{
+    long off = vga_offset(v, x, y);
+
+    vga_outw(v, 0x3ce, ((unsigned)VGA_PIXEL_BIT(x) << 8) | GC_BIT_MASK);
+    vga_outw(v, 0x3ce, 0x0205);
+    vga_outw(v, 0x3ce, (rop << 8) | 3);
+    vga_read(v, off);                       /* the latch load the original does */
+    vga_rmw(v, off, (unsigned char)colour);
+    vga_outw(v, 0x3ce, 0x0005);             /* FUN_20a9_0702 puts mode 0 back */
+    vga_outw(v, 0x3ce, 0xff08);
+}
+
+/* The arc's inner plotter, FUN_20a9_0d1a: one offset from the centre, mirrored
+ * into the four quadrants, each mirror kept only if it is inside that
+ * quadrant's angle bounds.  The original indexes a table of up to five
+ * quadrant pieces; the sweep here is one range, which is the same thing said
+ * more directly. */
+static void arc_pixel(VGA *v, int cx, int cy, int dx, int dy,
+                      double s, double e, double tilt_c, double tilt_s,
+                      double rx, double ry,
+                      unsigned colour, unsigned rop, int *style)
+{
+    static const int SX[4] = { 1, -1, -1,  1 };
+    static const int SY[4] = { 1,  1, -1, -1 };
+    int q;
+
+    for (q = 0; q < 4; q++) {
+        double ux = dx * SX[q], uy = dy * SY[q];
+        double ang;
+        int px, py;
+
+        if ((dx == 0 && SX[q] < 0) || (dy == 0 && SY[q] < 0)) {
+            continue;                       /* the axes belong to one quadrant */
+        }
+        /* Which angle on the unturned ellipse this pixel is, in degrees. */
+        ang = atan2(uy / (ry > 0.0 ? ry : 1.0), ux / (rx > 0.0 ? rx : 1.0));
+        ang = ang * 180.0 / 3.14159265358979323846;
+        if (ang < 0.0) {
+            ang += 360.0;
+        }
+        if (ang < s) {
+            ang += 360.0;
+        }
+        if (ang > e) {
+            continue;
+        }
+        px = cx + (int)(ux * tilt_c - uy * tilt_s);
+        py = cy + (int)(ux * tilt_s + uy * tilt_c);
+
+        if (*style != JW_STYLE_SOLID && !(*style & 1)) {
+            continue;
+        }
+        jw_point(v, px, py, colour, rop);
+    }
+    if (*style != JW_STYLE_SOLID) {
+        /* `*(int *)(state + 0x5a) <<= 1` with a 1 shifted in, once per step. */
+        *style = ((*style << 1) | ((*style >> 15) & 1)) & 0xffff;
+    }
+}
+
+void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
+            double start, double end, unsigned colour, unsigned rop, int style)
+{
+    double ry = rx * (flatten > 0 ? flatten / 10000.0 : 1.0);
+    double t = tilt * 3.14159265358979323846 / 180.0;
+    double tc = cos(t), ts = sin(t);
+    double a = rx, b = ry;
+    double x, y, d1, d2;
+
+    if (rx <= 0) {
+        return;
+    }
+    /* Fold the sweep into [0,360) and make the end come after the start, so a
+     * pixel's own angle can be compared against it directly.  start == end is
+     * the whole ellipse, which is how the .JWC record says "a circle". */
+    start = start - 360.0 * floor(start / 360.0);
+    end = end - 360.0 * floor(end / 360.0);
+    if (end <= start) {
+        end += 360.0;
+    }
+
+    /* The midpoint ellipse, in the two regions where the slope crosses -1. */
+    x = 0.0;
+    y = b;
+    d1 = b * b - a * a * b + 0.25 * a * a;
+    while (a * a * (y - 0.5) > b * b * (x + 1.0)) {
+        arc_pixel(v, cx, cy, (int)x, (int)y, start, end, tc, ts, a, b,
+                  colour, rop, &style);
+        if (d1 < 0.0) {
+            x += 1.0;
+            d1 += 2.0 * b * b * x + b * b;
+        } else {
+            x += 1.0;
+            y -= 1.0;
+            d1 += 2.0 * b * b * x - 2.0 * a * a * y + b * b;
+        }
+    }
+    d2 = b * b * (x + 0.5) * (x + 0.5) + a * a * (y - 1.0) * (y - 1.0)
+       - a * a * b * b;
+    while (y >= 0.0) {
+        arc_pixel(v, cx, cy, (int)x, (int)y, start, end, tc, ts, a, b,
+                  colour, rop, &style);
+        if (d2 > 0.0) {
+            y -= 1.0;
+            d2 += a * a - 2.0 * a * a * y;
+        } else {
+            y -= 1.0;
+            x += 1.0;
+            d2 += 2.0 * b * b * x - 2.0 * a * a * y + a * a;
+        }
+    }
 }

@@ -69,6 +69,12 @@ void vga_outw(VGA *v, unsigned port, unsigned ax);
  * form FUN_20a9_0702 uses to restore the nine registers one at a time. */
 void vga_outb(VGA *v, unsigned port, unsigned char al);
 
+/* Write modes, as GC 5's low two bits select them.  Mode 0 takes the colour
+ * from the set/reset register; mode 2 takes it from the low four bits of the
+ * byte the CPU writes.  JW_CAD uses both. */
+#define GC_MODE_SETRESET 0
+#define GC_MODE_COLOUR   2
+
 /* One read-modify-write to video memory.  `data` is what the CPU wrote, which
  * the set/reset path ignores whenever enable-set/reset is on -- as it always is
  * here -- but it is passed through anyway so the translated code can stay

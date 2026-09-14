@@ -1,37 +1,26 @@
 /* Read a .JWC drawing and draw it with the translated primitives.
  *
  *   ./tests/drawing.exe orig/SAMPLE2.JWC tmp/sample2.png
+ *   ./tests/drawing.exe orig/SAMPLE2.JWC tmp/sample2.raw   # RGBA, for diffing
  *
- * The whole path is the port's own: src/jwc.c reads the file, src/draw.c draws
- * the lines through src/vga.c's graphics controller, and what comes out is the
- * 640x480 four-plane screen mode 12h would hold.
- *
- * Arcs are drawn as polygons here.  The original's arc routine is
- * FUN_20a9_0e18, 1668 bytes with ten arguments, and it has not been translated
- * yet; this stands in so the drawing is complete enough to judge.
+ * The whole path is the port's own: src/jwc.c reads the file, src/view.c lays
+ * it out, src/draw.c draws through src/vga.c's graphics controller, and what
+ * comes out is the 640x480 four-plane screen mode 12h would hold.  The WASM
+ * front end runs exactly the same code, which is what tests/wasm_check.js
+ * checks by comparing the two byte for byte.
  */
-#include "draw.h"
 #include "jwc.h"
 #include "png.h"
+#include "view.h"
 
-#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
 static VGA v;
+static JwView w;
 static unsigned char pixels[VGA_MAX_STRIDE * 8 * VGA_MAX_HEIGHT];
+static unsigned char rgba[640 * 480 * 4];
 static unsigned char pal[256][3];
-
-static float sx, sy, scale;
-
-static int to_x(float x) { return (int)((x - sx) * scale) + 8; }
-static int to_y(float y) { return v.height - 9 - (int)((y - sy) * scale); }
-
-static void put_line(float x0, float y0, float x1, float y1, unsigned colour)
-{
-    jw_line(&v, to_x(x0), to_y(y0), to_x(x1), to_y(y1), colour, ROP_REPLACE,
-            JW_STYLE_SOLID);
-}
 
 int main(int argc, char **argv)
 {
@@ -39,9 +28,8 @@ int main(int argc, char **argv)
     const char *out = argc > 2 ? argv[2] : "tmp/drawing.png";
     const char *why;
     unsigned char rgb[16][3];
-    float x0, y0, x1, y1;
+    size_t n = strlen(out);
     Jwc *d;
-    long k;
     int i;
 
     d = jwc_load(in, &why);
@@ -54,72 +42,31 @@ int main(int argc, char **argv)
            d->data_at, d->data_end);
 
     vga_reset(&v, 0x12);
-    jwc_extent(d, &x0, &y0, &x1, &y1);
-    sx = x0;
-    sy = y0;
-    scale = (float)(v.width - 16) / (x1 - x0);
-    if ((float)(v.height - 16) / (y1 - y0) < scale) {
-        scale = (float)(v.height - 16) / (y1 - y0);
-    }
-
-    for (k = 0; k < d->n_lines; k++) {
-        /* attr[0] varies with the pen, so use it for colour until the
-         * attribute bytes are pinned down properly. */
-        unsigned c = (unsigned)(9 + (d->lines[k].pen % 7));
-        put_line(d->lines[k].x0, d->lines[k].y0,
-                 d->lines[k].x1, d->lines[k].y1, c);
-    }
-    for (k = 0; k < d->n_arcs; k++) {
-        const JwcArc *a = &d->arcs[k];
-        double s = a->start + a->start_frac / 10000.0;
-        double e = a->end + a->end_frac / 10000.0;
-        double minor = a->r * (a->flatten > 0 ? a->flatten / 10000.0 : 1.0);
-        double t = a->tilt * 3.141592653589793 / 180.0;
-        double ct = cos(t), st = sin(t);
-        float px = 0.0f, py = 0.0f;
-        int steps;
-
-        if (e <= s) {
-            e += 360.0;                   /* 0..0 is the whole ellipse */
-        }
-        steps = (int)((e - s) / 6.0) + 2;
-        for (i = 0; i <= steps; i++) {
-            double ang = (s + (e - s) * i / steps) * 3.141592653589793 / 180.0;
-            double ux = a->r * cos(ang), uy = minor * sin(ang);
-            float qx = a->cx + (float)(ux * ct - uy * st);
-            float qy = a->cy + (float)(ux * st + uy * ct);
-
-            if (i) {
-                put_line(px, py, qx, qy, (unsigned)(9 + (a->pen % 7)));
-            }
-            px = qx;
-            py = qy;
-        }
-    }
-
-    /* Texts and points are marked, not drawn: the character generator is
-     * still to come, so a text shows as its baseline and a point as a cross. */
-    for (k = 0; k < d->n_texts; k++) {
-        put_line(d->texts[k].x0, d->texts[k].y0,
-                 d->texts[k].x1, d->texts[k].y1, 13);
-    }
-    for (k = 0; k < d->n_points; k++) {
-        float x = d->points[k].x, y = d->points[k].y, s2 = 2.0f / scale;
-
-        put_line(x - s2, y, x + s2, y, 12);
-        put_line(x, y - s2, x, y + s2, 12);
-    }
-
+    jw_view_fit(&w, &v, d);
+    jw_view_draw(&v, d, &w);
     vga_render(&v, pixels);
-    vga_palette_rgb(&v, rgb);
-    memset(pal, 0, sizeof pal);
-    for (i = 0; i < 16; i++) {
-        pal[i][0] = rgb[i][0];
-        pal[i][1] = rgb[i][1];
-        pal[i][2] = rgb[i][2];
+
+    if (n > 4 && strcmp(out + n - 4, ".raw") == 0) {
+        FILE *f = fopen(out, "wb");
+
+        jw_view_rgba(&v, pixels, rgba);
+        if (!f) {
+            fprintf(stderr, "cannot write %s\n", out);
+            return 1;
+        }
+        fwrite(rgba, 1, (size_t)v.width * v.height * 4, f);
+        fclose(f);
+    } else {
+        vga_palette_rgb(&v, rgb);
+        memset(pal, 0, sizeof pal);
+        for (i = 0; i < 16; i++) {
+            pal[i][0] = rgb[i][0];
+            pal[i][1] = rgb[i][1];
+            pal[i][2] = rgb[i][2];
+        }
+        png_indexed(out, v.width, v.height, pixels,
+                    (const unsigned char (*)[3])pal);
     }
-    png_indexed(out, v.width, v.height, pixels,
-                (const unsigned char (*)[3])pal);
     printf("wrote %s\n", out);
     jwc_free(d);
     return 0;

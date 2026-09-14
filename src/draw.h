@@ -21,4 +21,19 @@ void jw_line(VGA *v, int x0, int y0, int x1, int y1,
  * Exposed because the original calls it on its own as well. */
 void jw_set_colour(VGA *v, unsigned colour, unsigned rop);
 
+/* FUN_20a9_075c -- one pixel, through write mode 2, which is how the arc draws
+ * (the line routine uses mode 0 and the set/reset register instead). */
+void jw_point(VGA *v, int x, int y, unsigned colour, unsigned rop);
+
+/* FUN_20a9_0e18 -- an ellipse, or the part of one between two angles.
+ *
+ * `rx` is the semi-axis across, `flatten` the other one as a ratio x10000 (so
+ * 10000 is a circle), `tilt` the whole thing turned by that many degrees, and
+ * `start`/`end` the sweep in degrees anticlockwise.  start == end draws it all.
+ * These are the units the .JWC arc record stores, and the original's own, which
+ * works in whole degrees out of 360 (`0x168` all through FUN_20a9_0e18).
+ */
+void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
+            double start, double end, unsigned colour, unsigned rop, int style);
+
 #endif

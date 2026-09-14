@@ -86,6 +86,7 @@ static unsigned char apply_rop(unsigned rop, unsigned char src, unsigned char la
 void vga_rmw(VGA *v, long offset, unsigned char data)
 {
     unsigned char mask = v->gc[GC_BIT_MASK];
+    unsigned mode = v->gc[GC_MODE] & 3;
     unsigned enable = v->gc[GC_ENABLE_SET_RESET] & 0x0f;
     unsigned setres = v->gc[GC_SET_RESET];
     unsigned rop = (unsigned)(v->gc[GC_DATA_ROTATE] & 0x18);
@@ -101,14 +102,20 @@ void vga_rmw(VGA *v, long offset, unsigned char data)
      * every caller to remember. */
     vga_read(v, offset);
 
-    if (rot) {
+    if (rot && mode != 2) {
         data = (unsigned char)((data >> rot) | (data << (8 - rot)));
     }
 
     for (p = 0; p < VGA_PLANES; p++) {
-        unsigned char src = (enable & (1u << p))
-            ? (unsigned char)((setres & (1u << p)) ? 0xff : 0x00)
-            : data;
+        /* Write mode 2 spreads the low four bits of the CPU byte across the
+         * planes, the way set/reset does with its own register.  JW_CAD uses
+         * mode 0 with set/reset for lines (FUN_20a9_0732) and mode 2 for the
+         * arc's pixels (FUN_20a9_075c), so both have to be here. */
+        unsigned char src = (mode == 2)
+            ? (unsigned char)((data & (1u << p)) ? 0xff : 0x00)
+            : (enable & (1u << p))
+                ? (unsigned char)((setres & (1u << p)) ? 0xff : 0x00)
+                : data;
         unsigned char val = apply_rop(rop, src, v->latch[p]);
         v->plane[p][offset] = (unsigned char)
             ((val & mask) | (v->latch[p] & (unsigned char)~mask));
