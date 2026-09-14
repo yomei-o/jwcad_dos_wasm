@@ -49,8 +49,9 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s: %s\n", in, why);
         return 1;
     }
-    printf("%s: %ld lines, %ld arcs, %d points, %d strings, geometry at +%ld\n",
-           in, d->n_lines, d->n_arcs, d->n_points, d->n_strings, d->lines_at);
+    printf("%s: %ld lines, %ld arcs, %d texts, %d points, data +%ld..%ld\n",
+           in, d->n_lines, d->n_arcs, d->n_texts, d->n_points,
+           d->data_at, d->data_end);
 
     vga_reset(&v, 0x12);
     jwc_extent(d, &x0, &y0, &x1, &y1);
@@ -64,7 +65,7 @@ int main(int argc, char **argv)
     for (k = 0; k < d->n_lines; k++) {
         /* attr[0] varies with the pen, so use it for colour until the
          * attribute bytes are pinned down properly. */
-        unsigned c = (unsigned)(9 + (d->lines[k].attr[0] % 7));
+        unsigned c = (unsigned)(9 + (d->lines[k].pen % 7));
         put_line(d->lines[k].x0, d->lines[k].y0,
                  d->lines[k].x1, d->lines[k].y1, c);
     }
@@ -94,6 +95,19 @@ int main(int argc, char **argv)
             px = qx;
             py = qy;
         }
+    }
+
+    /* Texts and points are marked, not drawn: the character generator is
+     * still to come, so a text shows as its baseline and a point as a cross. */
+    for (k = 0; k < d->n_texts; k++) {
+        put_line(d->texts[k].x0, d->texts[k].y0,
+                 d->texts[k].x1, d->texts[k].y1, 13);
+    }
+    for (k = 0; k < d->n_points; k++) {
+        float x = d->points[k].x, y = d->points[k].y, s2 = 2.0f / scale;
+
+        put_line(x - s2, y, x + s2, y, 12);
+        put_line(x, y - s2, x, y + s2, 12);
     }
 
     vga_render(&v, pixels);

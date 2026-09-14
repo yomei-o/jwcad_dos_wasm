@@ -40,8 +40,8 @@ static int check(const char *name)
         return 0;
     }
 
-    if (d->lines_at < 1400 || d->lines_at > 1800) {
-        bad(name, "geometry starts somewhere unexpected", (double)d->lines_at);
+    if (d->data_at < 1400 || d->data_at > 1800) {
+        bad(name, "data starts somewhere unexpected", (double)d->data_at);
     }
     for (k = 0; k < d->n_lines; k++) {
         const JwcLine *l = &d->lines[k];
@@ -69,8 +69,17 @@ static int check(const char *name)
         }
     }
 
-    printf("  %-14s %5ld lines %4ld arcs %4d points %3d strings   at +%ld\n",
-           name, d->n_lines, d->n_arcs, d->n_points, d->n_strings, d->lines_at);
+    for (k = 0; k < d->n_texts; k++) {
+        if (d->texts[k].text < d->text
+            || d->texts[k].text > d->text + d->text_len) {
+            bad(name, "text points outside the pool", (double)k);
+            break;
+        }
+    }
+    printf("  %-14s %5ld lines %4ld arcs %4d texts %4d points"
+           "   data +%ld..%ld   pool %ld\n",
+           name, d->n_lines, d->n_arcs, d->n_texts, d->n_points,
+           d->data_at, d->data_end, d->text_len);
     jwc_free(d);
     return 1;
 }
