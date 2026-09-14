@@ -7,3 +7,9 @@ tmp/
 !orig/*.EXE
 __pycache__/
 tests/*.exe
+
+# JW_CAD writes these into orig/ when it runs under dosv_emu_cpp: an empty
+# auto-save file at startup and a list of the drawings that were opened.
+# Neither is in jwcv222h.lzh -- orig/ is the distribution, unchanged.
+orig/AUTO.JWC
+orig/JW_FILE0.*
