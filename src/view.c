@@ -177,13 +177,16 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
     }
     len = len > 0.0 ? len : 1.0;
 
-    x = (int)((t->x0 - w->ox) * w->scale) + 8;
-    y = v->height - 9 - (int)((t->y0 - w->oy) * w->scale);
+    /* Through the view, not a copy of its arithmetic: this used to inline the
+     * old fit-only formula and put every string in the wrong place the moment
+     * the view gained an anchor. */
+    x = to_x(w, t->x0);
+    y = to_y(v, w, t->y0);
     /* The original draws text upright on a 8x16 grid; the baseline gives the
      * left edge and the run, so step along it a cell at a time. */
     {
         double step = ((t->x1 - t->x0) * w->scale) / cells;
-        double fx = x;
+        double fx = (t->x0 - w->ox) * w->scale + w->ax;    /* the exact position */
         int i = 0;
 
         if (step < 1.0) {
