@@ -32,6 +32,37 @@ static int inside(const JwView *w, int x, int y)
     return x >= w->x0 && x <= w->x1 && y >= w->y0 && y <= w->y1;
 }
 
+/* Pull the far end of a segment back to the window, keeping the near end where
+ * it is.
+ *
+ * The original *does* draw a line that runs off the drawing area -- dropping
+ * those was worth 444 pixels of disagreement on TEST7 alone, which is how it
+ * was settled.  Its own test (FUN_1def_17bb, against the four floats at DGROUP
+ * 0xb5aa/0xb5b2/0xb60e/0xb612) throws away only what is entirely elsewhere.
+ *
+ * Which end is kept matters for the dashes: the pattern starts at the line's
+ * own beginning, so moving the far end leaves it alone. */
+static void clip_far(const JwView *w, int x0, int y0, int *x1, int *y1)
+{
+    double t = 1.0, dx = *x1 - x0, dy = *y1 - y0;
+
+    if (dx > 0.0 && *x1 > w->x1) t = (w->x1 - x0) / dx;
+    if (dx < 0.0 && *x1 < w->x0) t = (w->x0 - x0) / dx;
+    if (dy > 0.0 && *y1 > w->y1) {
+        double u = (w->y1 - y0) / dy;
+        if (u < t) t = u;
+    }
+    if (dy < 0.0 && *y1 < w->y0) {
+        double u = (w->y0 - y0) / dy;
+        if (u < t) t = u;
+    }
+    if (t < 0.0) t = 0.0;
+    if (t < 1.0) {
+        *x1 = x0 + (int)(dx * t);
+        *y1 = y0 + (int)(dy * t);
+    }
+}
+
 void jw_view_fit(JwView *w, const VGA *v, const Jwc *d)
 {
     float x0, y0, x1, y1, sx, sy;
@@ -343,9 +374,16 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         int sx0 = to_x(w, l->x0), sy0 = to_y(v, w, l->y0);
         int sx1 = to_x(w, l->x1), sy1 = to_y(v, w, l->y1);
 
-        if (!jwc_visible(d, l->layer) ||
-            !inside(w, sx0, sy0) || !inside(w, sx1, sy1)) {
+        if (!jwc_visible(d, l->layer)) {
             continue;
+        }
+        if (!inside(w, sx0, sy0)) {
+            if (!inside(w, sx1, sy1)) {
+                continue;
+            }
+            clip_far(w, sx1, sy1, &sx0, &sy0);
+        } else {
+            clip_far(w, sx0, sy0, &sx1, &sy1);
         }
         jw_line(v, sx0, sy0, sx1, sy1,
                 pen_colour(l->pen), ROP_REPLACE, line_style(l->type));
