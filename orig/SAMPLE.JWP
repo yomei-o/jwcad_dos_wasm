@@ -1,0 +1,54 @@
+MUTOH XP-601  HP-GLｺﾏﾝﾄﾞ(A1-A3) V1.55 以降で使用可能
+                                                                   
+#V1.55 以降で使用可能なプロッタファイルです
+INIT1 =\x1b.K
+wait  =2
+INIT2 =DF;IP 0,0,3600,2400;\
+       IW [1],[2],[3],[4];\
+       PA;CM1;CS6;CA101;\n
+min_x =-16240,-11320,-7920
+min_y =-11320, -7920,-5360
+max_x = 16240, 11320, 7920
+max_y = 11320,  7920, 5360
+PS_NAME =Ａ１,Ａ２,Ａ３
+P_SIZE  =a1,a2,a3
+unit_x=40
+unit_y=40
+PEN_V =VS[1];\n
+max_v =80
+init_v=8
+PEN_1  =SP1; FS2,1;
+PEN_2  =SP2; FS6,2;
+PEN_3  =SP3; FS2,3;
+PEN_4  =SP4; FS6,4;
+PEN_5  =SP5; FS8,5;
+PEN_6  =SP6; FS1,6;
+LTYP_1 =LT;	
+
+LTYP_2 =LT2,[1%f];
+pich_2 =0.5
+LTYP_3 =LT2,[1%f];
+pich_3 =1
+LTYP_4 =LT3,[1%f];
+pich_4 =1
+LTYP_5 =LT5,[1%f];
+pich_5 =1
+LTYP_6 =LT5,[1%f];
+pich_6 =2
+LTYP_7 =LT6,[1%f];
+pich_7 =1
+LTYP_8 =LT6,[1%f];
+pich_8 =2
+MOVE  =PU[1],[2];\n			'UP移動コマンド		
+DRAW  =PD[1],[2];\n			'DOWN移動コマンド
+ank_x  =0.035
+ank_y  =0.09
+knj_x  =0.1
+knj_y  =0.1
+ang_r=1
+ANK   =DI[5%f],[6%f];SI[3%f],[4%f];PU[1%f],[2%f];SS;LB[A%c]\x03\n
+KANJI =DI[5%f],[6%f];SI[3%f],[4%f];PU[1%f],[2%f];SA;LB[A%c][B%c]\x03\n
+POINT =PU[1%f],[2%f];CI10;CI6;\n
+CIRCLE=PD;AA [1],[2],[7%f],[C%f];\n
+TERM  =SP0;PU [1],[2];\n
+

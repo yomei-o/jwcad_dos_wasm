@@ -1,0 +1,30 @@
+/* 32b2:0584 */
+
+int * __stdcall16far FUN_32b2_0584(int param_1)
+
+{
+  int *piVar1;
+  int iVar2;
+  int *piVar3;
+  int *piVar4;
+  undefined2 unaff_DS;
+  
+  piVar3 = (int *)0xab48;
+  do {
+    piVar1 = piVar3;
+    piVar3 = piVar3 + 1;
+    piVar4 = piVar3;
+    if ((*piVar1 == param_1) || (piVar4 = (int *)0x0, *piVar1 == -1)) {
+      return piVar4;
+    }
+    iVar2 = -1;
+    do {
+      if (iVar2 == 0) break;
+      iVar2 = iVar2 + -1;
+      piVar1 = piVar3;
+      piVar3 = (int *)((int)piVar3 + 1);
+    } while ((char)*piVar1 != '\0');
+  } while( true );
+}
+
+

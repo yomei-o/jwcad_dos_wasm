@@ -1,0 +1,126 @@
+INFO  Using log config file: jar:file:/C:/prog/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: C:\Users\yomei2\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\application.log (LoggingInitialization)  
+INFO  Loading user preferences: C:\Users\yomei2\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (1672 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (13658 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\FileFormats\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\GnuDemangler\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\VersionTracking\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Debug\Debugger\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Processors\8051\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\BSim\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\FunctionID\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\SystemEmulation\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Processors\PIC\ghidra_scripts
+    C:\prog\claude\jwcad_dos_wasm\tools\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\PDB\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Processors\DATA\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\Decompiler\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\BytePatterns\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\PyGhidra\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Processors\Atmel\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Features\Base\ghidra_scripts
+    C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Processors\JVM\ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Creating temporary project: C:\prog\claude\jwcad_dos_wasm\decomp\ghidra_proj\root (HeadlessAnalyzer)  
+INFO  Creating project: C:\prog\claude\jwcad_dos_wasm\decomp\ghidra_proj\root (DefaultProject)  
+INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
+INFO       project: C:\prog\claude\jwcad_dos_wasm\decomp\ghidra_proj\root (HeadlessAnalyzer)  
+INFO  IMPORTING: file:///C:/prog/claude/jwcad_dos_wasm/decomp/JW_CADV.unp.exe (HeadlessAnalyzer)  
+INFO  Using Loader: Old-style DOS Executable (MZ) (ProgramLoader)  
+INFO  Using Language/Compiler: x86:LE:16:Real Mode:default (ProgramLoader)  
+INFO  Using Library Search Path: [., C:\WINDOWS\SysWOW64, C:\prog\ghidra\jdk-21.0.12.1+1\bin, C:\WINDOWS\Sun\Java\bin, C:\WINDOWS\system32, C:\WINDOWS, C:\Users\yomei2\bin, C:\Program Files\Git\clangarm64\bin, C:\Program Files\Git\usr\local\bin, C:\Program Files\Git\usr\bin, C:\Program Files\Git\mingw64\bin, C:\Python313\Scripts, C:\Python313, C:\prog\w64devkit\bin, C:\Program Files\LLVM\bin, C:\Windows\System32, C:\WINDOWS\System32\Wbem, C:\WINDOWS\System32\WindowsPowerShell\v1.0, C:\WINDOWS\System32\OpenSSH, C:\Program Files\CMake\bin, C:\Program Files\Git\cmd, C:\Users\yomei2\AppData\Local\Programs\Python\Python312, C:\Users\yomei2\AppData\Local\Programs\Python\Python312\Scripts, C:\Program Files\MySQL\MySQL Server 8.4\bin, C:\ProgramData\chocolatey\bin, C:\Program Files\nodejs, C:\Users\yomei2\.local\bin, C:\Program Files\GitHub CLI, C:\Program Files\Amazon\AWSCLIV2, C:\Users\yomei2\AppData\Local\Microsoft\WindowsApps, C:\php, C:\Users\yomei2\AppData\Local\Programs\Microsoft VS Code\bin, C:\Users\yomei2\AppData\Roaming\npm, C:\Program Files\Git\usr\bin\vendor_perl, C:\Program Files\Git\usr\bin\core_perl] (ProgramLoader)  
+INFO  Additional info:
+Loading file:///C:/prog/claude/jwcad_dos_wasm/decomp/JW_CADV.unp.exe?MD5=ea4923f5154b7db9ea14e00bbb43d01c...
+File contains 0x12a2c9 extra bytes starting at file offset 0x45240
+------------------------------------------------
+
+ (ProgramLoader)  
+INFO  IMPORTING: Loaded 0 additional files (HeadlessAnalyzer)  
+INFO  ANALYZING all memory and code: file:///C:/prog/claude/jwcad_dos_wasm/decomp/JW_CADV.unp.exe (HeadlessAnalyzer)  
+WARN  Decompiling 32b2:0d40, pcode error at 3000:5054: Unable to resolve constructor at 3000:5054 (DecompileCallback)  
+WARN  Decompiling 32b2:1528: Unable to read bytes at ram:0000:7be2 (DecompileCallback)  
+WARN  Decompiling 1000:0a81, pcode error at 1000:0a6f: Unable to resolve constructor at 1000:0a6f (DecompileCallback)  
+WARN  Decompiling 1000:0a81, pcode error at 1000:0a4b: Unable to resolve constructor at 1000:0a4b (DecompileCallback)  
+WARN  Decompiling 1000:0a81, pcode error at 1000:0818: Unable to resolve constructor at 1000:0818 (DecompileCallback)  
+WARN  Decompiling 12c1:097e, pcode error at 1000:5097: Unable to resolve constructor at 1000:5097 (DecompileCallback)  
+WARN  Decompiling 32b2:0d40, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 32b2:0d40, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 21f2:246e, pcode error at 2000:3158: Unable to resolve constructor at 2000:3158 (DecompileCallback)  
+WARN  Decompiling 21f2:246e, pcode error at 2000:7191: Unable to resolve constructor at 2000:7191 (DecompileCallback)  
+INFO  Packed database cache: C:\Users\yomei2\AppData\Local\ghidra\packed-db-cache (PackedDatabaseCache)  
+INFO  Applied data type archive: generic_clib (ApplyDataArchiveAnalyzer)  
+INFO  -----------------------------------------------------
+    ASCII Strings                              1.316 secs
+    Apply Data Archives                        3.060 secs
+    Call Convention ID                         0.034 secs
+    Call-Fixup Installer                       0.135 secs
+    Create Function                            2.250 secs
+    Data Reference                             0.064 secs
+    Decompiler Switch Analysis                76.401 secs
+    Demangler GNU                              0.181 secs
+    Disassemble                                1.833 secs
+    Disassemble Entry Points                   6.930 secs
+    Embedded Media                             0.211 secs
+    External Entry References                  0.002 secs
+    Function ID                                0.335 secs
+    Function Start Search                      0.378 secs
+    Non-Returning Functions - Discovered       1.261 secs
+    Reference                                  0.157 secs
+    Segmented X86 Calling Conventions          0.014 secs
+    Shared Return Calls                        1.652 secs
+    Stack                                     13.807 secs
+    Subroutine References                      0.801 secs
+    Subroutine References - One Time           0.007 secs
+    X86 Function Callee Purge                  0.962 secs
+    x86 Constant Reference Analyzer           12.971 secs
+-----------------------------------------------------
+     Total Time   124 secs
+-----------------------------------------------------
+ (AutoAnalysisManager)  
+INFO  REPORT: Analysis succeeded for file: file:///C:/prog/claude/jwcad_dos_wasm/decomp/JW_CADV.unp.exe (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: DecompileAll 'C:\prog\claude\jwcad_dos_wasm\decomp\root'  (HeadlessAnalyzer)  
+INFO  SCRIPT: C:\prog\claude\jwcad_dos_wasm\tools\ghidra_scripts\DecompileAll.java (HeadlessAnalyzer)  
+WARN  Decompiling 1000:0806, pcode error at 1000:0818: Unable to resolve constructor at 1000:0818 (DecompileCallback)  
+WARN  Decompiling 1000:0965, pcode error at 1000:0966: Unable to resolve constructor at 1000:0966 (DecompileCallback)  
+WARN  Decompiling 1000:0a81, pcode error at 1000:0a6f: Unable to resolve constructor at 1000:0a6f (DecompileCallback)  
+WARN  Decompiling 1000:0a81, pcode error at 1000:0a4b: Unable to resolve constructor at 1000:0a4b (DecompileCallback)  
+WARN  Decompiling 1000:0a81, pcode error at 1000:0818: Unable to resolve constructor at 1000:0818 (DecompileCallback)  
+WARN  Decompiling 12c1:097e, pcode error at 1000:5097: Unable to resolve constructor at 1000:5097 (DecompileCallback)  
+WARN  Decompiling 21f2:10c3, pcode error at 2000:3158: Unable to resolve constructor at 2000:3158 (DecompileCallback)  
+WARN  Decompiling 21f2:246e, pcode error at 2000:3158: Unable to resolve constructor at 2000:3158 (DecompileCallback)  
+WARN  Decompiling 21f2:246e, pcode error at 2000:7191: Unable to resolve constructor at 2000:7191 (DecompileCallback)  
+WARN  Decompiling 32b2:0d40, pcode error at 3000:5054: Unable to resolve constructor at 3000:5054 (DecompileCallback)  
+WARN  Decompiling 32b2:0d40, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 32b2:0d40, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 32b2:1528: Unable to read bytes at ram:0000:7be2 (DecompileCallback)  
+WARN  Decompiling 3ab8:4c91, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 3ab8:4c91, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 3ab8:4fbd, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 3ab8:4fbd, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 3ab8:5089, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 3ab8:5089, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 3ab8:517f, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 3ab8:517f, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 3ab8:522f, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 3ab8:522f, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+INFO  DecompileAll.java> decompiled 627 functions, 0 failed (GhidraScript)  
+INFO  ANALYZING changes made by post scripts: file:///C:/prog/claude/jwcad_dos_wasm/decomp/JW_CADV.unp.exe (HeadlessAnalyzer)  
+INFO  REPORT: Post-analysis succeeded for file: file:///C:/prog/claude/jwcad_dos_wasm/decomp/JW_CADV.unp.exe (HeadlessAnalyzer)  
+INFO  /JW_CADV.unp.exe: file created (yomei2) (LocalFileSystem)  
+INFO  REPORT: Save succeeded for: /JW_CADV.unp.exe (root:/JW_CADV.unp.exe) (HeadlessAnalyzer)  
+INFO  REPORT: Import succeeded (HeadlessAnalyzer)  
+
+C:\prog\claude\jwcad_dos_wasm>

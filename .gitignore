@@ -1,0 +1,7 @@
+decomp/ghidra_proj/
+decomp/ovl/
+decomp/*.unp.exe
+tmp/
+*.o
+*.exe
+!orig/*.EXE
