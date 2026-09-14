@@ -52,12 +52,6 @@ static float rd_f32(const unsigned char *p)
     return f;
 }
 
-static long rd_i32(const unsigned char *p)
-{
-    return (long)((unsigned long)p[0] | ((unsigned long)p[1] << 8)
-                | ((unsigned long)p[2] << 16) | ((unsigned long)p[3] << 24));
-}
-
 static short rd_i16(const unsigned char *p)
 {
     return (short)(p[0] | (p[1] << 8));
@@ -101,11 +95,15 @@ static int arcs_fit(const unsigned char *b, size_t len, long at, long n)
     }
     for (k = 0; k < n; k++) {
         const unsigned char *r = b + at + k * ARC_SIZE;
+        short flat = rd_i16(r + 12);
 
         if (!sane(rd_f32(r)) || !sane(rd_f32(r + 4)) || !sane(rd_f32(r + 8))) {
             return 0;
         }
         if (rd_f32(r + 8) <= 0.0f) {        /* a radius is positive */
+            return 0;
+        }
+        if (flat <= 0 || flat > 10000) {    /* a ratio, x10000 */
             return 0;
         }
     }
@@ -228,16 +226,29 @@ Jwc *jwc_load(const char *path, const char **why)
 
         for (k = 0; k < d->n_arcs; k++) {
             const unsigned char *r = base + k * ARC_SIZE;
-            int j;
 
+            /* The angle fields gave themselves away by their values: the
+             * ones that hold 0/45/90/180/225/270/315/360 are the sweep and
+             * the tilt, and the small numbers between them are fractions
+             * scaled by 10000, the same scale `flatten` uses. */
             d->arcs[k].cx = rd_f32(r);
             d->arcs[k].cy = rd_f32(r + 4);
             d->arcs[k].r = rd_f32(r + 8);
-            d->arcs[k].flatten = rd_i32(r + 12);
-            for (j = 0; j < 8; j++) {
-                d->arcs[k].a[j] = rd_i16(r + 16 + j * 2);
-            }
-            memcpy(d->arcs[k].attr, r + 28, 4);
+            /* Sixteen bits, not thirty-two: reading it as a long swallows
+             * the field behind it and turns 10000 into nonsense for every
+             * record where that field is not zero (33 of SAMPLE2's 98).
+             * The values seen are 10000 for a circle and 1000..8679 for
+             * flattened ellipses. */
+            d->arcs[k].flatten = rd_i16(r + 12);
+            d->arcs[k].flatten2 = rd_i16(r + 14);
+            d->arcs[k].start      = rd_i16(r + 16);
+            d->arcs[k].start_frac = rd_i16(r + 18);
+            d->arcs[k].end        = rd_i16(r + 20);
+            d->arcs[k].end_frac   = rd_i16(r + 22);
+            d->arcs[k].tilt       = rd_i16(r + 24);
+            d->arcs[k].pen        = r[26];
+            d->arcs[k].type       = r[27];
+            memcpy(d->arcs[k].rest, r + 28, 4);
         }
     }
 

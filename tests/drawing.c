@@ -69,15 +69,28 @@ int main(int argc, char **argv)
                  d->lines[k].x1, d->lines[k].y1, c);
     }
     for (k = 0; k < d->n_arcs; k++) {
-        float cx = d->arcs[k].cx, cy = d->arcs[k].cy, r = d->arcs[k].r;
-        float px = cx + r, py = cy;
+        const JwcArc *a = &d->arcs[k];
+        double s = a->start + a->start_frac / 10000.0;
+        double e = a->end + a->end_frac / 10000.0;
+        double minor = a->r * (a->flatten > 0 ? a->flatten / 10000.0 : 1.0);
+        double t = a->tilt * 3.141592653589793 / 180.0;
+        double ct = cos(t), st = sin(t);
+        float px = 0.0f, py = 0.0f;
+        int steps;
 
-        for (i = 1; i <= 48; i++) {
-            double a = i * 6.283185307179586 / 48.0;
-            float qx = cx + r * (float)cos(a);
-            float qy = cy + r * (float)sin(a);
+        if (e <= s) {
+            e += 360.0;                   /* 0..0 is the whole ellipse */
+        }
+        steps = (int)((e - s) / 6.0) + 2;
+        for (i = 0; i <= steps; i++) {
+            double ang = (s + (e - s) * i / steps) * 3.141592653589793 / 180.0;
+            double ux = a->r * cos(ang), uy = minor * sin(ang);
+            float qx = a->cx + (float)(ux * ct - uy * st);
+            float qy = a->cy + (float)(ux * st + uy * ct);
 
-            put_line(px, py, qx, qy, 14);
+            if (i) {
+                put_line(px, py, qx, qy, (unsigned)(9 + (a->pen % 7)));
+            }
             px = qx;
             py = qy;
         }

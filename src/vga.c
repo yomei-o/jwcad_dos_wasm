@@ -49,10 +49,22 @@ void vga_outb(VGA *v, unsigned port, unsigned char al)
     }
 }
 
+/* Video memory is 64 KB of planes; the original stays inside it because it
+ * clips to the drawing area first, and anything translated from it should too.
+ * Until every caller does, a write that lands outside is dropped rather than
+ * scribbling over the process -- a real card would just wrap. */
+static int off_ok(const VGA *v, long offset)
+{
+    return offset >= 0 && offset < (long)v->stride * v->height;
+}
+
 unsigned char vga_read(VGA *v, long offset)
 {
     int p;
 
+    if (!off_ok(v, offset)) {
+        return 0;
+    }
     for (p = 0; p < VGA_PLANES; p++) {
         v->latch[p] = v->plane[p][offset];
     }
@@ -79,6 +91,10 @@ void vga_rmw(VGA *v, long offset, unsigned char data)
     unsigned rop = (unsigned)(v->gc[GC_DATA_ROTATE] & 0x18);
     unsigned rot = (unsigned)(v->gc[GC_DATA_ROTATE] & 7);
     int p;
+
+    if (!off_ok(v, offset)) {
+        return;
+    }
 
     /* The read half of the read-modify-write is what fills the latches; the
      * code being translated relies on it, so do it here rather than asking

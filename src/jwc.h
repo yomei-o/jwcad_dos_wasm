@@ -17,9 +17,13 @@ typedef struct {
 
 typedef struct {
     float cx, cy, r;
-    long flatten;               /* always 10000 in the samples; 1.0000 x 10^4 */
-    short a[8];                 /* angles in degrees appear here: 0/90/180/270 */
-    unsigned char attr[4];
+    short flatten;      /* the minor/major ratio, x10000; 10000 is a circle  */
+    short flatten2;     /* zero in most records; a fraction, or part of the tilt */
+    short start, end;   /* degrees; equal (usually 0,0) means the whole thing */
+    short start_frac, end_frac;   /* hundredths of a degree, x10000 like flatten */
+    short tilt;         /* degrees the ellipse is turned by */
+    unsigned char pen, type;
+    unsigned char rest[4];
 } JwcArc;
 
 typedef struct {
