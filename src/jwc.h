@@ -67,6 +67,10 @@ typedef struct {
     /* Which layers and layer groups are shown, out of the preamble. */
     unsigned char layer_on[256];
     unsigned char group_on[16];
+    /* What the coordinates were multiplied by on the way in: JW_CAD's own
+     * drawing-area width over the one the file was saved with.  1 unless the
+     * drawing came off a wider screen. */
+    float scale;
 } Jwc;
 
 /* Returns NULL and leaves `why` pointing at a reason on failure. */

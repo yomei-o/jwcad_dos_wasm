@@ -144,6 +144,38 @@ static long last_used(const unsigned char *b, long blen)
     return blen;
 }
 
+/* Field 30 of the counts line is how wide the drawing area was when the file
+ * was saved, in pixels.  JW_CAD divides its own width by it and **multiplies
+ * every coordinate in the drawing by the ratio, once, at load time** -- an
+ * overlay-6 routine (link 2ab8:43b0) walks the whole entity array doing it.
+ *
+ * Thirteen of the fourteen sample drawings say 518, which is what JW_CAD's own
+ * drawing area comes to in mode 12h (639 - 121), so nothing happens.  TEST7
+ * says 678: it was saved on an 800x600 screen, and every one of its 4,083 lines
+ * arrives on screen at 518/678 = 0.764012 of where the file puts it.  That one
+ * number was the last unexplained thing in the geometry -- it was found by
+ * breaking on the float library during the load and reading the two integers
+ * the ratio is built from.
+ *
+ * The five TEST1-TEST5 files stop at field 29 and are left alone. */
+static float saved_width_ratio(const char *line)
+{
+    int commas = 0;
+    long w;
+
+    for (; *line; line++) {
+        if (*line != ',') {
+            continue;
+        }
+        if (++commas < 30) {
+            continue;
+        }
+        w = strtol(line + 1, NULL, 10);
+        return w > 0 ? 518.0f / (float)w : 1.0f;
+    }
+    return 1.0f;
+}
+
 static int header(const unsigned char *file, Jwc *d)
 {
     char buf[TEXT_LINE];
@@ -160,6 +192,7 @@ static int header(const unsigned char *file, Jwc *d)
     d->n_arcs = c;
     d->n_texts = e;
     d->n_points = g;
+    d->scale = saved_width_ratio(buf);
 
     /* "%lp,%lp" -- the second one's offset is how long the string pool is. */
     memcpy(buf, file + TEXT_LINE * 3, TEXT_LINE - 1);
@@ -338,6 +371,25 @@ Jwc *jwc_load(const char *path, const char **why)
         d->points[k].y = rd_f32(r + 4);
         d->points[k].layer = r[8];
         memcpy(d->points[k].rest, r + 8, 4);
+    }
+
+    if (d->scale != 1.0f) {
+        const float s = d->scale;
+
+        for (k = 0; k < d->n_lines; k++) {
+            d->lines[k].x0 *= s; d->lines[k].y0 *= s;
+            d->lines[k].x1 *= s; d->lines[k].y1 *= s;
+        }
+        for (k = 0; k < d->n_arcs; k++) {
+            d->arcs[k].cx *= s; d->arcs[k].cy *= s; d->arcs[k].r *= s;
+        }
+        for (k = 0; k < d->n_texts; k++) {
+            d->texts[k].x0 *= s; d->texts[k].y0 *= s;
+            d->texts[k].x1 *= s; d->texts[k].y1 *= s;
+        }
+        for (k = 0; k < d->n_points; k++) {
+            d->points[k].x *= s; d->points[k].y *= s;
+        }
     }
 
     free(file);
