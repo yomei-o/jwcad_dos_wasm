@@ -1,5 +1,72 @@
 # 引き継ぎ
 
+## はじめに読む人へ（この会話を知らない Claude 向け）
+
+ＤＯＳ／Ｖ用の 2 次元 CAD **ＪＷ＿ＣＡＤ 2.22H**（1996）を、実行ファイルを
+逆コンパイルして C に書き直し、最終的に WASM で動かすリポジトリです。
+進め方は [super_depth_wasm](https://github.com/yomei-o/super_depth_wasm) と同じ
+——逆コンパイル出力と 1 行ずつ突き合わせて書き直し、ネイティブと WASM を
+同じソースから作り、ウィンドウを開かずに検証する——です。
+
+**対になるリポジトリがあります。**
+[dosv_emu_cpp](https://github.com/yomei-o/dosv_emu_cpp) が
+DOS/V エミュレータで**本物の `JW_CADV.EXE` を動かす**方で、
+**最終的な検証はそちらの画面とこちらの画面を突き合わせて行う**予定です。
+両方が同じフォントファイル（`font/*.FNT`）を使うようにしてあります。
+DOS/V のプログラムは字形を持たず OS に尋ねるので、そこを揃えないと
+画面比較に意味がありません。並べて置いてください。
+
+```
+どこか/
+  jwcad_dos_wasm/     これ
+  dosv_emu_cpp/       本物を動かすほう
+```
+
+### まず動かす
+
+```sh
+sh tools/check.sh     # ビルド、単体検査、図面 14 枚、ネイティブ対 WASM を 1 画素ずつ
+```
+
+gcc（`tools/cc.sh` が探します）と emscripten（`/c/prog/emsdk/emsdk`）が要ります。
+ブラウザ版は https://yomei-o.github.io/jwcad_dos_wasm/ で動いています。
+
+### 解析をやり直すとき
+
+`decomp/` に Ghidra の出力が入っているので**普段は再実行不要**です。
+必要になったら:
+
+```sh
+python tools/unexepack.py orig/JW_CADV.EXE decomp/JW_CADV.unp.exe
+python tools/overlays.py --merge      # decomp/ovl/jwNN.exe
+python tools/thunks.py --write        # decomp/entries/NN.txt
+sh tools/ghidra.sh root               # ルートだけ（約 10 分）
+sh tools/ghidra_box.sh                # オーバーレイ 36 本をビルドマシンで（約 30 分）
+```
+
+Ghidra は `C:\prog\ghidra\ghidra_12.1.3_PUBLIC`、ビルドマシンは
+`192.168.6.14`（`tools/build_box_setup.ps1` で同じ版を入れてあります）。
+**この 2 つは環境依存なので、別のマシンでは `tools/ghidra.sh` の
+`GHIDRA=` と `tools/ghidra_box.sh` の `BOX=` を直してください。**
+
+### 読むときの道具
+
+```sh
+python tools/func.py 20a9:07dc        # decomp/*/all.c から関数を 1 本
+python tools/disasm.py 0x113e2 0x80   # 逆アセンブル（注釈つき）
+python tools/disasm.py --ovl 36 0x12ae 0x80
+python tools/callsites.py 10a9:0732   # 呼び元と、積まれた引数
+python tools/ovlmap.py --callers      # オーバーレイの担当と呼ばれ方
+```
+
+**番地の流儀が 3 つあるので注意してください。**
+
+| | |
+|---|---|
+| リンク時 | `tools/disasm.py` と `tools/callsites.py` が取るもの。`main` は `0000:0446` |
+| Ghidra | `decomp/*/all.c` と `tools/func.py`。リンク時より **`0x1000` セグメント上**。`main` は `1000:0446` |
+| エミュレータ | ロード基底 `0x110` が乗る。`main` は `0110:0446`（換算表は dosv_emu_cpp の RESUME に） |
+
 ## いまどこまで
 
 **図面を読んでブラウザで描くところまで。** 作図はまだできません。
@@ -20,6 +87,11 @@ sh tools/check.sh      # ビルド、単体検査、図面 14 枚、ネイティ
 ```
 
 ## 次にやること
+
+**いちばん上に来ているのは対になる
+[dosv_emu_cpp](https://github.com/yomei-o/dosv_emu_cpp) の方です**
+（本物が文字を描くところまで動いていて、その先で暴走している。
+追跡の手がかりはあちらの RESUME.md に）。こちら側で手が空いたら以下。
 
 1. **DOS/V エミュレータを正解にした画面比較。** これが検証の最終形です。
    エミュレータ側に要るのは、VGA モード 12h、`INT 33h` のマウス、そして
