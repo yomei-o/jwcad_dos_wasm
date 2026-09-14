@@ -52,6 +52,11 @@ public class MarkOverlayThunks extends GhidraScript {
 
     private static final int THUNK_LEN = 5;      // cd 3f nn oo oo
 
+    // The overlay hole, in Ghidra's numbering (0x1000 segments above the link
+    // addresses tools/overlays.py uses).  Fixed by the executable's layout.
+    private static final int HOLE_SEG = 0x3ab8;
+    private static final int HOLE_END = 0x4375;
+
     private Address seg(int segment, int offset) {
         AddressSpace sp = currentProgram.getAddressFactory().getDefaultAddressSpace();
         if (sp instanceof SegmentedAddressSpace) {
@@ -139,12 +144,17 @@ public class MarkOverlayThunks extends GhidraScript {
                 + ", references added: " + called);
 
         int seeded = 0;
+        int used = 0;                 // how much of the hole this overlay fills
         if (entriesFile != null && new File(entriesFile).exists()) {
             BufferedReader r = new BufferedReader(new FileReader(entriesFile));
             String line;
             while ((line = r.readLine()) != null) {
                 line = line.trim();
-                if (line.isEmpty()) {
+                if (line.startsWith("#len ")) {
+                    used = Integer.parseInt(line.substring(5).trim());
+                    continue;
+                }
+                if (line.isEmpty() || line.startsWith("#")) {
                     continue;
                 }
                 Address a = seg(ovlSeg, Integer.parseInt(line, 16));
@@ -167,6 +177,49 @@ public class MarkOverlayThunks extends GhidraScript {
 
         // New code and new references only pay off if the analysers see them.
         analyzeChanges(currentProgram);
+
+        // Whatever the hole holds past the resident overlay is zeroes, and so
+        // is the whole hole when the root is analysed on its own.  With an
+        // overlay loaded but no "#len" to say how long it is, clearing from 0
+        // would erase the overlay itself, so leave it alone instead.
+        if (ovlSeg == 0) {
+            clearHole(0);
+        } else if (used > 0) {
+            clearHole(used);
+        } else {
+            println("overlay length unknown: the hole's tail is left as is");
+        }
+    }
+
+    /**
+     * Wipe the part of the overlay hole that holds nothing -- everything past
+     * `from`, which is the resident overlay's length, or the whole hole when
+     * the root is analysed on its own.
+     *
+     * Even with no references of ours pointing there, Ghidra finds a handful of
+     * "functions" among the zeroes, and now that the traps fall through
+     * correctly the flow reaches them.  Each one is a few dozen bytes that
+     * decompiles into some 450 KB of C -- and because the hole is sized to the
+     * largest overlay, every smaller one leaves such a tail.  Clearing it after
+     * the analysis settles is simpler than trying to stop every path in.
+     */
+    private void clearHole(int from) throws Exception {
+        if (from >= (HOLE_END - HOLE_SEG) * 16) {
+            return;                   // the overlay fills the hole exactly
+        }
+        Address lo = seg(HOLE_SEG + (from >> 4), from & 0xf);
+        Address hi = seg(HOLE_END - 1, 0xf);
+        int removed = 0;
+        for (Function f : currentProgram.getFunctionManager()
+                                        .getFunctions(lo, true)) {
+            if (f.getEntryPoint().compareTo(hi) > 0) {
+                break;
+            }
+            removeFunction(f);
+            removed++;
+        }
+        clearListing(lo, hi);
+        println("overlay hole cleared: " + removed + " stray functions");
     }
 
     @Override
@@ -175,6 +228,9 @@ public class MarkOverlayThunks extends GhidraScript {
         String phase = args.length > 0 ? args[0] : "post";
         int ovlSeg = args.length > 1 ? Integer.parseInt(args[1], 16) : 0x3ab8;
         String entriesFile = args.length > 2 ? args[2] : null;
+        if ("-".equals(entriesFile)) {
+            entriesFile = null;          // the runner's "no entries" placeholder
+        }
         // Which overlay is sitting in the hole, so calls meant for a different
         // one can be left alone.  0 means "do not filter".
         int resident = args.length > 3 ? Integer.parseInt(args[3]) : 0;

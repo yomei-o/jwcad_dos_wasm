@@ -96,6 +96,11 @@ def main():
     os.makedirs(ent, exist_ok=True)
     for n in range(1, len(ovls) + 1):
         with open(os.path.join(ent, '%02d.txt' % n), 'w', newline='\n') as f:
+            # The overlay hole is sized to the largest overlay, so a smaller one
+            # leaves a tail of zeroes behind it.  Ghidra finds "functions" in
+            # that tail and decompiles each into hundreds of KB of nothing, so
+            # MarkOverlayThunks needs to know where the real code stops.
+            f.write('#len %d\n' % sizes[n - 1])
             for off in sorted(by_target[n]):
                 f.write('%04x\n' % off)
     print('wrote decomp/thunks.csv and decomp/entries/NN.txt')

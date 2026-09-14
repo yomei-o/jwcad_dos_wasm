@@ -220,6 +220,27 @@ python tools/disasm.py 0x26147 0x90     # イメージ先頭からのオフセ�
 python tools/disasm.py 3375:8f53 0x40   # seg:off
 ```
 
+**`tools/callsites.py`** — ある番地への呼び出しを全部見つけて、そこで積まれた
+引数を機械語から復元。Ghidra の 16bit 出力は引数をローカル変数に化けさせるので、
+これが無いと引数の個数すら確かめられません。near / far / `INT 3Fh` の 3 種類とも
+探します。`push cs` ＋ near call で far 呼び出しを合成する MSC の手口も込みです。
+
+```sh
+python tools/callsites.py 10a9:0732
+#   root    010c01  far    pushed: [bp+18], 0x0000
+#   root    011263  near   pushed: (cs), [bp+14], [bp+16]
+```
+
+**`tools/func.py`** — `decomp/*/all.c` から関数を 1 本取り出す。
+
+```sh
+python tools/func.py 1000:0446    # main
+python tools/func.py 20a9         # そのセグメントの関数一覧
+```
+
+**`tools/ovlmap.py`** — 各オーバーレイが触る DGROUP の文字列を数えて、
+何担当かを当てる。上の表はこれで作りました。
+
 **`tools/ghidra.sh`** — Ghidra headless で逆コンパイルして `decomp/` に出す。
 
 ```sh

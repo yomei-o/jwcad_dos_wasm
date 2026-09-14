@@ -18,6 +18,9 @@ import java.util.*;
 
 public class DecompileAll extends GhidraScript {
 
+    /** Cap on one function's C, so a runaway decompilation cannot bloat all.c. */
+    private static final int MAX_C = 128 * 1024;
+
     /** Linear address of a real-mode seg:off, so it can be range-checked. */
     private static long linear(Address a) {
         if (a instanceof SegmentedAddress) {
@@ -81,6 +84,17 @@ public class DecompileAll extends GhidraScript {
                            && res.getDecompiledFunction() != null;
             if (good) {
                 String c = res.getDecompiledFunction().getC();
+                if (c.length() > MAX_C) {
+                    // Ghidra occasionally explodes on a big switch-heavy
+                    // function: the C runtime's scanf came out as 2 MB from
+                    // 504 bytes of code.  Nothing in JW_CAD's own code is
+                    // anywhere near this -- its largest function is under
+                    // 7 KB of machine code -- so a blob this size is the
+                    // runtime, which the port does not reimplement anyway.
+                    c = c.substring(0, MAX_C)
+                        + "\n/* ... truncated: the decompiler produced "
+                        + c.length() + " bytes for this function. */\n";
+                }
                 all.println();
                 all.println("/* " + addr + "  " + name + "  " + size
                             + " bytes, " + callers + " callers */");

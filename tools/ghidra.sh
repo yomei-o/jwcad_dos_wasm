@@ -36,7 +36,10 @@ run_one() {
     mkdir -p "$out"
     echo "=== $name: $exe"
     rm -rf "$PROJDIR/$name.rep" "$PROJDIR/$name.gpr"
-    ent=""
+    # "-" rather than an empty argument: analyzeHeadless stops collecting a
+    # script's arguments at an empty string, which silently swallowed the
+    # -postScript DecompileAll that follows and produced a run with no output.
+    ent="-"
     [ -n "$entries" ] && [ -f "$entries" ] && ent="$(cygpath -w "$entries")"
     LOWPRI=BELOWNORMAL sh "$HERE/lowpri.sh" \
         "$GHIDRA/support/analyzeHeadless.bat" \

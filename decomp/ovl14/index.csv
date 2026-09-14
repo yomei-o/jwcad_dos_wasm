@@ -1,0 +1,15 @@
+address,name,size,calls,called_by,decompiled
+3ab8:0000,OVL_0000,13328,24,1,1
+3ab8:3413,FUN_3ab8_3413,332,1,1,1
+3ab8:355f,FUN_3ab8_355f,558,2,1,1
+3ab8:378d,FUN_3ab8_378d,30,1,1,1
+3ab8:37ab,FUN_3ab8_37ab,74,2,1,1
+3ab8:37f5,FUN_3ab8_37f5,151,1,1,1
+3ab8:388c,FUN_3ab8_388c,74,1,1,1
+3ab8:38d6,FUN_3ab8_38d6,36,1,1,1
+3ab8:38fa,FUN_3ab8_38fa,4905,17,0,1
+3ab8:4c91,FUN_3ab8_4c91,34,0,1,1
+3ab8:4fbd,FUN_3ab8_4fbd,34,0,2,1
+3ab8:5089,FUN_3ab8_5089,34,0,3,1
+3ab8:517f,FUN_3ab8_517f,34,0,2,1
+3ab8:522f,FUN_3ab8_522f,34,0,2,1
