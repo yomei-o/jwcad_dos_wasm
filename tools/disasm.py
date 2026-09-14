@@ -3,6 +3,7 @@
     python tools/disasm.py 0x26100 0x200        # image-linear offset
     python tools/disasm.py 3375:8ee4 0x40       # seg:off (segments as linked)
     python tools/disasm.py 0x26100 0x200 --raw  # no annotations
+    python tools/disasm.py --ovl 36 0x12ae 0x80 # inside an overlay
 
 (Named disasm.py, not dis.py: the latter shadows the standard library module
 capstone imports, and the import fails in a way that reads like a capstone bug.)
@@ -78,12 +79,31 @@ INT33 = {
 }
 
 
-def load():
+def load(ovl=0):
+    """The root image, or one overlay's, laid out where it runs.
+
+    An overlay is loaded at segment 0x2ab8, so its bytes are returned with the
+    root's first 0x2ab8 paragraphs in front of them.  That keeps every address
+    in this tool the same as the address the code runs at, and lets DGROUP
+    string lookups keep working, since DGROUP is in the root.
+    """
     data = open(EXE, 'rb').read()
     hdr = struct.unpack('<H', data[8:10])[0] * 16
     cblp, cp = struct.unpack('<2H', data[2:6])
     img_len = (cp - 1) * 512 + (cblp or 512) - hdr
-    return data[hdr:hdr + img_len]
+    root = data[hdr:hdr + img_len]
+    if not ovl:
+        return root
+
+    sys.path.insert(0, HERE)
+    import overlays
+
+    packed = open(overlays.PACKED, 'rb').read()
+    image = overlays.chain(packed)[ovl - 1]['image']
+    at = OVL_SEG * 16
+    out = bytearray(root)
+    out[at:at + len(image)] = image
+    return bytes(out)
 
 
 def parse_addr(s):
@@ -145,10 +165,18 @@ def annotate(img, i, state):
 
 
 def main():
-    img = load()
-    start = parse_addr(sys.argv[1])
-    length = int(sys.argv[2], 0) if len(sys.argv) > 2 else 0x80
-    raw = '--raw' in sys.argv
+    args = sys.argv[1:]
+    ovl = 0
+    if '--ovl' in args:
+        i = args.index('--ovl')
+        ovl = int(args[i + 1], 0)
+        del args[i:i + 2]
+    img = load(ovl)
+    start = parse_addr(args[0])
+    if ovl and start < OVL_SEG * 16:
+        start += OVL_SEG * 16      # an offset inside the overlay
+    length = int(args[1], 0) if len(args) > 1 else 0x80
+    raw = '--raw' in args
 
     md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_16)
     state = {}
