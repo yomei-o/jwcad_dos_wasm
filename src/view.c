@@ -315,17 +315,27 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
     }
     len = len > 0.0 ? len : 1.0;
 
+    /* The baseline, rounded where a line's endpoint is truncated.  It matters
+     * only when the baseline lands off a whole pixel, which in the samples
+     * happens for TEST7 alone -- its coordinates are all multiplied by 518/678
+     * on the way in.  Nine of the eleven TEST7 strings that can be matched
+     * against the original's own line calls sit one row lower than truncation
+     * puts them, and rounding puts every one of them right; the other drawings
+     * have whole-number baselines and do not care either way. */
+    y = (int)floor((double)(w->ay - (t->y0 - w->oy) * w->scale) + 0.5);
+
     height = text_height(t, w, cells);
     if ((int)height < TEXT_GLYPH_MIN) {
+        /* The box keeps the truncated baseline: rounding it moves the boxes
+         * of SAMPLE1, SAMPLE2 and SAMPLE3 -- whose baselines are fractions --
+         * off by a row and costs 3,000 pixels.  Whether that is the original
+         * using two different rules or this box being a pixel out in the other
+         * direction is not settled; what is measured is that the glyphs want
+         * the rounded one and the boxes want this one. */
         draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1),
                       to_y(v, w, t->y0), (int)height, colour);
         return;
     }
-
-    /* Through the view, not a copy of its arithmetic: this used to inline the
-     * old fit-only formula and put every string in the wrong place the moment
-     * the view gained an anchor. */
-    y = to_y(v, w, t->y0);
     /* The original draws text upright on a 8x16 grid; the baseline gives the
      * left edge and the run, so step along it a cell at a time. */
     {
