@@ -362,7 +362,11 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         /* Screen y runs downwards, so the turn and the sweep are both
          * mirrored -- the same reason to_y subtracts. */
         jw_arc(v, to_x(w, a->cx), to_y(v, w, a->cy),
-               (int)(a->r * w->scale + 0.5), a->flatten, -a->tilt, -e, -s,
+               /* truncated, not rounded: the original hands its arc routine
+                * (20a9:0e18) a radius of 1 for a record that says 1.8459, and
+                * 7 for 7.401 -- breaking on it and reading the arguments is
+                * how that was settled. */
+               (int)(a->r * w->scale), a->flatten, -a->tilt, -e, -s,
                pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
     }
     for (k = 0; k < d->n_texts; k++) {
