@@ -9233,9 +9233,9 @@ void __cdecl16far FUN_3ab8_6283(uint param_1)
 
 
 
-/* 4000:1293  FUN_4000_1293  152 bytes, 2 callers */
+/* 3ab8:6713  FUN_3ab8_6713  152 bytes, 2 callers */
 
-void __cdecl16far FUN_4000_1293(int param_1)
+void __cdecl16far FUN_3ab8_6713(int param_1)
 
 {
   undefined2 unaff_DS;

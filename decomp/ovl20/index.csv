@@ -18,4 +18,4 @@ address,name,size,calls,called_by,decompiled
 3ab8:5a2d,FUN_3ab8_5a2d,115,4,0,1
 3ab8:5aa0,FUN_3ab8_5aa0,506,6,0,1
 3ab8:5c9a,FUN_3ab8_5c9a,4466,17,0,1
-3ab8:7a7c,FUN_3ab8_7a7c,2389,15,0,1
+4000:25fc,FUN_4000_25fc,2389,15,0,1

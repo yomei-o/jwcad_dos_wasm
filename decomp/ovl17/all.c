@@ -14435,10 +14435,10 @@ FUN_3ab8_898b(undefined2 param_1,int *param_2,undefined2 param_3,undefined2 ****
 
 
 
-/* 3ab8:8a37  FUN_3ab8_8a37  400 bytes, 0 callers */
+/* 4000:35b7  FUN_4000_35b7  400 bytes, 0 callers */
 
 undefined2 __cdecl16far
-FUN_3ab8_8a37(char *param_1,undefined2 param_2,undefined2 param_3,int *param_4,int *param_5,
+FUN_4000_35b7(char *param_1,undefined2 param_2,undefined2 param_3,int *param_4,int *param_5,
              int *param_6,int *param_7)
 
 {

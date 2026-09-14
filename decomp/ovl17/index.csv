@@ -31,4 +31,4 @@ address,name,size,calls,called_by,decompiled
 3ab8:8777,FUN_3ab8_8777,232,3,0,1
 3ab8:885f,FUN_3ab8_885f,300,4,0,1
 3ab8:898b,FUN_3ab8_898b,172,4,0,1
-3ab8:8a37,FUN_3ab8_8a37,400,6,0,1
+4000:35b7,FUN_4000_35b7,400,6,0,1

@@ -11354,10 +11354,10 @@ LAB_3ab8_59bf:
 
 
 
-/* 3ab8:5df6  FUN_3ab8_5df6  2503 bytes, 0 callers */
+/* 4000:0976  FUN_4000_0976  2503 bytes, 0 callers */
 
 int __cdecl16far
-FUN_3ab8_5df6(int param_1,int param_2,undefined2 param_3,undefined2 param_4,undefined2 param_5,
+FUN_4000_0976(int param_1,int param_2,undefined2 param_3,undefined2 param_4,undefined2 param_5,
              undefined2 param_6,undefined2 param_7,undefined2 param_8,undefined2 param_9,
              undefined2 param_10,undefined1 *param_11,int param_12,undefined2 param_13,
              undefined2 param_14,undefined2 param_15,undefined2 param_16,undefined2 param_17,

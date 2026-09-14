@@ -7125,11 +7125,11 @@ LAB_3ab8_7282:
 
 
 
-/* 4000:2034  FUN_4000_2034  5168 bytes, 0 callers */
+/* 3ab8:74b4  FUN_3ab8_74b4  5168 bytes, 0 callers */
 
 /* WARNING: Type propagation algorithm not settling */
 
-void __cdecl16far FUN_4000_2034(int param_1)
+void __cdecl16far FUN_3ab8_74b4(int param_1)
 
 {
   byte *pbVar1;

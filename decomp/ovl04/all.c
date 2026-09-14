@@ -17846,7 +17846,7 @@ LAB_3ab8_6674:
 
 
 
-/* 3ab8:680d  FUN_3ab8_680d  9066 bytes, 0 callers */
+/* 4000:138d  FUN_4000_138d  9066 bytes, 0 callers */
 
 /* WARNING: Removing unreachable block (ram,0x00042eaf) */
 /* WARNING: Removing unreachable block (ram,0x0004229e) */
@@ -17858,7 +17858,7 @@ LAB_3ab8_6674:
 /* WARNING: Removing unreachable block (ram,0x00042f1f) */
 /* WARNING: Type propagation algorithm not settling */
 
-void FUN_3ab8_680d(undefined2 param_1,int param_2)
+void FUN_4000_138d(undefined2 param_1,int param_2)
 
 {
   undefined2 *puVar1;

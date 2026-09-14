@@ -3653,10 +3653,10 @@ FUN_3ab8_2de5(undefined2 param_1,undefined2 param_2,undefined2 param_3,undefined
 
 
 
-/* 3ab8:2e67  FUN_3ab8_2e67  1397 bytes, 1 callers */
+/* 3000:d9e7  FUN_3000_d9e7  1397 bytes, 1 callers */
 
 void __cdecl16far
-FUN_3ab8_2e67(int param_1,undefined2 param_2,undefined2 param_3,undefined2 param_4,int param_5,
+FUN_3000_d9e7(int param_1,undefined2 param_2,undefined2 param_3,undefined2 param_4,int param_5,
              undefined1 *param_6,undefined2 param_7)
 
 {
@@ -11449,12 +11449,12 @@ FUN_3ab8_795e(int param_1,int *param_2,int *param_3,int param_4,int param_5,int 
 
 
 
-/* 4000:25b5  FUN_4000_25b5  2457 bytes, 1 callers */
+/* 3ab8:7a35  FUN_3ab8_7a35  2457 bytes, 1 callers */
 
 /* WARNING: Type propagation algorithm not settling */
 
 undefined2 __cdecl16far
-FUN_4000_25b5(int param_1,int *******param_2,int *****param_3,int ******param_4,char *param_5,
+FUN_3ab8_7a35(int param_1,int *******param_2,int *****param_3,int ******param_4,char *param_5,
              undefined2 param_6,int param_7,int ******param_8,int ******param_9,int ******param_10,
              int param_11,int *******param_12,int *******param_13)
 

@@ -2893,9 +2893,9 @@ LAB_3ab8_2a5c:
 
 
 
-/* 3000:d8af  FUN_3000_d8af  1126 bytes, 0 callers */
+/* 3ab8:2d2f  FUN_3ab8_2d2f  1126 bytes, 0 callers */
 
-undefined2 __cdecl16far FUN_3000_d8af(void)
+undefined2 __cdecl16far FUN_3ab8_2d2f(void)
 
 {
   int iVar1;
@@ -3222,11 +3222,11 @@ LAB_3ab8_3082:
 
 
 
-/* 3000:dd15  FUN_3000_dd15  1814 bytes, 0 callers */
+/* 3ab8:3195  FUN_3ab8_3195  1814 bytes, 0 callers */
 
 /* WARNING: Type propagation algorithm not settling */
 
-undefined2 __cdecl16far FUN_3000_dd15(void)
+undefined2 __cdecl16far FUN_3ab8_3195(void)
 
 {
   undefined2 *puVar1;
@@ -4250,9 +4250,9 @@ undefined2 __cdecl16far FUN_3ab8_3c4f(void)
 
 
 
-/* 3000:e9bb  FUN_3000_e9bb  382 bytes, 0 callers */
+/* 3ab8:3e3b  FUN_3ab8_3e3b  382 bytes, 0 callers */
 
-void __cdecl16far FUN_3000_e9bb(void)
+void __cdecl16far FUN_3ab8_3e3b(void)
 
 {
   undefined2 *puVar1;
@@ -6783,9 +6783,9 @@ LAB_3ab8_549b:
 
 
 
-/* 4000:03a4  FUN_4000_03a4  581 bytes, 0 callers */
+/* 3ab8:5824  FUN_3ab8_5824  581 bytes, 0 callers */
 
-undefined1 * __cdecl16far FUN_4000_03a4(int param_1)
+undefined1 * __cdecl16far FUN_3ab8_5824(int param_1)
 
 {
   code *pcVar1;
@@ -8255,7 +8255,7 @@ LAB_3ab8_6e49:
   local_e2 = 0;
   if (iVar4 == 4) {
     func_0x0000c3ca();
-    local_e2 = FUN_4000_03a4();
+    local_e2 = FUN_3ab8_5824();
   }
   else {
     if (iVar4 != 5) goto LAB_3ab8_6fd7;

@@ -2,12 +2,12 @@ INFO  Using log config file: jar:file:/C:/prog/ghidra/ghidra_12.1.3_PUBLIC/Ghidr
 INFO  Using log file: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\application.log (LoggingInitialization)  
 INFO  Loading user preferences: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (1033 ms) (ClassSearcher)  
+INFO  Class search complete (1010 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
-INFO  Headless startup complete (10056 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (9646 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
 INFO  HEADLESS Script Paths:
     C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
@@ -554,42 +554,42 @@ INFO  MarkOverlayThunks.java> cd 3f sites: 101 (GhidraScript)
 INFO  MarkOverlayThunks.java> overlay trap operands marked as data: 101 of 101 (GhidraScript)  
 INFO  ANALYZING all memory and code: file:///C:/prog/jwcad/ovl/jw09.exe (HeadlessAnalyzer)  
 ERROR Failed to create function at 28b3:0f86 since its body contains referring thunk at 28b3:0ee9 (CreateFunctionCmd)  
-WARN  Decompiling 12c1:097e, pcode error at 1000:5097: Unable to resolve constructor at 1000:5097 (DecompileCallback)  
+WARN  Decompiling 32b2:1528: Unable to read bytes at ram:0000:7be2 (DecompileCallback)  
 WARN  Decompiling 1000:0a81, pcode error at 1000:0a6f: Unable to resolve constructor at 1000:0a6f (DecompileCallback)  
 WARN  Decompiling 1000:0a81, pcode error at 1000:0a4b: Unable to resolve constructor at 1000:0a4b (DecompileCallback)  
 WARN  Decompiling 1000:0a81, pcode error at 1000:0818: Unable to resolve constructor at 1000:0818 (DecompileCallback)  
 WARN  Decompiling 32b2:0d40, pcode error at 3000:5054: Unable to resolve constructor at 3000:5054 (DecompileCallback)  
-WARN  Decompiling 32b2:1528: Unable to read bytes at ram:0000:7be2 (DecompileCallback)  
+WARN  Decompiling 12c1:097e, pcode error at 1000:5097: Unable to resolve constructor at 1000:5097 (DecompileCallback)  
 WARN  Decompiling 21f2:246e, pcode error at 2000:3158: Unable to resolve constructor at 2000:3158 (DecompileCallback)  
 WARN  Decompiling 21f2:246e, pcode error at 2000:7191: Unable to resolve constructor at 2000:7191 (DecompileCallback)  
 INFO  Packed database cache: C:\Users\yomei\AppData\Local\ghidra\packed-db-cache (PackedDatabaseCache)  
 INFO  Applied data type archive: generic_clib (ApplyDataArchiveAnalyzer)  
 INFO  -----------------------------------------------------
-    ASCII Strings                              0.467 secs
-    Apply Data Archives                        0.677 secs
+    ASCII Strings                              0.354 secs
+    Apply Data Archives                        0.723 secs
     Call Convention ID                         0.004 secs
-    Call-Fixup Installer                       0.044 secs
-    Create Function                            0.717 secs
+    Call-Fixup Installer                       0.011 secs
+    Create Function                            0.497 secs
     Data Reference                             0.030 secs
-    Decompiler Switch Analysis                37.649 secs
-    Demangler GNU                              0.047 secs
-    Disassemble                                2.694 secs
-    Disassemble Entry Points                   0.182 secs
-    Embedded Media                             0.017 secs
-    External Entry References                  0.001 secs
-    Function ID                                0.123 secs
-    Function Start Search                      0.046 secs
-    Non-Returning Functions - Discovered       0.548 secs
-    Reference                                  0.046 secs
+    Decompiler Switch Analysis                36.301 secs
+    Demangler GNU                              0.046 secs
+    Disassemble                                2.023 secs
+    Disassemble Entry Points                   0.183 secs
+    Embedded Media                             0.016 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.118 secs
+    Function Start Search                      0.021 secs
+    Non-Returning Functions - Discovered       0.494 secs
+    Reference                                  0.048 secs
     Segmented X86 Calling Conventions          0.002 secs
-    Shared Return Calls                        0.208 secs
-    Stack                                      3.259 secs
-    Subroutine References                      0.162 secs
+    Shared Return Calls                        0.164 secs
+    Stack                                      2.549 secs
+    Subroutine References                      0.112 secs
     Subroutine References - One Time           0.000 secs
-    X86 Function Callee Purge                  0.171 secs
-    x86 Constant Reference Analyzer            2.203 secs
+    X86 Function Callee Purge                  0.133 secs
+    x86 Constant Reference Analyzer            1.831 secs
 -----------------------------------------------------
-     Total Time   49 secs
+     Total Time   45 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
 INFO  REPORT: Analysis succeeded for file: file:///C:/prog/jwcad/ovl/jw09.exe (HeadlessAnalyzer)  
@@ -598,6 +598,7 @@ INFO  SCRIPT: C:\prog\jwcad\ghidra_scripts\MarkOverlayThunks.java (HeadlessAnaly
 INFO  MarkOverlayThunks.java> cd 3f sites: 101 (GhidraScript)  
 INFO  MarkOverlayThunks.java> overlay traps given a fall-through: 101, references added: 1 (GhidraScript)  
 INFO  MarkOverlayThunks.java> overlay entry points seeded: 1 (GhidraScript)  
+INFO  MarkOverlayThunks.java> overlay hole cleared: 0 stray functions (GhidraScript)  
 INFO  REPORT: Execute script: DecompileAll 'C:\prog\jwcad\out\ovl09' '3ab8' '4375'  (HeadlessAnalyzer)  
 INFO  SCRIPT: C:\prog\jwcad\ghidra_scripts\DecompileAll.java (HeadlessAnalyzer)  
 WARN  Decompiling 3ab8:4db4, pcode error at 4000:fcb6: Disassembly not permitted within uninitialized memory block (DecompileCallback)  

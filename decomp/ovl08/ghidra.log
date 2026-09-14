@@ -2,12 +2,12 @@ INFO  Using log config file: jar:file:/C:/prog/ghidra/ghidra_12.1.3_PUBLIC/Ghidr
 INFO  Using log file: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\application.log (LoggingInitialization)  
 INFO  Loading user preferences: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (1046 ms) (ClassSearcher)  
+INFO  Class search complete (1051 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
-INFO  Headless startup complete (9817 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (9735 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
 INFO  HEADLESS Script Paths:
     C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
@@ -561,40 +561,40 @@ WARN  Decompiling 1000:0a81, pcode error at 1000:0a6f: Unable to resolve constru
 WARN  Decompiling 1000:0a81, pcode error at 1000:0a4b: Unable to resolve constructor at 1000:0a4b (DecompileCallback)  
 WARN  Decompiling 1000:0a81, pcode error at 1000:0818: Unable to resolve constructor at 1000:0818 (DecompileCallback)  
 WARN  Decompiling 32b2:0d40, pcode error at 3000:5054: Unable to resolve constructor at 3000:5054 (DecompileCallback)  
-WARN  Decompiling 32b2:1528: Unable to read bytes at ram:0000:7be2 (DecompileCallback)  
 WARN  Decompiling 3ab8:338c, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
 WARN  Decompiling 3ab8:338c, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
+WARN  Decompiling 32b2:1528: Unable to read bytes at ram:0000:7be2 (DecompileCallback)  
 WARN  Decompiling 12c1:097e, pcode error at 1000:5097: Unable to resolve constructor at 1000:5097 (DecompileCallback)  
 WARN  Decompiling 21f2:246e, pcode error at 2000:3158: Unable to resolve constructor at 2000:3158 (DecompileCallback)  
 WARN  Decompiling 21f2:246e, pcode error at 2000:7191: Unable to resolve constructor at 2000:7191 (DecompileCallback)  
 INFO  Packed database cache: C:\Users\yomei\AppData\Local\ghidra\packed-db-cache (PackedDatabaseCache)  
 INFO  Applied data type archive: generic_clib (ApplyDataArchiveAnalyzer)  
 INFO  -----------------------------------------------------
-    ASCII Strings                              0.324 secs
-    Apply Data Archives                        0.509 secs
-    Call Convention ID                         0.005 secs
-    Call-Fixup Installer                       0.011 secs
-    Create Function                            0.499 secs
-    Data Reference                             0.036 secs
-    Decompiler Switch Analysis                20.962 secs
-    Demangler GNU                              0.064 secs
-    Disassemble                                1.926 secs
-    Disassemble Entry Points                   0.164 secs
-    Embedded Media                             0.016 secs
+    ASCII Strings                              0.385 secs
+    Apply Data Archives                        0.416 secs
+    Call Convention ID                         0.004 secs
+    Call-Fixup Installer                       0.015 secs
+    Create Function                            0.411 secs
+    Data Reference                             0.029 secs
+    Decompiler Switch Analysis                19.299 secs
+    Demangler GNU                              0.049 secs
+    Disassemble                                1.794 secs
+    Disassemble Entry Points                   0.162 secs
+    Embedded Media                             0.013 secs
     External Entry References                  0.000 secs
-    Function ID                                0.154 secs
+    Function ID                                0.138 secs
     Function Start Search                      0.018 secs
-    Non-Returning Functions - Discovered       0.560 secs
-    Reference                                  0.050 secs
+    Non-Returning Functions - Discovered       0.347 secs
+    Reference                                  0.039 secs
     Segmented X86 Calling Conventions          0.002 secs
-    Shared Return Calls                        0.167 secs
-    Stack                                      3.284 secs
-    Subroutine References                      0.098 secs
+    Shared Return Calls                        0.183 secs
+    Stack                                      2.729 secs
+    Subroutine References                      0.102 secs
     Subroutine References - One Time           0.000 secs
-    X86 Function Callee Purge                  0.119 secs
-    x86 Constant Reference Analyzer            2.035 secs
+    X86 Function Callee Purge                  0.159 secs
+    x86 Constant Reference Analyzer            1.624 secs
 -----------------------------------------------------
-     Total Time   31 secs
+     Total Time   27 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
 INFO  REPORT: Analysis succeeded for file: file:///C:/prog/jwcad/ovl/jw08.exe (HeadlessAnalyzer)  
@@ -603,6 +603,7 @@ INFO  SCRIPT: C:\prog\jwcad\ghidra_scripts\MarkOverlayThunks.java (HeadlessAnaly
 INFO  MarkOverlayThunks.java> cd 3f sites: 121 (GhidraScript)  
 INFO  MarkOverlayThunks.java> overlay traps given a fall-through: 121, references added: 8 (GhidraScript)  
 INFO  MarkOverlayThunks.java> overlay entry points seeded: 17 (GhidraScript)  
+INFO  MarkOverlayThunks.java> overlay hole cleared: 3 stray functions (GhidraScript)  
 INFO  REPORT: Execute script: DecompileAll 'C:\prog\jwcad\out\ovl08' '3ab8' '4375'  (HeadlessAnalyzer)  
 INFO  SCRIPT: C:\prog\jwcad\ghidra_scripts\DecompileAll.java (HeadlessAnalyzer)  
 ERROR Unexpected Exception: Offset must be between 0x0 and 0x10ffef, got 0x400049 instead! (DecompileProcess) ghidra.program.model.address.AddressOutOfBoundsException: Offset must be between 0x0 and 0x10ffef, got 0x400049 instead!
@@ -617,7 +618,7 @@ ERROR Unexpected Exception: Offset must be between 0x0 and 0x10ffef, got 0x40004
 	at ghidra.app.decompiler.DecompileProcess.readResponse(DecompileProcess.java:349)
 	at ghidra.app.decompiler.DecompileProcess.sendCommandTimeout(DecompileProcess.java:582)
 	at ghidra.app.decompiler.DecompInterface.decompileFunction(DecompInterface.java:803)
-	at DecompileAll.run(DecompileAll.java:79)
+	at DecompileAll.run(DecompileAll.java:82)
 	at ghidra.app.script.GhidraScript.executeNormal(GhidraScript.java:460)
 	at ghidra.app.script.GhidraScript.doExecute(GhidraScript.java:314)
 	at ghidra.app.script.GhidraScript.execute(GhidraScript.java:290)
@@ -637,13 +638,7 @@ WARN  Decompiling 3ab8:338c, pcode error at 7000:f800: Could not follow disassem
 WARN  Decompiling 3ab8:338c, pcode error at 3000:ef8c: Unable to resolve constructor at 3000:ef8c (DecompileCallback)  
 WARN  Decompiling 3ab8:338c, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
 WARN  Decompiling 3ab8:338c, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:5089, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:5089, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:517f, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:517f, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:522f, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:522f, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-INFO  DecompileAll.java> decompiled 37 functions, 1 failed (GhidraScript)  
+INFO  DecompileAll.java> decompiled 34 functions, 1 failed (GhidraScript)  
 INFO  ANALYZING changes made by post scripts: file:///C:/prog/jwcad/ovl/jw08.exe (HeadlessAnalyzer)  
 INFO  REPORT: Post-analysis succeeded for file: file:///C:/prog/jwcad/ovl/jw08.exe (HeadlessAnalyzer)  
 INFO  /jw08.exe: file created (yomei) (LocalFileSystem)  

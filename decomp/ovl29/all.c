@@ -17021,9 +17021,9 @@ LAB_3ab8_7bf7:
 
 
 
-/* 3ab8:7c0a  FUN_3ab8_7c0a  2132 bytes, 0 callers */
+/* 4000:278a  FUN_4000_278a  2132 bytes, 0 callers */
 
-void __cdecl16far FUN_3ab8_7c0a(char *param_1)
+void __cdecl16far FUN_4000_278a(char *param_1)
 
 {
   int iVar1;

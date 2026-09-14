@@ -2,12 +2,12 @@ INFO  Using log config file: jar:file:/C:/prog/ghidra/ghidra_12.1.3_PUBLIC/Ghidr
 INFO  Using log file: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\application.log (LoggingInitialization)  
 INFO  Loading user preferences: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (988 ms) (ClassSearcher)  
+INFO  Class search complete (1065 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
-INFO  Headless startup complete (9776 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (10240 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
 INFO  HEADLESS Script Paths:
     C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
@@ -582,31 +582,31 @@ ERROR ... function body repair failed due to overlap with another function: 32b2
 INFO  Packed database cache: C:\Users\yomei\AppData\Local\ghidra\packed-db-cache (PackedDatabaseCache)  
 INFO  Applied data type archive: generic_clib (ApplyDataArchiveAnalyzer)  
 INFO  -----------------------------------------------------
-    ASCII Strings                              0.425 secs
-    Apply Data Archives                        0.518 secs
-    Call Convention ID                         0.002 secs
-    Call-Fixup Installer                       0.152 secs
-    Create Function                            0.258 secs
+    ASCII Strings                              0.385 secs
+    Apply Data Archives                        0.670 secs
+    Call Convention ID                         0.001 secs
+    Call-Fixup Installer                       0.137 secs
+    Create Function                            0.223 secs
     Data Reference                             0.016 secs
-    Decompiler Switch Analysis                 1.187 secs
-    Demangler GNU                              0.051 secs
-    Disassemble                                1.963 secs
-    Disassemble Entry Points                   0.179 secs
-    Embedded Media                             0.015 secs
-    External Entry References                  0.000 secs
-    Function ID                                0.125 secs
-    Function Start Search                      0.023 secs
-    Non-Returning Functions - Discovered       3.885 secs
-    Reference                                  0.023 secs
+    Decompiler Switch Analysis                 1.125 secs
+    Demangler GNU                              0.040 secs
+    Disassemble                                2.263 secs
+    Disassemble Entry Points                   0.147 secs
+    Embedded Media                             0.018 secs
+    External Entry References                  0.001 secs
+    Function ID                                0.118 secs
+    Function Start Search                      0.028 secs
+    Non-Returning Functions - Discovered       3.270 secs
+    Reference                                  0.018 secs
     Segmented X86 Calling Conventions          0.002 secs
-    Shared Return Calls                        0.087 secs
-    Stack                                      1.118 secs
-    Subroutine References                      0.093 secs
+    Shared Return Calls                        0.077 secs
+    Stack                                      0.972 secs
+    Subroutine References                      0.108 secs
     Subroutine References - One Time           0.000 secs
-    X86 Function Callee Purge                  0.125 secs
-    x86 Constant Reference Analyzer            1.092 secs
+    X86 Function Callee Purge                  0.100 secs
+    x86 Constant Reference Analyzer            0.878 secs
 -----------------------------------------------------
-     Total Time   11 secs
+     Total Time   10 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
 INFO  REPORT: Analysis succeeded for file: file:///C:/prog/jwcad/ovl/jw31.exe (HeadlessAnalyzer)  
@@ -620,24 +620,7 @@ WARN  WARNING! Removing function with bad body at 21f2:5da4 (ClearFlowAndRepairC
 WARN  WARNING! Repairing body of function at 21f2:5962 (ClearFlowAndRepairCmd)  
 ERROR ... function body repair failed due to overlap with another function: 21f2:5962 (ClearFlowAndRepairCmd)  
 WARN  WARNING! Repairing body of function at 21f2:5d84 (ClearFlowAndRepairCmd)  
-INFO  -----------------------------------------------------
-    Call Convention ID                         0.000 secs
-    Call-Fixup Installer                       0.001 secs
-    Create Function                            0.008 secs
-    Data Reference                             0.000 secs
-    Decompiler Switch Analysis                 0.362 secs
-    Non-Returning Functions - Discovered       0.235 secs
-    Reference                                  0.004 secs
-    Segmented X86 Calling Conventions          0.000 secs
-    Shared Return Calls                        0.011 secs
-    Stack                                      0.022 secs
-    Subroutine References                      0.012 secs
-    X86 Function Callee Purge                  0.003 secs
-    x86 Constant Reference Analyzer            0.610 secs
------------------------------------------------------
-     Total Time   1 secs
------------------------------------------------------
- (AutoAnalysisManager)  
+INFO  MarkOverlayThunks.java> overlay hole cleared: 0 stray functions (GhidraScript)  
 INFO  REPORT: Execute script: DecompileAll 'C:\prog\jwcad\out\ovl31' '3ab8' '4375'  (HeadlessAnalyzer)  
 INFO  SCRIPT: C:\prog\jwcad\ghidra_scripts\DecompileAll.java (HeadlessAnalyzer)  
 WARN  Decompiling 3ab8:518e, pcode error at 4000:fe8e: Disassembly not permitted within uninitialized memory block (DecompileCallback)  

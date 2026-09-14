@@ -6470,9 +6470,9 @@ undefined2 __cdecl16far FUN_3ab8_5bbd(void)
 
 
 
-/* 4000:07d5  FUN_4000_07d5  11452 bytes, 0 callers */
+/* 3ab8:5c55  FUN_3ab8_5c55  11452 bytes, 0 callers */
 
-undefined2 FUN_4000_07d5(undefined2 param_1,int param_2)
+undefined2 FUN_3ab8_5c55(undefined2 param_1,int param_2)
 
 {
   undefined2 *puVar1;

@@ -1401,9 +1401,9 @@ LAB_3ab8_1167:
 
 
 
-/* 3000:bf7f  FUN_3000_bf7f  7945 bytes, 0 callers */
+/* 3ab8:13ff  FUN_3ab8_13ff  7945 bytes, 0 callers */
 
-int FUN_3000_bf7f(undefined2 param_1,int *param_2,uint *param_3)
+int FUN_3ab8_13ff(undefined2 param_1,int *param_2,uint *param_3)
 
 {
   byte *pbVar1;
@@ -4409,10 +4409,10 @@ FUN_3ab8_4450(undefined2 param_1,undefined2 param_2,undefined2 param_3,undefined
 
 
 
-/* 3000:f0da  FUN_3000_f0da  1744 bytes, 0 callers */
+/* 3ab8:455a  FUN_3ab8_455a  1744 bytes, 0 callers */
 
 void __cdecl16far
-FUN_3000_f0da(undefined2 *param_1,undefined2 *param_2,undefined2 *param_3,int *param_4)
+FUN_3ab8_455a(undefined2 *param_1,undefined2 *param_2,undefined2 *param_3,int *param_4)
 
 {
   int iVar1;
@@ -5179,13 +5179,13 @@ undefined2 __cdecl16far FUN_3ab8_4c91(void)
 
 
 
-/* 3ab8:4cdb  FUN_3ab8_4cdb  513 bytes, 0 callers */
+/* 3000:f85b  FUN_3000_f85b  513 bytes, 0 callers */
 
 /* WARNING: Control flow encountered bad instruction data */
 /* WARNING: Removing unreachable block (ram,0x0003fb0a) */
 /* WARNING: Removing unreachable block (ram,0x0003fb67) */
 
-void FUN_3ab8_4cdb(void)
+void FUN_3000_f85b(void)
 
 {
   byte *pbVar1;

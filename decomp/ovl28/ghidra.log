@@ -2,12 +2,12 @@ INFO  Using log config file: jar:file:/C:/prog/ghidra/ghidra_12.1.3_PUBLIC/Ghidr
 INFO  Using log file: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\application.log (LoggingInitialization)  
 INFO  Loading user preferences: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (1052 ms) (ClassSearcher)  
+INFO  Class search complete (1025 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
-INFO  Headless startup complete (10473 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (9726 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
 INFO  HEADLESS Script Paths:
     C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
@@ -570,29 +570,29 @@ WARN  Decompiling 12c1:097e, pcode error at 1000:0818: Unable to resolve constru
 INFO  Packed database cache: C:\Users\yomei\AppData\Local\ghidra\packed-db-cache (PackedDatabaseCache)  
 INFO  Applied data type archive: generic_clib (ApplyDataArchiveAnalyzer)  
 INFO  -----------------------------------------------------
-    ASCII Strings                              0.369 secs
-    Apply Data Archives                        0.649 secs
-    Call Convention ID                         0.001 secs
-    Call-Fixup Installer                       0.067 secs
-    Create Function                            0.265 secs
-    Data Reference                             0.014 secs
-    Decompiler Switch Analysis                 3.528 secs
-    Demangler GNU                              0.043 secs
-    Disassemble                                2.266 secs
-    Disassemble Entry Points                   0.173 secs
-    Embedded Media                             0.017 secs
+    ASCII Strings                              0.387 secs
+    Apply Data Archives                        0.442 secs
+    Call Convention ID                         0.003 secs
+    Call-Fixup Installer                       0.061 secs
+    Create Function                            0.247 secs
+    Data Reference                             0.013 secs
+    Decompiler Switch Analysis                 3.723 secs
+    Demangler GNU                              0.052 secs
+    Disassemble                                1.907 secs
+    Disassemble Entry Points                   0.142 secs
+    Embedded Media                             0.019 secs
     External Entry References                  0.000 secs
-    Function ID                                0.119 secs
-    Function Start Search                      0.025 secs
-    Non-Returning Functions - Discovered       4.090 secs
-    Reference                                  0.021 secs
+    Function ID                                0.118 secs
+    Function Start Search                      0.026 secs
+    Non-Returning Functions - Discovered       3.620 secs
+    Reference                                  0.017 secs
     Segmented X86 Calling Conventions          0.002 secs
-    Shared Return Calls                        0.090 secs
-    Stack                                      1.091 secs
-    Subroutine References                      0.087 secs
+    Shared Return Calls                        0.076 secs
+    Stack                                      1.221 secs
+    Subroutine References                      0.103 secs
     Subroutine References - One Time           0.000 secs
-    X86 Function Callee Purge                  0.121 secs
-    x86 Constant Reference Analyzer            0.924 secs
+    X86 Function Callee Purge                  0.104 secs
+    x86 Constant Reference Analyzer            0.885 secs
 -----------------------------------------------------
      Total Time   13 secs
 -----------------------------------------------------
@@ -604,32 +604,7 @@ INFO  MarkOverlayThunks.java> cd 3f sites: 113 (GhidraScript)
 INFO  MarkOverlayThunks.java> overlay traps given a fall-through: 113, references added: 17 (GhidraScript)  
 INFO  MarkOverlayThunks.java> overlay entry points seeded: 20 (GhidraScript)  
 INFO  Applied data type archive: generic_clib (ApplyDataArchiveAnalyzer)  
-INFO  -----------------------------------------------------
-    ASCII Strings                              0.001 secs
-    Apply Data Archives                        0.011 secs
-    Call Convention ID                         0.000 secs
-    Call-Fixup Installer                       0.247 secs
-    Create Function                            0.010 secs
-    Data Reference                             0.000 secs
-    Decompiler Switch Analysis                 0.350 secs
-    Demangler GNU                              0.000 secs
-    Disassemble Entry Points                   0.000 secs
-    Embedded Media                             0.002 secs
-    External Entry References                  0.000 secs
-    Function ID                                0.000 secs
-    Function Start Search                      0.006 secs
-    Non-Returning Functions - Discovered       0.128 secs
-    Reference                                  0.002 secs
-    Segmented X86 Calling Conventions          0.000 secs
-    Shared Return Calls                        0.009 secs
-    Stack                                      0.036 secs
-    Subroutine References                      0.009 secs
-    X86 Function Callee Purge                  0.002 secs
-    x86 Constant Reference Analyzer            0.351 secs
------------------------------------------------------
-     Total Time   1 secs
------------------------------------------------------
- (AutoAnalysisManager)  
+INFO  MarkOverlayThunks.java> overlay hole cleared: 0 stray functions (GhidraScript)  
 INFO  REPORT: Execute script: DecompileAll 'C:\prog\jwcad\out\ovl28' '3ab8' '4375'  (HeadlessAnalyzer)  
 INFO  SCRIPT: C:\prog\jwcad\ghidra_scripts\DecompileAll.java (HeadlessAnalyzer)  
 WARN  Decompiling 3ab8:5038, pcode error at 4000:fec1: Disassembly not permitted within uninitialized memory block (DecompileCallback)  

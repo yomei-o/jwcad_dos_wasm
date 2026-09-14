@@ -2,12 +2,12 @@ INFO  Using log config file: jar:file:/C:/prog/ghidra/ghidra_12.1.3_PUBLIC/Ghidr
 INFO  Using log file: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\application.log (LoggingInitialization)  
 INFO  Loading user preferences: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (1100 ms) (ClassSearcher)  
+INFO  Class search complete (1023 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
-INFO  Headless startup complete (9990 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (9727 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
 INFO  HEADLESS Script Paths:
     C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
@@ -557,40 +557,40 @@ ERROR Failed to create function at 28b3:0f86 since its body contains referring t
 WARN  Decompiling 32b2:1528: Unable to read bytes at ram:0000:7be2 (DecompileCallback)  
 WARN  Decompiling 32b2:0d40, pcode error at 3000:5054: Unable to resolve constructor at 3000:5054 (DecompileCallback)  
 WARN  Decompiling 32b2:0d40, pcode error at 3000:b9da: Unable to resolve constructor at 3000:b9da (DecompileCallback)  
+WARN  Decompiling 12c1:097e, pcode error at 1000:5097: Unable to resolve constructor at 1000:5097 (DecompileCallback)  
 WARN  Decompiling 1000:0a81, pcode error at 1000:0a6f: Unable to resolve constructor at 1000:0a6f (DecompileCallback)  
 WARN  Decompiling 1000:0a81, pcode error at 1000:0a4b: Unable to resolve constructor at 1000:0a4b (DecompileCallback)  
 WARN  Decompiling 1000:0a81, pcode error at 1000:0818: Unable to resolve constructor at 1000:0818 (DecompileCallback)  
-WARN  Decompiling 12c1:097e, pcode error at 1000:5097: Unable to resolve constructor at 1000:5097 (DecompileCallback)  
 WARN  Decompiling 21f2:246e, pcode error at 2000:3158: Unable to resolve constructor at 2000:3158 (DecompileCallback)  
 WARN  Decompiling 21f2:246e, pcode error at 2000:7191: Unable to resolve constructor at 2000:7191 (DecompileCallback)  
 INFO  Packed database cache: C:\Users\yomei\AppData\Local\ghidra\packed-db-cache (PackedDatabaseCache)  
 INFO  Applied data type archive: generic_clib (ApplyDataArchiveAnalyzer)  
 INFO  -----------------------------------------------------
-    ASCII Strings                              0.459 secs
-    Apply Data Archives                        0.726 secs
+    ASCII Strings                              0.377 secs
+    Apply Data Archives                        0.423 secs
     Call Convention ID                         0.003 secs
-    Call-Fixup Installer                       0.025 secs
-    Create Function                            0.510 secs
-    Data Reference                             0.029 secs
-    Decompiler Switch Analysis                22.766 secs
+    Call-Fixup Installer                       0.015 secs
+    Create Function                            0.513 secs
+    Data Reference                             0.032 secs
+    Decompiler Switch Analysis                21.664 secs
     Demangler GNU                              0.045 secs
-    Disassemble                                2.346 secs
-    Disassemble Entry Points                   0.150 secs
-    Embedded Media                             0.013 secs
+    Disassemble                                1.894 secs
+    Disassemble Entry Points                   0.167 secs
+    Embedded Media                             0.015 secs
     External Entry References                  0.001 secs
-    Function ID                                0.130 secs
-    Function Start Search                      0.023 secs
-    Non-Returning Functions - Discovered       0.585 secs
-    Reference                                  0.044 secs
+    Function ID                                0.124 secs
+    Function Start Search                      0.028 secs
+    Non-Returning Functions - Discovered       0.571 secs
+    Reference                                  0.049 secs
     Segmented X86 Calling Conventions          0.002 secs
-    Shared Return Calls                        0.203 secs
-    Stack                                      2.780 secs
-    Subroutine References                      0.137 secs
+    Shared Return Calls                        0.168 secs
+    Stack                                      3.061 secs
+    Subroutine References                      0.105 secs
     Subroutine References - One Time           0.000 secs
-    X86 Function Callee Purge                  0.130 secs
-    x86 Constant Reference Analyzer            1.739 secs
+    X86 Function Callee Purge                  0.127 secs
+    x86 Constant Reference Analyzer            1.820 secs
 -----------------------------------------------------
-     Total Time   32 secs
+     Total Time   31 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
 INFO  REPORT: Analysis succeeded for file: file:///C:/prog/jwcad/ovl/jw11.exe (HeadlessAnalyzer)  
@@ -599,6 +599,7 @@ INFO  SCRIPT: C:\prog\jwcad\ghidra_scripts\MarkOverlayThunks.java (HeadlessAnaly
 INFO  MarkOverlayThunks.java> cd 3f sites: 119 (GhidraScript)  
 INFO  MarkOverlayThunks.java> overlay traps given a fall-through: 119, references added: 3 (GhidraScript)  
 INFO  MarkOverlayThunks.java> overlay entry points seeded: 3 (GhidraScript)  
+INFO  MarkOverlayThunks.java> overlay hole cleared: 0 stray functions (GhidraScript)  
 INFO  REPORT: Execute script: DecompileAll 'C:\prog\jwcad\out\ovl11' '3ab8' '4375'  (HeadlessAnalyzer)  
 INFO  SCRIPT: C:\prog\jwcad\ghidra_scripts\DecompileAll.java (HeadlessAnalyzer)  
 WARN  Decompiling 3ab8:5171, pcode error at 4000:f0c7: Disassembly not permitted within uninitialized memory block (DecompileCallback)  

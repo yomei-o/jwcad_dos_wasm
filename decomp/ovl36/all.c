@@ -5613,11 +5613,11 @@ int __cdecl16far FUN_3ab8_4844(int *param_1,undefined2 param_2,int param_3)
 
 
 
-/* 3000:f7b0  FUN_3000_f7b0  96 bytes, 0 callers */
+/* 3ab8:4c30  FUN_3ab8_4c30  96 bytes, 0 callers */
 
 /* WARNING: Type propagation algorithm not settling */
 
-void FUN_3000_f7b0(undefined2 param_1,undefined2 ****param_2)
+void FUN_3ab8_4c30(undefined2 param_1,undefined2 ****param_2)
 
 {
   byte *pbVar1;

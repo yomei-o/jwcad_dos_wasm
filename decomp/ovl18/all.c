@@ -14394,9 +14394,9 @@ LAB_3ab8_7f8b:
 
 
 
-/* 3ab8:854f  FUN_3ab8_854f  122 bytes, 0 callers */
+/* 4000:30cf  FUN_4000_30cf  122 bytes, 0 callers */
 
-void __cdecl16far FUN_3ab8_854f(int param_1,undefined2 param_2)
+void __cdecl16far FUN_4000_30cf(int param_1,undefined2 param_2)
 
 {
   code *pcVar1;

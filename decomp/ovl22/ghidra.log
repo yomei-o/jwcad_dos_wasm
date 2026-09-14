@@ -2,12 +2,12 @@ INFO  Using log config file: jar:file:/C:/prog/ghidra/ghidra_12.1.3_PUBLIC/Ghidr
 INFO  Using log file: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\application.log (LoggingInitialization)  
 INFO  Loading user preferences: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (1121 ms) (ClassSearcher)  
+INFO  Class search complete (1003 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
-INFO  Headless startup complete (10045 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (9729 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
 INFO  HEADLESS Script Paths:
     C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
@@ -558,8 +558,8 @@ ERROR Failed to create function at 28b3:0f86 since its body contains referring t
 ERROR Failed to create function at 28b3:100d since its body contains referring thunk at 28b3:1006 (CreateFunctionCmd)  
 ERROR Failed to create function at 28b3:1140 since its body contains referring thunk at 28b3:112c (CreateFunctionCmd)  
 WARN  Decompiling 32b2:1528: Unable to read bytes at ram:0000:7be2 (DecompileCallback)  
-WARN  Decompiling 12c1:097e, pcode error at 1000:5097: Unable to resolve constructor at 1000:5097 (DecompileCallback)  
 WARN  Decompiling 32b2:0d40, pcode error at 3000:5054: Unable to resolve constructor at 3000:5054 (DecompileCallback)  
+WARN  Decompiling 12c1:097e, pcode error at 1000:5097: Unable to resolve constructor at 1000:5097 (DecompileCallback)  
 WARN  Decompiling 1000:0a81, pcode error at 1000:0a6f: Unable to resolve constructor at 1000:0a6f (DecompileCallback)  
 WARN  Decompiling 1000:0a81, pcode error at 1000:0a4b: Unable to resolve constructor at 1000:0a4b (DecompileCallback)  
 WARN  Decompiling 1000:0a81, pcode error at 1000:0818: Unable to resolve constructor at 1000:0818 (DecompileCallback)  
@@ -568,31 +568,31 @@ WARN  Decompiling 21f2:246e, pcode error at 2000:7191: Unable to resolve constru
 INFO  Packed database cache: C:\Users\yomei\AppData\Local\ghidra\packed-db-cache (PackedDatabaseCache)  
 INFO  Applied data type archive: generic_clib (ApplyDataArchiveAnalyzer)  
 INFO  -----------------------------------------------------
-    ASCII Strings                              0.337 secs
-    Apply Data Archives                        0.790 secs
+    ASCII Strings                              0.396 secs
+    Apply Data Archives                        0.471 secs
     Call Convention ID                         0.003 secs
-    Call-Fixup Installer                       0.020 secs
-    Create Function                            0.698 secs
-    Data Reference                             0.052 secs
-    Decompiler Switch Analysis                22.172 secs
-    Demangler GNU                              0.045 secs
-    Disassemble                                2.904 secs
-    Disassemble Entry Points                   0.215 secs
-    Embedded Media                             0.018 secs
+    Call-Fixup Installer                       0.011 secs
+    Create Function                            0.515 secs
+    Data Reference                             0.031 secs
+    Decompiler Switch Analysis                19.765 secs
+    Demangler GNU                              0.042 secs
+    Disassemble                                1.751 secs
+    Disassemble Entry Points                   0.156 secs
+    Embedded Media                             0.015 secs
     External Entry References                  0.000 secs
-    Function ID                                0.126 secs
-    Function Start Search                      0.028 secs
-    Non-Returning Functions - Discovered       0.983 secs
-    Reference                                  0.046 secs
-    Segmented X86 Calling Conventions          0.001 secs
-    Shared Return Calls                        0.299 secs
-    Stack                                      2.694 secs
-    Subroutine References                      0.156 secs
+    Function ID                                0.115 secs
+    Function Start Search                      0.017 secs
+    Non-Returning Functions - Discovered       0.611 secs
+    Reference                                  0.045 secs
+    Segmented X86 Calling Conventions          0.002 secs
+    Shared Return Calls                        0.172 secs
+    Stack                                      2.412 secs
+    Subroutine References                      0.107 secs
     Subroutine References - One Time           0.000 secs
-    X86 Function Callee Purge                  0.182 secs
-    x86 Constant Reference Analyzer            2.038 secs
+    X86 Function Callee Purge                  0.131 secs
+    x86 Constant Reference Analyzer            1.702 secs
 -----------------------------------------------------
-     Total Time   33 secs
+     Total Time   28 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
 INFO  REPORT: Analysis succeeded for file: file:///C:/prog/jwcad/ovl/jw22.exe (HeadlessAnalyzer)  
@@ -601,6 +601,7 @@ INFO  SCRIPT: C:\prog\jwcad\ghidra_scripts\MarkOverlayThunks.java (HeadlessAnaly
 INFO  MarkOverlayThunks.java> cd 3f sites: 106 (GhidraScript)  
 INFO  MarkOverlayThunks.java> overlay traps given a fall-through: 106, references added: 8 (GhidraScript)  
 INFO  MarkOverlayThunks.java> overlay entry points seeded: 6 (GhidraScript)  
+INFO  MarkOverlayThunks.java> overlay hole cleared: 0 stray functions (GhidraScript)  
 INFO  REPORT: Execute script: DecompileAll 'C:\prog\jwcad\out\ovl22' '3ab8' '4375'  (HeadlessAnalyzer)  
 INFO  SCRIPT: C:\prog\jwcad\ghidra_scripts\DecompileAll.java (HeadlessAnalyzer)  
 INFO  DecompileAll.java> decompiled 22 functions, 0 failed (GhidraScript)  

@@ -10434,9 +10434,9 @@ LAB_3ab8_5729:
 
 
 
-/* 3ab8:5743  FUN_3ab8_5743  762 bytes, 0 callers */
+/* 4000:02c3  FUN_4000_02c3  762 bytes, 0 callers */
 
-undefined2 __cdecl16far FUN_3ab8_5743(void)
+undefined2 __cdecl16far FUN_4000_02c3(void)
 
 {
   byte *pbVar1;

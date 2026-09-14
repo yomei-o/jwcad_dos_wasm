@@ -12438,9 +12438,9 @@ void __cdecl16far FUN_3ab8_7371(void)
 
 
 
-/* 3ab8:740f  FUN_3ab8_740f  4469 bytes, 0 callers */
+/* 4000:1f8f  FUN_4000_1f8f  4469 bytes, 0 callers */
 
-void __cdecl16far FUN_3ab8_740f(int param_1)
+void __cdecl16far FUN_4000_1f8f(int param_1)
 
 {
   byte *pbVar1;

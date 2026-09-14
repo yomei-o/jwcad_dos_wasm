@@ -38,4 +38,4 @@ address,name,size,calls,called_by,decompiled
 3ab8:6bec,FUN_3ab8_6bec,59,1,1,1
 3ab8:6c27,FUN_3ab8_6c27,705,5,1,1
 3ab8:6ee8,FUN_3ab8_6ee8,1484,14,1,1
-4000:2034,FUN_4000_2034,5168,34,0,1
+3ab8:74b4,FUN_3ab8_74b4,5168,34,0,1

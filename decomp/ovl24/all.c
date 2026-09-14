@@ -7036,9 +7036,9 @@ void __cdecl16far FUN_3ab8_53e4(void)
 
 
 
-/* 3000:ff6a  FUN_3000_ff6a  3178 bytes, 0 callers */
+/* 3ab8:53ea  FUN_3ab8_53ea  3178 bytes, 0 callers */
 
-void __cdecl16far FUN_3000_ff6a(void)
+void __cdecl16far FUN_3ab8_53ea(void)
 
 {
   int iVar1;

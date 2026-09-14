@@ -2,12 +2,12 @@ INFO  Using log config file: jar:file:/C:/prog/ghidra/ghidra_12.1.3_PUBLIC/Ghidr
 INFO  Using log file: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\application.log (LoggingInitialization)  
 INFO  Loading user preferences: C:\Users\yomei\AppData\Roaming\ghidra\ghidra_12.1.3_PUBLIC\preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (1020 ms) (ClassSearcher)  
+INFO  Class search complete (1034 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
-INFO  Headless startup complete (10245 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (9536 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
 INFO  HEADLESS Script Paths:
     C:\prog\ghidra\ghidra_12.1.3_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
@@ -554,44 +554,44 @@ INFO  MarkOverlayThunks.java> cd 3f sites: 124 (GhidraScript)
 INFO  MarkOverlayThunks.java> overlay trap operands marked as data: 124 of 124 (GhidraScript)  
 INFO  ANALYZING all memory and code: file:///C:/prog/jwcad/ovl/jw19.exe (HeadlessAnalyzer)  
 ERROR Failed to create function at 28b3:0f86 since its body contains referring thunk at 28b3:0ee9 (CreateFunctionCmd)  
+WARN  Decompiling 32b2:0d40, pcode error at 3000:5054: Unable to resolve constructor at 3000:5054 (DecompileCallback)  
 WARN  Decompiling 12c1:097e, pcode error at 1000:5097: Unable to resolve constructor at 1000:5097 (DecompileCallback)  
 WARN  Decompiling 32b2:1528: Unable to read bytes at ram:0000:7be2 (DecompileCallback)  
-WARN  Decompiling 32b2:0d40, pcode error at 3000:5054: Unable to resolve constructor at 3000:5054 (DecompileCallback)  
+WARN  Decompiling 32b2:0d40, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
 WARN  Decompiling 1000:0a81, pcode error at 1000:0a6f: Unable to resolve constructor at 1000:0a6f (DecompileCallback)  
+WARN  Decompiling 32b2:0d40, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
 WARN  Decompiling 1000:0a81, pcode error at 1000:0a4b: Unable to resolve constructor at 1000:0a4b (DecompileCallback)  
 WARN  Decompiling 1000:0a81, pcode error at 1000:0818: Unable to resolve constructor at 1000:0818 (DecompileCallback)  
-WARN  Decompiling 32b2:0d40, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 32b2:0d40, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
 WARN  Decompiling 21f2:246e, pcode error at 2000:3158: Unable to resolve constructor at 2000:3158 (DecompileCallback)  
 WARN  Decompiling 21f2:246e, pcode error at 2000:7191: Unable to resolve constructor at 2000:7191 (DecompileCallback)  
 INFO  Packed database cache: C:\Users\yomei\AppData\Local\ghidra\packed-db-cache (PackedDatabaseCache)  
 INFO  Applied data type archive: generic_clib (ApplyDataArchiveAnalyzer)  
 INFO  -----------------------------------------------------
-    ASCII Strings                              0.322 secs
-    Apply Data Archives                        0.727 secs
-    Call Convention ID                         0.005 secs
-    Call-Fixup Installer                       0.017 secs
-    Create Function                            0.425 secs
-    Data Reference                             0.062 secs
-    Decompiler Switch Analysis                27.723 secs
-    Demangler GNU                              0.060 secs
-    Disassemble                                2.014 secs
-    Disassemble Entry Points                   0.175 secs
+    ASCII Strings                              0.333 secs
+    Apply Data Archives                        0.586 secs
+    Call Convention ID                         0.003 secs
+    Call-Fixup Installer                       0.015 secs
+    Create Function                            0.441 secs
+    Data Reference                             0.030 secs
+    Decompiler Switch Analysis                27.748 secs
+    Demangler GNU                              0.049 secs
+    Disassemble                                2.267 secs
+    Disassemble Entry Points                   0.188 secs
     Embedded Media                             0.017 secs
-    External Entry References                  0.001 secs
-    Function ID                                0.139 secs
-    Function Start Search                      0.018 secs
-    Non-Returning Functions - Discovered       0.411 secs
-    Reference                                  0.053 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.119 secs
+    Function Start Search                      0.019 secs
+    Non-Returning Functions - Discovered       0.435 secs
+    Reference                                  0.041 secs
     Segmented X86 Calling Conventions          0.002 secs
-    Shared Return Calls                        0.190 secs
-    Stack                                      2.578 secs
-    Subroutine References                      0.119 secs
+    Shared Return Calls                        0.207 secs
+    Stack                                      2.454 secs
+    Subroutine References                      0.105 secs
     Subroutine References - One Time           0.000 secs
-    X86 Function Callee Purge                  0.157 secs
-    x86 Constant Reference Analyzer            2.329 secs
+    X86 Function Callee Purge                  0.110 secs
+    x86 Constant Reference Analyzer            1.747 secs
 -----------------------------------------------------
-     Total Time   37 secs
+     Total Time   36 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
 INFO  REPORT: Analysis succeeded for file: file:///C:/prog/jwcad/ovl/jw19.exe (HeadlessAnalyzer)  
@@ -600,19 +600,10 @@ INFO  SCRIPT: C:\prog\jwcad\ghidra_scripts\MarkOverlayThunks.java (HeadlessAnaly
 INFO  MarkOverlayThunks.java> cd 3f sites: 124 (GhidraScript)  
 INFO  MarkOverlayThunks.java> overlay traps given a fall-through: 124, references added: 0 (GhidraScript)  
 INFO  MarkOverlayThunks.java> overlay entry points seeded: 2 (GhidraScript)  
+INFO  MarkOverlayThunks.java> overlay hole cleared: 5 stray functions (GhidraScript)  
 INFO  REPORT: Execute script: DecompileAll 'C:\prog\jwcad\out\ovl19' '3ab8' '4375'  (HeadlessAnalyzer)  
 INFO  SCRIPT: C:\prog\jwcad\ghidra_scripts\DecompileAll.java (HeadlessAnalyzer)  
-WARN  Decompiling 3ab8:4c91, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:4c91, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:4fbd, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:4fbd, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:5089, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:5089, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:517f, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:517f, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:522f, pcode error at 4000:39c2: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-WARN  Decompiling 3ab8:522f, pcode error at 4000:3a30: Failed to resolve varnode <Sreg>, index=6 (DecompileCallback)  
-INFO  DecompileAll.java> decompiled 22 functions, 0 failed (GhidraScript)  
+INFO  DecompileAll.java> decompiled 17 functions, 0 failed (GhidraScript)  
 INFO  ANALYZING changes made by post scripts: file:///C:/prog/jwcad/ovl/jw19.exe (HeadlessAnalyzer)  
 INFO  REPORT: Post-analysis succeeded for file: file:///C:/prog/jwcad/ovl/jw19.exe (HeadlessAnalyzer)  
 INFO  /jw19.exe: file created (yomei) (LocalFileSystem)  

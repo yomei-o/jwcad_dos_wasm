@@ -16164,9 +16164,9 @@ LAB_3ab8_6691:
 
 
 
-/* 3ab8:7a7c  FUN_3ab8_7a7c  2389 bytes, 0 callers */
+/* 4000:25fc  FUN_4000_25fc  2389 bytes, 0 callers */
 
-void __cdecl16far FUN_3ab8_7a7c(void)
+void __cdecl16far FUN_4000_25fc(void)
 
 {
   byte *pbVar1;

@@ -3,10 +3,5 @@ address,name,size,calls,called_by,decompiled
 3ab8:00be,FUN_3ab8_00be,114,3,1,1
 3ab8:0130,FUN_3ab8_0130,222,4,1,1
 3ab8:020e,FUN_3ab8_020e,8969,17,1,1
-3000:d0a3,FUN_3000_d0a3,872,9,0,1
+3ab8:2523,FUN_3ab8_2523,872,9,0,1
 3000:d40b,FUN_3000_d40b,1069,5,0,1
-3ab8:4c91,FUN_3ab8_4c91,34,0,1,1
-3ab8:4fbd,FUN_3ab8_4fbd,34,0,2,1
-3ab8:5089,FUN_3ab8_5089,34,0,3,1
-3ab8:517f,FUN_3ab8_517f,34,0,2,1
-3ab8:522f,FUN_3ab8_522f,34,0,2,1
