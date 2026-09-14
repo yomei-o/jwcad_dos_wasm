@@ -36,4 +36,10 @@ void jw_point(VGA *v, int x, int y, unsigned colour, unsigned rop);
 void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
             double start, double end, unsigned colour, unsigned rop, int style);
 
+/* FUN_20a9_014e -- stamp one glyph's bitmap at a pixel position, in write
+ * mode 3, painting the background where the glyph's bits are clear.  Pass
+ * bg == fg to leave the background alone. */
+void jw_glyph(VGA *v, int x, int y, int w, int h,
+              const unsigned char *bits, unsigned fg, unsigned bg);
+
 #endif

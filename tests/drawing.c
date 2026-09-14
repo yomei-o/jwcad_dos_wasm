@@ -42,6 +42,9 @@ int main(int argc, char **argv)
            d->data_at, d->data_end);
 
     vga_reset(&v, 0x12);
+    if (!jw_view_fonts("font")) {
+        fprintf(stderr, "no fonts in font/ -- text will be skipped\n");
+    }
     jw_view_fit(&w, &v, d);
     jw_view_draw(&v, d, &w);
     vga_render(&v, pixels);

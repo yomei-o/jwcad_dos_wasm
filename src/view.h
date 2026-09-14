@@ -3,6 +3,7 @@
 #ifndef JW_VIEW_H
 #define JW_VIEW_H
 
+#include "fontx.h"
 #include "jwc.h"
 #include "vga.h"
 
@@ -14,9 +15,12 @@ typedef struct {
 /* The view that fits the whole drawing on the screen, with a small margin. */
 void jw_view_fit(JwView *w, const VGA *v, const Jwc *d);
 
+/* Load the fonts the port draws text with, from a directory holding
+ * JWANK16.FNT and JWKAN16.FNT.  Text is skipped if they are not there. */
+int jw_view_fonts(const char *dir);
+
 /* Clear and draw.  Lines and arcs go through the translated primitives; texts
- * show as their baseline and points as a cross, until the character generator
- * is done. */
+ * are drawn with the fonts, points as a cross. */
 void jw_view_draw(VGA *v, const Jwc *d, const JwView *w);
 
 /* 640x480 bytes of one colour index per pixel, then RGBA for a canvas. */

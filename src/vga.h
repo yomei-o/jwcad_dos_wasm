@@ -74,6 +74,7 @@ void vga_outb(VGA *v, unsigned port, unsigned char al);
  * byte the CPU writes.  JW_CAD uses both. */
 #define GC_MODE_SETRESET 0
 #define GC_MODE_COLOUR   2
+#define GC_MODE_MASK     3      /* the CPU byte becomes the bit mask */
 
 /* One read-modify-write to video memory.  `data` is what the CPU wrote, which
  * the set/reset path ignores whenever enable-set/reset is on -- as it always is

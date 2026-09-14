@@ -348,3 +348,44 @@ void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
         }
     }
 }
+
+/* FUN_20a9_014e -- stamp a glyph, through write mode 3.
+ *
+ *     FUN_20a9_0732(fg, 0);           // set/reset = fg, enable = 0x0f
+ *     out(0x3ce, 0x0305);             // GC 5 = write mode 3
+ *     ...
+ *     out(0x3ce, fg << 8 | 0);        // set/reset = fg
+ *     al = *vram;  al = *glyph;  *vram = al;       // paint where the bits are
+ *     out(0x3ce, bg << 8 | 0);        // set/reset = bg
+ *     al = *vram;  al = ~*glyph; *vram = al;       // and the background
+ *
+ * In write mode 3 the byte the CPU writes becomes the bit mask, so one byte of
+ * the glyph paints eight pixels in one go.  That is why the code writes the
+ * glyph itself rather than putting it in the bit mask register.
+ */
+void jw_glyph(VGA *v, int x, int y, int w, int h,
+              const unsigned char *bits, unsigned fg, unsigned bg)
+{
+    int stride = (w + 7) / 8;
+    int row, col;
+
+    jw_set_colour(v, fg, ROP_REPLACE);
+    vga_outw(v, 0x3ce, 0x0305);                 /* GC 5 = write mode 3 */
+
+    for (row = 0; row < h; row++) {
+        long at = vga_offset(v, x, y + row);
+
+        for (col = 0; col < stride; col++) {
+            unsigned char g = bits[row * stride + col];
+
+            vga_outw(v, 0x3ce, (fg << 8) | GC_SET_RESET);
+            vga_rmw(v, at + col, g);
+            if (bg != fg) {
+                vga_outw(v, 0x3ce, (bg << 8) | GC_SET_RESET);
+                vga_rmw(v, at + col, (unsigned char)~g);
+            }
+        }
+    }
+    vga_outw(v, 0x3ce, 0x0005);                 /* back to write mode 0 */
+    vga_outw(v, 0x3ce, 0xff08);
+}

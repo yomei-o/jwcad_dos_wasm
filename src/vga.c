@@ -105,6 +105,14 @@ void vga_rmw(VGA *v, long offset, unsigned char data)
     if (rot && mode != 2) {
         data = (unsigned char)((data >> rot) | (data << (8 - rot)));
     }
+    if (mode == 3) {
+        /* Write mode 3: the CPU byte is not colour and not data -- it becomes
+         * the bit mask, ANDed with GC 8, and every plane takes the set/reset
+         * value.  This is how JW_CAD stamps a glyph: one write paints the
+         * foreground where the glyph's bits are set (FUN_20a9_014e), a second
+         * with the byte complemented paints the background. */
+        mask = (unsigned char)(mask & data);
+    }
 
     for (p = 0; p < VGA_PLANES; p++) {
         /* Write mode 2 spreads the low four bits of the CPU byte across the
@@ -113,9 +121,9 @@ void vga_rmw(VGA *v, long offset, unsigned char data)
          * arc's pixels (FUN_20a9_075c), so both have to be here. */
         unsigned char src = (mode == 2)
             ? (unsigned char)((data & (1u << p)) ? 0xff : 0x00)
-            : (enable & (1u << p))
-                ? (unsigned char)((setres & (1u << p)) ? 0xff : 0x00)
-                : data;
+            : (mode == 3 || (enable & (1u << p)))
+            ? (unsigned char)((setres & (1u << p)) ? 0xff : 0x00)
+            : data;
         unsigned char val = apply_rop(rop, src, v->latch[p]);
         v->plane[p][offset] = (unsigned char)
             ((val & mask) | (v->latch[p] & (unsigned char)~mask));

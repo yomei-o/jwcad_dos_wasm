@@ -14,10 +14,10 @@ EXPORTS=_main,_jw_init,_jw_open,_jw_zoom,_jw_pan,_jw_fit
 EXPORTS=$EXPORTS,_jw_width,_jw_height,_jw_framebuffer,_jw_status
 EXPORTS=$EXPORTS,_malloc,_free
 
-SRC="src/main_wasm.c src/view.c src/draw.c src/vga.c src/jwc.c"
+SRC="src/main_wasm.c src/view.c src/draw.c src/vga.c src/jwc.c src/fontx.c"
 
 EMBED=""
-for f in orig/SAMPLE*.JWC orig/TEST*.JWC; do
+for f in orig/SAMPLE*.JWC orig/TEST*.JWC font/JWANK16.FNT font/JWKAN16.FNT; do
     EMBED="$EMBED --embed-file $f@/$f"
 done
 
