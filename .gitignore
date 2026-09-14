@@ -6,3 +6,4 @@ tmp/
 *.exe
 !orig/*.EXE
 __pycache__/
+tests/*.exe
