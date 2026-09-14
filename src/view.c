@@ -587,15 +587,29 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
             continue;
         }
 
-        /* Screen y runs downwards, so the turn and the sweep are both
-         * mirrored -- the same reason to_y subtracts. */
-        jw_arc(v, to_x(w, a->cx), to_y(v, w, a->cy),
-               /* truncated, not rounded: the original hands its arc routine
-                * (20a9:0e18) a radius of 1 for a record that says 1.8459, and
-                * 7 for 7.401 -- breaking on it and reading the arguments is
-                * how that was settled. */
-               (int)(a->r * w->scale), a->flatten, -a->tilt, -e, -s,
-               pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
+        {
+            /* The radius is truncated: the original hands its arc routine a
+             * radius of 1 for a record that says 1.8459 and 7 for 7.401. */
+            const int rx = (int)(a->r * w->scale);
+            const int ry = (int)(a->r * w->scale
+                                 * (a->flatten > 0 ? a->flatten / 10000.0 : 1.0));
+
+            if (rx >= 5) {
+                /* Five and up the original draws a chain of straight pieces,
+                 * from the *float* centre.  Screen y runs downwards, and
+                 * jw_arc_poly does that flip itself. */
+                jw_arc_poly(v, (a->cx - w->ox) * w->scale + w->ax,
+                            w->ay - (a->cy - w->oy) * w->scale,
+                            rx, ry, a->tilt, s, e,
+                            pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
+            } else {
+                /* Screen y runs downwards, so the turn and the sweep are both
+                 * mirrored -- the same reason to_y subtracts. */
+                jw_arc(v, to_x(w, a->cx), to_y(v, w, a->cy), rx, a->flatten,
+                       -a->tilt, -e, -s,
+                       pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
+            }
+        }
     }
     for (k = 0; k < d->n_texts; k++) {
         if (!jwc_visible(d, d->texts[k].layer)) {

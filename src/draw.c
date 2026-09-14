@@ -305,6 +305,117 @@ static void arc_pixel(VGA *v, int cx, int cy, int dx, int dy,
     }
 }
 
+/* JW_CAD's own integer cosine, and the polyline it builds arcs out of.
+ *
+ * Big arcs are not drawn dot by dot: the pixel routine (20a9:0d1a) only ever
+ * sees radii up to four -- of SAMPLE6's 64 arcs it is called for the 55 small
+ * ones and for none of the others -- and everything else goes to the line
+ * routine as a chain of straight pieces.  Watching which instruction writes the
+ * screen bytes under one of SAMPLE6's door swings says so, and reading the line
+ * calls gives the chain.
+ *
+ * The endpoints handed to the line routine are the *float* centre plus a whole
+ * number: every one of them has exactly the centre's fraction.  The whole
+ * number comes from an integer trig routine (1000:0965) which takes the
+ * truncated radius and a 32-bit angle whose high word is degrees.  Asking the
+ * original for 636 of them -- a drawing of thirty quarter circles, radii 5 to
+ * 34, in each of the four quadrants, read back through the emulator -- pins it
+ * exactly:
+ *
+ *     cos_fixed(a) = round(cos a * 32768)            1.15 fixed point
+ *     value(r, a)  = (r * cos_fixed + 16384) >> 15   arithmetic shift
+ *                    and one less again if cos a < 0
+ *
+ * The last line is the off-by-one of a routine that folds the angle into the
+ * first quadrant and negates, and it matters: it is what makes the chain sit a
+ * pixel inside the true circle on the left and below.  All 636 agree.
+ *
+ * The step is twenty degrees up to radius 19 and ten from 20 on -- measured the
+ * same way, one radius at a time, with no gaps.  Vertices are the start, then
+ * every step while inside the sweep, then the end. */
+static int int_cos(int r, double deg)
+{
+    const double d2r = 3.14159265358979323846 / 180.0;
+    double m = fmod(deg, 360.0);
+    double f, v;
+    long t, p;
+    int q;
+
+    if (m < 0.0) {
+        m += 360.0;
+    }
+    q = (int)(m / 90.0);
+    f = (m - 90.0 * q) * d2r;
+    /* Folded into the first quadrant, so that cos 60 is a half to the last bit
+     * and the rounding of the fixed-point table is the original's. */
+    switch (q) {
+    case 0:  v =  cos(f); break;
+    case 1:  v = -sin(f); break;
+    case 2:  v = -cos(f); break;
+    default: v =  sin(f); break;
+    }
+    t = v >= 0.0 ? (long)floor(v * 32768.0 + 0.5)
+                 : -(long)floor(-v * 32768.0 + 0.5);
+    p = (long)floor(((double)r * (double)t + 16384.0) / 32768.0);
+    /* `<= 0`, not `< 0`: at ninety degrees, where the cosine is nothing at all,
+     * the original still takes the negative branch.  Its own first vertex for
+     * SAMPLE6's quarter circle is one pixel along the axis, not on it, and the
+     * 636 measured values never land on zero so they cannot tell the two
+     * apart. */
+    return (int)(t <= 0 ? p - 1 : p);
+}
+
+/* One vertex of the chain, in screen pixels, as a float. */
+static void arc_vertex(double cx, double cy, int rx, int ry, double ang,
+                       int tilt, double *px, double *py)
+{
+    /* The drawing's y runs up, the screen's down; the record's tilt turns the
+     * offsets, not the angle.  For the whole-quadrant tilts every drawing here
+     * uses, that is an exact swap of the two whole numbers. */
+    const double d2r = 3.14159265358979323846 / 180.0;
+    int dx = int_cos(rx, ang);
+    int dy = int_cos(ry, ang - 90.0);
+    int t = ((tilt % 360) + 360) % 360;
+
+    if (t % 90 == 0) {
+        int n = t / 90, i, a;
+
+        for (i = 0; i < n; i++) {
+            a = dx;
+            dx = -dy;
+            dy = a;
+        }
+        *px = cx + dx;
+        *py = cy - dy;
+    } else {
+        const double c = cos(t * d2r), s = sin(t * d2r);
+
+        *px = cx + (dx * c - dy * s);
+        *py = cy - (dx * s + dy * c);
+    }
+}
+
+void jw_arc_poly(VGA *v, double cx, double cy, int rx, int ry, int tilt,
+                 double start, double end, unsigned colour, unsigned rop,
+                 int style)
+{
+    const double step = rx <= 19 ? 20.0 : 10.0;
+    double a, px, py, qx, qy;
+
+    if (end <= start) {
+        end += 360.0;
+    }
+    arc_vertex(cx, cy, rx, ry, start, tilt, &px, &py);
+    for (a = start + step; a < end; a += step) {
+        arc_vertex(cx, cy, rx, ry, a, tilt, &qx, &qy);
+        jw_line(v, (int)px, (int)py, (int)qx, (int)qy, colour, rop, style);
+        px = qx;
+        py = qy;
+    }
+    arc_vertex(cx, cy, rx, ry, end, tilt, &qx, &qy);
+    jw_line(v, (int)px, (int)py, (int)qx, (int)qy, colour, rop, style);
+}
+
 void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
             double start, double end, unsigned colour, unsigned rop, int style)
 {
@@ -326,11 +437,29 @@ void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
         end += 360.0;
     }
 
+    /* Radius one is its own case.  The original plots three dots for it --
+     * (0,1), (1,1), (1,0) -- where the two-region walk below gives only the
+     * first and the last, and SAMPLE6 has forty-seven of them.  Read out of
+     * its own pixel calls (11B9:0D1A) for a drawing of nothing but small
+     * circles; for every radius from two to nine the walk below is right to
+     * the dot. */
+    if (a == 1.0 && b == 1.0) {
+        arc_pixel(v, cx, cy, 0, 1, start, end, tc, ts, a, b, colour, rop, &style);
+        arc_pixel(v, cx, cy, 1, 1, start, end, tc, ts, a, b, colour, rop, &style);
+        arc_pixel(v, cx, cy, 1, 0, start, end, tc, ts, a, b, colour, rop, &style);
+        return;
+    }
+
     /* The midpoint ellipse, in the two regions where the slope crosses -1. */
     x = 0.0;
     y = b;
     d1 = b * b - a * a * b + 0.25 * a * a;
-    while (a * a * (y - 0.5) > b * b * (x + 1.0)) {
+    /* The region boundary is the plain `a*a*y > b*b*x`, not the textbook's
+     * `a*a*(y-0.5) > b*b*(x+1)`.  The original's own pixel calls say so: for
+     * radius 4 it plots (0,4)(1,4)(2,3)(3,3)(3,2)(4,1)(4,0) and for radius 1
+     * (0,1)(1,1)(1,0) -- the (3,3) and the (1,1) are exactly the points the
+     * textbook form drops. */
+    while (a * a * y > b * b * x) {
         arc_pixel(v, cx, cy, (int)x, (int)y, start, end, tc, ts, a, b,
                   colour, rop, &style);
         if (d1 < 0.0) {
