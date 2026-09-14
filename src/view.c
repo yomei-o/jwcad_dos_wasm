@@ -514,12 +514,25 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         int x = to_x(w, d->points[k].x);
         int y = to_y(v, w, d->points[k].y);
 
-        if (!jwc_visible(d, d->points[k].layer) ||
-            !inside(w, x - 2, y - 2) || !inside(w, x + 2, y + 2)) {
+        if (!jwc_visible(d, d->points[k].layer) || !inside(w, x, y)) {
             continue;
         }
-        jw_line(v, x - 2, y, x + 2, y, 12, ROP_REPLACE, JW_STYLE_SOLID);
-        jw_line(v, x, y - 2, x, y + 2, 12, ROP_REPLACE, JW_STYLE_SOLID);
+        /* One pixel, in the record's own pen -- not the five-by-five cross in
+         * colour 12 this used to draw, which was a placeholder from before
+         * there was anything to check against and put 180 pixels of a colour
+         * JW_CAD has no pen for into SAMPLE3 alone.
+         *
+         * The pen is the second of the four trailing bytes, the same place the
+         * lines and arcs keep theirs: SAMPLE3's points say 2 and the original
+         * draws white there, SAMPLE6's say 1 and it draws cyan, TEST6's say 5
+         * and it draws magenta.
+         *
+         * What shape the original gives a point is *not* settled -- every point
+         * in the six drawings compared sits on top of other geometry, so there
+         * is nothing to read.  One pixel beats both the cross and nothing at
+         * all on every drawing that has points, which is as far as the evidence
+         * goes. */
+        jw_point(v, x, y, pen_colour(d->points[k].rest[1]), ROP_REPLACE);
     }
 }
 
