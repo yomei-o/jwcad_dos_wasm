@@ -366,7 +366,14 @@ void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
 void jw_glyph(VGA *v, int x, int y, int w, int h,
               const unsigned char *bits, unsigned fg, unsigned bg)
 {
-    int stride = (w + 7) / 8;
+    const int stride = (w + 7) / 8;
+    /* Where x falls inside its byte.  The bits have to be slid over by that
+     * much, because the screen byte holds eight fixed columns and a glyph does
+     * not have to start on one of them.  Without this the whole cell snapped
+     * left to the byte boundary -- up to seven pixels -- which is what put
+     * TEST6's banner three pixels off with everything else about it right. */
+    const int shift = x & 7;
+    const int bytes = stride + (shift ? 1 : 0);
     int row, col;
 
     jw_set_colour(v, fg, ROP_REPLACE);
@@ -374,10 +381,13 @@ void jw_glyph(VGA *v, int x, int y, int w, int h,
 
     for (row = 0; row < h; row++) {
         long at = vga_offset(v, x, y + row);
+        unsigned char carry = 0;
 
-        for (col = 0; col < stride; col++) {
-            unsigned char g = bits[row * stride + col];
+        for (col = 0; col < bytes; col++) {
+            const unsigned char s = col < stride ? bits[row * stride + col] : 0;
+            const unsigned char g = (unsigned char)(carry | (s >> shift));
 
+            carry = (unsigned char)(shift ? s << (8 - shift) : 0);
             vga_outw(v, 0x3ce, (fg << 8) | GC_SET_RESET);
             vga_rmw(v, at + col, g);
             if (bg != fg) {

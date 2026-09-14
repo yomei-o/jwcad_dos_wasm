@@ -2,6 +2,7 @@
 
 #include "draw.h"
 
+#include <math.h>
 #include <stdio.h>
 
 #include <string.h>
@@ -140,63 +141,62 @@ static int is_lead(unsigned char c)
     return (c >= 0x81 && c <= 0x9f) || (c >= 0xe0 && c <= 0xfc);
 }
 
-/* Scale a glyph to the cell the drawing asks for.
+/* Scale a glyph to the cell the drawing asks for -- exactly as the original
+ * does it.
  *
- * The original blits at the font's own size -- FUN_20a9_014e loops
- * (width >> 3) bytes by height rows and does not resample -- because on a DOS
- * screen the font is whatever DOS/V hands over, 16 dots tall.  A .JWC text
- * record carries a baseline whose length is the string's width in drawing
- * units, though, so a viewer that can zoom has to fit the glyph to it.  This
- * Shrinking is done the other way round from the obvious one: instead of
- * asking each destination dot which source dot it stands on -- which at 16 to 9
- * throws away five of every sixteen rows and breaks the glyph into confetti --
- * every *source* dot lights the destination cell it lands in.  Nothing is lost,
- * and the result is legible at nine pixels, which is what the original's own
- * screen shows.  Measured against it, this agrees on 60% of the lit pixels of
- * TEST6's two banner lines where nearest-neighbour agreed on 25%.  The last
- * 40% is a rounding rule inside the original that has not been pinned down: a
- * search over `(x*dw + k)/sw` for every k finds nothing that fits both TEST6's
- * kanji and TEST7's, so it is not a plain offset.
+ * How the original draws a .JWC text was not obvious.  It does not blit the
+ * glyph (FUN_20a9_014e, the only routine that does, is for the menus and never
+ * sees a drawing), and it does not plot the dots one at a time either.  What it
+ * does, found by watching which instruction writes the screen bytes under one
+ * of TEST6's banner lines: **one horizontal line per destination row, with the
+ * row's dots as the line's dash pattern**.  Nine rows of nine pixels for a
+ * nine-pixel character, each a call to the line routine carrying a sixteen-bit
+ * pattern.  Reading those calls out of the emulator answers the question
+ * directly: the pattern *is* the shrunk row.
  *
- * Growing is still nearest-neighbour, which is exact when the factor is whole.
- */
-static const unsigned char *scale_glyph(const unsigned char *g, int sw, int sh,
-                                        int dw, int dh)
+ * With 39 of them in hand the rule falls out of a search over every monotone
+ * map from sixteen source columns to nine destination ones -- exactly one pair
+ * of maps reproduces all 39, and it is this:
+ *
+ *     dst_x = floor(src_x * h / 16)
+ *     dst_y = floor(y0 + src_y * h / 16)
+ *
+ * where `h` is the character's height as a **float** -- 8.690 for that banner,
+ * not the 9 it rounds to -- and `y0` is the top of the cell, also a float
+ * (baseline - h).  Every source dot lights the destination dot it lands on, so
+ * nothing is dropped; and because the two are truncated separately, the row map
+ * and the column map come out different, which is why no single integer rule
+ * ever fitted.  The fractional part of y0 is the whole of the difference.
+ *
+ * It grows as well as it shrinks: at h = 32 the factor is two and each source
+ * dot lights one corner of a two-by-two block. */
+static const unsigned char *scale_glyph(const unsigned char *g, int sw,
+                                        double h, double y0, int *dw, int *dh)
 {
-    static unsigned char out[64 * 64 / 8 * 64];
-    int sstride = (sw + 7) / 8, dstride = (dw + 7) / 8;
-    int x, y;
+    static unsigned char out[128 * 128 / 8];
+    const int sstride = (sw + 7) / 8;
+    const double top = floor(y0);
+    int dstride, x, y;
 
-    if (dw == sw && dh == sh) {
-        return g;
-    }
-    if (dw < 1 || dh < 1 || dstride * dh > (int)sizeof out) {
+    *dw = (int)((sw - 1) * h / 16.0) + 1;
+    *dh = (int)(floor(y0 + 15.0 * h / 16.0) - top) + 1;
+    if (*dw < 1 || *dh < 1 || *dw > 128 || *dh > 128) {
         return NULL;
     }
-    memset(out, 0, (size_t)(dstride * dh));
-    if (dw <= sw && dh <= sh) {
-        for (y = 0; y < sh; y++) {
-            int dy = y * dh / sh;
+    dstride = (*dw + 7) / 8;
+    memset(out, 0, (size_t)(dstride * *dh));
+    for (y = 0; y < 16; y++) {
+        const int dy = (int)(floor(y0 + y * h / 16.0) - top);
 
-            for (x = 0; x < sw; x++) {
-                int dx = x * dw / sw;
-
-                if (g[y * sstride + (x >> 3)] & (0x80 >> (x & 7))) {
-                    out[dy * dstride + (dx >> 3)] |=
-                        (unsigned char)(0x80 >> (dx & 7));
-                }
-            }
+        if (dy < 0 || dy >= *dh) {
+            continue;
         }
-        return out;
-    }
-    for (y = 0; y < dh; y++) {
-        int sy = y * sh / dh;
+        for (x = 0; x < sw; x++) {
+            const int dx = (int)(x * h / 16.0);
 
-        for (x = 0; x < dw; x++) {
-            int sx = x * sw / dw;
-
-            if (g[sy * sstride + (sx >> 3)] & (0x80 >> (sx & 7))) {
-                out[y * dstride + (x >> 3)] |= (unsigned char)(0x80 >> (x & 7));
+            if (dx < *dw && (g[y * sstride + (x >> 3)] & (0x80 >> (x & 7)))) {
+                out[dy * dstride + (dx >> 3)] |=
+                    (unsigned char)(0x80 >> (dx & 7));
             }
         }
     }
@@ -256,16 +256,16 @@ static unsigned text_colour(unsigned size)
  * so the two are bridged by the string's own width: it is `cells/2` characters
  * of `width + gap` millimetres, and it covers `x1 - x0` units.  That ratio is
  * the same for the height. */
-static int text_height(const JwcText *t, const JwView *w, int cells)
+static double text_height(const JwcText *t, const JwView *w, int cells)
 {
     int size = t->size <= 10 ? t->size : 0;
     double mm = (TEXT_MM[size] + TEXT_GAP[size]) / 10.0 * (cells / 2.0);
     double px = (double)(t->x1 - t->x0) * w->scale;
 
     if (mm <= 0.0 || px <= 0.0) {
-        return 0;
+        return 0.0;
     }
-    return (int)(TEXT_MM[size] / 10.0 * (px / mm));
+    return TEXT_MM[size] / 10.0 * (px / mm);
 }
 
 /* The box the original draws in place of a string too small to read: the
@@ -294,7 +294,8 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
     double dx = t->x1 - t->x0, dy = t->y1 - t->y0;
     double len = dx * dx + dy * dy;
     int n = 0, cells = 0;
-    int y, height;
+    int y;
+    double height;
 
     if (!p || !*p || !ank.data) {
         return;
@@ -315,9 +316,9 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
     len = len > 0.0 ? len : 1.0;
 
     height = text_height(t, w, cells);
-    if (height < TEXT_GLYPH_MIN) {
+    if ((int)height < TEXT_GLYPH_MIN) {
         draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1),
-                      to_y(v, w, t->y0), height, colour);
+                      to_y(v, w, t->y0), (int)height, colour);
         return;
     }
 
@@ -351,27 +352,21 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
                 i += 1;
             }
             if (g) {
-                /* The glyph is square and as wide as it is tall -- the gap
-                 * between characters is in the step, not in the character.  A
-                 * half-width one is half of that.
+                /* The cell sits above the baseline the record gives, and its
+                 * top is a float: TEST6's two banner strings are 8.690 tall
+                 * with their records at 254 and 287, so the tops are 245.310
+                 * and 278.310 and the nine rows land on 245..253 and 278..286.
                  *
-                 * The cell sits *above* the baseline the record gives, rows
-                 * `base-height` to `base-1`: TEST6's two banner strings are 9
-                 * rows tall with their records at 254 and 287, and the original
-                 * lights 245..253 and 278..286. */
-                int dh = height;
-                int dw = (int)(height * cw / 2.0 + 0.5);
-                const unsigned char *sg;
+                 * The left edge is rounded, not truncated -- the original's own
+                 * line calls for that banner start at 379, 388 and 398 for
+                 * running positions of 378.70, 388.26 and 397.82. */
+                const double top = (double)y - height;
+                int dw, dh;
+                const unsigned char *sg = scale_glyph(g, cw * 8, height,
+                                                      top, &dw, &dh);
 
-                if (dw < 2) {
-                    dw = 2;
-                }
-                sg = scale_glyph(g, cw * 8, 16, dw, dh);
                 if (sg) {
-                    /* Rounded, not truncated: of the three ways to turn the
-                     * running position into a column, rounding agrees with the
-                     * original on 60% of the lit pixels, truncating on 45%. */
-                    jw_glyph(v, (int)(fx + 0.5), y - dh, dw, dh, sg,
+                    jw_glyph(v, (int)(fx + 0.5), (int)floor(top), dw, dh, sg,
                              colour, colour);
                 }
             }
