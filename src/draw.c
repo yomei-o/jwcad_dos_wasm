@@ -395,6 +395,60 @@ static void arc_vertex(double cx, double cy, int rx, int ry, double ang,
     }
 }
 
+/* One piece of the chain, cut to the clip.
+ *
+ * The line routine walks bytes, so a piece that leaves the screen carries on
+ * into the next scan line; and in the browser's view, which is not clipped to a
+ * drawing area, an arc can leave it.  Liang-Barsky, the two ends together --
+ * unlike a drawing's lines, an arc's pieces can have *both* ends outside. */
+static void clipped_line(VGA *v, double x0, double y0, double x1, double y1,
+                         unsigned colour, unsigned rop, int style)
+{
+    const double dx = x1 - x0, dy = y1 - y0;
+    double t0 = 0.0, t1 = 1.0;
+    int i;
+
+    for (i = 0; i < 4; i++) {
+        const double p = i == 0 ? -dx : i == 1 ? dx : i == 2 ? -dy : dy;
+        const double q = i == 0 ? x0 - v->clip_x0
+                       : i == 1 ? v->clip_x1 + 1 - x0
+                       : i == 2 ? y0 - v->clip_y0
+                                : v->clip_y1 + 1 - y0;
+        double r;
+
+        if (p == 0.0) {
+            if (q < 0.0) {
+                return;                 /* parallel and outside */
+            }
+            continue;
+        }
+        r = q / p;
+        if (p < 0.0) {
+            if (r > t1) return;
+            if (r > t0) t0 = r;
+        } else {
+            if (r < t0) return;
+            if (r < t1) t1 = r;
+        }
+    }
+    {
+        /* Clamped as well as cut: the cast can land a pixel past the edge when
+         * the parameter comes out a hair over. */
+        int ax = (int)(x0 + t0 * dx), ay = (int)(y0 + t0 * dy);
+        int bx = (int)(x0 + t1 * dx), by = (int)(y0 + t1 * dy);
+
+        if (ax < v->clip_x0) ax = v->clip_x0;
+        if (bx < v->clip_x0) bx = v->clip_x0;
+        if (ax > v->clip_x1) ax = v->clip_x1;
+        if (bx > v->clip_x1) bx = v->clip_x1;
+        if (ay < v->clip_y0) ay = v->clip_y0;
+        if (by < v->clip_y0) by = v->clip_y0;
+        if (ay > v->clip_y1) ay = v->clip_y1;
+        if (by > v->clip_y1) by = v->clip_y1;
+        jw_line(v, ax, ay, bx, by, colour, rop, style);
+    }
+}
+
 void jw_arc_poly(VGA *v, double cx, double cy, int rx, int ry, int tilt,
                  double start, double end, unsigned colour, unsigned rop,
                  int style)
@@ -408,12 +462,12 @@ void jw_arc_poly(VGA *v, double cx, double cy, int rx, int ry, int tilt,
     arc_vertex(cx, cy, rx, ry, start, tilt, &px, &py);
     for (a = start + step; a < end; a += step) {
         arc_vertex(cx, cy, rx, ry, a, tilt, &qx, &qy);
-        jw_line(v, (int)px, (int)py, (int)qx, (int)qy, colour, rop, style);
+        clipped_line(v, px, py, qx, qy, colour, rop, style);
         px = qx;
         py = qy;
     }
     arc_vertex(cx, cy, rx, ry, end, tilt, &qx, &qy);
-    jw_line(v, (int)px, (int)py, (int)qx, (int)qy, colour, rop, style);
+    clipped_line(v, px, py, qx, qy, colour, rop, style);
 }
 
 void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
