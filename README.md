@@ -251,6 +251,15 @@ sh tools/ghidra.sh all       # 全部（長い）
 
 **`tools/lowpri.sh`** — 長い仕事を低優先度で走らせるラッパ。Ghidra もこれ経由です。
 
+## いまの画面
+
+`src/draw.c` に移した線描画が出した絵です（`./tests/screen.exe`）。
+32 本の放射線で両方の Bresenham を、8 段階の破線で線種を、
+一番下の `ROP_XOR` を 2 回かけた線で「跡形もなく消える」ことを見ています
+——ラバーバンドの前提です。
+
+![lines](docs/screen_lines.png)
+
 ## これから
 
 1. ~~アーカイブの展開~~ 済 — `tools/lzh.py`
