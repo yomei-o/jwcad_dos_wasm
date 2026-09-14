@@ -2,7 +2,14 @@
 // entry points.  Runs twice, once on each side of the auto-analysis:
 //
 //   -preScript  MarkOverlayThunks pre  <ovlSeg>
-//   -postScript MarkOverlayThunks post <ovlSeg> [entriesFile]
+//   -postScript MarkOverlayThunks post <ovlSeg> [entriesFile] [residentOverlay]
+//
+// ovlSeg is 0 for the root analysed on its own, where the overlay hole is
+// empty.  Pointing calls into it there is actively harmful: Ghidra makes a
+// function at each target, each one starts a sea of zeroes that disassembles
+// as one enormous basic block, and the decompiler turns a single byte into a
+// megabyte of C.  The root's all.c went from 5.9 MB to 17 MB that way before
+// this check existed.
 //
 // Two problems, both of which make the decompilation useless without this.
 //
@@ -89,8 +96,8 @@ public class MarkOverlayThunks extends GhidraScript {
                 + " of " + traps.size());
     }
 
-    private void post(List<Address> traps, int ovlSeg, String entriesFile)
-            throws Exception {
+    private void post(List<Address> traps, int ovlSeg, String entriesFile,
+                      int resident) throws Exception {
         ReferenceManager refs = currentProgram.getReferenceManager();
         int fixed = 0, called = 0;
         for (Address at : traps) {
@@ -111,6 +118,13 @@ public class MarkOverlayThunks extends GhidraScript {
                 int ovl = getByte(at.add(2)) & 0xff;
                 int off = (getByte(at.add(3)) & 0xff) | ((getByte(at.add(4)) & 0xff) << 8);
                 setEOLComment(at, String.format("overlay %d : %04x", ovl, off));
+                if (ovlSeg == 0 || (resident != 0 && ovl != resident)) {
+                    // Either nothing is in the hole (the root on its own), or
+                    // this call is for a different overlay than the one loaded.
+                    // Pointing at the hole anyway lands mid-instruction in
+                    // whichever overlay *is* there and fragments real functions.
+                    continue;
+                }
                 Address target = seg(ovlSeg, off);
                 if (getMemoryBlock(target) != null) {
                     refs.addMemoryReference(at, target, RefType.UNCONDITIONAL_CALL,
@@ -161,13 +175,16 @@ public class MarkOverlayThunks extends GhidraScript {
         String phase = args.length > 0 ? args[0] : "post";
         int ovlSeg = args.length > 1 ? Integer.parseInt(args[1], 16) : 0x3ab8;
         String entriesFile = args.length > 2 ? args[2] : null;
+        // Which overlay is sitting in the hole, so calls meant for a different
+        // one can be left alone.  0 means "do not filter".
+        int resident = args.length > 3 ? Integer.parseInt(args[3]) : 0;
 
         List<Address> traps = findTraps();
         println("cd 3f sites: " + traps.size());
         if (phase.equals("pre")) {
             pre(traps);
         } else {
-            post(traps, ovlSeg, entriesFile);
+            post(traps, ovlSeg, entriesFile, resident);
         }
     }
 }

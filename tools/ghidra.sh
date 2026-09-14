@@ -31,7 +31,7 @@ OVL_SEG=3ab8
 OVL_RANGE="$OVL_SEG 4375"
 
 run_one() {
-    name=$1; exe=$2; range=$3; entries=$4
+    name=$1; exe=$2; range=$3; entries=$4; ovlseg=${5:-$OVL_SEG}; resident=${6:-0}
     out="$ROOT/decomp/$name"
     mkdir -p "$out"
     echo "=== $name: $exe"
@@ -44,8 +44,8 @@ run_one() {
         -import "$(cygpath -w "$exe")" \
         -processor "x86:LE:16:Real Mode" \
         -scriptPath "$(cygpath -w "$HERE/ghidra_scripts")" \
-        -preScript MarkOverlayThunks pre $OVL_SEG \
-        -postScript MarkOverlayThunks post $OVL_SEG $ent \
+        -preScript MarkOverlayThunks pre $ovlseg \
+        -postScript MarkOverlayThunks post $ovlseg "$ent" $resident \
         -postScript DecompileAll "$(cygpath -w "$out")" $range \
         -deleteProject \
         > "$out/ghidra.log" 2>&1
@@ -54,17 +54,17 @@ run_one() {
 }
 
 case "$1" in
-  root) run_one root "$ROOT/decomp/JW_CADV.unp.exe" "" "" ;;
+  root) run_one root "$ROOT/decomp/JW_CADV.unp.exe" "" "" 0 ;;
   all)
-    run_one root "$ROOT/decomp/JW_CADV.unp.exe" "" ""
+    run_one root "$ROOT/decomp/JW_CADV.unp.exe" "" "" 0
     for n in $(seq -w 1 36); do
         run_one "ovl$n" "$ROOT/decomp/ovl/jw$n.exe" "$OVL_RANGE" \
-                "$ROOT/decomp/entries/$n.txt"
+                "$ROOT/decomp/entries/$n.txt" "$OVL_SEG" "$((10#$n))"
     done
     ;;
   *)
     n=$(printf '%02d' "$1")
     run_one "ovl$n" "$ROOT/decomp/ovl/jw$n.exe" "$OVL_RANGE" \
-            "$ROOT/decomp/entries/$n.txt"
+            "$ROOT/decomp/entries/$n.txt" "$OVL_SEG" "$((10#$n))"
     ;;
 esac

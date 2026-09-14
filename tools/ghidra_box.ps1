@@ -33,6 +33,7 @@ foreach ($n in 1..36) {
     if ($Only -ne 0 -and $n -ne $Only) { continue }
     $nn = '{0:d2}' -f $n
     $todo += [pscustomobject]@{
+        Num  = $n            # which overlay is in the hole, for MarkOverlayThunks
         Name = "ovl$nn"
         Exe  = Join-Path $Work "ovl\jw$nn.exe"
         Ent  = Join-Path $Work "entries\$nn.txt"
@@ -52,10 +53,13 @@ foreach ($t in $todo) {
     $argv = @(
         $proj, $t.Name,
         '-import', $t.Exe,
-        '-processor', 'x86:LE:16:Real Mode',
+        # Quoted inside the string: -ArgumentList splits on spaces, so a bare
+        # x86:LE:16:Real Mode arrives as two arguments and Ghidra answers
+        # "Bad argument: Mode".
+        '-processor', '"x86:LE:16:Real Mode"',
         '-scriptPath', (Join-Path $Work 'ghidra_scripts'),
         '-preScript', 'MarkOverlayThunks', 'pre', $ovlSeg,
-        '-postScript', 'MarkOverlayThunks', 'post', $ovlSeg, $t.Ent,
+        '-postScript', 'MarkOverlayThunks', 'post', $ovlSeg, $t.Ent, $t.Num,
         '-postScript', 'DecompileAll', $t.Out, $ovlLo, $ovlHi,
         '-deleteProject'
     )
@@ -86,9 +90,12 @@ foreach ($t in $todo) {
 # a file list) keeps the ovlNN directories, which a flat list would collide on.
 Get-ChildItem $out -Recurse -Directory -Filter 'functions' |
     Remove-Item -Recurse -Force
-$zip = Join-Path $Work 'decomp_ovl.zip'
-Remove-Item $zip -Force -ErrorAction SilentlyContinue
-Compress-Archive -Path (Join-Path $out '*') -DestinationPath $zip -CompressionLevel Optimal
+# tar, not Compress-Archive: the latter writes backslashes as the path
+# separator and unzip on the other end refuses the archive with
+# "appears to use backslashes as path separators".
+$tarball = Join-Path $Work 'decomp_ovl.tgz'
+Remove-Item $tarball -Force -ErrorAction SilentlyContinue
+& tar.exe -czf $tarball -C $out .
 Write-Host ''
-Write-Host ("zipped {0} ({1:n0} bytes)" -f $zip, (Get-Item $zip).Length)
+Write-Host ("packed {0} ({1:n0} bytes)" -f $tarball, (Get-Item $tarball).Length)
 Write-Host 'DONE'

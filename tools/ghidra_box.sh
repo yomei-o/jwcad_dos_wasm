@@ -26,7 +26,9 @@ scpx() { scp -i "$KEY" -o StrictHostKeyChecking=no "$@"; }
 [ -f "$ROOT/decomp/entries/01.txt" ] || { echo "run: python tools/thunks.py --write" >&2; exit 2; }
 
 echo "--- sending"
-sshx "if not exist $WORK\\ovl mkdir $WORK\\ovl & if not exist $WORK\\entries mkdir $WORK\\entries & if not exist $WORK\\ghidra_scripts mkdir $WORK\\ghidra_scripts"
+# Through cmd, `if not exist ... & if not exist ...` comes back as a syntax
+# error, so the directories are made from PowerShell instead.
+sshx "powershell -NoProfile -Command \"New-Item -ItemType Directory -Force -Path '$WORK/ovl','$WORK/entries','$WORK/ghidra_scripts' | Out-Null\""
 scpx -q "$ROOT"/decomp/ovl/jw*.exe          "$BOX:$WORK/ovl/"
 scpx -q "$ROOT"/decomp/entries/*.txt        "$BOX:$WORK/entries/"
 scpx -q "$HERE"/ghidra_scripts/*.java       "$BOX:$WORK/ghidra_scripts/"
@@ -36,11 +38,9 @@ echo "--- running (this is the long part)"
 sshx "powershell -NoProfile -ExecutionPolicy Bypass -File $WORK/ghidra_box.ps1 -Only $ONLY"
 
 echo "--- fetching"
-scpx -q "$BOX:$WORK/decomp_ovl.zip" "$ROOT/decomp/"
-cd "$ROOT/decomp"
-unzip -oq decomp_ovl.zip
-rm -f decomp_ovl.zip
-cd "$ROOT"
+scpx -q "$BOX:$WORK/decomp_ovl.tgz" "$ROOT/decomp/"
+tar -xzf "$ROOT/decomp/decomp_ovl.tgz" -C "$ROOT/decomp"
+rm -f "$ROOT/decomp/decomp_ovl.tgz"
 for d in decomp/ovl[0-9][0-9]; do
     [ -f "$d/index.csv" ] || continue
     printf '%-10s %5d functions\n' "$(basename "$d")" "$(( $(grep -c . "$d/index.csv") - 1 ))"

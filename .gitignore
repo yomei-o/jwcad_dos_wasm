@@ -5,3 +5,4 @@ tmp/
 *.o
 *.exe
 !orig/*.EXE
+__pycache__/
