@@ -10,7 +10,7 @@
 
 typedef struct {
     float x0, y0, x1, y1;
-    unsigned char pen, type;    /* constant over runs of segments */
+    unsigned char type, pen;    /* line type 1-9, then the pen 1-8 */
     unsigned char rest[4];
 } JwcLine;
 
@@ -21,7 +21,7 @@ typedef struct {
     short start, start_frac;    /* degrees, and a fraction x10000 */
     short end, end_frac;        /* end == start means the whole ellipse */
     short tilt;                 /* degrees the ellipse is turned by */
-    unsigned char pen, type;
+    unsigned char type, pen;
     unsigned char rest[4];
 } JwcArc;
 

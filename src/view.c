@@ -6,14 +6,30 @@
 
 #include <string.h>
 
+/* The anchor is added *before* the cast, because that is what the original
+ * does: it works in floats all the way to the line routine and truncates once.
+ * Truncating the drawing coordinate first and adding an integer offset after
+ * puts a line one pixel out wherever the fraction would have carried. */
 static int to_x(const JwView *w, float x)
 {
-    return (int)((x - w->ox) * w->scale) + 8;
+    return (int)((x - w->ox) * w->scale + w->ax);
 }
 
 static int to_y(const VGA *v, const JwView *w, float y)
 {
-    return v->height - 9 - (int)((y - w->oy) * w->scale);
+    (void)v;
+    return (int)(w->ay - (y - w->oy) * w->scale);
+}
+
+/* Is this point inside the window?  The original asks the same question, of the
+ * *first* endpoint only, before it draws anything (FUN_1def_17bb compares the
+ * point against the four floats at DGROUP 0xb5aa/0xb5b2/0xb60e/0xb612 and
+ * returns if it falls outside).  Keeping to that rather than clipping the line
+ * is deliberate: a line that is cut where the original drops it puts pixels on
+ * the screen that the original never draws. */
+static int inside(const JwView *w, int x, int y)
+{
+    return x >= w->x0 && x <= w->x1 && y >= w->y0 && y <= w->y1;
 }
 
 void jw_view_fit(JwView *w, const VGA *v, const Jwc *d)
@@ -26,6 +42,25 @@ void jw_view_fit(JwView *w, const VGA *v, const Jwc *d)
     w->scale = sx < sy ? sx : sy;
     w->ox = x0;
     w->oy = y0;
+    w->ax = 8.0f;
+    w->ay = (float)(v->height - 9);
+    w->x0 = 0;                  /* the whole screen: the fit already keeps it in */
+    w->y0 = 0;
+    w->x1 = v->width - 1;
+    w->y1 = v->height - 1;
+}
+
+void jw_view_original(JwView *w)
+{
+    w->ox = 0.0f;
+    w->oy = 0.0f;
+    w->scale = 1.0f;
+    w->ax = 121.0f;             /* screen_x = (int)(x + 121) */
+    w->ay = 463.0f;             /* screen_y = (int)(463 - y) */
+    w->x0 = 122;                /* the drawing area, as 0def:12e8 is given it */
+    w->y0 = 17;
+    w->x1 = 638;
+    w->y1 = 462;
 }
 
 static Fontx ank, kanji;
@@ -190,11 +225,24 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
     }
 }
 
-/* The pen number picks the colour.  JW_CAD's own palette is in JW_PAL.DAT and
- * in the .JWF settings; until those are read this keeps the pens apart. */
+/* The pen number picks the colour index.
+ *
+ * Measured from the original, not guessed: render a drawing under dosv_emu_cpp,
+ * sample the colour it put along each line, and tally it against the pen byte.
+ * SAMPLE1, SAMPLE2, SAMPLE3, SAMPLE6 and TEST6 agree --
+ *
+ *     pen 1 -> 5   pen 2 -> 7   pen 3 -> 4   pen 4 -> 6   pen 5 -> 3
+ *
+ * -- and those are the first five entries of `LCOLLOR= 5 7 4 6 3 1 2 1` in
+ * SAMPLE.JWF, so the rest of that line is where 6, 7 and 8 come from.  (JW_CAD
+ * reads LCOLLOR out of JW_CAD.JWF when there is one; the distribution has no
+ * such file, so what the screen shows is the default compiled into the EXE.)
+ * Pen 0 is not a pen; nothing in the samples uses it. */
 static unsigned pen_colour(unsigned pen)
 {
-    return 9 + (pen % 7);
+    static const unsigned char LCOLLOR[9] = { 5, 5, 7, 4, 6, 3, 1, 2, 1 };
+
+    return LCOLLOR[pen < 9 ? pen : 0];
 }
 
 void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
@@ -205,9 +253,13 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
 
     for (k = 0; k < d->n_lines; k++) {
         const JwcLine *l = &d->lines[k];
+        int sx0 = to_x(w, l->x0), sy0 = to_y(v, w, l->y0);
+        int sx1 = to_x(w, l->x1), sy1 = to_y(v, w, l->y1);
 
-        jw_line(v, to_x(w, l->x0), to_y(v, w, l->y0),
-                to_x(w, l->x1), to_y(v, w, l->y1),
+        if (!inside(w, sx0, sy0) || !inside(w, sx1, sy1)) {
+            continue;
+        }
+        jw_line(v, sx0, sy0, sx1, sy1,
                 pen_colour(l->pen), ROP_REPLACE, JW_STYLE_SOLID);
     }
     for (k = 0; k < d->n_arcs; k++) {
@@ -228,6 +280,9 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         int x = to_x(w, d->points[k].x);
         int y = to_y(v, w, d->points[k].y);
 
+        if (!inside(w, x - 2, y - 2) || !inside(w, x + 2, y + 2)) {
+            continue;
+        }
         jw_line(v, x - 2, y, x + 2, y, 12, ROP_REPLACE, JW_STYLE_SOLID);
         jw_line(v, x, y - 2, x, y + 2, 12, ROP_REPLACE, JW_STYLE_SOLID);
     }

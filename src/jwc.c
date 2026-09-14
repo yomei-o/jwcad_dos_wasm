@@ -15,8 +15,14 @@
  *
  * and the data follows in that order, each a plain array:
  *
- *     lines    n x 22   float x0,y0,x1,y1;  pen, type;  4 more
- *     arcs     n x 32   float cx,cy,r;  flatten;  sweep;  tilt;  pen, type;  4
+ *     lines    n x 22   float x0,y0,x1,y1;  type, pen;  4 more
+ *     arcs     n x 32   float cx,cy,r;  flatten;  sweep;  tilt;  type, pen;  4
+ *
+ * The two bytes are in that order, not the other way round, and it was measured
+ * rather than guessed: run the original under dosv_emu_cpp, sample the colour it
+ * put on the screen along each line, and tally it against each byte.  The second
+ * one predicts the colour exactly (1->5, 2->7, 3->4, 4->6, 5->3) and the first
+ * one not at all; the first takes values 1-9, which is JW_CAD's line types.
  *     texts    n x 24   float x0,y0,x1,y1;  far pointer into the pool;  4
  *     pool          the strings themselves, NUL separated, Shift-JIS
  *     points   n x 12   float x,y;  4 more
@@ -264,8 +270,8 @@ Jwc *jwc_load(const char *path, const char **why)
         d->lines[k].y0 = rd_f32(r + 4);
         d->lines[k].x1 = rd_f32(r + 8);
         d->lines[k].y1 = rd_f32(r + 12);
-        d->lines[k].pen = r[16];
-        d->lines[k].type = r[17];
+        d->lines[k].type = r[16];
+        d->lines[k].pen = r[17];
         memcpy(d->lines[k].rest, r + 18, 4);
     }
     for (k = 0; k < d->n_arcs; k++, p += ARC_SIZE) {
@@ -284,8 +290,8 @@ Jwc *jwc_load(const char *path, const char **why)
         d->arcs[k].end = rd_i16(r + 20);
         d->arcs[k].end_frac = rd_i16(r + 22);
         d->arcs[k].tilt = rd_i16(r + 24);
-        d->arcs[k].pen = r[26];
-        d->arcs[k].type = r[27];
+        d->arcs[k].type = r[26];
+        d->arcs[k].pen = r[27];
         memcpy(d->arcs[k].rest, r + 28, 4);
     }
     {

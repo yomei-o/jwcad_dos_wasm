@@ -8,12 +8,40 @@
 #include "vga.h"
 
 typedef struct {
-    float ox, oy;       /* the drawing coordinate at the bottom-left corner */
+    float ox, oy;       /* the drawing coordinate the anchor stands for */
     float scale;        /* screen pixels per drawing unit */
+    float ax, ay;       /* the screen position (ox,oy) lands on */
+    int x0, y0, x1, y1; /* the window on screen, inclusive; outside it, nothing */
 } JwView;
 
-/* The view that fits the whole drawing on the screen, with a small margin. */
+/* The view that fits the whole drawing on the screen, with a small margin.
+ * A viewer's convenience, and not what the original does -- see below. */
 void jw_view_fit(JwView *w, const VGA *v, const Jwc *d);
+
+/* The view the original uses.
+ *
+ * Measured, not guessed: breaking on the original's own line routine
+ * (dosv_emu_cpp, `DOSEMU_BP=0EFF:17BB DOSEMU_BPPTR=2,3,4,5`) prints the screen
+ * coordinates it computed for each of the drawing's lines, and comparing those
+ * against the same lines in the .JWC gives
+ *
+ *     screen_x = x + 121        screen_y = 463 - y
+ *
+ * for SAMPLE1, SAMPLE2, SAMPLE3 and TEST1 alike, to within the rounding of one
+ * pixel.  So the scale is **one**: a .JWC holds screen units for the view it
+ * was saved with, and JW_CAD puts them down where they are.  Its drawing area
+ * is (122,17)-(638,462), which is what it hands to its own clip (0def:12e8).
+ *
+ * The conversion to a pixel is a plain truncation of that float, not a rounding
+ * and not a truncation of the drawing coordinate before the offset is added:
+ * for a vertical line at 168.091 the original lights column 168, where
+ * `(int)47.091 + 121` would light 167.  So the anchor is kept as a float and
+ * added before the cast.  (This is also why the anchor and the window have to
+ * be separate fields: the anchor is 121/463, the window is the drawing area.)
+ *
+ * This is what a screen comparison against the original has to use; jw_view_fit
+ * answers a different question (how do I see all of it at once). */
+void jw_view_original(JwView *w);
 
 /* Load the fonts the port draws text with, from a directory holding
  * JWANK16.FNT and JWKAN16.FNT.  Text is skipped if they are not there. */

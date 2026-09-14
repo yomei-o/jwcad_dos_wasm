@@ -1,6 +1,6 @@
 /* Compare two screens, pixel for pixel, and say where they differ.
  *
- *   ./tests/compare.exe A.raw B.raw tmp/diff.png [x0 y0 x1 y1]
+ *   ./tests/compare.exe [-m MASK.raw] A.raw B.raw tmp/diff.png [x0 y0 x1 y1]
  *
  * Both files are 640x480 RGBA, which is what this port's own screenshots are
  * (tests/drawing.exe with a .raw name, jw_view_rgba) and what dosv_emu_cpp
@@ -21,6 +21,13 @@
  * -- plus the counts and the bounding box of the disagreement, because a port
  * that is one pixel off everywhere and a port that is wrong in one corner look
  * identical in a single number.
+ *
+ * `-m` takes a third screen and ignores every pixel that is lit in it.  The
+ * original draws a dot grid, a prompt, a mouse cursor and its own frame around
+ * whatever drawing is loaded; running it with no drawing at all gives exactly
+ * those, and masking them out leaves the comparison about the drawing.  They
+ * are not "allowed to differ" for ever -- the port will have to draw them too
+ * -- but counting them in while it cannot buries the pixels that matter.
  */
 #include "png.h"
 
@@ -60,16 +67,23 @@ int main(int argc, char **argv)
 {
     static unsigned char map[W * H];
     static unsigned char pal[256][3];
-    const char *pa, *pb, *out;
-    unsigned char *a, *b;
-    long na = 0, nb = 0;
+    const char *pa, *pb, *out, *pm = NULL;
+    unsigned char *a, *b, *m = NULL;
+    long na = 0, nb = 0, nm = 0;
+    long masked = 0;
     int x0 = 0, y0 = 0, x1 = W - 1, y1 = H - 1;
     int x, y;
     long same = 0, diff = 0, drawn = 0;
     int dx0 = W, dy0 = H, dx1 = -1, dy1 = -1;
 
+    if (argc > 2 && strcmp(argv[1], "-m") == 0) {
+        pm = argv[2];
+        argv += 2;
+        argc -= 2;
+    }
     if (argc < 4) {
-        fprintf(stderr, "usage: compare A.raw B.raw out.png [x0 y0 x1 y1]\n");
+        fprintf(stderr, "usage: compare [-m MASK.raw] A.raw B.raw out.png"
+                        " [x0 y0 x1 y1]\n");
         return 2;
     }
     pa = argv[1];
@@ -88,6 +102,15 @@ int main(int argc, char **argv)
     if (!a) return 1;
     b = load(pb, &nb);
     if (!b) { free(a); return 1; }
+    if (pm) {
+        m = load(pm, &nm);
+        if (!m) { free(a); free(b); return 1; }
+        if (nm != (long)W * H * 4) {
+            fprintf(stderr, "%s is not %ld bytes of RGBA\n", pm, (long)W * H * 4);
+            free(a); free(b); free(m);
+            return 1;
+        }
+    }
     if (na != (long)W * H * 4 || nb != (long)W * H * 4) {
         fprintf(stderr, "expected %ld bytes of RGBA in each; got %ld and %ld\n",
                 (long)W * H * 4, na, nb);
@@ -103,6 +126,10 @@ int main(int argc, char **argv)
             const int b_lit = b[i] || b[i + 1] || b[i + 2];
             const int equal = a[i] == b[i] && a[i + 1] == b[i + 1] && a[i + 2] == b[i + 2];
 
+            if (m && (m[i] || m[i + 1] || m[i + 2])) {
+                masked++;
+                continue;
+            }
             if (equal) {
                 same++;
                 if (a_lit) { drawn++; map[(long)y * W + x] = 1; }
@@ -125,6 +152,9 @@ int main(int argc, char **argv)
     png_indexed(out, W, H, map, pal);
 
     printf("%s vs %s  in (%d,%d)-(%d,%d)\n", pa, pb, x0, y0, x1, y1);
+    if (m) {
+        printf("  %ld pixels ignored, lit in %s\n", masked, pm);
+    }
     printf("  %ld pixels compared, %ld the same (%ld of them drawn), %ld different (%.2f%%)\n",
            same + diff, same, drawn, diff,
            same + diff ? 100.0 * (double)diff / (double)(same + diff) : 0.0);
@@ -134,5 +164,6 @@ int main(int argc, char **argv)
     printf("  wrote %s\n", out);
     free(a);
     free(b);
+    free(m);
     return diff ? 1 : 0;
 }

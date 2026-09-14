@@ -24,8 +24,9 @@ static unsigned char pal[256][3];
 
 int main(int argc, char **argv)
 {
-    const char *in = argc > 1 ? argv[1] : "orig/SAMPLE2.JWC";
-    const char *out = argc > 2 ? argv[2] : "tmp/drawing.png";
+    int original = argc > 1 && strcmp(argv[1], "-o") == 0;
+    const char *in = argc > 1 + original ? argv[1 + original] : "orig/SAMPLE2.JWC";
+    const char *out = argc > 2 + original ? argv[2 + original] : "tmp/drawing.png";
     const char *why;
     unsigned char rgb[16][3];
     size_t n = strlen(out);
@@ -48,7 +49,14 @@ int main(int argc, char **argv)
     if (!jw_view_palette(&v, "orig/JW_PAL.DAT")) {
         fprintf(stderr, "no orig/JW_PAL.DAT -- the EGA default colours will be used\n");
     }
-    jw_view_fit(&w, &v, d);
+    /* -o: draw it where the original draws it, for comparing screens against
+     * dosv_emu_cpp. Without it, fit the drawing to the screen, which is what a
+     * viewer wants and what the browser front end does. */
+    if (original) {
+        jw_view_original(&w);
+    } else {
+        jw_view_fit(&w, &v, d);
+    }
     jw_view_draw(&v, d, &w);
     vga_render(&v, pixels);
 
