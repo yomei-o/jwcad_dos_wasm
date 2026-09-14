@@ -250,6 +250,20 @@ Jwc *jwc_load(const char *path, const char **why)
     d->data_at = at;
     d->data_end = at + span;
 
+    /* The last 560 bytes of the preamble are the layer tables: two copies of
+     * 16 group bytes followed by 256 layer bytes, then 16 bytes of something
+     * else.  The second copy is the one the redraw consults (it matches the
+     * table at DGROUP 0xb7c/0xb388 that FUN_21f2_0680 reads); the first is the
+     * pair at 0xb6c/0xc170 that FUN_21f2_06d1 reads, and the two differ only in
+     * TEST7 among the samples.  Both were found by dumping the tables out of a
+     * running original and searching the file for them. */
+    memset(d->group_on, 1, sizeof d->group_on);
+    memset(d->layer_on, 1, sizeof d->layer_on);
+    if (at >= 288) {
+        memcpy(d->group_on, b + at - 288, sizeof d->group_on);
+        memcpy(d->layer_on, b + at - 272, sizeof d->layer_on);
+    }
+
     d->lines = (JwcLine *)calloc((size_t)(d->n_lines + 1), sizeof *d->lines);
     d->arcs = (JwcArc *)calloc((size_t)(d->n_arcs + 1), sizeof *d->arcs);
     d->texts = (JwcText *)calloc((size_t)(d->n_texts + 1), sizeof *d->texts);
@@ -337,6 +351,11 @@ void jwc_free(Jwc *d)
     }
 }
 
+int jwc_visible(const Jwc *d, unsigned char layer)
+{
+    return d->layer_on[layer] && d->group_on[layer >> 4];
+}
+
 void jwc_extent(const Jwc *d, float *x0, float *y0, float *x1, float *y1)
 {
     long k;
@@ -349,19 +368,33 @@ void jwc_extent(const Jwc *d, float *x0, float *y0, float *x1, float *y1)
         if ((py) > hi_y) hi_y = (py); \
     } while (0)
 
+    /* Only what is shown: a hidden layer that reaches across the sheet would
+     * otherwise decide the zoom for a drawing nobody can see. */
     for (k = 0; k < d->n_lines; k++) {
+        if (!jwc_visible(d, d->lines[k].rest[0])) {
+            continue;
+        }
         SEE(d->lines[k].x0, d->lines[k].y0);
         SEE(d->lines[k].x1, d->lines[k].y1);
     }
     for (k = 0; k < d->n_arcs; k++) {
+        if (!jwc_visible(d, d->arcs[k].rest[0])) {
+            continue;
+        }
         SEE(d->arcs[k].cx - d->arcs[k].r, d->arcs[k].cy - d->arcs[k].r);
         SEE(d->arcs[k].cx + d->arcs[k].r, d->arcs[k].cy + d->arcs[k].r);
     }
     for (k = 0; k < d->n_texts; k++) {
+        if (!jwc_visible(d, d->texts[k].rest[0])) {
+            continue;
+        }
         SEE(d->texts[k].x0, d->texts[k].y0);
         SEE(d->texts[k].x1, d->texts[k].y1);
     }
     for (k = 0; k < d->n_points; k++) {
+        if (!jwc_visible(d, d->points[k].rest[0])) {
+            continue;
+        }
         SEE(d->points[k].x, d->points[k].y);
     }
 #undef SEE

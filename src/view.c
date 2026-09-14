@@ -256,7 +256,8 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         int sx0 = to_x(w, l->x0), sy0 = to_y(v, w, l->y0);
         int sx1 = to_x(w, l->x1), sy1 = to_y(v, w, l->y1);
 
-        if (!inside(w, sx0, sy0) || !inside(w, sx1, sy1)) {
+        if (!jwc_visible(d, l->rest[0]) ||
+            !inside(w, sx0, sy0) || !inside(w, sx1, sy1)) {
             continue;
         }
         jw_line(v, sx0, sy0, sx1, sy1,
@@ -267,6 +268,10 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         double s = a->start + a->start_frac / 10000.0;
         double e = a->end + a->end_frac / 10000.0;
 
+        if (!jwc_visible(d, a->rest[0])) {
+            continue;
+        }
+
         /* Screen y runs downwards, so the turn and the sweep are both
          * mirrored -- the same reason to_y subtracts. */
         jw_arc(v, to_x(w, a->cx), to_y(v, w, a->cy),
@@ -274,13 +279,17 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
                pen_colour(a->pen), ROP_REPLACE, JW_STYLE_SOLID);
     }
     for (k = 0; k < d->n_texts; k++) {
+        if (!jwc_visible(d, d->texts[k].rest[0])) {
+            continue;
+        }
         draw_text(v, &d->texts[k], w, 15);
     }
     for (k = 0; k < d->n_points; k++) {
         int x = to_x(w, d->points[k].x);
         int y = to_y(v, w, d->points[k].y);
 
-        if (!inside(w, x - 2, y - 2) || !inside(w, x + 2, y + 2)) {
+        if (!jwc_visible(d, d->points[k].rest[0]) ||
+            !inside(w, x - 2, y - 2) || !inside(w, x + 2, y + 2)) {
             continue;
         }
         jw_line(v, x - 2, y, x + 2, y, 12, ROP_REPLACE, JW_STYLE_SOLID);

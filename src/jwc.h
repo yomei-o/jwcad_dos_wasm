@@ -8,10 +8,14 @@
 #ifndef JW_JWC_H
 #define JW_JWC_H
 
+/* rest[0] is the layer: the high nibble is the layer group (0-F), the low
+ * nibble the layer inside it.  Measured, not guessed -- breaking on the
+ * original's own per-entity test (dosv_emu_cpp, DOSEMU_BP=1302:0680) prints the
+ * byte it is handed, and the values match this one exactly.  See jwc_visible. */
 typedef struct {
     float x0, y0, x1, y1;
     unsigned char type, pen;    /* line type 1-9, then the pen 1-8 */
-    unsigned char rest[4];
+    unsigned char rest[4];      /* rest[0] is the layer */
 } JwcLine;
 
 typedef struct {
@@ -50,13 +54,25 @@ typedef struct {
     long text_len;
     long data_at;               /* where the geometry starts, past the preamble */
     long data_end;              /* one past the last point record */
+    /* Which layers and layer groups are shown, out of the preamble. */
+    unsigned char layer_on[256];
+    unsigned char group_on[16];
 } Jwc;
 
 /* Returns NULL and leaves `why` pointing at a reason on failure. */
 Jwc *jwc_load(const char *path, const char **why);
 void jwc_free(Jwc *d);
 
-/* The bounding box of everything read. */
+/* Is an entity on a layer that is shown?  `layer` is rest[0].
+ *
+ * The original asks this of every entity before it draws anything
+ * (FUN_21f2_0680): the layer has to be on in a 256-byte table, *and* its group
+ * has to be on in a 16-byte one.  TEST6 is where it matters -- 1,085 of its
+ * 1,618 lines are in groups 1, 3, 8 and F, all switched off, and a port that
+ * draws them puts a thicket of construction lines over the drawing. */
+int jwc_visible(const Jwc *d, unsigned char layer);
+
+/* The bounding box of everything shown. */
 void jwc_extent(const Jwc *d, float *x0, float *y0, float *x1, float *y1);
 
 #endif
