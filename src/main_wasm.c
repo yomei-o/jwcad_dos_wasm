@@ -29,6 +29,7 @@ EMSCRIPTEN_KEEPALIVE const char *jw_status(void) { return status; }
 EMSCRIPTEN_KEEPALIVE void jw_init(void)
 {
     vga_reset(&vga, 0x12);
+    jw_view_palette(&vga, "orig/JW_PAL.DAT");
     strcpy(status, jw_view_fonts("font") ? "ready" : "ready (no font)");
 }
 

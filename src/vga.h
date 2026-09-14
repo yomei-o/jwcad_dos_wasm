@@ -52,7 +52,8 @@ typedef struct {
     unsigned char latch[VGA_PLANES];    /* loaded by every read, as on the real thing */
     unsigned char gc[16];               /* the graphics controller registers */
     unsigned char index;                /* the last index written to 0x3ce */
-    unsigned char palette[16];          /* set through INT 10h AH=10h */
+    unsigned char palette[16];          /* attribute controller: index -> DAC entry */
+    unsigned char dac[256][3];          /* the DAC itself, six bits per channel */
     int stride;                         /* bytes per scan line */
     int width, height;
 } VGA;
@@ -95,7 +96,21 @@ long vga_offset(const VGA *v, int x, int y);
 /* Unpack the planes into one byte per pixel (0-15), row-major. */
 void vga_render(const VGA *v, unsigned char *out);
 
-/* The mode 12h default palette, as 16 RGB triples of 0-255. */
+/* One DAC entry, six bits per channel -- what INT 10h AX=1010h sets.
+ *
+ * This is not decoration.  JW_CAD reads JW_PAL.DAT at startup and installs all
+ * sixteen, and they are not the EGA defaults: 4 is green where the default is
+ * red, 6 is yellow where it is brown, 7 is white where it is light grey, and
+ * the red at 2 is 0x3C rather than full.  A screen painted with the defaults
+ * agrees with the original on every pixel and still shows a different picture.
+ */
+void vga_set_dac(VGA *v, unsigned index, unsigned r, unsigned g, unsigned b);
+
+/* The sixteen colours on screen now, as RGB triples of 0-255: index through the
+ * attribute palette, then the DAC.  Six bits become eight by replicating the
+ * top bits (0x3F -> 0xFF, 0x2A -> 0xAA exactly); dosv_emu_cpp's Vga::dac8()
+ * uses the same rule, and the two screenshots have to agree on colour as well
+ * as on pixels. */
 void vga_palette_rgb(const VGA *v, unsigned char rgb[16][3]);
 
 #endif

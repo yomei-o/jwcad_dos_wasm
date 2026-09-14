@@ -11,11 +11,34 @@
 set -e
 here="$(cd "$(dirname "$0")" && pwd)"
 
+# Named paths before PATH on purpose. Putting w64devkit's bin on PATH to make
+# `gcc` findable also puts its busybox `sh` there, and busybox does not do MSYS
+# path translation: `[ -f /c/prog/... ]` comes back false inside the scripts,
+# so tools/build_wasm.sh reports "emcc not found" for a file that is plainly
+# there. Let this wrapper find the compiler instead of the environment.
 GCC="${CC:-}"
-[ -n "$GCC" ] || for c in /c/prog/w64devkit/bin/gcc gcc clang; do
+[ -n "$GCC" ] || for c in /c/prog/w64devkit/bin/gcc /c/prog/tools/w64devkit/bin/gcc gcc clang; do
     command -v "$c" >/dev/null 2>&1 && { GCC="$c"; break; }
 done
 if [ -n "$GCC" ]; then
+    # gcc runs `as` and `ld` by name, so its own bin directory has to be on PATH
+    # -- but only for this process tree. Exporting it from the shell that runs
+    # check.sh would also put w64devkit's busybox `sh` in front of Git Bash's,
+    # and that breaks the other scripts (see the note above).
+    #
+    # And then call it by name, not by path: lowpri.sh goes through cmd's
+    # `start`, which cannot run a `/c/prog/...` MSYS path and quietly does
+    # nothing -- no error, no .exe, and `set -e` never fires because `start`
+    # does not hand the exit status back either.
+    #
+    # APPENDED, not prepended. w64devkit ships its own busybox `sh`, `test` and
+    # friends; in front of PATH they take over from Git Bash's, and busybox does
+    # no MSYS argument translation, so lowpri.sh's `cmd //c` reaches cmd as
+    # `//c` and opens an interactive shell instead of compiling. Git Bash has no
+    # `as` or `ld` of its own, so the end of PATH is early enough for gcc.
+    case "$GCC" in
+        */*) PATH="$PATH:$(dirname "$GCC")"; export PATH; GCC="$(basename "$GCC")" ;;
+    esac
     exec sh "$here/lowpri.sh" "$GCC" "$@"
 fi
 

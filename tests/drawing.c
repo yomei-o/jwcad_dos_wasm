@@ -45,6 +45,9 @@ int main(int argc, char **argv)
     if (!jw_view_fonts("font")) {
         fprintf(stderr, "no fonts in font/ -- text will be skipped\n");
     }
+    if (!jw_view_palette(&v, "orig/JW_PAL.DAT")) {
+        fprintf(stderr, "no orig/JW_PAL.DAT -- the EGA default colours will be used\n");
+    }
     jw_view_fit(&w, &v, d);
     jw_view_draw(&v, d, &w);
     vga_render(&v, pixels);

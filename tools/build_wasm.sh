@@ -17,7 +17,7 @@ EXPORTS=$EXPORTS,_malloc,_free
 SRC="src/main_wasm.c src/view.c src/draw.c src/vga.c src/jwc.c src/fontx.c"
 
 EMBED=""
-for f in orig/SAMPLE*.JWC orig/TEST*.JWC font/JWANK16.FNT font/JWKAN16.FNT; do
+for f in orig/SAMPLE*.JWC orig/TEST*.JWC orig/JW_PAL.DAT font/JWANK16.FNT font/JWKAN16.FNT; do
     EMBED="$EMBED --embed-file $f@/$f"
 done
 

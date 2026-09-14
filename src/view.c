@@ -42,6 +42,32 @@ int jw_view_fonts(const char *dir)
     return fontx_load(&kanji, path);
 }
 
+/* JW_PAL.DAT: sixteen lines of "rr gg bb" in hex, six bits per channel -- the
+ * values the original hands to INT 10h AX=1010h one at a time.  Anything that
+ * does not parse stops the load and leaves the rest of the DAC alone, which for
+ * a file this small means "the defaults", not "half a palette". */
+int jw_view_palette(VGA *v, const char *path)
+{
+    FILE *f = fopen(path, "rb");
+    char line[128];
+    int i = 0;
+
+    if (!f) {
+        return 0;
+    }
+    while (i < 16 && fgets(line, sizeof line, f)) {
+        unsigned r, g, b;
+
+        if (sscanf(line, "%x %x %x", &r, &g, &b) != 3) {
+            break;
+        }
+        vga_set_dac(v, (unsigned)i, r, g, b);
+        i++;
+    }
+    fclose(f);
+    return i;
+}
+
 /* Shift-JIS lead byte, the test 3a75:0002 makes. */
 static int is_lead(unsigned char c)
 {

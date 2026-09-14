@@ -27,7 +27,12 @@ void vga_reset(VGA *v, int mode)
     }
     v->stride = v->width / 8;
     for (i = 0; i < 16; i++) {
+        int c;
+
         v->palette[i] = (unsigned char)i;
+        for (c = 0; c < 3; c++) {
+            v->dac[i][c] = (unsigned char)(EGA_DEFAULT[i][c] * 63 / 255);
+        }
     }
     v->gc[GC_BIT_MASK] = 0xff;
 }
@@ -159,14 +164,27 @@ void vga_render(const VGA *v, unsigned char *out)
     }
 }
 
+void vga_set_dac(VGA *v, unsigned index, unsigned r, unsigned g, unsigned b)
+{
+    v->dac[index & 0xff][0] = (unsigned char)(r & 0x3f);
+    v->dac[index & 0xff][1] = (unsigned char)(g & 0x3f);
+    v->dac[index & 0xff][2] = (unsigned char)(b & 0x3f);
+}
+
+/* Six bits to eight, by replicating the top bits: 0x3F -> 0xFF and 0x2A ->
+ * 0xAA, both exact.  dosv_emu_cpp does the same, so the two screenshots agree. */
+static unsigned char dac8(unsigned char v)
+{
+    return (unsigned char)((v << 2) | (v >> 4));
+}
+
 void vga_palette_rgb(const VGA *v, unsigned char rgb[16][3])
 {
-    int i;
+    int i, c;
 
     for (i = 0; i < 16; i++) {
-        const unsigned char *c = EGA_DEFAULT[v->palette[i] & 0x0f];
-        rgb[i][0] = c[0];
-        rgb[i][1] = c[1];
-        rgb[i][2] = c[2];
+        for (c = 0; c < 3; c++) {
+            rgb[i][c] = dac8(v->dac[v->palette[i]][c]);
+        }
     }
 }
