@@ -350,14 +350,14 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, double unit,
     }
     len = len > 0.0 ? len : 1.0;
 
-    /* The baseline, rounded where a line's endpoint is truncated.  It matters
-     * only when the baseline lands off a whole pixel, which in the samples
-     * happens for TEST7 alone -- its coordinates are all multiplied by 518/678
-     * on the way in.  Nine of the eleven TEST7 strings that can be matched
-     * against the original's own line calls sit one row lower than truncation
-     * puts them, and rounding puts every one of them right; the other drawings
-     * have whole-number baselines and do not care either way. */
-    y = (int)floor((double)(w->ay - (t->y0 - w->oy) * w->scale) + 0.5);
+    /* The baseline is rounded *up*, where a line's endpoint is truncated.  It
+     * matters only when the baseline lands off a whole pixel, which among the
+     * samples happens for TEST7 alone -- its coordinates are all multiplied by
+     * 518/678 on the way in.  Its eleven strings that can be matched against
+     * the original's own line calls settle it: five of them sit a row below
+     * where rounding puts them and all eleven where the ceiling does.  The
+     * other drawings have whole-number baselines and do not care. */
+    y = (int)ceil((double)(w->ay - (t->y0 - w->oy) * w->scale));
 
     height = text_height(t, unit);
     if ((int)height < TEXT_GLYPH_MIN) {
@@ -374,8 +374,19 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, double unit,
     /* The original draws text upright on a 16x16 grid; the baseline gives the
      * left edge and the run, so step along it a cell at a time. */
     {
+        /* Where the pen starts, and how far along the string it has walked.
+         *
+         * The two are kept apart because that is what the original's own line
+         * calls say: the start is *truncated* and then a pixel is added, and
+         * the walk is truncated on top of that.  Fitting the origin against
+         * those calls gives 254.5, 378.5, 150.5 and 477.5 for the four strings
+         * long enough to fit -- every one a half exactly, against record
+         * coordinates of 254.0000, 378.7037, 150.0324 and 477.6236.  With it,
+         * all 26 cells of TEST6's longest heading, all 12 of its shorter one
+         * and all 18 of TEST7's land where the original puts them. */
         const double step = text_step(t, unit);
-        double fx = (t->x0 - w->ox) * w->scale + w->ax;    /* the exact position */
+        const double x0 = floor((t->x0 - w->ox) * w->scale + w->ax) + 1.0;
+        double walk = 0.0;
         int i = 0;
 
         while (p[i]) {
@@ -414,11 +425,11 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, double unit,
                                                       height, top, &dw, &dh);
 
                 if (sg) {
-                    jw_glyph(v, (int)(fx + 0.5), (int)floor(top), dw, dh, sg,
-                             colour, colour);
+                    jw_glyph(v, (int)(x0 + floor(walk)), (int)floor(top),
+                             dw, dh, sg, colour, colour);
                 }
             }
-            fx += step * cw;
+            walk += step * cw;
         }
     }
 }
