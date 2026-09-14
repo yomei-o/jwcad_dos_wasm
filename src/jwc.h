@@ -8,14 +8,20 @@
 #ifndef JW_JWC_H
 #define JW_JWC_H
 
-/* rest[0] is the layer: the high nibble is the layer group (0-F), the low
- * nibble the layer inside it.  Measured, not guessed -- breaking on the
- * original's own per-entity test (dosv_emu_cpp, DOSEMU_BP=1302:0680) prints the
- * byte it is handed, and the values match this one exactly.  See jwc_visible. */
+/* `layer` is the high nibble = the layer group (0-F), the low nibble = the
+ * layer inside it.  Measured, not guessed: breaking on the original's own
+ * per-entity test (dosv_emu_cpp, DOSEMU_BP=1302:0680) prints the byte it is
+ * handed, and the values match.  See jwc_visible.
+ *
+ * It is the *first* of the four trailing bytes in a line, an arc and a point,
+ * and the *second* in a text -- the text's first byte is its size.  Reading it
+ * at the same place in all four drew the whole of TEST6's hidden dimensioning
+ * over the drawing, which is how the difference showed up. */
 typedef struct {
     float x0, y0, x1, y1;
     unsigned char type, pen;    /* line type 1-9, then the pen 1-8 */
-    unsigned char rest[4];      /* rest[0] is the layer */
+    unsigned char layer;
+    unsigned char rest[4];
 } JwcLine;
 
 typedef struct {
@@ -26,17 +32,21 @@ typedef struct {
     short end, end_frac;        /* end == start means the whole ellipse */
     short tilt;                 /* degrees the ellipse is turned by */
     unsigned char type, pen;
+    unsigned char layer;
     unsigned char rest[4];
 } JwcArc;
 
 typedef struct {
     float x0, y0, x1, y1;       /* the baseline: where the text starts and ends */
     const char *text;           /* Shift-JIS, pointing into Jwc.text */
+    unsigned char size;         /* the character size, rest[0] */
+    unsigned char layer;        /* rest[1], not rest[0] as in the others */
     unsigned char rest[4];
 } JwcText;
 
 typedef struct {
     float x, y;
+    unsigned char layer;
     unsigned char rest[4];
 } JwcPoint;
 

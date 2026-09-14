@@ -286,6 +286,7 @@ Jwc *jwc_load(const char *path, const char **why)
         d->lines[k].y1 = rd_f32(r + 12);
         d->lines[k].type = r[16];
         d->lines[k].pen = r[17];
+        d->lines[k].layer = r[18];
         memcpy(d->lines[k].rest, r + 18, 4);
     }
     for (k = 0; k < d->n_arcs; k++, p += ARC_SIZE) {
@@ -306,6 +307,7 @@ Jwc *jwc_load(const char *path, const char **why)
         d->arcs[k].tilt = rd_i16(r + 24);
         d->arcs[k].type = r[26];
         d->arcs[k].pen = r[27];
+        d->arcs[k].layer = r[28];
         memcpy(d->arcs[k].rest, r + 28, 4);
     }
     {
@@ -324,6 +326,8 @@ Jwc *jwc_load(const char *path, const char **why)
             d->texts[k].x1 = rd_f32(r + 8);
             d->texts[k].y1 = rd_f32(r + 12);
             d->texts[k].text = d->text + off;
+            d->texts[k].size = r[20];
+            d->texts[k].layer = r[21];
             memcpy(d->texts[k].rest, r + 20, 4);
         }
     }
@@ -332,6 +336,7 @@ Jwc *jwc_load(const char *path, const char **why)
 
         d->points[k].x = rd_f32(r);
         d->points[k].y = rd_f32(r + 4);
+        d->points[k].layer = r[8];
         memcpy(d->points[k].rest, r + 8, 4);
     }
 
@@ -371,28 +376,28 @@ void jwc_extent(const Jwc *d, float *x0, float *y0, float *x1, float *y1)
     /* Only what is shown: a hidden layer that reaches across the sheet would
      * otherwise decide the zoom for a drawing nobody can see. */
     for (k = 0; k < d->n_lines; k++) {
-        if (!jwc_visible(d, d->lines[k].rest[0])) {
+        if (!jwc_visible(d, d->lines[k].layer)) {
             continue;
         }
         SEE(d->lines[k].x0, d->lines[k].y0);
         SEE(d->lines[k].x1, d->lines[k].y1);
     }
     for (k = 0; k < d->n_arcs; k++) {
-        if (!jwc_visible(d, d->arcs[k].rest[0])) {
+        if (!jwc_visible(d, d->arcs[k].layer)) {
             continue;
         }
         SEE(d->arcs[k].cx - d->arcs[k].r, d->arcs[k].cy - d->arcs[k].r);
         SEE(d->arcs[k].cx + d->arcs[k].r, d->arcs[k].cy + d->arcs[k].r);
     }
     for (k = 0; k < d->n_texts; k++) {
-        if (!jwc_visible(d, d->texts[k].rest[0])) {
+        if (!jwc_visible(d, d->texts[k].layer)) {
             continue;
         }
         SEE(d->texts[k].x0, d->texts[k].y0);
         SEE(d->texts[k].x1, d->texts[k].y1);
     }
     for (k = 0; k < d->n_points; k++) {
-        if (!jwc_visible(d, d->points[k].rest[0])) {
+        if (!jwc_visible(d, d->points[k].layer)) {
             continue;
         }
         SEE(d->points[k].x, d->points[k].y);
