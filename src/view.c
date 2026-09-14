@@ -238,6 +238,28 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, unsigned colour
  * reads LCOLLOR out of JW_CAD.JWF when there is one; the distribution has no
  * such file, so what the screen shows is the default compiled into the EXE.)
  * Pen 0 is not a pen; nothing in the samples uses it. */
+/* The bit pattern a line type draws with.
+ *
+ * Read out of the running original, not invented: FUN_21f2_1c0d indexes a word
+ * table at DGROUP 0xa88 with the record's type byte, and dumping sixteen words
+ * from there (dosv_emu_cpp, `dump 3485:0A88 32`) gives exactly this.  The same
+ * dump settled the pen colours a second time -- the table right before it, at
+ * 0xa70, is `0 5 7 4 6 3 1 2 1 6 5`, which is LCOLLOR with a leading zero.
+ *
+ * Type 1 is solid.  It is mapped to JW_STYLE_SOLID rather than 0xFFFF so the
+ * line routine keeps its whole-byte fast path; the pixels are the same either
+ * way, and every drawing is mostly type 1. */
+static int line_style(unsigned type)
+{
+    static const unsigned short PATTERN[16] = {
+        0x5555, 0xFFFF, 0x9999, 0xC3C3, 0xE7E7, 0xEBEB, 0xF99F, 0xD5D5,
+        0xF24F, 0x2222, 0x2222, 0xE9E9, 0xFA3F, 0xF51F, 0xF517, 0xF515,
+    };
+    unsigned short p = PATTERN[type & 15];
+
+    return p == 0xFFFF ? JW_STYLE_SOLID : (int)p;
+}
+
 static unsigned pen_colour(unsigned pen)
 {
     static const unsigned char LCOLLOR[9] = { 5, 5, 7, 4, 6, 3, 1, 2, 1 };
@@ -261,7 +283,7 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
             continue;
         }
         jw_line(v, sx0, sy0, sx1, sy1,
-                pen_colour(l->pen), ROP_REPLACE, JW_STYLE_SOLID);
+                pen_colour(l->pen), ROP_REPLACE, line_style(l->type));
     }
     for (k = 0; k < d->n_arcs; k++) {
         const JwcArc *a = &d->arcs[k];
@@ -276,7 +298,7 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
          * mirrored -- the same reason to_y subtracts. */
         jw_arc(v, to_x(w, a->cx), to_y(v, w, a->cy),
                (int)(a->r * w->scale + 0.5), a->flatten, -a->tilt, -e, -s,
-               pen_colour(a->pen), ROP_REPLACE, JW_STYLE_SOLID);
+               pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
     }
     for (k = 0; k < d->n_texts; k++) {
         if (!jwc_visible(d, d->texts[k].rest[0])) {
