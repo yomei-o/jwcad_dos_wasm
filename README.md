@@ -215,6 +215,9 @@ python tools/ovlmap.py --callers # どこから呼ばれているか
 
 * コードは 16bit リアルモードのみ。DOS エクステンダ（DPMI / X-32 / DOS/4GW）は使っていません
 * Microsoft C 6.0 のランタイム文字列 (`MS Run-Time Library - Copyright (c) 1990, Microsoft Corp`)
+* **フォントは持っていません。** 字形は DOS/V のフォント API
+  （`INT 15h AX=5000h`）で取得ルーチンのアドレスをもらって呼び出します。
+  なので移植側はフォントを自前で用意する必要があります
 * **BIOS は `int86()` 経由なので、機械語に `INT` 命令が出てきません。**
   `cd 10` や `cd 33` を探しても一つも見つからず、最初はマウスも EMS も
   使っていないと読み違えました。実際には `INT 10h`（画面）・`INT 33h`（マウス）・
