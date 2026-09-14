@@ -71,6 +71,10 @@ typedef struct {
      * drawing-area width over the one the file was saved with.  1 unless the
      * drawing came off a wider screen. */
     float scale;
+    /* The dot grid: whether it is on, and its spacing in drawing units.  It
+     * runs through the drawing's origin in both directions. */
+    unsigned char grid_on;
+    float grid_x, grid_y;
 } Jwc;
 
 /* Returns NULL and leaves `why` pointing at a reason on failure. */

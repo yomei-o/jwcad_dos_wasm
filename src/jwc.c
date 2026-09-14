@@ -158,22 +158,67 @@ static long last_used(const unsigned char *b, long blen)
  * the ratio is built from.
  *
  * The five TEST1-TEST5 files stop at field 29 and are left alone. */
-static float saved_width_ratio(const char *line)
+static const char *field(const char *line, int n)
 {
     int commas = 0;
-    long w;
 
     for (; *line; line++) {
-        if (*line != ',') {
-            continue;
+        if (*line == ',' && ++commas == n) {
+            return line + 1;
         }
-        if (++commas < 30) {
-            continue;
-        }
-        w = strtol(line + 1, NULL, 10);
-        return w > 0 ? 518.0f / (float)w : 1.0f;
     }
-    return 1.0f;
+    return NULL;
+}
+
+static float saved_width_ratio(const char *line)
+{
+    const char *f = field(line, 30);
+    long w = f ? strtol(f, NULL, 10) : 0;
+
+    return w > 0 ? 518.0f / (float)w : 1.0f;
+}
+
+/* The dot grid.
+ *
+ * Field 29 turns it on -- of the fourteen drawings only SAMPLE1 has it -- and
+ * fields 25 and 26 are its spacing **on the paper, in millimetres**: 9 and 9
+ * for SAMPLE1, 5 and 5 for the rest.  The same two numbers are sitting in the
+ * running original's DGROUP at 0x115a and 0x115e while it draws.
+ *
+ * Millimetres become drawing units through the paper: JW_CAD fits the paper's
+ * width across its 518-pixel drawing area, so a millimetre is `518 / paper`
+ * units, and field 11 says which paper (A-4 is 4).  That is not a guess about
+ * the zoom -- the original's own 表示倍率 (DGROUP 0x896e) is 0.5723906 for the
+ * two A-4 drawings, 0.4047689 for the three A-3 ones and 0.2862 for the A-2,
+ * which are in the ratio 1 : 1/sqrt2 : 1/2, the paper sizes exactly.  And the
+ * factor it implies is visible in the drawings themselves: a text of `n`
+ * characters of `width + gap` millimetres measures `n * (width+gap) * 518/paper`
+ * units in SAMPLE3 and SAMPLE6, and in TEST7 too once its own 678 is allowed
+ * for.
+ *
+ * SAMPLE1 settles the result: 9 mm is 15.69697 units, and the original's dots
+ * stand at 121 + k*15.69697 truncated -- 136, 152, 168, 183, 199, 215, 230 ...
+ * 623 -- which is every one of the 33 columns and 29 rows it draws, with no
+ * offset: the grid goes through the drawing's own origin. */
+static void grid(const char *line, Jwc *d)
+{
+    static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f, 297.0f };
+    const char *f = field(line, 29);
+    int paper;
+
+    if (!f || strtol(f, NULL, 10) == 0) {
+        return;
+    }
+    f = field(line, 11);
+    paper = f ? (int)strtol(f, NULL, 10) : -1;
+    if (paper < 0 || paper > 4) {
+        return;
+    }
+    f = field(line, 25);
+    d->grid_x = f ? (float)atof(f) * 518.0f / PAPER[paper] : 0.0f;
+    f = field(line, 26);
+    d->grid_y = f ? (float)atof(f) * 518.0f / PAPER[paper] : 0.0f;
+    d->grid_on = d->grid_x > 0.0f && d->grid_y > 0.0f;
 }
 
 static int header(const unsigned char *file, Jwc *d)
@@ -193,6 +238,7 @@ static int header(const unsigned char *file, Jwc *d)
     d->n_texts = e;
     d->n_points = g;
     d->scale = saved_width_ratio(buf);
+    grid(buf, d);
 
     /* "%lp,%lp" -- the second one's offset is how long the string pool is. */
     memcpy(buf, file + TEXT_LINE * 3, TEXT_LINE - 1);

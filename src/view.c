@@ -415,11 +415,56 @@ static int line_style(unsigned type)
     return p == 0xFFFF ? JW_STYLE_SOLID : (int)p;
 }
 
+/* The dot grid, under the drawing.
+ *
+ * One dot at every multiple of the spacing in both directions, colour 7, the
+ * whole window.  The range is worked out from the window rather than guessed at
+ * because the grid goes through the drawing's origin, which can be off screen:
+ * SAMPLE1's origin is at the bottom-left corner of its window and the dots run
+ * up and to the right from there, but nothing says a drawing has to be saved
+ * that way. */
+static void draw_grid(VGA *v, const Jwc *d, const JwView *w)
+{
+    double lo, hi;
+    long i, j, i0, i1, j0, j1;
+
+    if (!d->grid_on || d->grid_x <= 0.0f || d->grid_y <= 0.0f ||
+        w->scale <= 0.0f) {
+        return;
+    }
+    lo = (((double)w->x0 - w->ax) / w->scale + w->ox) / d->grid_x;
+    hi = (((double)w->x1 - w->ax) / w->scale + w->ox) / d->grid_x;
+    i0 = (long)lo - 1;
+    i1 = (long)hi + 1;
+    lo = ((w->ay - (double)w->y1) / w->scale + w->oy) / d->grid_y;
+    hi = ((w->ay - (double)w->y0) / w->scale + w->oy) / d->grid_y;
+    j0 = (long)lo - 1;
+    j1 = (long)hi + 1;
+    if (i1 - i0 > 4000 || j1 - j0 > 4000) {
+        return;                         /* zoomed out past any use */
+    }
+    for (j = j0; j <= j1; j++) {
+        const int y = to_y(v, w, (float)((double)j * d->grid_y));
+
+        if (y < w->y0 || y > w->y1) {
+            continue;
+        }
+        for (i = i0; i <= i1; i++) {
+            const int x = to_x(w, (float)((double)i * d->grid_x));
+
+            if (x >= w->x0 && x <= w->x1) {
+                jw_point(v, x, y, 7, ROP_REPLACE);
+            }
+        }
+    }
+}
+
 void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
 {
     long k;
 
     memset(v->plane, 0, sizeof v->plane);
+    draw_grid(v, d, w);
 
     for (k = 0; k < d->n_lines; k++) {
         const JwcLine *l = &d->lines[k];
