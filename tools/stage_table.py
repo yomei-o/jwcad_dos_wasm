@@ -31,6 +31,7 @@ COMMANDS = [
     (3, (300, 200, 400, 200)),      # ／  a line
     (4, (250, 150, 450, 350)),      # □  a box
     (11, (300, 200, 400, 200)),     # ○  a circle
+    (10, ('r', 380, 140)),          # 線消  the right button takes a line away
 ]
 
 # tools/press.sh: 40M to start, 2M for the menu press, 24M to settle, then per
@@ -48,7 +49,12 @@ NUM = re.compile(r'( *-?\d+\.\d+)')
 # Columns 17 and 22 of the same row say what the right button would take.  They
 # follow the pointer rather than the stage -- pick an item with the pointer on
 # the menu and neither is there -- so they live in src/snap.h and are left out.
-PANEL = {(1, 2), (1, 3), (17, 2), (22, 2)}
+#
+# Column 18 is dropped too: 線消 writes サーチ there while it looks for the line
+# under the pointer, and it is gone by the time the screen settles (the shot
+# taken well after the press has nothing there).  What takes it away is not a
+# string, so this capture cannot see it happen.
+PANEL = {(1, 2), (1, 3), (17, 2), (22, 2), (18, 2)}
 WAIT = '\x81\x96\x82\xa8\x91\xd2\x82\xbf\x89\xba\x82\xb3\x82\xa2\x81\x96'
 
 
@@ -69,7 +75,7 @@ def capture(n, pts):
     the last thing per cell, because that is what is left on the screen."""
     subprocess.run(['sh', 'tools/press.sh', str(n)] + [str(v) for v in pts],
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    stages = [[] for _ in range(len(pts) // 2)]
+    stages = [[] for _ in range(len([v for v in pts if isinstance(v, int)]) // 2)]
     lasts = [{} for _ in stages]
     for line in open('tmp/press/str.txt', encoding='latin-1'):
         f = line.split()

@@ -639,6 +639,16 @@ int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
     return 1;
 }
 
+void jwc_remove_line(Jwc *d, long k)
+{
+    if (k < 0 || k >= d->n_lines) {
+        return;
+    }
+    memmove(d->lines + k, d->lines + k + 1,
+            (size_t)(d->n_lines - k - 1) * sizeof *d->lines);
+    d->n_lines--;
+}
+
 int jwc_add_arc(Jwc *d, float cx, float cy, float r,
                 unsigned char type, unsigned char pen, unsigned char layer)
 {

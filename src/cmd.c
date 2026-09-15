@@ -114,12 +114,71 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
     }
 }
 
-int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
+/* The reach of a pick, in drawing units.  Measured: pointing seven above
+ * SAMPLE0's top edge takes it and eight does not. */
+#define REACH 8.0
+
+long jw_cmd_line_at(const Jwc *d, const JwView *w, int sx, int sy)
+{
+    double x, y, best = REACH;
+    long k, found = -1;
+
+    if (!d) {
+        return -1;
+    }
+    jw_cmd_at(w, sx, sy, &x, &y);
+    for (k = 0; k < d->n_lines; k++) {
+        const JwcLine *l = &d->lines[k];
+        const double ax = l->x0, ay = l->y0, bx = l->x1, by = l->y1;
+        const double dx = bx - ax, dy = by - ay;
+        const double len = sqrt(dx * dx + dy * dy);
+        double away;
+
+        if (!jwc_visible(d, l->layer)) {
+            continue;
+        }
+        /* Within the ends' box, opened out by the reach ... */
+        if (x < (ax < bx ? ax : bx) - REACH || x > (ax > bx ? ax : bx) + REACH
+            || y < (ay < by ? ay : by) - REACH || y > (ay > by ? ay : by) + REACH) {
+            continue;
+        }
+        /* ... and within the reach of the line itself.  A line with no length
+         * is just its own point. */
+        away = len > 0.0
+            ? ((x - ax) * dy - (y - ay) * dx) / len
+            : sqrt((x - ax) * (x - ax) + (y - ay) * (y - ay));
+        if (away < 0.0) {
+            away = -away;
+        }
+        if (away <= best) {
+            best = away;
+            found = k;
+        }
+    }
+    return found;
+}
+
+int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
 {
     double x, y;
 
-    if (!d || (c->command != 2 && c->command != 3 && c->command != 4
-               && c->command != 11)) {
+    if (!d) {
+        return 0;
+    }
+    if (c->command == 10) {
+        /* 線消: the right button takes the whole line away.  (The left one
+         * starts cutting a piece out of it, which is not done yet.) */
+        long k = right ? jw_cmd_line_at(d, w, sx, sy) : -1;
+
+        if (k < 0) {
+            return 0;
+        }
+        jwc_remove_line(d, k);
+        c->stage = 1;
+        return 1;
+    }
+    if (c->command != 2 && c->command != 3 && c->command != 4
+        && c->command != 11) {
         return 0;               /* ＋ line on an axis, ／ line, □ box, ○ circle */
     }
     jw_cmd_at(w, sx, sy, &x, &y);

@@ -32,7 +32,7 @@ int main(int argc, char **argv)
      * -c N: and with menu item N picked, the way a click leaves it. */
     int ui = 0, original = 0, command = 0, a = 1;
     int mx = 200, my = 200;     /* where the original leaves the pointer */
-    int press[8][2], n_press = 0, stage = 0;
+    int press[8][3], n_press = 0, stage = 0;
     double num[2] = { 0.0, 0.0 };
     int dec[2] = { 3, 3 };
     JwCmd c;
@@ -57,6 +57,14 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[a], "-p") == 0 && a + 2 < argc && n_press < 8) {
             press[n_press][0] = atoi(argv[a + 1]);
             press[n_press][1] = atoi(argv[a + 2]);
+            press[n_press][2] = 0;
+            n_press++;
+            a += 3;
+        } else if (strcmp(argv[a], "-r") == 0 && a + 2 < argc && n_press < 8) {
+            /* the other button */
+            press[n_press][0] = atoi(argv[a + 1]);
+            press[n_press][1] = atoi(argv[a + 2]);
+            press[n_press][2] = 1;
             n_press++;
             a += 3;
         } else if (strcmp(argv[a], "-c") == 0 && a + 1 < argc) {
@@ -64,7 +72,7 @@ int main(int argc, char **argv)
             ui = original = 1;
             a += 2;
         } else {
-            fprintf(stderr, "usage: drawing [-o|-u] [-c N] [-m X Y] [-p X Y] IN.JWC OUT\n");
+            fprintf(stderr, "usage: drawing [-o|-u] [-c N] [-m X Y] [-p|-r X Y] IN.JWC OUT\n");
             return 2;
         }
     }
@@ -105,7 +113,7 @@ int main(int argc, char **argv)
     jw_cmd_pick(&c, command);
     if (n_press) {
         for (i = 0; i < n_press; i++) {
-            jw_cmd_press(&c, d, &w, press[i][0], press[i][1]);
+            jw_cmd_press(&c, d, &w, press[i][0], press[i][1], press[i][2]);
         }
     }
     /* the pointer is where it is, and a command in hand keeps its reading up

@@ -32,9 +32,19 @@ typedef struct {
 /* Start a command, or leave it (0). */
 void jw_cmd_pick(JwCmd *c, int command);
 
-/* A press inside the drawing area, at a screen pixel.  Returns 1 if the drawing
- * changed and has to be drawn again. */
-int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy);
+/* A press inside the drawing area, at a screen pixel.  `right` is the other
+ * button, which the original reads as a different answer: 線消 takes a line
+ * away with it where the left one would start cutting a piece out.  Returns 1
+ * if the drawing changed and has to be drawn again. */
+int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right);
+
+/* Which line is under a point, or -1.  The original's reach is eight drawing
+ * units: the point has to be within eight of the line itself *and* within eight
+ * of the ends' box.  Measured on SAMPLE0's top edge -- seven above it hits and
+ * eight does not, seven past its end hits and twelve does not -- and on a
+ * diagonal drawn for the purpose, which is not picked from the far side of its
+ * own bounding box. */
+long jw_cmd_line_at(const Jwc *d, const JwView *w, int sx, int sy);
 
 /* Move the pointer without pressing.  While a command has a point in hand the
  * original keeps the reading under the counts up to date -- the length and the

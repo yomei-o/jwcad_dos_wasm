@@ -164,7 +164,7 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
  * item fills its row and writes the command's own line along the top, which is
  * what the original does (tools/menucheck.sh compares the two).  The line of
  * guidance goes the moment anything is picked, as it does there. */
-EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y)
+EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 {
     const int pick = jw_ui_menu_hit(x, y);
 
@@ -180,7 +180,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y)
     }
     if (cmd.command && x >= AREA_X0 && x <= AREA_X1
         && y >= AREA_Y0 && y <= AREA_Y1) {
-        const int changed = jw_cmd_press(&cmd, drawing, &view, x, y);
+        const int changed = jw_cmd_press(&cmd, drawing, &view, x, y, right);
 
         mouse_x = x;
         mouse_y = y;

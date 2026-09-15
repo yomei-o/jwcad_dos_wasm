@@ -58,6 +58,7 @@
     メニューを押すと、本物と同じように行が反転して上の行がその命令の案内に変わります。<br>
     ／ を選んで作図領域を 2 回押すと線が引けます。本物と同じ画素に出ます。<br>
     メニューの一文字キー（大文字が右の列、小文字が左）でも選べます。<br>
+    線消（D）を選んで線を右ボタンで押すと消えます。<br>
     ＪＷ＿ＣＡＤ の著作権は jw_software club にあります。
     <a href="https://github.com/yomei-o/jwcad_dos_wasm">解析と移植のソース</a>
   </footer>
@@ -154,12 +155,15 @@ canvas.addEventListener('wheel', e => {
 }, { passive: false });
 
 let drag = null;
+canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('pointerdown', e => {
   const p = at(e);
   /* The menu answers a click the way the original does, and so does a command
      that is running -- ／ takes two presses and leaves a line. Anywhere else is
      a drag, which is this viewer's own convenience. */
-  if (Module && Module._jw_click(p[0], p[1])) { blit(); say(); return; }
+  if (Module && Module._jw_click(p[0], p[1], e.button === 2 ? 1 : 0)) {
+    blit(); say(); return;
+  }
   drag = p; canvas.classList.add('drag'); canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener('pointermove', e => {

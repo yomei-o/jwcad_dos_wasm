@@ -174,6 +174,10 @@ int jwc_visible(const Jwc *d, unsigned char layer);
 int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
                  unsigned char type, unsigned char pen, unsigned char layer);
 
+/* Take a line out, the way 線消 does.  The ones after it move down, which is
+ * what the original's count shows: thirty lines become twenty-nine. */
+void jwc_remove_line(Jwc *d, long k);
+
 /* And a circle: the whole ellipse, which is what `start == end` means. */
 int jwc_add_arc(Jwc *d, float cx, float cy, float r,
                 unsigned char type, unsigned char pen, unsigned char layer);

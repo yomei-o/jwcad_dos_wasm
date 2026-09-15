@@ -2,6 +2,7 @@
 # Pick a menu item in the original and press points in the drawing area.
 #
 #   sh tools/press.sh 11 300 200 400 200        # ○ with two presses
+#   sh tools/press.sh 10 r 380 140              # 線消 with the right button
 #   DRAWING=SAMPLE2 sh tools/press.sh 4 200 150 400 300
 #
 # Leaves tmp/press/before.raw (just after the item was picked) and
@@ -25,12 +26,17 @@ my=$((64 + 16 * row + 8))
     echo "click left"
     echo "wait 24000000"
     echo "shot ../jwcad_dos_wasm/tmp/press/before.raw"
-    while [ $# -ge 2 ]; do
+    btn=left
+    while [ $# -ge 1 ]; do
+        # an `r` in the list means the presses after it are the other button
+        if [ "$1" = r ]; then btn=right; shift; continue; fi
+        if [ "$1" = l ]; then btn=left; shift; continue; fi
+        [ $# -ge 2 ] || break
         echo "mouse $1 $2"
         echo "wait 3000000"
-        echo "down left"
+        echo "down $btn"
         echo "wait 3000000"
-        echo "up left"
+        echo "up $btn"
         echo "wait 14000000"
         shift 2
     done
