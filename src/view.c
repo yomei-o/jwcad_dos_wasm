@@ -523,7 +523,7 @@ static void draw_text_turned(VGA *v, const JwcText *t, const JwView *w,
  * does the upright box, whose fifth line is the row above the baseline. */
 static void draw_text_box_turned(VGA *v, const JwView *w, double x0, double y0,
                                  double x1, double y1, double ux, double uy,
-                                 int h, unsigned colour)
+                                 double rdx, double rdy, int h, unsigned colour)
 {
     const double nx = uy, ny = -ux;
     const int ax = (int)floor(x0), ay = (int)ceil(y0);
@@ -545,12 +545,26 @@ static void draw_text_box_turned(VGA *v, const JwView *w, double x0, double y0,
     jw_line(v, cx, cy, dx, dy, colour, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, dx, dy, ax, ay, colour, ROP_REPLACE, JW_STYLE_SOLID);
     {
-        /* A box whose far side is on the same rows as its near side has no
-         * inside to move into, so the extra line goes across instead: TEST6's
-         * headings carry strings whose height truncates to nothing, and the
-         * original draws three pixels in one row for them, not two rows of
-         * two. */
-        const int across = fabs(uy) >= fabs(ux) || cy == by;
+        /* Which way the extra line goes is the original's own comparison, at
+         * 18B3:1A2C: it keeps the box's depth as a pair of 16.16 numbers, and
+         * takes the column beside the baseline when the pair's x is at least
+         * its y, the row above it otherwise.
+         *
+         *     ox = h * (long)(sin(angle) * 65536)
+         *     oy = h * (long)(cos(angle) * 65536)
+         *
+         * with the angle the record's own, and the cast truncating towards
+         * zero before the height multiplies it.  Reading the pair out of the
+         * original (`DOSEMU_BP=19C3:1A54 DOSEMU_BPPTR=bp DOSEMU_BPPTRAT=-196`)
+         * for all 41 of TEST3's boxes and working the same two numbers out
+         * here reproduces every one of them, and that is what settles the
+         * boxes at forty-five degrees, where the two come out *equal* and the
+         * unit vector's own last bits do not.  A box with no height at all
+         * gives 0 and 0, which is why TEST6's headings go across too. */
+        const double th = atan2(rdy, rdx);
+        const long ox = (long)h * (long)(sin(th) * 65536.0);
+        const long oy = (long)h * (long)(cos(th) * 65536.0);
+        const int across = (oy < 0 ? -oy : oy) <= (ox < 0 ? -ox : ox);
         const int ex = across ? 1 : 0;
         const int ey = across ? 0 : -1;
 
@@ -619,7 +633,8 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
                                  w->ay - ((double)t->y0 - w->oy) * w->scale,
                                  ((double)t->x1 - w->ox) * w->scale + w->ax,
                                  w->ay - ((double)t->y1 - w->oy) * w->scale,
-                                 dx / m, -dy / m, (int)height, colour);
+                                 dx / m, -dy / m, dx, dy,
+                                 (int)height, colour);
         } else {
             draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1), y, (int)height,
                           colour);
