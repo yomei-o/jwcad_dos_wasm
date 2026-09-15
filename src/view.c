@@ -397,8 +397,13 @@ static void draw_text_turned(VGA *v, const JwcText *t, const JwView *w,
                              double ux, double uy, unsigned colour)
 {
     const double nx = uy, ny = -ux;
-    const double ox = (t->x0 - w->ox) * w->scale + w->ax;
-    const double oy = w->ay - (t->y0 - w->oy) * w->scale;
+    /* The pen starts at a whole pixel: the x truncated and the y rounded *up*,
+     * which is the same pair the upright routine and the box use.  It shows
+     * only when the record is off a whole pixel -- TEST1's `GL`, whose baseline
+     * starts at (264.709, 429.783), is exact from (264, 430) and a pixel out
+     * from the floats. */
+    const double ox = floor((t->x0 - w->ox) * w->scale + w->ax);
+    const double oy = ceil(w->ay - (t->y0 - w->oy) * w->scale);
     double walk = 0.0;
     int i = 0;
 
