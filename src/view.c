@@ -784,6 +784,29 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         draw_text(v, d, &d->texts[k], w, (double)d->unit_mm * w->scale,
                   text_colour(d, d->texts[k].size));
     }
+    /* The 指定点 markers: a two-pixel circle at each, in white.  The original
+     * draws it as four short lines -- for SAMPLE3's first, whose point is at
+     * screen (301.33, 230.68):
+     *
+     *     (300,228)-(302,228)  (300,232)-(302,232)
+     *     (299,229)-(299,231)  (303,229)-(303,231)
+     *
+     * which is the twelve pixels of a circle of radius two around (301,230),
+     * the truncated centre.  They are drawn whatever is on the paper: with
+     * every line, arc, text and point pushed off it they are still there,
+     * which is what finally said they are not entities. */
+    for (k = 0; k < d->n_marks; k++) {
+        const int mx = to_x(w, d->mark_x[k]), my = to_y(v, w, d->mark_y[k]);
+        const unsigned mc = pen_colour(2);
+
+        if (!inside(w, mx - 2, my - 2) || !inside(w, mx + 2, my + 2)) {
+            continue;
+        }
+        jw_line(v, mx - 1, my - 2, mx + 1, my - 2, mc, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_line(v, mx - 1, my + 2, mx + 1, my + 2, mc, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_line(v, mx - 2, my - 1, mx - 2, my + 1, mc, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_line(v, mx + 2, my - 1, mx + 2, my + 1, mc, ROP_REPLACE, JW_STYLE_SOLID);
+    }
     for (k = 0; k < d->n_points; k++) {
         int x = to_x(w, d->points[k].x);
         int y = to_y(v, w, d->points[k].y);

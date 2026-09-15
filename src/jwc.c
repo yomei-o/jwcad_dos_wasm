@@ -280,6 +280,23 @@ static void sizes(const unsigned char *file, long len, Jwc *d)
     }
 }
 
+/* The 指定点, out of the preamble: `count` of them, x at 0x0324 and y at
+ * 0x04b8, 101 floats each.  See jwc.h. */
+static void marks(const unsigned char *file, long len, Jwc *d, int count)
+{
+    int i;
+
+    d->n_marks = count < 0 ? 0 : count > 101 ? 101 : count;
+    if (len < 0x04b8 + 101 * 4) {
+        d->n_marks = 0;
+        return;
+    }
+    for (i = 0; i < d->n_marks; i++) {
+        d->mark_x[i] = rd_f32(file + 0x0324 + i * 4);
+        d->mark_y[i] = rd_f32(file + 0x04b8 + i * 4);
+    }
+}
+
 static int header(const unsigned char *file, Jwc *d)
 {
     char buf[TEXT_LINE];
@@ -365,6 +382,15 @@ Jwc *jwc_load(const char *path, const char **why)
         return NULL;
     }
     sizes(file, len, d);
+    {
+        char line[TEXT_LINE];
+        const char *f;
+
+        memcpy(line, file + TEXT_LINE, TEXT_LINE - 1);
+        line[TEXT_LINE - 1] = ' ';
+        f = field(line, 4);
+        marks(file, len, d, f ? (int)strtol(f, NULL, 10) : 0);
+    }
 
     b = file + DATA_AT;
     blen = len - DATA_AT;
@@ -494,6 +520,9 @@ Jwc *jwc_load(const char *path, const char **why)
         }
         for (k = 0; k < d->n_points; k++) {
             d->points[k].x *= s; d->points[k].y *= s;
+        }
+        for (k = 0; k < d->n_marks; k++) {
+            d->mark_x[k] *= s; d->mark_y[k] *= s;
         }
     }
 

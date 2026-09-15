@@ -103,6 +103,16 @@ typedef struct {
      * 1 1 2 2 2 3 3 3 3 3 where everything else says 1 1 2 2 3 3 4 4 5 5, so
      * its headings come out green and not cyan. */
     short text_pen[11];
+    /* The 指定点 -- the points a shadow diagram is measured at.  They are not
+     * entities: two arrays of 101 floats sit at a fixed place in the preamble
+     * and the second line's field 4 says how many of them count.  JW_CAD draws
+     * a little circle at each, and three of the fourteen drawings have them
+     * (SAMPLE3 twenty, TEST3 eleven, TEST4 nine).  Three more carry leftover
+     * coordinates with a count of zero and draw nothing, which is how the
+     * count was identified. */
+    int n_marks;
+    float mark_x[101];
+    float mark_y[101];
 } Jwc;
 
 /* Returns NULL and leaves `why` pointing at a reason on failure. */
