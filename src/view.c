@@ -402,8 +402,8 @@ static void draw_text_turned(VGA *v, const JwcText *t, const JwView *w,
      * only when the record is off a whole pixel -- TEST1's `GL`, whose baseline
      * starts at (264.709, 429.783), is exact from (264, 430) and a pixel out
      * from the floats. */
-    const double ox = floor((t->x0 - w->ox) * w->scale + w->ax);
-    const double oy = ceil(w->ay - (t->y0 - w->oy) * w->scale);
+    const double ox = floor(((double)t->x0 - w->ox) * w->scale + w->ax);
+    const double oy = ceil(w->ay - ((double)t->y0 - w->oy) * w->scale);
     double walk = 0.0;
     int i = 0;
 
@@ -550,10 +550,10 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
             const double m = sqrt(len);
 
             draw_text_box_turned(v, w,
-                                 (t->x0 - w->ox) * w->scale + w->ax,
-                                 w->ay - (t->y0 - w->oy) * w->scale,
-                                 (t->x1 - w->ox) * w->scale + w->ax,
-                                 w->ay - (t->y1 - w->oy) * w->scale,
+                                 ((double)t->x0 - w->ox) * w->scale + w->ax,
+                                 w->ay - ((double)t->y0 - w->oy) * w->scale,
+                                 ((double)t->x1 - w->ox) * w->scale + w->ax,
+                                 w->ay - ((double)t->y1 - w->oy) * w->scale,
                                  dx / m, -dy / m, (int)height, colour);
         } else {
             draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1), y, (int)height,
