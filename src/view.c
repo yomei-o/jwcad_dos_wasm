@@ -772,6 +772,24 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         if (!jwc_visible(d, l->layer)) {
             continue;
         }
+        /* A line the record marks with bit 0x10 of its fourth trailing byte is
+         * **one dot**, at the truncated start, however long the two ends say it
+         * is.  Measured: the same geometry drawn twice, once with the bit and
+         * once without, comes out as one pixel and as eleven.  No other bit of
+         * those three bytes changes anything.
+         *
+         * Every line carrying it is under 1.36 pixels long -- 3,294 of TEST7's
+         * 4,083 and 404 of SAMPLE2's -- so it is the drawing saying "this one
+         * is shorter than a dot".  Without it the port puts down two pixels
+         * wherever the two ends happen to truncate to different ones. */
+        if (l->rest[2] & 0x10) {
+            const int px = (int)fx0, py = (int)fy0;
+
+            if (inside(w, px, py)) {
+                jw_point(v, px, py, pen_colour(l->pen), ROP_REPLACE);
+            }
+            continue;
+        }
         if (!inside(w, (int)fx0, (int)fy0)) {
             if (!inside(w, (int)fx1, (int)fy1)) {
                 continue;
