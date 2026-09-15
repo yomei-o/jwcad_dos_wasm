@@ -47,6 +47,12 @@ void jw_view_original(JwView *w);
  * JWANK16.FNT and JWKAN16.FNT.  Text is skipped if they are not there. */
 int jw_view_fonts(const char *dir);
 
+/* The two fonts jw_view_fonts loaded.  The screen chrome in src/ui.c draws
+ * with them too, at their own size -- the original's menus go through the same
+ * DOS/V font it hands the drawing. */
+const Fontx *jw_view_ank(void);
+const Fontx *jw_view_kanji(void);
+
 /* Install JW_CAD's own sixteen colours from JW_PAL.DAT.  Returns how many
  * entries were read; 0 leaves the EGA defaults in place.
  *

@@ -21,6 +21,15 @@ echo "=== the line routine"
 echo "=== the drawing reader"
 ./tests/jwc_test.exe
 
+# The screen around the drawing, against the original's own picture of it.
+# Needs the emulator; skipped where it is not built.
+if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
+    echo "=== the screen around the drawing"
+    sh tools/ui.sh
+else
+    echo "=== the screen around the drawing -- skipped, no ../dosv_emu_cpp"
+fi
+
 # Zoomed in, the browser front end asks the drawing routines to work at the
 # edge of the screen. Nothing may land outside the view's window: a glyph that
 # ran off the right used to reappear on the left of the next scan line.

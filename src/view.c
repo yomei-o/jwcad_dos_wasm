@@ -126,6 +126,16 @@ int jw_view_fonts(const char *dir)
     return fontx_load(&kanji, path);
 }
 
+const Fontx *jw_view_ank(void)
+{
+    return &ank;
+}
+
+const Fontx *jw_view_kanji(void)
+{
+    return &kanji;
+}
+
 /* JW_PAL.DAT: sixteen lines of "rr gg bb" in hex, six bits per channel -- the
  * values the original hands to INT 10h AX=1010h one at a time.  Anything that
  * does not parse stops the load and leaves the rest of the DAC alone, which for
