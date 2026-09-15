@@ -3,9 +3,9 @@
     python tools/lzh.py <archive.lzh>            list
     python tools/lzh.py <archive.lzh> <outdir>   extract
 
-Written because no lha/7z is installed here.  Handles header levels 0/1/2 and
-the -lh0- (stored) and -lh5-/-lh6-/-lh7- methods, which is everything a PC-98
-era archive uses.  The compressed methods are LHA's static-Huffman-per-block
+Written because no lha/7z is installed here.  Handles header levels 0/1/2, the
+-lh0- (stored) and -lh5-/-lh6-/-lh7- methods, and -lh1-, which is what archives
+from the late eighties carry -- WXP for J-3100 (1990) is one.  The compressed methods are LHA's static-Huffman-per-block
 LZSS: each block carries a Huffman table for the literal/length alphabet, a
 second one for the match offsets, and a third that codes the first table's own
 code lengths.
@@ -26,6 +26,7 @@ THRESHOLD = 3
 METHODS = {
     b'-lh0-': None,                 # stored
     b'-lhd-': None,                 # directory
+    b'-lh1-': 'dyn',                # the 1988 method: adaptive Huffman, 4 KB
     b'-lh5-': (13, 14, 4),
     b'-lh6-': (15, 16, 5),
     b'-lh7-': (17, 17, 5),
@@ -133,7 +134,223 @@ def read_c_len(br, pt, pt_single):
     return Huff(ln), None
 
 
+# ---------------------------------------------------------------- -lh1-
+#
+# The old method, and a different animal from -lh5-: instead of a Huffman table
+# per block, the tree *moves* -- every symbol decoded bumps its own frequency and
+# the tree is rearranged to stay Huffman. Encoder and decoder do the same thing
+# to the same tree, so nothing about it is transmitted; get one step wrong and
+# everything after it is noise. The match offsets are the other half: a fixed
+# canonical table for the top six bits and six raw bits for the rest.
+#
+# Transcribed from LHa for UNIX (dhuf.c, shuf.c, slide.c), which is the reading
+# of the format that everything else agrees with. The CRC in each header says
+# whether the transcription is right.
+N_CHAR_DYN = 256 + 60 - 3 + 1       # 314: literals, then match lengths
+TREESIZE_C = N_CHAR_DYN * 2
+TREESIZE = TREESIZE_C + 128 * 2
+ROOT_C = 0
+
+
+class Dyn:
+    """The moving tree, as LHa keeps it: children in pairs, blocks of equal
+    frequency, and a leader per block so a swap is O(1)."""
+
+    def __init__(self):
+        self.child = [0] * TREESIZE
+        self.parent = [0] * TREESIZE
+        self.block = [0] * TREESIZE
+        self.edge = [0] * TREESIZE
+        self.stock = [0] * TREESIZE
+        self.node = [0] * (TREESIZE // 2)
+        self.freq = [0] * TREESIZE
+        n_max = N_CHAR_DYN
+        for i in range(TREESIZE_C):
+            self.stock[i] = i
+            self.block[i] = 0
+        j = n_max * 2 - 2
+        for i in range(n_max):
+            self.freq[j] = 1
+            self.child[j] = ~i
+            self.node[i] = j
+            self.block[j] = 1
+            j -= 1
+        self.avail = 2
+        self.edge[1] = n_max - 1
+        i = n_max * 2 - 2
+        while j >= 0:
+            f = self.freq[i] + self.freq[i - 1]
+            self.freq[j] = f
+            self.child[j] = i
+            self.parent[i] = self.parent[i - 1] = j
+            if f == self.freq[j + 1]:
+                self.block[j] = self.block[j + 1]
+                self.edge[self.block[j]] = j
+            else:
+                self.block[j] = self.stock[self.avail]
+                self.avail += 1
+                self.edge[self.block[j]] = j
+            i -= 2
+            j -= 1
+
+    def reconst(self, start, end):
+        """Halve every frequency and rebuild -- what happens when the root
+        reaches 0x8000 and the counts would overflow."""
+        child, freq, block, edge, stock, node, parent = (
+            self.child, self.freq, self.block, self.edge, self.stock,
+            self.node, self.parent)
+        j = start
+        for i in range(start, end):
+            k = child[i]
+            if k < 0:
+                freq[j] = (freq[i] + 1) // 2
+                child[j] = k
+                j += 1
+            b = block[i]
+            if edge[b] == i:
+                self.avail -= 1
+                stock[self.avail] = b
+        j -= 1
+        i = end - 1
+        l = end - 2
+        while i >= start:
+            while i >= l:
+                freq[i] = freq[j]
+                child[i] = child[j]
+                i -= 1
+                j -= 1
+            f = freq[l] + freq[l + 1]
+            k = start
+            while f < freq[k]:
+                k += 1
+            while j >= k:
+                freq[i] = freq[j]
+                child[i] = child[j]
+                i -= 1
+                j -= 1
+            freq[i] = f
+            child[i] = l + 1
+            i -= 1
+            l -= 2
+        f = 0
+        b = 0
+        for i in range(start, end):
+            j = child[i]
+            if j < 0:
+                node[~j] = i
+            else:
+                parent[j] = parent[j - 1] = i
+            g = freq[i]
+            if g == f:
+                block[i] = b
+            else:
+                b = block[i] = stock[self.avail]
+                self.avail += 1
+                edge[b] = i
+                f = g
+
+    def swap_inc(self, p):
+        child, freq, block, edge, stock, node, parent = (
+            self.child, self.freq, self.block, self.edge, self.stock,
+            self.node, self.parent)
+        b = block[p]
+        q = edge[b]
+        adjust = False
+        if q != p:                       # swap with the block's leader
+            r = child[p]
+            t = child[q]
+            child[p] = t
+            child[q] = r
+            if r >= 0:
+                parent[r] = parent[r - 1] = q
+            else:
+                node[~r] = q
+            if t >= 0:
+                parent[t] = parent[t - 1] = p
+            else:
+                node[~t] = p
+            p = q
+            adjust = True
+        elif b == block[p + 1]:
+            adjust = True
+        if adjust:
+            edge[b] += 1
+            freq[p] += 1
+            if freq[p] == freq[p - 1]:
+                block[p] = block[p - 1]
+            else:
+                block[p] = stock[self.avail]
+                self.avail += 1
+                edge[block[p]] = p
+        else:
+            freq[p] += 1
+            if freq[p] == freq[p - 1]:
+                self.avail -= 1
+                stock[self.avail] = b
+                block[p] = block[p - 1]
+        return parent[p]
+
+    def update(self, p):
+        if self.freq[ROOT_C] == 0x8000:
+            self.reconst(0, N_CHAR_DYN * 2 - 1)
+        self.freq[ROOT_C] += 1
+        q = self.node[p]
+        while True:
+            q = self.swap_inc(q)
+            if q == ROOT_C:
+                break
+
+    def decode(self, br):
+        c = self.child[ROOT_C]
+        while c > 0:
+            c = self.child[c - br.get(1)]
+        c = ~c
+        self.update(c)
+        return c
+
+
+def lh1_position_table():
+    """The fixed offset code: lengths 3,4,5,6,7,8 over 64 symbols, from LHa's
+    `fixed[0] = {3, 0x01, 0x04, 0x0c, 0x18, 0x30, 0}`."""
+    tbl = [0x01, 0x04, 0x0c, 0x18, 0x30, 0]
+    ln = [0] * 64
+    j = 3
+    at = 0
+    for i in range(64):
+        while at < len(tbl) and tbl[at] == i:
+            j += 1
+            at += 1
+        ln[i] = j
+    return Huff(ln)
+
+
+def unpack_lh1(data, size):
+    br = Bits(data)
+    tree = Dyn()
+    pos_code = lh1_position_table()
+    text = bytearray(b' ' * 4096)        # LHa fills the window with spaces
+    loc = 0
+    out = bytearray()
+    while len(out) < size:
+        c = tree.decode(br)
+        if c < 256:
+            out.append(c)
+            text[loc] = c
+            loc = (loc + 1) & 0xFFF
+        else:
+            n = c - (256 - 3)            # THRESHOLD = 3
+            at = (loc - ((pos_code.decode(br) << 6) + br.get(6)) - 1) & 0xFFF
+            for k in range(n):
+                b = text[(at + k) & 0xFFF]
+                out.append(b)
+                text[loc] = b
+                loc = (loc + 1) & 0xFFF
+    return bytes(out[:size])
+
+
 def unpack(data, size, method):
+    if METHODS[method] == 'dyn':
+        return unpack_lh1(data, size)
     dicbit, np, pbit = METHODS[method]
     br = Bits(data)
     out = bytearray()
