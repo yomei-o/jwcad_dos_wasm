@@ -13,3 +13,18 @@ tests/*.exe
 # Neither is in jwcv222h.lzh -- orig/ is the distribution, unchanged.
 orig/AUTO.JWC
 orig/JW_FILE0.*
+
+# The question drawings tools/onlykind.py, tools/onerec.py and tools/mkarcs.py
+# write for the original to read. They go into orig/ because that is the
+# directory the guest sees, and they are made again whenever they are needed.
+orig/ONE.JWC
+orig/T2TEXT.JWC
+orig/S?ARCS.JWC
+orig/S?LINE.JWC
+orig/S?TEXT.JWC
+orig/S?POIN.JWC
+orig/T?ARCS.JWC
+orig/T?LINE.JWC
+orig/T?TEXT.JWC
+orig/T?POIN.JWC
+orig/ARCS*.JWC
