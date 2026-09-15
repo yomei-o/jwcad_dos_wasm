@@ -936,18 +936,6 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
      * the truncated centre.  They are drawn whatever is on the paper: with
      * every line, arc, text and point pushed off it they are still there,
      * which is what finally said they are not entities. */
-    for (k = 0; k < d->n_marks; k++) {
-        const int mx = to_x(w, d->mark_x[k]), my = to_y(v, w, d->mark_y[k]);
-        const unsigned mc = pen_colour(2);
-
-        if (!inside(w, mx - 2, my - 2) || !inside(w, mx + 2, my + 2)) {
-            continue;
-        }
-        jw_line(v, mx - 1, my - 2, mx + 1, my - 2, mc, ROP_REPLACE, JW_STYLE_SOLID);
-        jw_line(v, mx - 1, my + 2, mx + 1, my + 2, mc, ROP_REPLACE, JW_STYLE_SOLID);
-        jw_line(v, mx - 2, my - 1, mx - 2, my + 1, mc, ROP_REPLACE, JW_STYLE_SOLID);
-        jw_line(v, mx + 2, my - 1, mx + 2, my + 1, mc, ROP_REPLACE, JW_STYLE_SOLID);
-    }
     for (k = 0; k < d->n_points; k++) {
         int x = to_x(w, d->points[k].x);
         int y = to_y(v, w, d->points[k].y);
@@ -975,6 +963,21 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
     /* The grid last: the original's dots sit *on top of* the drawing.  Thirteen
      * of SAMPLE1's land on a line, and there the original shows the dot's white
      * and not the line's colour. */
+    /* The 指定点 markers come after the point records, not before: TEST3 has a
+     * point sitting on one marker's ring, and the original leaves the ring's
+     * white there rather than the point's cyan. */
+    for (k = 0; k < d->n_marks; k++) {
+        const int mx = to_x(w, d->mark_x[k]), my = to_y(v, w, d->mark_y[k]);
+        const unsigned mc = pen_colour(2);
+
+        if (!inside(w, mx - 2, my - 2) || !inside(w, mx + 2, my + 2)) {
+            continue;
+        }
+        jw_line(v, mx - 1, my - 2, mx + 1, my - 2, mc, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_line(v, mx - 1, my + 2, mx + 1, my + 2, mc, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_line(v, mx - 2, my - 1, mx - 2, my + 1, mc, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_line(v, mx + 2, my - 1, mx + 2, my + 1, mc, ROP_REPLACE, JW_STYLE_SOLID);
+    }
     draw_grid(v, d, w);
 
 }

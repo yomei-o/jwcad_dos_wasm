@@ -577,7 +577,14 @@ void jw_arc_poly(VGA *v, double cx, double cy, double r, int flatten,
         st = 65535L;
     }
     arc_vertex(cx, cy, rx, ry, start, ct, st, &px, &py);
-    for (a = ((start >> 16) << 16) + step; a <= eff_end; a += step) {
+    /* `<` and not `<=`: a sweep that ends exactly on one of the whole degrees
+     * the loop walks would otherwise get that vertex twice, once here and once
+     * as the end below, and the extra degenerate piece both puts a dot on the
+     * screen and advances the dash pattern.  TEST3's dashed quarter circle
+     * (90 to 180 degrees, step 10) is one pixel out without this, and the
+     * original's own chain for a whole circle is 46 pieces where this was
+     * making 47. */
+    for (a = ((start >> 16) << 16) + step; a < eff_end; a += step) {
         arc_vertex(cx, cy, rx, ry, a, ct, st, &qx, &qy);
         clipped_line(v, px, py, qx, qy, colour, rop, style);
         px = qx;
