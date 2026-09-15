@@ -64,7 +64,7 @@ def main(args):
     log = os.path.join(ROOT, 'tmp/ask/qpoly.txt')
     build(case, jwc)
     open(script, 'w').write('wait 60000000' + chr(10) + 'quit' + chr(10))
-    env = dict(os.environ, DOSEMU_BP='0EFF:17BB', DOSEMU_BPN='8',
+    env = dict(os.environ, DOSEMU_BP='+0DEF:17BB', DOSEMU_BPN='8',
                DOSEMU_BPPTR='2,3,4,5', DOSEMU_BPPTRAT='0', DOSEMU_BPPTRN='4')
     with open(log, 'w') as f:
         subprocess.check_call([os.path.join(ROOT, '../dosv_emu_cpp/dosemu.exe'),

@@ -12,6 +12,10 @@
 # The numbering is the original's own (USER_MNU.DAT): 複写 to 測定 are 1 to 15
 # down the right column, 移動 to 入出力 are 16 to 30 down the left.
 set -e
+# The breakpoint report goes to stdout and the emulator's own messages to
+# stderr, so stderr is dropped rather than merged: merging lets a 'wrote
+# ....raw' land in the middle of a report line, and the piece of the screen
+# that line described is then missing from the table.
 cd "$(dirname "$0")/.."
 mkdir -p tmp/menus
 EMU=../dosv_emu_cpp/dosemu.exe
@@ -25,9 +29,9 @@ for n in $cmds; do
     y=$((64 + 16 * row + 8))
     printf 'wait 40000000\nmouse %d %d\nwait 2000000\nclick left\nwait 24000000\nshot ../jwcad_dos_wasm/tmp/menus/c%02d.raw\n' \
         "$x" "$y" "$n" > tmp/menus/script.txt
-    DOSEMU_BP=0EFF:23C5 DOSEMU_BPSTR=2 DOSEMU_BPN=20000 \
+    DOSEMU_BP=+0DEF:23C5 DOSEMU_BPSTR=2 DOSEMU_BPN=20000 \
     "$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
-           --script tmp/menus/script.txt orig/JW_CADV.EXE "$DRAWING.JWC" 2>&1 \
+           --script tmp/menus/script.txt orig/JW_CADV.EXE "$DRAWING.JWC" 2>/dev/null \
         | grep -a '^\[bp\]' > "tmp/menus/s$n.txt"
     echo "== $n  (clicked $x,$y)"
     python tools/menus.py "$n"

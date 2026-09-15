@@ -12,6 +12,8 @@ for line in open('tmp/menus/s%s.txt' % sys.argv[1], encoding='latin-1'):
         continue
     if int(f[3]) < AFTER:
         continue
+    if line.count('"') < 2:
+        continue        # a line the dump could not quote
     s = line[line.index('"') + 1:line.rindex('"')]
     print('   t=%-10s col=%-3d row=%-3d fg=%s bg=%s  %r'
           % (f[3], int(f[8], 16), int(f[9], 16), f[10], f[11], s))

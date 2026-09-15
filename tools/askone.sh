@@ -17,13 +17,13 @@ mkdir -p tmp/ask
 python tools/onerec.py "orig/$name.JWC" "$kind" "$which" orig/ONE.JWC
 printf 'wait 60000000\nshot ../jwcad_dos_wasm/tmp/ask/e.raw\n' > tmp/ask/script.txt
 
-DOSEMU_BP=0EFF:17BB DOSEMU_BPPTR=2,3,4,5 DOSEMU_BPN=3 \
+DOSEMU_BP=+0DEF:17BB DOSEMU_BPPTR=2,3,4,5 DOSEMU_BPN=3 \
     "$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
-           --script tmp/ask/script.txt orig/JW_CADV.EXE ONE.JWC 2>&1 \
+           --script tmp/ask/script.txt orig/JW_CADV.EXE ONE.JWC 2>/dev/null \
     | grep '\[bp\]' > tmp/ask/lr.txt || true
-DOSEMU_BP=11B9:075C DOSEMU_BPN=8 \
+DOSEMU_BP=+10A9:075C DOSEMU_BPN=8 \
     "$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
-           --script tmp/ask/script.txt orig/JW_CADV.EXE ONE.JWC 2>&1 \
+           --script tmp/ask/script.txt orig/JW_CADV.EXE ONE.JWC 2>/dev/null \
     | grep '\[bp\]' > tmp/ask/pt.txt || true
 rm -f orig/ONE.JWC
 echo "tmp/ask/lr.txt  $(wc -l < tmp/ask/lr.txt) line calls"

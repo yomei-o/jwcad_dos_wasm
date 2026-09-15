@@ -89,7 +89,7 @@ python tools/px.py x0 y0 x1 y1 a.raw b.raw # 2 枚の画素を並べて見る
 エミュレータ側（dosv_emu_cpp）のブレークポイントは
 
 ```sh
-DOSEMU_BP=0EFF:0228      # この番地に来たら、スタックの語を出す
+DOSEMU_BP=+0DEF:0228      # この番地に来たら、スタックの語を出す
 DOSEMU_BPN=24            # 何語出すか（既定 10）
 DOSEMU_BPDBL=2,6,10      # その位置から double として読んだ値も出す
 DOSEMU_BPFLT=2           # float として
@@ -103,7 +103,19 @@ DOSEMU_WATCH=A2A9F-A2A9F # この番地を書いた命令を出す
 |---|---|
 | リンク時 | `tools/disasm.py` と `tools/callsites.py` が取るもの。`main` は `0000:0446` |
 | Ghidra | `decomp/*/all.c` と `tools/func.py`。リンク時より **`0x1000` セグメント上**。`main` は `1000:0446` |
-| エミュレータ | ロード基底 `0x110` が乗る。`main` は `0110:0446`（換算表は dosv_emu_cpp の RESUME に） |
+| エミュレータ | ロード基底が乗る。**基底は動きます** —— 下にデバイスドライバが入っただけで `0x110` から `0x20C` になりました |
+
+**だからブレークポイントは `+` を付けてリンク時の番地で書きます。**
+エミュレータが基底を足してくれるので、何が下に入っても外れません。
+
+```sh
+DOSEMU_BP=+0def:23c5                      # リンク時の番地のまま
+DOSEMU_WATCH=+3375:9224-+3375:9227        # DGROUP の変数も
+dump +3375:0a68 8                         # 台本の dump も
+```
+
+起動時に `dosemu: program at XXXX:0000` と出ます。オーバーレイの中など
+`+` の効かない番地は、これを見て自分で足してください。
 
 ## いまどこまで
 
@@ -300,7 +312,7 @@ SAMPLE1 で答え合わせすると 9 ミリ＝15.69697 単位、点は
 cd ../dosv_emu_cpp
 # 画面の y=245, x=378 あたりのバイト = A000:(245*80 + 378/8)
 DOSEMU_WATCH=A4CBF-A4CC2 ./dosemu ... TEST6.JWC        # -> 20a9:094b（線ルーチン）
-DOSEMU_BP=11B9:07DC     ./dosemu ... TEST6.JWC         # -> 横線＋パターン
+DOSEMU_BP=+10A9:07DC     ./dosemu ... TEST6.JWC         # -> 横線＋パターン
 ```
 
 そのパターンがそのまま「縮んだ行」なので、39 個集めて 16 列から 9 列への
@@ -356,7 +368,7 @@ long と 1 ビットも違いません。度と端数として読むと 160.158 
 本物の生成ルーチンは `1def:0228`。引数はこう読みます:
 
 ```sh
-DOSEMU_BP=0EFF:0228 DOSEMU_BPN=24 DOSEMU_BPDBL=2,6,10 ../dosv_emu_cpp/dosemu.exe ...
+DOSEMU_BP=+0DEF:0228 DOSEMU_BPN=24 DOSEMU_BPDBL=2,6,10 ../dosv_emu_cpp/dosemu.exe ...
 ```
 
 | 語 | |
@@ -399,7 +411,7 @@ x = cx + ((u*ct) >> 16) + ((v*st) >> 16)      u = cos16(rx, 角)
 y = cy + ((v*ct) >> 16) - ((u*st) >> 16)      v = -sin16(ry, 角)
 ```
 
-**`ct`/`st` は本物から読むしかありません**（`DOSEMU_BP=0EFF:061E,0EFF:0667`）。
+**`ct`/`st` は本物から読むしかありません**（`DOSEMU_BP=+0DEF:061E,+0DEF:0667`）。
 0 度 → (65536, 0)、**90 度 → (0, 65535)**、180 度 → (-65536, 0)、
 270 度 → (0, -65536)。90 度の sin だけ 1 に届かないので 65535 です。
 65536 にすると、傾き 90 度の円弧が丸ごと 1 画素横にずれます。
@@ -431,7 +443,7 @@ cmp [bx+si+0x50], ax   jg  ...    y >= 箱.ylo
 いました。表は本物から読めます:
 
 ```sh
-DOSEMU_BP=11B9:0D1A DOSEMU_BPPTR=8 DOSEMU_BPPTRAT=40 DOSEMU_BPPTRN=50
+DOSEMU_BP=+10A9:0D1A DOSEMU_BPPTR=8 DOSEMU_BPPTRAT=40 DOSEMU_BPPTRN=50
 ```
 
 中心 (150,120)、半径 5、0..22 度の円弧ひとつで `象限 0 / x 154..155 /
@@ -505,6 +517,8 @@ y 118..120`。中心を (150.5,120.25)、半径を 5.6 にしても同じ数字�
 対は本物から読めます:
 
 ```sh
+# オーバーレイの中なので `+` は使えません（オーバーレイ域は別に置かれます）。
+# 起動時の 'dosemu: program at XXXX:0000' を見て、その分を足した番地を書きます。
 DOSEMU_BP=19C3:1A54 DOSEMU_BPPTR=bp DOSEMU_BPPTRAT=-196 DOSEMU_BPPTRN=256
 ```
 
@@ -572,12 +586,12 @@ ANK の「｢」は縦棒が 2 列目、全角のそれは 8 列目にあり、�
 
 読みかたは全部同じ——本物が呼んでいるものを読む:
 
-    DOSEMU_BP=11B9:07DC                   線 20a9:07dc
-    DOSEMU_BP=0EFF:23C5 DOSEMU_BPSTR=2    文字列 1def:23c5
-    DOSEMU_BP=0EFF:1691                   全角字形を 1 画素ずつ置くルーチン
-    DOSEMU_BP=11B9:0AC5                   楕円（レイヤ釦の丸）
-    DOSEMU_BP=0EFF:1460                   矩形塗り
-    DOSEMU_BP=0EFF:075C                   1 画素
+    DOSEMU_BP=+10A9:07DC                   線 20a9:07dc
+    DOSEMU_BP=+0DEF:23C5 DOSEMU_BPSTR=2    文字列 1def:23c5
+    DOSEMU_BP=+0DEF:1691                   全角字形を 1 画素ずつ置くルーチン
+    DOSEMU_BP=+10A9:0AC5                   楕円（レイヤ釦の丸）
+    DOSEMU_BP=+0DEF:1460                   矩形塗り
+    DOSEMU_BP=+0DEF:075C                   1 画素
 
 分かったことを並べておきます。
 
@@ -624,6 +638,24 @@ ANK の「｢」は縦棒が 2 列目、全角のそれは 8 列目にあり、�
 長い破線を 1 本選んで両方の画素を並べたら、水平線は**完全に一致**、
 斜めの線も 70 画素で 1 個ずれるだけでした（Bresenham の刻み）。
 パターン（DGROUP `0xa88`）も位相も合っています。
+
+### 4.5 マウスの押しは**保持しないと届きません**
+
+台本の `click left` は、メニューには効きますが**作図領域には効きません**。
+JW_CAD はボタンの状態を見に来るので、押した瞬間だけ立てても取りこぼします。
+
+```
+mouse 300 200
+wait 3000000
+down left
+wait 3000000        ← これが要る
+up left
+wait 12000000
+```
+
+これで ／ を選んでから 2 点押すと、本物は (300,200)-(400,300) に線を
+引きます（`tmp/l3.raw`）。**押したあとの画面も突き合わせられる**ので、
+作図コマンドも同じやりかたで進められます。
 
 ### 5. マウスとキー —— ここが次
 
@@ -892,7 +924,7 @@ Bit Mask に入ります。移植は `src/draw.c` の `jw_line`。
 
 ```sh
 cd ../dosv_emu_cpp
-printf 'wait 150000000\ndump 3485:0A70 32\ndump 3485:0A88 32\ndump 3485:0182 66\ndump 3485:01C4 4\n' > /tmp/t.txt
+printf 'wait 150000000\ndump +3375:0A70 32\ndump +3375:0A88 32\ndump +3375:0182 66\ndump +3375:01C4 4\n' > /tmp/t.txt
 ./dosemu --root ../jwcad_dos_wasm/orig --font-ank ... --script /tmp/t.txt \
          ../jwcad_dos_wasm/orig/JW_CADV.EXE SAMPLE1.JWC
 ```
@@ -980,7 +1012,7 @@ JW_CAD の線種そのものです。
 固定小数の度で、`0x00a247f8` = 162.2655。「度＋端数×1万分の1」として
 2 本の short に分けて読むと 160.158 になり、1.5 度ずれます。本物が円弧
 ルーチンに渡す long とバイト単位で同じであることを確かめてあります
-（`DOSEMU_BP=0EFF:0228 DOSEMU_BPN=24`）。`start == end` は全周です。
+（`DOSEMU_BP=+0DEF:0228 DOSEMU_BPN=24`）。`start == end` は全周です。
 
 形が閉じている決め手は、**点セクションの終わりがデータの末尾とぴったり
 一致する**ことです。どれか一つでもレコード長を間違えると合いません。
@@ -992,9 +1024,9 @@ JW_CAD の線種そのものです。
     表示する = レイヤ表[layer] && グループ表[layer >> 4]
 
 で、2 つの表は**前置きの末尾**にあります。本物の実体ごとの判定
-（`FUN_21f2_0680`、エミュレータで `DOSEMU_BP=1302:0680`）に渡る引数を読んで
+（`FUN_21f2_0680`、エミュレータで `DOSEMU_BP=+11F2:0680`）に渡る引数を読んで
 `layer` だと確かめ、走っている本物の DGROUP から表を吸い出して
-（`dump 3485:B388 256`）ファイルの中を検索して見つけました。
+（`dump +3375:B388 256`）ファイルの中を検索して見つけました。
 
 | 前置きの中の位置 | 中身 |
 |---|---|

@@ -1,4 +1,4 @@
-"""Pull the character cells out of a DOSEMU_BP=0EFF:17BB log.
+"""Pull the character cells out of a DOSEMU_BP=+0DEF:17BB log.
 
     python tools/cells.py tmp/ask/lr.txt tmp/ask/e.raw [x0 y0 x1 y1]
 

@@ -11,10 +11,10 @@
 # Nothing in src/ui.c was invented.  Every call the original makes for this
 # screen was read out of it while it ran:
 #
-#   DOSEMU_BP=11B9:07DC                   the line routine, 20a9:07dc
-#   DOSEMU_BP=0EFF:23C5 DOSEMU_BPSTR=2    the string routine, 1def:23c5
-#   DOSEMU_BP=0EFF:1691                   the glyph-by-pixel routine
-#   DOSEMU_BP=11B9:0AC5                   the ellipse, for the layer buttons
+#   DOSEMU_BP=+10A9:07DC                   the line routine, 20a9:07dc
+#   DOSEMU_BP=+0DEF:23C5 DOSEMU_BPSTR=2    the string routine, 1def:23c5
+#   DOSEMU_BP=+0DEF:1691                   the glyph-by-pixel routine
+#   DOSEMU_BP=+10A9:0AC5                   the ellipse, for the layer buttons
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp

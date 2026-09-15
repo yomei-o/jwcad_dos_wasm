@@ -22,9 +22,10 @@ for n in $cmds; do
     [ -f "$f" ] || { echo "$f missing -- run sh tools/menus.sh first" >&2; exit 2; }
     if [ "$n" -le 15 ]; then x=90; row=$((n - 1)); else x=30; row=$((n - 16)); fi
     y=$((64 + 16 * row + 8))
-    ./tests/drawing.exe -c "$n" -m "$x" "$y" orig/SAMPLE2.JWC tmp/menus/p.raw > /dev/null
-    d=$(python tools/fulldiff.py "$f" tmp/menus/p.raw | sed 's/ different.*//')
+    ./tests/drawing.exe -c "$n" -m "$x" "$y" orig/SAMPLE2.JWC tmp/menus/p$$.raw > /dev/null
+    d=$(python tools/fulldiff.py "$f" tmp/menus/p$$.raw | sed 's/ different.*//')
     printf 'command %2d  %5d different\n' "$n" "$d"
+    rm -f tmp/menus/p$$.raw
     total=$((total + d))
 done
 echo "-------------------------------"

@@ -1,4 +1,4 @@
-"""Decode the original's line calls out of a DOSEMU_BP=0EFF:17BB log.
+"""Decode the original's line calls out of a DOSEMU_BP=+0DEF:17BB log.
 
     python tools/lr.py tmp/lr_one.txt [x0 y0 x1 y1]
 

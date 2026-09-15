@@ -17,7 +17,7 @@ only = 'orig/%sTEXT.JWC' % name[:2]
 subprocess.check_call([sys.executable,'tools/onlykind.py','orig/%s.JWC'%name,'texts',only],
                       stdout=subprocess.DEVNULL)
 open('tmp/ask/script.txt','w').write('wait 60000000'+chr(10)+'quit'+chr(10))
-env=dict(os.environ, DOSEMU_BP='0EFF:17BB', DOSEMU_BPN='8', DOSEMU_BPPTR='2,3,4,5',
+env=dict(os.environ, DOSEMU_BP='+0DEF:17BB', DOSEMU_BPN='8', DOSEMU_BPPTR='2,3,4,5',
          DOSEMU_BPPTRAT='0', DOSEMU_BPPTRN='4')
 log='tmp/work/lr_%s.txt'%name
 with open(log,'w') as f:

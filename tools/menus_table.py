@@ -37,6 +37,8 @@ def pieces(n):
             continue
         col, row = int(f[8], 16), int(f[9], 16)
         fg, bg = int(f[10], 16), int(f[11], 16)
+        if line.count('"') < 2:
+            continue        # a line the dump could not quote
         s = line[line.index('"') + 1:line.rindex('"')]
         if row > 3:
             continue
