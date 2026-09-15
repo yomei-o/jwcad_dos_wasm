@@ -5,6 +5,8 @@
 #include "fontx.h"
 #include "view.h"
 
+#include "prompt.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -346,6 +348,27 @@ const char *jw_ui_guide(void)
 /* The fifteen rows of the menu, at rows 5 to 19 of the character grid.  The
  * left column is command 16 to 30 and the right 1 to 15; the key goes between
  * them at column 8, and after the right label at column 15. */
+/* The item that is picked is drawn the other way round: the original fills its
+ * row with colour 6 and writes the label and the key over it in black.  The two
+ * rectangles are (8,64)-(64,79) for the left column and (71,64)-(119,79) for
+ * the right, sixteen pixels lower for each row down -- read off 0885:390f with
+ * 移動 and 複写 picked. */
+static void menu_pick(VGA *v, int command)
+{
+    const int left = command >= 16;
+    const int row = left ? command - 16 : command - 1;
+    char key[2];
+
+    if (command < 1 || command > 30) {
+        return;
+    }
+    fill(v, left ? 8 : 71, 64 + 16 * row, left ? 64 : 119, 79 + 16 * row, 6);
+    key[0] = jw_ui_menu_key(command);
+    key[1] = 0;
+    jw_ui_text(v, left ? 2 : 10, row + 5, 0, 0, jw_ui_menu_label(command));
+    jw_ui_text(v, left ? 8 : 15, row + 5, 0, 0, key);
+}
+
 static void menu(VGA *v)
 {
     int i;
@@ -399,6 +422,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
     /* -- the menu ------------------------------------------------------- */
     menu(v);
+    menu_pick(v, s->command);
     box(v, 0, 48, 121, 304, 7);
     jw_line(v, 0, 63, 121, 63, 7, ROP_REPLACE, JW_STYLE_SOLID);
     box(v, 1, 49, 120, 305, 7);
@@ -543,9 +567,33 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
     /* -- the title and the guidance ------------------------------------- */
     fill(v, 0, 0, 639, 15, 0);
-    jw_ui_text(v, 8, 1, 7, 0,
-               "|| JW_CADV version 2.22H  Copyright (c) jw_software club "
-               "1991-1999 ||");
+    if (s->command >= 1 && s->command <= 30) {
+        /* what the original writes there once an item is picked, piece by
+         * piece and in its own order -- see src/prompt.h */
+        const JwPrompt *p = JW_PROMPT[s->command - 1];
+        const JwPrompt *q;
+
+        /* A command that writes in the band under the top line clears the two
+         * counts out of the way first -- the original fills (1,17)-(120,47)
+         * with colour 4 again, line by line, just before it writes there
+         * (文字 does it at 43,996,047 instructions in).  Only when it writes
+         * inside that box: ハッチ puts 残数 at column 70 and leaves the counts
+         * alone. */
+        for (q = p; q->col; q++) {
+            if (q->row != 1 && q->col <= 15) {
+                fill(v, 1, 17, 120, 47, 4);
+                break;
+            }
+        }
+        for (; p->col; p++) {
+            jw_ui_text(v, p->col, p->row, (unsigned)p->fg, (unsigned)p->bg,
+                       p->text);
+        }
+    } else {
+        jw_ui_text(v, 8, 1, 7, 0,
+                   "|| JW_CADV version 2.22H  Copyright (c) jw_software club "
+                   "1991-1999 ||");
+    }
     jw_line(v, 0, 16, 639, 16, 7, ROP_REPLACE, JW_STYLE_SOLID);
     if (s->guide) {
         jw_ui_text(v, 17, 3, 7, 0, s->guide);

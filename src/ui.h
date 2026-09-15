@@ -27,6 +27,7 @@ typedef struct {
     int line_type;              /* past 8 the label is a style, not a pen */
     int paper;                  /* 0 = A-0 ... 4 = A-4, and on past that */
     double denom;               /* `S=1/100` */
+    int command;                /* the menu item picked, 1 to 30, or 0 */
     int group;                  /* the layer group the buttons show */
     unsigned char layer_on[16]; /* which of its sixteen layers are shown */
     /* The two little bars over each button.  The left one is on when the layer

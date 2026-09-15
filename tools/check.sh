@@ -28,6 +28,12 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/ui.sh
     echo "=== every drawing, the whole screen"
     sh tools/full.sh
+    if [ -f tmp/menus/c01.raw ]; then
+        echo "=== the screen after each menu item is picked"
+        sh tools/menucheck.sh | tail -3
+    else
+        echo "=== menu items -- skipped, run sh tools/menus.sh first"
+    fi
 else
     echo "=== the screen around the drawing -- skipped, no ../dosv_emu_cpp"
 fi

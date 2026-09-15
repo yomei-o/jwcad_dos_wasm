@@ -144,8 +144,27 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
     present();
 }
 
+/* Press the left button at a point.  For now only the menu answers: picking an
+ * item fills its row and writes the command's own line along the top, which is
+ * what the original does (tools/menucheck.sh compares the two).  The line of
+ * guidance goes the moment anything is picked, as it does there. */
+EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y)
+{
+    const int cmd = jw_ui_menu_hit(x, y);
+
+    if (!cmd) {
+        return 0;
+    }
+    ui.command = cmd;
+    ui.guide = 0;
+    mouse_x = x;
+    mouse_y = y;
+    present();
+    return cmd;
+}
+
 /* Which menu command a point picks, or 0.  The page uses it to show the name
- * of what is under the pointer; nothing is wired to a command yet. */
+ * of what is under the pointer. */
 EMSCRIPTEN_KEEPALIVE int jw_menu_at(int x, int y)
 {
     return jw_ui_menu_hit(x, y);

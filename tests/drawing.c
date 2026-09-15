@@ -15,6 +15,7 @@
 #include "view.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static VGA v;
@@ -26,16 +27,40 @@ static unsigned char pal[256][3];
 int main(int argc, char **argv)
 {
     /* -u: the whole screen, the frame around the drawing as well, so it can be
-     * compared with the original's picture with nothing masked out. */
-    int ui = argc > 1 && strcmp(argv[1], "-u") == 0;
-    int original = ui || (argc > 1 && strcmp(argv[1], "-o") == 0);
-    const char *in = argc > 1 + original ? argv[1 + original] : "orig/SAMPLE2.JWC";
-    const char *out = argc > 2 + original ? argv[2 + original] : "tmp/drawing.png";
+     * compared with the original's picture with nothing masked out.
+     * -c N: and with menu item N picked, the way a click leaves it. */
+    int ui = 0, original = 0, command = 0, a = 1;
+    int mx = 200, my = 200;     /* where the original leaves the pointer */
+    const char *in, *out;
     const char *why;
     unsigned char rgb[16][3];
-    size_t n = strlen(out);
+    size_t n;
     Jwc *d;
     int i;
+
+    while (a < argc && argv[a][0] == '-') {
+        if (strcmp(argv[a], "-u") == 0) {
+            ui = original = 1;
+            a++;
+        } else if (strcmp(argv[a], "-o") == 0) {
+            original = 1;
+            a++;
+        } else if (strcmp(argv[a], "-m") == 0 && a + 2 < argc) {
+            mx = atoi(argv[a + 1]);
+            my = atoi(argv[a + 2]);
+            a += 3;
+        } else if (strcmp(argv[a], "-c") == 0 && a + 1 < argc) {
+            command = atoi(argv[a + 1]);
+            ui = original = 1;
+            a += 2;
+        } else {
+            fprintf(stderr, "usage: drawing [-o|-u] [-c N] IN.JWC OUT\n");
+            return 2;
+        }
+    }
+    in = a < argc ? argv[a] : "orig/SAMPLE2.JWC";
+    out = a + 1 < argc ? argv[a + 1] : "tmp/drawing.png";
+    n = strlen(out);
 
     d = jwc_load(in, &why);
     if (!d) {
@@ -74,8 +99,13 @@ int main(int argc, char **argv)
 
         jw_ui_from(&s, d);
         s.guide = jw_ui_guide();
+        s.command = command;
+        if (command) {
+            /* the line of guidance goes the moment anything is picked */
+            s.guide = 0;
+        }
         jw_ui_draw(&v, &s);
-        jw_ui_cursor(&v, 200, 200);
+        jw_ui_cursor(&v, mx, my);
     }
     vga_render(&v, pixels);
 
