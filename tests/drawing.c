@@ -32,7 +32,8 @@ int main(int argc, char **argv)
      * -c N: and with menu item N picked, the way a click leaves it. */
     int ui = 0, original = 0, command = 0, a = 1;
     int mx = 200, my = 200;     /* where the original leaves the pointer */
-    int press[8][2], n_press = 0;
+    int press[8][2], n_press = 0, stage = 0;
+    double num[2] = { 0.0, 0.0 };
     const char *in, *out;
     const char *why;
     unsigned char rgb[16][3];
@@ -106,6 +107,9 @@ int main(int argc, char **argv)
         for (i = 0; i < n_press; i++) {
             jw_cmd_press(&c, d, &w, press[i][0], press[i][1]);
         }
+        stage = c.stage;
+        num[0] = c.num[0];
+        num[1] = c.num[1];
     }
     /* The drawing first: jw_view_draw clears the screen before it starts, the
      * way the original does when it opens a file.  The frame goes on after and
@@ -117,6 +121,9 @@ int main(int argc, char **argv)
         jw_ui_from(&s, d);
         s.guide = jw_ui_guide();
         s.command = command;
+        s.stage = stage;
+        s.num[0] = num[0];
+        s.num[1] = num[1];
         if (command) {
             /* the line of guidance goes the moment anything is picked */
             s.guide = 0;

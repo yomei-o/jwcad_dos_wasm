@@ -6,6 +6,7 @@
 #include "view.h"
 
 #include "prompt.h"
+#include "stage.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -343,6 +344,23 @@ const char *jw_ui_guide(void)
     "\x82\xad\x82\xbe\x82\xb3\x82\xa2\xa1";
 }
 
+/* The two counts and the label under them.  A command writes what it has
+ * measured over them while it runs and the original puts them back the
+ * moment it is finished, so this is called twice. */
+static void counts(VGA *v, const JwUi *s)
+{
+    char buf[64];
+
+    /* Paint the box again first.  Both of these are written transparently --
+     * black letters on the green the box is filled with -- so writing over what
+     * a command left there would leave both readable on top of each other.  The
+     * original fills (1,17)-(120,47) line by line before it writes. */
+    fill(v, 1, 17, 120, 47, 4);
+    sprintf(buf, "%7ld|%7ld ", s->n_lines, s->n_arcs);
+    jw_ui_text(v, 1, 2, 0, 0, buf);
+    jw_ui_text(v, 1, 3, 0, 0, " \x90\xfc  \x90\x94|\x89\x7e\xa5\x95\xb6\x90\x94");
+}
+
 /* ------------------------------------------------------------------- draw */
 
 /* The fifteen rows of the menu, at rows 5 to 19 of the character grid.  The
@@ -414,11 +432,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     jw_line(v, 121, 463, 121, 479, 7, ROP_REPLACE, JW_STYLE_SOLID);
 
     /* -- the two counts ------------------------------------------------- */
-    fill(v, 1, 17, 120, 47, 4);
     box(v, 0, 16, 121, 48, 7);
-    sprintf(buf, "%7ld|%7ld ", s->n_lines, s->n_arcs);
-    jw_ui_text(v, 1, 2, 0, 0, buf);
-    jw_ui_text(v, 1, 3, 0, 0, " \x90\xfc  \x90\x94|\x89\x7e\xa5\x95\xb6\x90\x94");
+    counts(v, s);
 
     /* -- the menu ------------------------------------------------------- */
     menu(v);
@@ -588,6 +603,38 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         for (; p->col; p++) {
             jw_ui_text(v, p->col, p->row, (unsigned)p->fg, (unsigned)p->bg,
                        p->text);
+        }
+        /* Then what the command has written since, stage by stage, because a
+         * later stage only writes over part of what an earlier one left -- and
+         * the original puts the two counts back between them, which is why they
+         * are not on the screen when a command has finished. */
+        for (i = 1; i <= s->stage; i++) {
+            const JwStage *q;
+
+            /* The original clears the top line and paints the counts box
+             * again as it moves on -- `(0,0)-(639,15)` in black and
+             * `(1,17)-(120,47)` in colour 4, both seen in the fills □ makes
+             * when the box is finished.  Without it the tail of the line the
+             * stage before left is still there. */
+            fill(v, 0, 0, 639, 15, 0);
+            counts(v, s);
+            for (q = JW_STAGE; q->command; q++) {
+                char out[128];
+
+                if (q->command != s->command || q->stage != i) {
+                    continue;
+                }
+                if (q->numbers == 2) {
+                    sprintf(out, q->text, s->num[q->first],
+                            s->num[q->first + 1 > 1 ? 1 : q->first + 1]);
+                } else if (q->numbers == 1) {
+                    sprintf(out, q->text, s->num[q->first]);
+                } else {
+                    strcpy(out, q->text);
+                }
+                jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg,
+                           out);
+            }
         }
     } else {
         jw_ui_text(v, 8, 1, 7, 0,

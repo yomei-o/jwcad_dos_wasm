@@ -28,6 +28,12 @@ typedef struct {
     int paper;                  /* 0 = A-0 ... 4 = A-4, and on past that */
     double denom;               /* `S=1/100` */
     int command;                /* the menu item picked, 1 to 30, or 0 */
+    /* How far into it the command is: 0 just picked, 1 with a point taken,
+     * 2 with the thing drawn -- and the two numbers it measured, which for a
+     * line are the length and the angle, for a box the two sides, and for a
+     * circle the radius and the diameter.  See src/stage.h. */
+    int stage;
+    double num[2];
     int group;                  /* the layer group the buttons show */
     unsigned char layer_on[16]; /* which of its sixteen layers are shown */
     /* The two little bars over each button.  The left one is on when the layer

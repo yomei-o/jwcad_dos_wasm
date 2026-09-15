@@ -28,9 +28,27 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
         c->x0 = x;
         c->y0 = y;
         c->pressed = 1;
+        c->stage = 1;
+        c->num[0] = c->num[1] = 0.0;
         return 0;
     }
     c->pressed = 0;
+    c->stage = 2;
+    {
+        const double mm = d->unit_mm > 0.0f ? d->denom / d->unit_mm : 1.0;
+        const double dx = x - c->x0, dy = y - c->y0;
+
+        if (c->command == 4) {
+            c->num[0] = (dx < 0 ? -dx : dx) * mm;
+            c->num[1] = (dy < 0 ? -dy : dy) * mm;
+        } else if (c->command == 11) {
+            c->num[0] = sqrt(dx * dx + dy * dy) * mm;
+            c->num[1] = c->num[0] * 2.0;
+        } else {
+            c->num[0] = sqrt(dx * dx + dy * dy) * mm;
+            c->num[1] = atan2(dy, dx) * 180.0 / 3.14159265358979323846;
+        }
+    }
     /* Both take the pen and the line type the panel shows and go on the layer
      * being written to -- SAMPLE0 writes with pen 2, and what the original
      * draws there comes out white, which is what pen 2 is. */

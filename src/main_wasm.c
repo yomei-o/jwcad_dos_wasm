@@ -159,6 +159,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y)
         ui.command = pick;
         ui.guide = 0;
         jw_cmd_pick(&cmd, pick);
+        ui.stage = 0;
         mouse_x = x;
         mouse_y = y;
         present();
@@ -175,6 +176,9 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y)
             ui.command = cmd.command;
             ui.guide = 0;
         }
+        ui.stage = cmd.stage;
+        ui.num[0] = cmd.num[0];
+        ui.num[1] = cmd.num[1];
         present();
         return -1;
     }

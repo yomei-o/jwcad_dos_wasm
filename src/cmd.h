@@ -17,6 +17,15 @@ typedef struct {
     int command;                /* the menu item in force, 1 to 30, or 0 */
     int pressed;                /* how many points have been taken */
     double x0, y0;              /* the first of them, in drawing units */
+    /* What the panel shows while it runs: how far in, and the two numbers the
+     * original writes -- the length and the angle for a line, the two sides for
+     * a box, the radius and the diameter for a circle.  The lengths are
+     * millimetres of the real thing: drawing units over `unit_mm`, times the
+     * scale the panel shows.  Measured -- (300,200) to (400,200) is a hundred
+     * pixels and the original calls it 57.336 mm on SAMPLE0, which is
+     * 100 / (518/297) / 1. */
+    int stage;
+    double num[2];
 } JwCmd;
 
 /* Start a command, or leave it (0). */
