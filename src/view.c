@@ -368,14 +368,22 @@ static void draw_text_box(VGA *v, const JwView *w, int x0, int x1, int base,
  * that points from the baseline into the cell, the dot for the glyph's pixel
  * (sx, sy) is
  *
- *     P = O + (walk + sx*cellw/sw) * u + (15*h/16 - sy*h/16) * n
+ *     P = O + (walk + sx*g*cw/(2*sw)) * u + ((15 - sy) * g/16) * n
  *
- * truncated in each coordinate.  Two things in that are the original's and not
- * the obvious choice: the glyph's *last* row sits on the baseline (hence the
- * 15/16, where the upright routine leaves a row's gap), and the walk between
- * characters is the same paper step the upright routine uses, not anything the
- * record's box says.  Read off TEST2's `5mライン`: all 127 of its dots come out
- * of this, and 218 of the 219 of `屋根イメージ` next to it. */
+ * truncated in each coordinate.  Three things in that are the original's and
+ * not the obvious choice:
+ *
+ *   * the glyph is squeezed into **`floor(height)`** pixels, not `height`.
+ *     With the float height TEST2's label is one pixel out in two places and
+ *     TEST1's, which is 8.72 tall, is wrong all over; with the whole number
+ *     both are exact.  `g` below is that whole number
+ *   * the glyph's *last* row sits on the baseline (hence the 15), where the
+ *     upright routine leaves a row's gap
+ *   * the walk between characters is the plain paper step, not rounded and
+ *     not anything the record's box says
+ *
+ * Read off TEST2's `5mライン` (127 dots) and TEST1's `パラペットのカット部分`
+ * (204): every dot of both. */
 static void draw_text_turned(VGA *v, const JwcText *t, const JwView *w,
                              const unsigned char *p, double height, double step,
                              double ux, double uy, unsigned colour)
@@ -406,11 +414,12 @@ static void draw_text_turned(VGA *v, const JwcText *t, const JwView *w,
             i += 1;
         }
         if (g) {
-            const double cellw = height * cw / 2.0;
+            const double gh = floor(height);
+            const double cellw = gh * cw / 2.0;
             const int sstride = (sw + 7) / 8;
 
             for (sy = 0; sy < 16; sy++) {
-                const double up = (15.0 - sy) * height / 16.0;
+                const double up = (15.0 - sy) * gh / 16.0;
 
                 for (sx = 0; sx < sw; sx++) {
                     const double along = walk + sx * cellw / sw;
