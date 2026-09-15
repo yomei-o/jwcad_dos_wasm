@@ -356,6 +356,84 @@ static void draw_text_box(VGA *v, const JwView *w, int x0, int x1, int base,
     jw_line(v, x0, base - 1, x1, base - 1, colour, ROP_REPLACE, JW_STYLE_SOLID);
 }
 
+/* A string whose baseline is not horizontal.
+ *
+ * **The original draws those a pixel at a time**, not as rows of patterned
+ * lines: watching which instruction writes one of TEST2's vertical labels
+ * (dosv_emu_cpp, `DOSEMU_WATCH`) lands in 20a9:075c, the pixel routine, and
+ * `DOSEMU_BP=11B9:075C DOSEMU_BPN=8` prints the x, y and colour of every dot.
+ * An upright string never goes there.
+ *
+ * With `u` the unit vector along the baseline and `n = (u.y, -u.x)` the one
+ * that points from the baseline into the cell, the dot for the glyph's pixel
+ * (sx, sy) is
+ *
+ *     P = O + (walk + sx*cellw/sw) * u + (15*h/16 - sy*h/16) * n
+ *
+ * truncated in each coordinate.  Two things in that are the original's and not
+ * the obvious choice: the glyph's *last* row sits on the baseline (hence the
+ * 15/16, where the upright routine leaves a row's gap), and the walk between
+ * characters is the same paper step the upright routine uses, not anything the
+ * record's box says.  Read off TEST2's `5mライン`: all 127 of its dots come out
+ * of this, and 218 of the 219 of `屋根イメージ` next to it. */
+static void draw_text_turned(VGA *v, const JwcText *t, const JwView *w,
+                             const unsigned char *p, double height, double step,
+                             double ux, double uy, unsigned colour)
+{
+    const double nx = uy, ny = -ux;
+    const double ox = (t->x0 - w->ox) * w->scale + w->ax;
+    const double oy = w->ay - (t->y0 - w->oy) * w->scale;
+    double walk = 0.0;
+    int i = 0;
+
+    while (p[i]) {
+        const unsigned char *g = NULL;
+        int cw, sw = 16, sx, sy;
+
+        if (is_lead(p[i]) && p[i + 1]) {
+            g = fontx_glyph(&kanji, (unsigned)(p[i] << 8) | p[i + 1]);
+            cw = 2;
+            i += 2;
+        } else {
+            cw = 1;
+            if (p[i] >= 0x20 && p[i] <= 0x7e) {
+                g = fontx_glyph(&kanji, WIDE[p[i] - 0x20]);
+            }
+            if (!g) {
+                g = fontx_glyph(&ank, p[i]);
+                sw = 8;
+            }
+            i += 1;
+        }
+        if (g) {
+            const double cellw = height * cw / 2.0;
+            const int sstride = (sw + 7) / 8;
+
+            for (sy = 0; sy < 16; sy++) {
+                const double up = (15.0 - sy) * height / 16.0;
+
+                for (sx = 0; sx < sw; sx++) {
+                    const double along = walk + sx * cellw / sw;
+                    double px, py;
+                    int ix, iy;
+
+                    if (!(g[sy * sstride + (sx >> 3)] & (0x80 >> (sx & 7)))) {
+                        continue;
+                    }
+                    px = ox + along * ux + up * nx;
+                    py = oy + along * uy + up * ny;
+                    ix = (int)floor(px);
+                    iy = (int)floor(py);
+                    if (ix >= w->x0 && ix <= w->x1 && iy >= w->y0 && iy <= w->y1) {
+                        jw_point(v, ix, iy, colour, ROP_REPLACE);
+                    }
+                }
+            }
+        }
+        walk += step * cw;
+    }
+}
+
 static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
                       double unit, unsigned colour)
 {
@@ -397,6 +475,15 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
     if ((int)height < TEXT_GLYPH_MIN) {
         draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1), y, (int)height,
                       colour);
+        return;
+    }
+    /* A baseline that is not horizontal goes to the routine above, which is a
+     * different one in the original too. */
+    if (dy != 0.0) {
+        const double n = sqrt(len);
+
+        draw_text_turned(v, t, w, p, height, text_step(d, t, unit),
+                         dx / n, -dy / n, colour);
         return;
     }
     /* The original draws text upright on a 16x16 grid; the baseline gives the
