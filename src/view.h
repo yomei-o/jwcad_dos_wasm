@@ -18,6 +18,11 @@ typedef struct {
  * A viewer's convenience, and not what the original does -- see below. */
 void jw_view_fit(JwView *w, const VGA *v, const Jwc *d);
 
+/* The same, into a given window rather than the whole screen: what the browser
+ * front end wants once the frame is drawn round the drawing, since the drawing
+ * has to stay inside (122,17)-(638,462). */
+void jw_view_fit_in(JwView *w, const Jwc *d, int x0, int y0, int x1, int y1);
+
 /* The view the original uses.
  *
  * Measured, not guessed: breaking on the original's own line routine
@@ -50,6 +55,9 @@ int jw_view_fonts(const char *dir);
 /* The two fonts jw_view_fonts loaded.  The screen chrome in src/ui.c draws
  * with them too, at their own size -- the original's menus go through the same
  * DOS/V font it hands the drawing. */
+const Fontx *jw_view_ank(void);
+const Fontx *jw_view_kanji(void);
+
 /* What colour a pen draws in -- the original's own table, DGROUP 0x0a70.
  * The panel down the left writes `Pen.n` in it too. */
 unsigned jw_view_pen_colour(unsigned pen);
@@ -57,9 +65,6 @@ unsigned jw_view_pen_colour(unsigned pen);
 /* And the bit pattern a line type draws with -- DGROUP 0x0a88.  The short
  * line in the panel beside `Pen.n` is a sample drawn in both. */
 int jw_view_line_style(unsigned type);
-
-const Fontx *jw_view_ank(void);
-const Fontx *jw_view_kanji(void);
 
 /* Install JW_CAD's own sixteen colours from JW_PAL.DAT.  Returns how many
  * entries were read; 0 leaves the EGA defaults in place.

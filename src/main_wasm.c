@@ -1,25 +1,41 @@
 /* The browser front end.
  *
- * Nothing here draws: it loads a .JWC with src/jwc.c, hands it to
- * src/view.c, and lets the page read back the 640x480 screen that
- * src/vga.c holds -- the same four planes mode 12h would have.  The page
- * only ever does putImageData; there is no WebGL and no canvas drawing.
+ * Nothing here draws: it loads a .JWC with src/jwc.c, hands it to src/view.c
+ * for the drawing and src/ui.c for the frame around it, and lets the page read
+ * back the 640x480 screen that src/vga.c holds -- the same four planes mode 12h
+ * would have.  The page only ever does putImageData; there is no WebGL and no
+ * canvas drawing.
+ *
+ * What comes out is the original's whole screen, not just its drawing: the
+ * title bar, the menu, the layer buttons, the strip along the bottom and the
+ * pointer.  tools/full.sh checks it against the real JW_CAD running in
+ * dosv_emu_cpp, and thirteen of the fourteen drawings the distribution ships
+ * come out identical, pixel for pixel.
  *
  *   sh tools/build_wasm.sh     -> jwcad.js + jwcad.wasm
  */
 #include "jwc.h"
+#include "ui.h"
 #include "view.h"
 
 #include <emscripten/emscripten.h>
 #include <stdio.h>
 #include <string.h>
 
+/* The drawing area, as the original hands it to its own clip (0def:12e8). */
+#define AREA_X0 122
+#define AREA_Y0 17
+#define AREA_X1 638
+#define AREA_Y1 462
+
 static VGA vga;
 static JwView view;
+static JwUi ui;
 static Jwc *drawing;
 static unsigned char pixels[VGA_MAX_STRIDE * 8 * VGA_MAX_HEIGHT];
 static unsigned char rgba[640 * 480 * 4];
 static char status[256];
+static int mouse_x = 200, mouse_y = 200;   /* where the original leaves it */
 
 EMSCRIPTEN_KEEPALIVE int jw_width(void)  { return vga.width; }
 EMSCRIPTEN_KEEPALIVE int jw_height(void) { return vga.height; }
@@ -30,10 +46,14 @@ EMSCRIPTEN_KEEPALIVE void jw_init(void)
 {
     vga_reset(&vga, 0x12);
     jw_view_palette(&vga, "orig/JW_PAL.DAT");
+    jw_ui_default(&ui);
+    ui.guide = jw_ui_guide();
     strcpy(status, jw_view_fonts("font") ? "ready" : "ready (no font)");
 }
 
-/* Redraw at the current view and unpack the planes for the canvas. */
+/* Redraw at the current view and unpack the planes for the canvas.  The order
+ * is the original's: the drawing (which clears the screen first), then the
+ * frame round it, then the pointer, which is exclusive-or and has to go last. */
 static void present(void)
 {
     if (!drawing) {
@@ -41,6 +61,8 @@ static void present(void)
     } else {
         jw_view_draw(&vga, drawing, &view);
     }
+    jw_ui_draw(&vga, &ui);
+    jw_ui_cursor(&vga, mouse_x, mouse_y);
     vga_render(&vga, pixels);
     jw_view_rgba(&vga, pixels, rgba);
 }
@@ -56,7 +78,11 @@ EMSCRIPTEN_KEEPALIVE int jw_open(const char *path)
     }
     jwc_free(drawing);
     drawing = d;
-    jw_view_fit(&view, &vga, drawing);
+    /* Where the original puts it: the .JWC holds screen units for the view it
+     * was saved with, and JW_CAD puts them down where they are. */
+    jw_view_original(&view);
+    jw_ui_from(&ui, drawing);
+    ui.guide = jw_ui_guide();
     present();
     sprintf(status, "%ld lines  %ld arcs  %d texts  %d points",
             d->n_lines, d->n_arcs, d->n_texts, d->n_points);
@@ -71,11 +97,11 @@ EMSCRIPTEN_KEEPALIVE void jw_zoom(double factor, int sx, int sy)
     if (!drawing || factor <= 0.0) {
         return;
     }
-    wx = view.ox + (sx - 8) / view.scale;
-    wy = view.oy + (vga.height - 9 - sy) / view.scale;
+    wx = view.ox + (sx - view.ax) / view.scale;
+    wy = view.oy + (view.ay - sy) / view.scale;
     view.scale = (float)(view.scale * factor);
-    view.ox = (float)(wx - (sx - 8) / view.scale);
-    view.oy = (float)(wy - (vga.height - 9 - sy) / view.scale);
+    view.ox = (float)(wx - (sx - view.ax) / view.scale);
+    view.oy = (float)(wy - (view.ay - sy) / view.scale);
     present();
 }
 
@@ -89,12 +115,45 @@ EMSCRIPTEN_KEEPALIVE void jw_pan(int dx, int dy)
     present();
 }
 
+/* Back to where the original had it. */
+EMSCRIPTEN_KEEPALIVE void jw_home(void)
+{
+    if (drawing) {
+        jw_view_original(&view);
+        present();
+    }
+}
+
 EMSCRIPTEN_KEEPALIVE void jw_fit(void)
 {
     if (drawing) {
-        jw_view_fit(&view, &vga, drawing);
+        jw_view_fit_in(&view, drawing, AREA_X0, AREA_Y0, AREA_X1, AREA_Y1);
         present();
     }
+}
+
+/* Move the pointer.  It is the original's arrow, drawn exclusive-or into two
+ * planes, so moving it is a matter of drawing the screen again. */
+EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
+{
+    if (x == mouse_x && y == mouse_y) {
+        return;
+    }
+    mouse_x = x;
+    mouse_y = y;
+    present();
+}
+
+/* Which menu command a point picks, or 0.  The page uses it to show the name
+ * of what is under the pointer; nothing is wired to a command yet. */
+EMSCRIPTEN_KEEPALIVE int jw_menu_at(int x, int y)
+{
+    return jw_ui_menu_hit(x, y);
+}
+
+EMSCRIPTEN_KEEPALIVE const char *jw_menu_label(int command)
+{
+    return jw_ui_menu_label(command);
 }
 
 int main(void)

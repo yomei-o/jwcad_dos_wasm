@@ -99,6 +99,27 @@ void jw_view_fit(JwView *w, const VGA *v, const Jwc *d)
     w->y1 = v->height - 1;
 }
 
+void jw_view_fit_in(JwView *w, const Jwc *d, int x0, int y0, int x1, int y1)
+{
+    float dx0, dy0, dx1, dy1, sx, sy, wide, tall;
+
+    jwc_extent(d, &dx0, &dy0, &dx1, &dy1);
+    wide = dx1 - dx0 > 0.0f ? dx1 - dx0 : 1.0f;
+    tall = dy1 - dy0 > 0.0f ? dy1 - dy0 : 1.0f;
+    sx = (float)(x1 - x0) / wide;
+    sy = (float)(y1 - y0) / tall;
+    w->scale = sx < sy ? sx : sy;
+    w->ox = dx0;
+    w->oy = dy0;
+    /* centred in the window, with the drawing's own origin at the left edge */
+    w->ax = (float)x0 + ((float)(x1 - x0) - wide * w->scale) / 2.0f;
+    w->ay = (float)y1 - ((float)(y1 - y0) - tall * w->scale) / 2.0f;
+    w->x0 = x0;
+    w->y0 = y0;
+    w->x1 = x1;
+    w->y1 = y1;
+}
+
 void jw_view_original(JwView *w)
 {
     w->ox = 0.0f;

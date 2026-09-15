@@ -61,7 +61,7 @@ echo "=== native against WASM, pixel for pixel"
 fail=0
 for f in orig/SAMPLE1.JWC orig/SAMPLE2.JWC orig/SAMPLE3.JWC orig/SAMPLE5.JWC \
          orig/SAMPLE6.JWC orig/TEST6.JWC orig/TEST7.JWC; do
-    ./tests/drawing.exe "$f" tmp/n.raw > /dev/null
+    ./tests/drawing.exe -u "$f" tmp/n.raw > /dev/null
     "$NODE" tests/wasm_check.js "$f" tmp/w.raw > /dev/null
     if cmp -s tmp/n.raw tmp/w.raw; then
         echo "  same   $f"

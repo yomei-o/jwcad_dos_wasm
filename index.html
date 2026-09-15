@@ -34,15 +34,17 @@
 </head>
 <body>
 <main>
-  <h1>ＪＷ＿ＣＡＤ for DOS/V — 図面ビューア</h1>
+  <h1>ＪＷ＿ＣＡＤ for DOS/V — 画面ごと移植</h1>
   <p class="lede">
-    1996 年の DOS 用 CAD を逆コンパイルして C に書き直したものです。図面の読み込みも
-    描画も移植したコードで、画面は当時と同じ 640×480 16 色（VGA モード 12h）の
-    プレーンをそのまま展開しています。
+    1999 年の DOS 用 CAD を逆コンパイルして C に書き直したものです。図面だけでなく
+    まわりの画面 —— メニュー、レイヤ釦、下の帯、矢印 —— も本物の呼び出しを読んで
+    作りました。同梱の図面 14 枚のうち 13 枚は、本物を DOS/V エミュレータで走らせた
+    画面と <b>640×480 全部が 1 画素も違いません</b>。
   </p>
 
   <div class="bar">
     <select id="pick"></select>
+    <button id="home">原寸</button>
     <button id="fit">全体表示</button>
     <button id="zin">＋</button>
     <button id="zout">−</button>
@@ -52,8 +54,8 @@
   <canvas id="screen" class="screen" width="640" height="480"></canvas>
 
   <footer>
-    ドラッグで移動、ホイールで拡大縮小。<br>
-    文字はまだ位置（ベースライン）だけ、点は十字で示しています。<br>
+    ドラッグで移動、ホイールで拡大縮小。矢印は本物と同じく排他的論理和で描いています。<br>
+    メニューの上に矢印を置くと、その項目の名前と一文字キーが出ます（まだ押せません）。<br>
     ＪＷ＿ＣＡＤ の著作権は jw_software club にあります。
     <a href="https://github.com/yomei-o/jwcad_dos_wasm">解析と移植のソース</a>
   </footer>
@@ -64,8 +66,8 @@
 const FILES = [
   ['orig/SAMPLE2.JWC', '集合住宅 平面図'],
   ['orig/SAMPLE6.JWC', '住宅 平面図'],
-  ['orig/SAMPLE1.JWC', 'SAMPLE1'],
-  ['orig/SAMPLE3.JWC', 'SAMPLE3'],
+  ['orig/SAMPLE1.JWC', '木造平面図'],
+  ['orig/SAMPLE3.JWC', '指定点'],
   ['orig/SAMPLE5.JWC', 'SAMPLE5'],
   ['orig/TEST6.JWC',   'TEST6'],
   ['orig/TEST7.JWC',   'TEST7'],
@@ -75,44 +77,60 @@ const FILES = [
 let Module = null;
 const canvas = document.getElementById('screen');
 const ctx = canvas.getContext('2d');
-const pick = document.getElementById('pick');
 const statusEl = document.getElementById('status');
-let ready = false;
-
-for (const [path, label] of FILES) {
-  const o = document.createElement('option');
-  o.value = path; o.textContent = label;
-  pick.appendChild(o);
-}
+let image = null;
+let loaded = '';
 
 function blit() {
   const w = Module._jw_width(), h = Module._jw_height();
   const p = Module._jw_framebuffer();
-  const img = new ImageData(new Uint8ClampedArray(
-      Module.HEAPU8.buffer, p, w * h * 4).slice(), w, h);
+  const bytes = new Uint8ClampedArray(Module.HEAPU8.buffer, p, w * h * 4);
+
   canvas.width = w; canvas.height = h;
-  ctx.putImageData(img, 0, 0);
-  statusEl.textContent = Module.UTF8ToString(Module._jw_status());
+  if (!image || image.width !== w || image.height !== h) {
+    image = ctx.createImageData(w, h);
+  }
+  image.data.set(bytes);
+  ctx.putImageData(image, 0, 0);
+}
+
+/* The menu labels are the original's own bytes, which are Shift-JIS. */
+const SJIS = new TextDecoder('shift-jis');
+function sjis(ptr) {
+  let end = ptr;
+  while (Module.HEAPU8[end]) end++;
+  return SJIS.decode(Module.HEAPU8.subarray(ptr, end));
+}
+
+function say(extra) {
+  statusEl.textContent = extra || Module.UTF8ToString(Module._jw_status());
 }
 
 function open(path) {
-  if (!ready) return;
   const n = Module.lengthBytesUTF8(path) + 1;
   const buf = Module._malloc(n);
   Module.stringToUTF8(path, buf, n);
   Module._jw_open(buf);
   Module._free(buf);
+  loaded = path;
   blit();
+  say();
 }
 
-createJwcad().then(m => {
-  Module = m;
-  ready = true;
+createJwcad().then(M => {
+  Module = M;
   Module._jw_init();
-  open(pick.value);
+  const pick = document.getElementById('pick');
+  for (const [path, label] of FILES) {
+    const o = document.createElement('option');
+    o.value = path; o.textContent = label;
+    pick.appendChild(o);
+  }
+  pick.onchange = () => open(pick.value);
+  open(FILES[0][0]);
 });
 
-pick.onchange = () => open(pick.value);
+document.getElementById('home').onclick = () => { Module._jw_home(); blit(); };
 document.getElementById('fit').onclick = () => { Module._jw_fit(); blit(); };
 
 function at(e) {
@@ -121,30 +139,35 @@ function at(e) {
           Math.round((e.clientY - r.top) * canvas.height / r.height)];
 }
 document.getElementById('zin').onclick =
-  () => { Module._jw_zoom(1.4, canvas.width / 2, canvas.height / 2); blit(); };
+  () => { Module._jw_zoom(1.4, 380, 240); blit(); };
 document.getElementById('zout').onclick =
-  () => { Module._jw_zoom(1 / 1.4, canvas.width / 2, canvas.height / 2); blit(); };
+  () => { Module._jw_zoom(1 / 1.4, 380, 240); blit(); };
 
 canvas.addEventListener('wheel', e => {
-  if (!ready) return;
+  if (!Module) return;
   e.preventDefault();
   const [x, y] = at(e);
   Module._jw_zoom(e.deltaY < 0 ? 1.2 : 1 / 1.2, x, y);
   blit();
-}, {passive: false});
+}, { passive: false });
 
 let drag = null;
 canvas.addEventListener('pointerdown', e => {
   drag = at(e); canvas.classList.add('drag'); canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener('pointermove', e => {
-  if (!drag || !ready) return;
+  if (!Module) return;
   const p = at(e);
-  Module._jw_pan(p[0] - drag[0], p[1] - drag[1]);
-  drag = p;
+  if (drag) {
+    Module._jw_pan(p[0] - drag[0], p[1] - drag[1]);
+    drag = p;
+  }
+  Module._jw_mouse(p[0], p[1]);
   blit();
+  const cmd = Module._jw_menu_at(p[0], p[1]);
+  say(cmd ? sjis(Module._jw_menu_label(cmd)) : null);
 });
-for (const ev of ['pointerup', 'pointercancel']) {
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
   canvas.addEventListener(ev, () => { drag = null; canvas.classList.remove('drag'); });
 }
 </script>
