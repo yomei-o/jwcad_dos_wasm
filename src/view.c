@@ -754,8 +754,6 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
     v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
     v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
     v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
-    draw_grid(v, d, w);
-
     for (k = 0; k < d->n_lines; k++) {
         const JwcLine *l = &d->lines[k];
         /* Cut to the window in floats and turn into pixels afterwards.  The
@@ -893,6 +891,11 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
          * goes. */
         jw_point(v, x, y, pen_colour(d->points[k].rest[1]), ROP_REPLACE);
     }
+    /* The grid last: the original's dots sit *on top of* the drawing.  Thirteen
+     * of SAMPLE1's land on a line, and there the original shows the dot's white
+     * and not the line's colour. */
+    draw_grid(v, d, w);
+
 }
 
 void jw_view_rgba(const VGA *v, const unsigned char *pixels, unsigned char *rgba)
