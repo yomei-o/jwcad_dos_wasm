@@ -279,11 +279,30 @@ static void arc_pixel(VGA *v, int cx, int cy, int dx, int dy,
         if ((dx == 0 && SX[q] < 0) || (dy == 0 && SY[q] < 0)) {
             continue;                       /* the axes belong to one quadrant */
         }
-        /* Which angle on the unturned ellipse this pixel is, in degrees. */
-        ang = atan2(uy / (ry > 0.0 ? ry : 1.0), ux / (rx > 0.0 ? rx : 1.0));
-        ang = ang * 180.0 / 3.14159265358979323846;
-        if (ang < 0.0) {
-            ang += 360.0;
+        /* Which angle on the unturned ellipse this pixel is, in degrees --
+         * worked out in the first quadrant and mirrored, which is what decides
+         * the diagonals.
+         *
+         * A pixel that sits exactly on a diagonal counts as **just inside the
+         * axis**, not exactly on 45 degrees.  A radius-1 circle swept from 45
+         * to 315 leaves out its two diagonal pixels as well as the one at 0,
+         * and draws five; swept from 0 to 90 it draws three, diagonal and both
+         * ends included.  Only a 45 that is a hair under 45 gives both.  The
+         * axes stay exact -- nudging those would drop the ends of a quarter
+         * circle. */
+        {
+            const double a = fabs(ux) / (rx > 0.0 ? rx : 1.0);
+            const double b = fabs(uy) / (ry > 0.0 ? ry : 1.0);
+            double a0 = atan2(b, a) * 180.0 / 3.14159265358979323846;
+
+            if (a0 > 0.0 && a0 < 90.0) {
+                a0 -= 1e-9;
+            }
+            ang = ux >= 0.0 ? (uy >= 0.0 ? a0 : 360.0 - a0)
+                            : (uy >= 0.0 ? 180.0 - a0 : 180.0 + a0);
+            if (ang >= 360.0) {
+                ang -= 360.0;
+            }
         }
         if (ang < s) {
             ang += 360.0;
