@@ -1,6 +1,8 @@
 /* The command state machine.  See cmd.h. */
 #include "cmd.h"
 
+#include "draw.h"
+
 #include <math.h>
 #include <string.h>
 
@@ -14,6 +16,74 @@ void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
 {
     *x = (sx - w->ax) / w->scale + w->ox;
     *y = (w->ay - sy) / w->scale + w->oy;
+}
+
+/* Where the drawing point (x,y) lands on the screen -- the same sum
+ * src/view.c does, and truncated the same way. */
+static void at_screen(const JwView *w, double x, double y, int *sx, int *sy)
+{
+    *sx = (int)((x - w->ox) * w->scale + w->ax);
+    *sy = (int)(w->ay - (y - w->oy) * w->scale);
+}
+
+/* What the panel shows for a command in hand: a length and an angle for a line,
+ * the two sides for a box, the radius and the diameter for a circle.  A length
+ * is millimetres of the real thing -- drawing units over `unit_mm`, times the
+ * scale -- and (300,200) to (400,200) is a hundred pixels, which the original
+ * calls 57.336 mm on SAMPLE0: 100 / (518/297) / 1. */
+static void measure(JwCmd *c, const Jwc *d, double x, double y)
+{
+    const double mm = d->unit_mm > 0.0f ? d->denom / d->unit_mm : 1.0;
+    const double dx = x - c->x0, dy = y - c->y0;
+
+    c->dec[0] = c->dec[1] = d->decimals;
+    if (c->command == 4) {
+        c->num[0] = (dx < 0 ? -dx : dx) * mm;
+        c->num[1] = (dy < 0 ? -dy : dy) * mm;
+    } else if (c->command == 11) {
+        c->num[0] = sqrt(dx * dx + dy * dy) * mm;
+        c->num[1] = c->num[0] * 2.0;
+    } else {
+        c->num[0] = sqrt(dx * dx + dy * dy) * mm;
+        /* An angle is degrees, so the drawing's scale has nothing to say about
+         * it: always three decimals. */
+        c->num[1] = atan2(dy, dx) * 180.0 / 3.14159265358979323846;
+        c->dec[1] = 3;
+    }
+}
+
+void jw_cmd_track(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy)
+{
+    double x, y;
+
+    if (!d || !c->pressed) {
+        return;
+    }
+    jw_cmd_at(w, sx, sy, &x, &y);
+    measure(c, d, x, y);
+}
+
+void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
+{
+    int px, py;
+
+    if (!c->pressed) {
+        return;
+    }
+    at_screen(w, c->x0, c->y0, &px, &py);
+    if (c->command == 4) {
+        jw_line(v, px, py, px, sy, 2, 0x18, JW_STYLE_SOLID);
+        jw_line(v, px, sy, sx, sy, 2, 0x18, JW_STYLE_SOLID);
+        jw_line(v, sx, py, sx, sy, 2, 0x18, JW_STYLE_SOLID);
+        jw_line(v, px, py, sx, py, 2, 0x18, JW_STYLE_SOLID);
+    } else if (c->command == 11) {
+        const double dx = sx - px, dy = sy - py;
+
+        jw_arc_poly(v, px, py, sqrt(dx * dx + dy * dy), 10000, 0, 0, 0,
+                    2, 0x18, JW_STYLE_SOLID);
+    } else if (c->command == 3) {
+        jw_line(v, px, py, sx, sy, 2, 0x18, JW_STYLE_SOLID);
+    }
 }
 
 int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
@@ -35,25 +105,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
     }
     c->pressed = 0;
     c->stage = 2;
-    {
-        const double mm = d->unit_mm > 0.0f ? d->denom / d->unit_mm : 1.0;
-        const double dx = x - c->x0, dy = y - c->y0;
-
-        c->dec[0] = c->dec[1] = d->decimals;
-        if (c->command == 4) {
-            c->num[0] = (dx < 0 ? -dx : dx) * mm;
-            c->num[1] = (dy < 0 ? -dy : dy) * mm;
-        } else if (c->command == 11) {
-            c->num[0] = sqrt(dx * dx + dy * dy) * mm;
-            c->num[1] = c->num[0] * 2.0;
-        } else {
-            c->num[0] = sqrt(dx * dx + dy * dy) * mm;
-            /* An angle is degrees, so the drawing's scale has nothing to say
-             * about it: always three decimals. */
-            c->num[1] = atan2(dy, dx) * 180.0 / 3.14159265358979323846;
-            c->dec[1] = 3;
-        }
-    }
+    measure(c, d, x, y);
     /* Both take the pen and the line type the panel shows and go on the layer
      * being written to -- SAMPLE0 writes with pen 2, and what the original
      * draws there comes out white, which is what pen 2 is. */

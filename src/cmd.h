@@ -36,6 +36,19 @@ void jw_cmd_pick(JwCmd *c, int command);
  * changed and has to be drawn again. */
 int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy);
 
+/* Move the pointer without pressing.  While a command has a point in hand the
+ * original keeps the reading under the counts up to date -- the length and the
+ * angle to wherever the pointer is -- so this works them out again. */
+void jw_cmd_track(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy);
+
+/* The line the original drags from the point already taken to wherever the
+ * pointer is: colour 2, exclusive-or (0x18), solid.  □ drags a rectangle of
+ * four of them and ○ a circle, both the same way.  Drawn after everything
+ * else, like the pointer, and taken back by drawing it again.
+ *
+ * Nothing happens if no point has been taken yet. */
+void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy);
+
 /* Where a screen pixel is in the drawing.  The view puts a drawing point at
  * `(x - ox) * scale + ax`, so this is that read backwards. */
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y);

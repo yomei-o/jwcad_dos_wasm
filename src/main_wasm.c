@@ -64,6 +64,9 @@ static void present(void)
         jw_view_draw(&vga, drawing, &view);
     }
     jw_ui_draw(&vga, &ui);
+    /* the line a half-finished command drags, then the pointer -- both
+     * exclusive-or, and both after everything else */
+    jw_cmd_band(&cmd, &vga, &view, mouse_x, mouse_y);
     jw_ui_cursor(&vga, mouse_x, mouse_y);
     vga_render(&vga, pixels);
     jw_view_rgba(&vga, pixels, rgba);
@@ -144,6 +147,14 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
     }
     mouse_x = x;
     mouse_y = y;
+    /* a command with a point in hand keeps its reading up to date as the
+     * pointer moves, the way the original does */
+    jw_cmd_track(&cmd, drawing, &view, x, y);
+    ui.stage = cmd.stage;
+    ui.num[0] = cmd.num[0];
+    ui.num[1] = cmd.num[1];
+    ui.dec[0] = cmd.dec[0];
+    ui.dec[1] = cmd.dec[1];
     present();
 }
 

@@ -617,9 +617,26 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * again as it moves on -- `(0,0)-(639,15)` in black and
              * `(1,17)-(120,47)` in colour 4, both seen in the fills □ makes
              * when the box is finished.  Without it the tail of the line the
-             * stage before left is still there. */
+             * stage before left is still there.
+             *
+             * The counts go back only where the stage has nothing of its own
+             * to put in that box.  Both are written transparently, so writing
+             * one over the other leaves them both readable. */
+            int own = 0;
+
+            for (q = JW_STAGE; q->command; q++) {
+                if (q->command == s->command && q->stage == i
+                    && q->row != 1 && q->col <= 15) {
+                    own = 1;    /* inside the box; columns 17 and 22 of the
+                                 * same row are beside it, not in it */
+                }
+            }
             fill(v, 0, 0, 639, 15, 0);
-            counts(v, s);
+            if (own) {
+                fill(v, 1, 17, 120, 47, 4);
+            } else {
+                counts(v, s);
+            }
             for (q = JW_STAGE; q->command; q++) {
                 char out[128];
 

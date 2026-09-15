@@ -35,6 +35,7 @@ int main(int argc, char **argv)
     int press[8][2], n_press = 0, stage = 0;
     double num[2] = { 0.0, 0.0 };
     int dec[2] = { 3, 3 };
+    JwCmd c;
     const char *in, *out;
     const char *why;
     unsigned char rgb[16][3];
@@ -101,19 +102,20 @@ int main(int argc, char **argv)
     }
     /* -p: presses in the drawing area, before anything is drawn -- a command
      * changes the drawing, and the screen shows what came out. */
+    jw_cmd_pick(&c, command);
     if (n_press) {
-        JwCmd c;
-
-        jw_cmd_pick(&c, command);
         for (i = 0; i < n_press; i++) {
             jw_cmd_press(&c, d, &w, press[i][0], press[i][1]);
         }
-        stage = c.stage;
-        num[0] = c.num[0];
-        num[1] = c.num[1];
-        dec[0] = c.dec[0];
-        dec[1] = c.dec[1];
     }
+    /* the pointer is where it is, and a command in hand keeps its reading up
+     * to date as it moves */
+    jw_cmd_track(&c, d, &w, mx, my);
+    stage = c.stage;
+    num[0] = c.num[0];
+    num[1] = c.num[1];
+    dec[0] = c.dec[0];
+    dec[1] = c.dec[1];
     /* The drawing first: jw_view_draw clears the screen before it starts, the
      * way the original does when it opens a file.  The frame goes on after and
      * the pointer, which is exclusive-or, last of all. */
@@ -134,6 +136,9 @@ int main(int argc, char **argv)
             s.guide = 0;
         }
         jw_ui_draw(&v, &s);
+        /* the line a half-finished command drags, then the pointer -- both
+         * exclusive-or, and both after everything else */
+        jw_cmd_band(&c, &v, &w, mx, my);
         jw_ui_cursor(&v, mx, my);
     }
     vga_render(&v, pixels);
