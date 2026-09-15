@@ -504,7 +504,7 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
     double dx = t->x1 - t->x0, dy = t->y1 - t->y0;
     double len = dx * dx + dy * dy;
     int n = 0, cells = 0;
-    int y;
+    int y, turned;
     double height;
 
     if (!p || !*p || !ank.data) {
@@ -524,6 +524,11 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
         return;
     }
     len = len > 0.0 ? len : 1.0;
+    /* A string that runs right to left is turned too, even though its baseline
+     * is horizontal: TEST4's `10.244` at 180 degrees has its box *below* the
+     * baseline, which is where the turned routine puts it and the upright one
+     * cannot.  Five of the fourteen drawings have such strings. */
+    turned = dy != 0.0 || dx < 0.0;
 
     /* The baseline is rounded *up*, where a line's endpoint is truncated.  It
      * matters only when the baseline lands off a whole pixel, which among the
@@ -536,7 +541,7 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
 
     height = text_height(d, t, unit);
     if ((int)height < TEXT_GLYPH_MIN) {
-        if (dy != 0.0) {
+        if (turned) {
             const double m = sqrt(len);
 
             draw_text_box_turned(v, w,
@@ -551,9 +556,9 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
         }
         return;
     }
-    /* A baseline that is not horizontal goes to the routine above, which is a
-     * different one in the original too. */
-    if (dy != 0.0) {
+    /* Anything but a left-to-right baseline goes to the routine above, which is
+     * a different one in the original too. */
+    if (turned) {
         const double n = sqrt(len);
 
         draw_text_turned(v, t, w, p, height, text_step(d, t, unit),
