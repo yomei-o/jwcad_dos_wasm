@@ -130,6 +130,9 @@ int main(int argc, char **argv)
      * way the original does when it opens a file.  The frame goes on after and
      * the pointer, which is exclusive-or, last of all. */
     jw_view_draw(&v, d, &w);
+    /* what 消去 has picked, painted over the drawing the way the original
+     * does it */
+    jw_cmd_marked(&c, &v, d, &w);
     if (ui) {
         JwUi s;
 

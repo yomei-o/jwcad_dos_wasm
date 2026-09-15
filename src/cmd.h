@@ -31,6 +31,10 @@ typedef struct {
      * says in the band beside the counts.  It stays up until a press finds
      * something or another item is picked -- see src/ui.c. */
     int missed;
+    /* 消去's range: the other corner, once the right button has fixed it.
+     * `pressed` counts the presses -- 1 while the box is being dragged, 2 once
+     * it is fixed and what it picked is painted in colour 2. */
+    double x1, y1;
 } JwCmd;
 
 /* Start a command, or leave it (0). */
@@ -52,6 +56,23 @@ long jw_cmd_line_at(const Jwc *d, const JwView *w, int sx, int sy);
 
 /* And which arc, or -1.  The original's 線消 says 線,円弧 and takes either. */
 long jw_cmd_arc_at(const Jwc *d, const JwView *w, int sx, int sy);
+
+/* Is this entity inside 消去's fixed range?  Only what falls **wholly** inside
+ * is taken -- SAMPLE0's line 5 and line 6 and text 0 go when (150,130)-(245,170)
+ * is drawn round them, and line 1, which merely crosses the box, stays. */
+int jw_cmd_in_range(const JwCmd *c, double ax, double ay, double bx, double by);
+
+/* Paint what 消去 has picked, the way the original does: the entities inside
+ * the range again, in colour 2, on top of the drawing.  Nothing else moves --
+ * 224 white pixels turn red and not one other pixel changes. */
+void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
+
+/* A press on the top line, which is a menu of its own: the runs between the
+ * `|` characters are the items, numbered from the left.  Measured on 消去's
+ * `復活出来ません |① 実行(L)|② 中止(R)|` -- columns 24 to 33 carry it out,
+ * 35 to 44 call it off, and column 34, the bar itself, does nothing.
+ * Returns 1 if the drawing changed. */
+int jw_cmd_top(JwCmd *c, Jwc *d, int item);
 
 /* Move the pointer without pressing.  While a command has a point in hand the
  * original keeps the reading under the counts up to date -- the length and the

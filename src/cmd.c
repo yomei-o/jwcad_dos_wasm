@@ -90,8 +90,11 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
     if (!c->pressed) {
         return;
     }
+    if (c->command == 25 && c->pressed != 1) {
+        return;                 /* the box is only dragged while it is open */
+    }
     at_screen(w, c->x0, c->y0, &px, &py);
-    if (c->command == 4) {
+    if (c->command == 4 || c->command == 25) {
         jw_line(v, px, py, px, sy, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, px, sy, sx, sy, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, sx, py, sx, sy, 2, 0x18, JW_STYLE_SOLID);
@@ -246,6 +249,79 @@ static int take(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
     return 1;
 }
 
+int jw_cmd_in_range(const JwCmd *c, double ax, double ay, double bx, double by)
+{
+    const double lo_x = c->x0 < c->x1 ? c->x0 : c->x1;
+    const double hi_x = c->x0 < c->x1 ? c->x1 : c->x0;
+    const double lo_y = c->y0 < c->y1 ? c->y0 : c->y1;
+    const double hi_y = c->y0 < c->y1 ? c->y1 : c->y0;
+
+    return ax >= lo_x && ax <= hi_x && bx >= lo_x && bx <= hi_x
+           && ay >= lo_y && ay <= hi_y && by >= lo_y && by <= hi_y;
+}
+
+/* The same question the read asks of a layer: shown *and* ringed.  消去 takes
+ * only those -- SAMPLE6's layer 0 goes red although the write layer is 2, and
+ * TEST7's layers 0c, 0d and 0e, which are shown but not ringed, do not put a
+ * single red pixel on the screen. */
+static int in_reach_layer(const Jwc *d, unsigned char layer)
+{
+    return jwc_visible(d, layer) && d->layer_edit[layer]
+           && d->group_edit[layer >> 4];
+}
+
+void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
+{
+    long k;
+
+    if (!d || c->command != 25 || c->pressed != 2) {
+        return;
+    }
+    for (k = 0; k < d->n_lines; k++) {
+        const JwcLine *l = &d->lines[k];
+        int x0, y0, x1, y1;
+
+        if (!in_reach_layer(d, l->layer)
+            || !jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)) {
+            continue;
+        }
+        at_screen(w, l->x0, l->y0, &x0, &y0);
+        at_screen(w, l->x1, l->y1, &x1, &y1);
+        jw_line(v, x0, y0, x1, y1, 2, ROP_REPLACE,
+                jw_view_line_style(l->type));
+    }
+}
+
+int jw_cmd_top(JwCmd *c, Jwc *d, int item)
+{
+    long k;
+    int changed = 0;
+
+    if (!d || c->command != 25 || c->pressed != 2) {
+        return 0;
+    }
+    if (item == 2) {            /* ②中止 -- the picked entities go back */
+        c->pressed = 0;
+        c->stage = 0;
+        return 1;
+    }
+    if (item != 1) {            /* the bar between them does nothing */
+        return 0;
+    }
+    for (k = d->n_lines - 1; k >= 0; k--) {
+        const JwcLine *l = &d->lines[k];
+
+        if (in_reach_layer(d, l->layer)
+            && jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)) {
+            jwc_remove_line(d, k);
+            changed = 1;
+        }
+    }
+    c->pressed = 0;
+    c->stage = 0;
+    return changed;
+}
+
 int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
 {
     double x, y;
@@ -278,6 +354,31 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             jwc_remove_arc(d, j);
         }
         c->stage = 1;
+        return 1;
+    }
+    if (c->command == 25) {
+        /* 消去: the first press takes a corner of the range and the second,
+         * with the right button, fixes it -- 範囲確定, as the line it puts up
+         * says.  What the box holds whole is then painted in colour 2 and the
+         * top line asks for ①実行.  See RESUME.md 4.9. */
+        if (c->pressed == 2) {
+            return 0;           /* the answer comes from the top line now */
+        }
+        jw_cmd_at(w, sx, sy, &x, &y);
+        if (!c->pressed) {
+            c->x0 = x;
+            c->y0 = y;
+            c->pressed = 1;
+            c->stage = 1;
+            return 0;
+        }
+        if (!right) {
+            return 0;           /* 追加･除外 with the left button: not done */
+        }
+        c->x1 = x;
+        c->y1 = y;
+        c->pressed = 2;
+        c->stage = 2;
         return 1;
     }
     if (c->command == 22) {

@@ -33,6 +33,10 @@ COMMANDS = [
     (11, (300, 200, 400, 200)),     # ○  a circle
     (10, ('r', 380, 140)),          # 線消  the right button takes a line away
     (22, (300, 250)),               # 点  the left button drops a 仮点
+    # 消去: the first press takes a corner of the range, the second (right)
+    # fixes it -- and what it picked is then painted in colour 2 until the
+    # top line's ①実行 is pressed.  See RESUME.md 4.9.
+    (25, (150, 130, 'r', 245, 170)),
 ]
 
 # tools/press.sh: 40M to start, 2M for the menu press, 24M to settle, then per
@@ -66,6 +70,15 @@ def keep(items):
         if s == WAIT:
             continue
         if (col, row) in PANEL and not NUM.search(s):
+            continue
+        # Rows 25 and 30 are the panel and the strip along the bottom, which
+        # src/ui.c draws from the program's state every time the screen is
+        # built.  A command that repaints them writes the same thing back --
+        # 消去 does it when the range is fixed, and the whole 640x480 changes
+        # only along the top line and inside the drawing (measured).  Replaying
+        # them would be copying the state at capture time, which for the zoom
+        # ratio would be plain wrong.
+        if row in (25, 30):
             continue
         out.append(k)
     return out
