@@ -547,7 +547,13 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
     height = text_height(d, t, unit);
     if ((int)height < TEXT_GLYPH_MIN) {
         if (turned) {
-            const double m = sqrt(len);
+            /* The length rounded to a float, which is where the original keeps
+             * it.  TEST7's `14.0` runs from x 327.00386 to 327.00403 -- a
+             * sixth of a thousandth of a pixel of slope -- and in double that
+             * is enough to make the unit vector 0.9999999997 instead of 1, and
+             * the far side of the box lands on 329 instead of 330.  A float
+             * cannot hold the difference and neither could the original. */
+            const double m = (float)sqrt(len);
 
             draw_text_box_turned(v, w,
                                  ((double)t->x0 - w->ox) * w->scale + w->ax,
@@ -564,7 +570,7 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
     /* Anything but a left-to-right baseline goes to the routine above, which is
      * a different one in the original too. */
     if (turned) {
-        const double n = sqrt(len);
+        const double n = (float)sqrt(len);
 
         draw_text_turned(v, t, w, p, height, text_step(d, t, unit),
                          dx / n, -dy / n, colour);
