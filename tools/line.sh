@@ -7,6 +7,9 @@
 # Picks ／ out of the menu (command 3, right column, third row) and presses the
 # two points.  Leaves tmp/line/before.raw and tmp/line/after.raw.
 #
+# tools/press.sh does the same for any command; this one stays because it is the
+# smallest thing that shows the original drawing something.
+#
 # **The press has to be held.** `click left` works on the menu but not in the
 # drawing area: JW_CAD reads the button state when it gets round to it, and a
 # press that is over before then is never seen.  So `down left`, wait, `up left`.

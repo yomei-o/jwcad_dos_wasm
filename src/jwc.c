@@ -475,6 +475,8 @@ Jwc *jwc_load(const char *path, const char **why)
         *why = "out of memory";
         return NULL;
     }
+    d->cap_lines = d->n_lines + 1;
+    d->cap_arcs = d->n_arcs + 1;
 
     p = at;
     for (k = 0; k < d->n_lines; k++, p += LINE_SIZE) {
@@ -589,14 +591,15 @@ int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
      * time, because a line is twenty-two bytes and a drawing gets thousands. */
     static const long BLOCK = 256;
 
-    if ((d->n_lines + 1) % BLOCK == 0 || d->n_lines == 0) {
-        long want = ((d->n_lines + 1) / BLOCK + 1) * BLOCK;
+    if (d->n_lines >= d->cap_lines) {
+        long want = d->cap_lines + BLOCK;
         JwcLine *grown = (JwcLine *)realloc(d->lines, (size_t)want * sizeof *grown);
 
         if (!grown) {
             return 0;
         }
         d->lines = grown;
+        d->cap_lines = want;
     }
     l = &d->lines[d->n_lines];
     memset(l, 0, sizeof *l);
@@ -608,6 +611,38 @@ int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
     l->pen = pen;
     l->layer = layer;
     d->n_lines++;
+    return 1;
+}
+
+int jwc_add_arc(Jwc *d, float cx, float cy, float r,
+                unsigned char type, unsigned char pen, unsigned char layer)
+{
+    JwcArc *a;
+    static const long BLOCK = 64;
+
+    if (d->n_arcs >= d->cap_arcs) {
+        long want = d->cap_arcs + BLOCK;
+        JwcArc *grown = (JwcArc *)realloc(d->arcs, (size_t)want * sizeof *grown);
+
+        if (!grown) {
+            return 0;
+        }
+        d->arcs = grown;
+        d->cap_arcs = want;
+    }
+    a = &d->arcs[d->n_arcs];
+    memset(a, 0, sizeof *a);
+    a->cx = cx;
+    a->cy = cy;
+    a->r = r;
+    a->flatten = 10000;         /* a circle, not an ellipse */
+    a->start = 0;
+    a->end = 0;                 /* start == end is the whole way round */
+    a->tilt = 0;
+    a->type = type;
+    a->pen = pen;
+    a->layer = layer;
+    d->n_arcs++;
     return 1;
 }
 

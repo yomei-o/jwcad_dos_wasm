@@ -28,8 +28,10 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/ui.sh
     echo "=== every drawing, the whole screen"
     sh tools/full.sh
-    echo "=== a line drawn with ／, against the original's"
-    sh tools/linecheck.sh
+    echo "=== what the drawing commands draw, against the original's"
+    sh tools/presscheck.sh 3 200 100 500 400      # ／  a line
+    sh tools/presscheck.sh 4 250 150 450 350      # □  a box
+    sh tools/presscheck.sh 11 300 200 400 200     # ○  a circle
     if [ -f tmp/menus/c01.raw ]; then
         echo "=== the screen after each menu item is picked"
         sh tools/menucheck.sh | tail -3

@@ -63,6 +63,9 @@ typedef struct {
     int n_points;
     JwcLine *lines;
     JwcArc *arcs;
+    /* How many the arrays hold, which is not the same as how many are used
+     * once a drawing command has added to them. */
+    long cap_lines, cap_arcs;
     JwcText *texts;
     JwcPoint *points;
     char *text;                 /* the NUL-separated string pool */
@@ -169,6 +172,10 @@ int jwc_visible(const Jwc *d, unsigned char layer);
  * Returns 0 if there was no memory for it. */
 int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
                  unsigned char type, unsigned char pen, unsigned char layer);
+
+/* And a circle: the whole ellipse, which is what `start == end` means. */
+int jwc_add_arc(Jwc *d, float cx, float cy, float r,
+                unsigned char type, unsigned char pen, unsigned char layer);
 
 /* The bounding box of everything shown. */
 void jwc_extent(const Jwc *d, float *x0, float *y0, float *x1, float *y1);
