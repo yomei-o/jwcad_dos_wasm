@@ -79,7 +79,12 @@ typedef struct {
     /* The dot grid: whether it is on, and its spacing in drawing units.  It
      * runs through the drawing's origin in both directions. */
     unsigned char grid_on;
-    float grid_x, grid_y;
+    /* Kept as doubles, and worked out as `mm * 518 / paper` rather than
+     * `mm * (518 / paper)`.  The two differ in the last bit, and SAMPLE1's
+     * thirty-fourth column lands on 639.0000095 one way and 638.99999999999 the
+     * other -- one pixel off the right edge of the drawing area, so the port
+     * dropped a dot the original draws, once on each of the grid's 28 rows. */
+    double grid_x, grid_y;
     /* How many drawing units a millimetre of paper is: JW_CAD's own drawing
      * area (518 pixels) over the paper's width.  The character sizes are in
      * millimetres, so this is what turns them into pixels. */

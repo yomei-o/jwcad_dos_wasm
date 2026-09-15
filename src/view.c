@@ -679,10 +679,10 @@ static int line_style(unsigned type)
  * that way. */
 static void draw_grid(VGA *v, const Jwc *d, const JwView *w)
 {
-    double lo, hi;
+    double lo, hi, gy;
     long i, j, i0, i1, j0, j1;
 
-    if (!d->grid_on || d->grid_x <= 0.0f || d->grid_y <= 0.0f ||
+    if (!d->grid_on || d->grid_x <= 0.0 || d->grid_y <= 0.0 ||
         w->scale <= 0.0f) {
         return;
     }
@@ -697,14 +697,34 @@ static void draw_grid(VGA *v, const Jwc *d, const JwView *w)
     if (i1 - i0 > 4000 || j1 - j0 > 4000) {
         return;                         /* zoomed out past any use */
     }
-    for (j = j0; j <= j1; j++) {
-        const int y = to_y(v, w, (float)((double)j * d->grid_y));
+    /* The positions are **added up**, not multiplied out.  `33 * 15.6969697` is
+     * 518.0 to the last bit and `15.6969697` added thirty-three times is
+     * 517.99988, so SAMPLE1's last column is 639.0 one way and 638.99988 the
+     * other -- and the original draws it at 638, one dot on each of the grid's
+     * twenty-eight rows.  Every other column and row is the same either way. */
+    gy = 0.0;
+    for (i = 0; i < (j0 < 0 ? -j0 : j0); i++) {
+        gy += d->grid_y;
+    }
+    if (j0 < 0) {
+        gy = -gy;
+    }
+    for (j = j0; j <= j1; j++, gy += d->grid_y) {
+        const int y = (int)(w->ay - (gy - w->oy) * w->scale);
+        double gx;
 
         if (y < w->y0 || y > w->y1) {
             continue;
         }
-        for (i = i0; i <= i1; i++) {
-            const int x = to_x(w, (float)((double)i * d->grid_x));
+        gx = 0.0;
+        for (i = 0; i < (i0 < 0 ? -i0 : i0); i++) {
+            gx += d->grid_x;
+        }
+        if (i0 < 0) {
+            gx = -gx;
+        }
+        for (i = i0; i <= i1; i++, gx += d->grid_x) {
+            const int x = (int)((gx - w->ox) * w->scale + w->ax);
 
             if (x >= w->x0 && x <= w->x1) {
                 jw_point(v, x, y, 7, ROP_REPLACE);

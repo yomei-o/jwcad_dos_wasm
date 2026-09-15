@@ -223,10 +223,10 @@ static void grid(const char *line, Jwc *d)
         return;
     }
     f = field(line, 25);
-    d->grid_x = f ? (float)atof(f) * d->unit_mm : 0.0f;
+    d->grid_x = f ? atof(f) * 518.0 / PAPER[paper] : 0.0;
     f = field(line, 26);
-    d->grid_y = f ? (float)atof(f) * d->unit_mm : 0.0f;
-    d->grid_on = d->grid_x > 0.0f && d->grid_y > 0.0f;
+    d->grid_y = f ? atof(f) * 518.0 / PAPER[paper] : 0.0;
+    d->grid_on = d->grid_x > 0.0 && d->grid_y > 0.0;
 }
 
 /* The drawing's own character sizes.
@@ -387,7 +387,7 @@ Jwc *jwc_load(const char *path, const char **why)
         const char *f;
 
         memcpy(line, file + TEXT_LINE, TEXT_LINE - 1);
-        line[TEXT_LINE - 1] = ' ';
+        line[TEXT_LINE - 1] = '\0';
         f = field(line, 4);
         marks(file, len, d, f ? (int)strtol(f, NULL, 10) : 0);
     }
