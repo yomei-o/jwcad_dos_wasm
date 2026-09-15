@@ -4,8 +4,17 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <string.h>
+
+/* JW_TRACE=1 makes the drawing routines print what they are about to draw --
+ * `flat` and `box` for the two text placeholders, `turn` and `up` for the two
+ * ways a string is drawn.  The original's own calls come out of the emulator
+ * with DOSEMU_BP, so the two lists can be set side by side; tools/qbox.py does
+ * exactly that for the boxes.  It is not a debugging leftover: a one-pixel
+ * disagreement in a four-pixel glyph cannot be read off the screen, only off
+ * the two lists. */
 
 /* The anchor is added *before* the cast, because that is what the original
  * does: it works in floats all the way to the line routine and truncates once.
@@ -313,6 +322,23 @@ static const unsigned short WIDE[95] = {
     0x8298, 0x8299, 0x829A, 0x816F, 0x8162, 0x8170, 0x8160,
 };
 
+/* And the half-width katakana, 0xa1 to 0xdf, which go the same way.  TEST7's
+ * note starts with a half-width bracket: the original draws it from the kanji
+ * font's full-width one -- the ANK glyph has its stem in column 2 and the
+ * full-width one in column 8, and after the shrink to four pixels those are
+ * different dots.  The cell stays half a cell wide; it is the glyph that is
+ * full width. */
+static const unsigned short KANA[0xdf - 0xa1 + 1] = {
+    0x8142, 0x8175, 0x8176, 0x8141, 0x8145, 0x8392, 0x8340, 0x8342,
+    0x8344, 0x8346, 0x8348, 0x8383, 0x8385, 0x8387, 0x8362, 0x815B,
+    0x8341, 0x8343, 0x8345, 0x8347, 0x8349, 0x834A, 0x834C, 0x834E,
+    0x8350, 0x8352, 0x8354, 0x8356, 0x8358, 0x835A, 0x835C, 0x835E,
+    0x8360, 0x8363, 0x8365, 0x8367, 0x8369, 0x836A, 0x836B, 0x836C,
+    0x836D, 0x836E, 0x8371, 0x8374, 0x8377, 0x837A, 0x837D, 0x837E,
+    0x8380, 0x8381, 0x8382, 0x8384, 0x8386, 0x8388, 0x8389, 0x838A,
+    0x838B, 0x838C, 0x838D, 0x838F, 0x8393, 0x814A, 0x814B,
+};
+
 /* How tall the string is on screen, in pixels, and how far one half-width cell
  * carries the pen.
  *
@@ -354,6 +380,9 @@ static void draw_text_box(VGA *v, const JwView *w, int x0, int x1, int base,
 {
     const int top = base - h;
 
+    if (getenv("JW_TRACE")) {
+        printf("flat %d..%d base=%d h=%d%c", x0, x1, base, h, 10);
+    }
     if (!inside(w, x0, top) || !inside(w, x1, base)) {
         return;
     }
@@ -361,7 +390,18 @@ static void draw_text_box(VGA *v, const JwView *w, int x0, int x1, int base,
     jw_line(v, x1, base, x1, top, colour, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, x1, top, x0, top, colour, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, x0, top, x0, base, colour, ROP_REPLACE, JW_STYLE_SOLID);
-    jw_line(v, x0, base - 1, x1, base - 1, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    /* The fifth line is the row above the baseline -- except for a box with no
+     * height at all, which has no row above to use: there the original puts it
+     * beside the baseline instead, one pixel along.  TEST6 has four of those
+     * (strings whose height truncates to nothing) and draws them three pixels
+     * wide in a single row. */
+    if (h == 0) {
+        jw_line(v, x0 + 1, base, x1 + 1, base, colour, ROP_REPLACE,
+                JW_STYLE_SOLID);
+    } else {
+        jw_line(v, x0, base - 1, x1, base - 1, colour, ROP_REPLACE,
+                JW_STYLE_SOLID);
+    }
 }
 
 /* A string whose baseline is not horizontal.
@@ -407,6 +447,12 @@ static void draw_text_turned(VGA *v, const JwcText *t, const JwView *w,
     double walk = 0.0;
     int i = 0;
 
+    if (getenv("JW_TRACE")) {
+        printf("turn (%10.5f,%10.5f) u=(%.9f,%.9f) h=%.6f step=%.6f %s",
+               ox, oy, ux, uy, height, step, (const char *)p);
+        printf("\n");
+    }
+
     while (p[i]) {
         const unsigned char *g = NULL;
         int cw, sw = 16, sx, sy;
@@ -419,6 +465,8 @@ static void draw_text_turned(VGA *v, const JwcText *t, const JwView *w,
             cw = 1;
             if (p[i] >= 0x20 && p[i] <= 0x7e) {
                 g = fontx_glyph(&kanji, WIDE[p[i] - 0x20]);
+            } else if (p[i] >= 0xa1 && p[i] <= 0xdf) {
+                g = fontx_glyph(&kanji, KANA[p[i] - 0xa1]);
             }
             if (!g) {
                 g = fontx_glyph(&ank, p[i]);
@@ -483,6 +531,11 @@ static void draw_text_box_turned(VGA *v, const JwView *w, double x0, double y0,
     const int cx = (int)floor(bx + h * nx), cy = (int)floor(by + h * ny);
     const int dx = (int)floor(ax + h * nx), dy = (int)floor(ay + h * ny);
 
+    if (getenv("JW_TRACE")) {
+        printf("box (%12.6f,%12.6f)-(%12.6f,%12.6f) u=(%.9f,%.9f) h=%d"
+               "  %d,%d %d,%d %d,%d %d,%d\n",
+               x0, y0, x1, y1, ux, uy, h, ax, ay, bx, by, cx, cy, dx, dy);
+    }
     if (!inside(w, ax, ay) || !inside(w, bx, by) ||
         !inside(w, cx, cy) || !inside(w, dx, dy)) {
         return;
@@ -492,8 +545,14 @@ static void draw_text_box_turned(VGA *v, const JwView *w, double x0, double y0,
     jw_line(v, cx, cy, dx, dy, colour, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, dx, dy, ax, ay, colour, ROP_REPLACE, JW_STYLE_SOLID);
     {
-        const int ex = fabs(uy) >= fabs(ux) ? 1 : 0;
-        const int ey = fabs(uy) >= fabs(ux) ? 0 : -1;
+        /* A box whose far side is on the same rows as its near side has no
+         * inside to move into, so the extra line goes across instead: TEST6's
+         * headings carry strings whose height truncates to nothing, and the
+         * original draws three pixels in one row for them, not two rows of
+         * two. */
+        const int across = fabs(uy) >= fabs(ux) || cy == by;
+        const int ex = across ? 1 : 0;
+        const int ey = across ? 0 : -1;
 
         if (inside(w, ax + ex, ay + ey) && inside(w, bx + ex, by + ey)) {
             jw_line(v, ax + ex, ay + ey, bx + ex, by + ey,
@@ -608,6 +667,8 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
                 cw = 1;
                 if (p[i] >= 0x20 && p[i] <= 0x7e) {
                     g = fontx_glyph(&kanji, WIDE[p[i] - 0x20]);
+                } else if (p[i] >= 0xa1 && p[i] <= 0xdf) {
+                    g = fontx_glyph(&kanji, KANA[p[i] - 0xa1]);
                 }
                 if (!g) {
                     g = fontx_glyph(&ank, p[i]);
@@ -635,6 +696,12 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
                 /* Outside the view's window there is nothing to draw.  The
                  * browser's window is the whole screen, so this only bites at
                  * the edges; the original's is the drawing area. */
+                if (getenv("JW_TRACE")) {
+                    printf("up %d,%d %dx%d  x0=%.4f walk=%.4f h=%.6f top=%.4f"
+                           " step=%.4f sw=%d ch=%02x%c", gx, gy, dw, dh, x0,
+                           walk, height, top, step, sw,
+                           sw == 8 ? p[i - 1] : code, 10);
+                }
                 if (sg && gx <= w->x1 && gx + dw > w->x0 &&
                     gy <= w->y1 && gy + dh > w->y0) {
                     jw_glyph(v, gx, gy, dw, dh, sg, colour, colour);
