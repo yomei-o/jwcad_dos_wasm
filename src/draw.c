@@ -536,7 +536,15 @@ void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
     double a = rx, b = ry;
     double x, y, d1, d2;
 
-    if (rx <= 0) {
+    /* A radius that truncates to nothing is one dot at the truncated centre,
+     * whatever the sweep says.  SAMPLE2 has eight of them (radii 0.37 and
+     * 0.6167, two of them whole circles) and the original draws exactly one
+     * pixel for each -- read off its own pixel calls. */
+    if (rx < 0) {
+        return;
+    }
+    if (rx == 0) {
+        jw_point(v, cx, cy, colour, rop);
         return;
     }
     /* Fold the sweep into [0,360) and make the end come after the start, so a
