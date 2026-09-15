@@ -164,6 +164,12 @@ void jwc_free(Jwc *d);
  * draws them puts a thicket of construction lines over the drawing. */
 int jwc_visible(const Jwc *d, unsigned char layer);
 
+/* Add a line to the drawing, the way a drawing command does.  The arrays grow
+ * by a block at a time; the counts the panel shows come straight off them.
+ * Returns 0 if there was no memory for it. */
+int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
+                 unsigned char type, unsigned char pen, unsigned char layer);
+
 /* The bounding box of everything shown. */
 void jwc_extent(const Jwc *d, float *x0, float *y0, float *x1, float *y1);
 

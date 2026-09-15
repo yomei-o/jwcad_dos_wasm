@@ -11,6 +11,7 @@
  */
 #include "jwc.h"
 #include "png.h"
+#include "cmd.h"
 #include "ui.h"
 #include "view.h"
 
@@ -31,6 +32,7 @@ int main(int argc, char **argv)
      * -c N: and with menu item N picked, the way a click leaves it. */
     int ui = 0, original = 0, command = 0, a = 1;
     int mx = 200, my = 200;     /* where the original leaves the pointer */
+    int press[8][2], n_press = 0;
     const char *in, *out;
     const char *why;
     unsigned char rgb[16][3];
@@ -49,12 +51,17 @@ int main(int argc, char **argv)
             mx = atoi(argv[a + 1]);
             my = atoi(argv[a + 2]);
             a += 3;
+        } else if (strcmp(argv[a], "-p") == 0 && a + 2 < argc && n_press < 8) {
+            press[n_press][0] = atoi(argv[a + 1]);
+            press[n_press][1] = atoi(argv[a + 2]);
+            n_press++;
+            a += 3;
         } else if (strcmp(argv[a], "-c") == 0 && a + 1 < argc) {
             command = atoi(argv[a + 1]);
             ui = original = 1;
             a += 2;
         } else {
-            fprintf(stderr, "usage: drawing [-o|-u] [-c N] IN.JWC OUT\n");
+            fprintf(stderr, "usage: drawing [-o|-u] [-c N] [-m X Y] [-p X Y] IN.JWC OUT\n");
             return 2;
         }
     }
@@ -89,6 +96,16 @@ int main(int argc, char **argv)
         jw_view_original(&w);
     } else {
         jw_view_fit(&w, &v, d);
+    }
+    /* -p: presses in the drawing area, before anything is drawn -- a command
+     * changes the drawing, and the screen shows what came out. */
+    if (n_press) {
+        JwCmd c;
+
+        jw_cmd_pick(&c, command);
+        for (i = 0; i < n_press; i++) {
+            jw_cmd_press(&c, d, &w, press[i][0], press[i][1]);
+        }
     }
     /* The drawing first: jw_view_draw clears the screen before it starts, the
      * way the original does when it opens a file.  The frame goes on after and

@@ -14,6 +14,7 @@
  *
  *   sh tools/build_wasm.sh     -> jwcad.js + jwcad.wasm
  */
+#include "cmd.h"
 #include "jwc.h"
 #include "ui.h"
 #include "view.h"
@@ -31,6 +32,7 @@
 static VGA vga;
 static JwView view;
 static JwUi ui;
+static JwCmd cmd;
 static Jwc *drawing;
 static unsigned char pixels[VGA_MAX_STRIDE * 8 * VGA_MAX_HEIGHT];
 static unsigned char rgba[640 * 480 * 4];
@@ -81,6 +83,7 @@ EMSCRIPTEN_KEEPALIVE int jw_open(const char *path)
     /* Where the original puts it: the .JWC holds screen units for the view it
      * was saved with, and JW_CAD puts them down where they are. */
     jw_view_original(&view);
+    jw_cmd_pick(&cmd, 0);
     jw_ui_from(&ui, drawing);
     ui.guide = jw_ui_guide();
     present();
@@ -150,17 +153,32 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
  * guidance goes the moment anything is picked, as it does there. */
 EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y)
 {
-    const int cmd = jw_ui_menu_hit(x, y);
+    const int pick = jw_ui_menu_hit(x, y);
 
-    if (!cmd) {
-        return 0;
+    if (pick) {
+        ui.command = pick;
+        ui.guide = 0;
+        jw_cmd_pick(&cmd, pick);
+        mouse_x = x;
+        mouse_y = y;
+        present();
+        return pick;
     }
-    ui.command = cmd;
-    ui.guide = 0;
-    mouse_x = x;
-    mouse_y = y;
-    present();
-    return cmd;
+    if (cmd.command && x >= AREA_X0 && x <= AREA_X1
+        && y >= AREA_Y0 && y <= AREA_Y1) {
+        const int changed = jw_cmd_press(&cmd, drawing, &view, x, y);
+
+        mouse_x = x;
+        mouse_y = y;
+        if (changed) {
+            jw_ui_from(&ui, drawing);   /* the counts and the panel move with it */
+            ui.command = cmd.command;
+            ui.guide = 0;
+        }
+        present();
+        return -1;
+    }
+    return 0;
 }
 
 /* Which menu command a point picks, or 0.  The page uses it to show the name

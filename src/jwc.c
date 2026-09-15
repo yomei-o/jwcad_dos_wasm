@@ -580,6 +580,37 @@ void jwc_free(Jwc *d)
     }
 }
 
+int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
+                 unsigned char type, unsigned char pen, unsigned char layer)
+{
+    JwcLine *l;
+    /* The file is a memory image and the reader sizes the array to what it
+     * holds, so anything drawn afterwards needs room made for it.  A block at a
+     * time, because a line is twenty-two bytes and a drawing gets thousands. */
+    static const long BLOCK = 256;
+
+    if ((d->n_lines + 1) % BLOCK == 0 || d->n_lines == 0) {
+        long want = ((d->n_lines + 1) / BLOCK + 1) * BLOCK;
+        JwcLine *grown = (JwcLine *)realloc(d->lines, (size_t)want * sizeof *grown);
+
+        if (!grown) {
+            return 0;
+        }
+        d->lines = grown;
+    }
+    l = &d->lines[d->n_lines];
+    memset(l, 0, sizeof *l);
+    l->x0 = x0;
+    l->y0 = y0;
+    l->x1 = x1;
+    l->y1 = y1;
+    l->type = type;
+    l->pen = pen;
+    l->layer = layer;
+    d->n_lines++;
+    return 1;
+}
+
 int jwc_visible(const Jwc *d, unsigned char layer)
 {
     return d->layer_on[layer] && d->group_on[layer >> 4];
