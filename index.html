@@ -57,6 +57,7 @@
     ドラッグで移動、ホイールで拡大縮小。矢印は本物と同じく排他的論理和で描いています。<br>
     メニューを押すと、本物と同じように行が反転して上の行がその命令の案内に変わります。<br>
     ／ を選んで作図領域を 2 回押すと線が引けます。本物と同じ画素に出ます。<br>
+    メニューの一文字キー（大文字が右の列、小文字が左）でも選べます。<br>
     ＪＷ＿ＣＡＤ の著作権は jw_software club にあります。
     <a href="https://github.com/yomei-o/jwcad_dos_wasm">解析と移植のソース</a>
   </footer>
@@ -173,6 +174,13 @@ canvas.addEventListener('pointermove', e => {
   const cmd = Module._jw_menu_at(p[0], p[1]);
   say(cmd ? sjis(Module._jw_menu_label(cmd)) : null);
 });
+/* The one-letter keys down the menu, the way the original takes them. */
+window.addEventListener('keydown', e => {
+  if (!Module || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+  const cmd = Module._jw_key(e.key.charCodeAt(0));
+  if (cmd) { e.preventDefault(); blit(); say(sjis(Module._jw_menu_label(cmd))); }
+});
+
 for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
   canvas.addEventListener(ev, () => { drag = null; canvas.classList.remove('drag'); });
 }

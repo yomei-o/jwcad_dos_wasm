@@ -64,6 +64,18 @@ char jw_ui_menu_key(int command)
 
 /* ------------------------------------------------------------------ paint */
 
+int jw_ui_key_command(int key)
+{
+    int i;
+
+    for (i = 0; i < 30; i++) {
+        if (MENU_KEY[i] == key) {
+            return i + 1;
+        }
+    }
+    return 0;
+}
+
 static void fill(VGA *v, int x0, int y0, int x1, int y1, unsigned colour)
 {
     int y;

@@ -32,6 +32,9 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/pressfull.sh 3 200 100 500 400       # ／  a line
     sh tools/pressfull.sh 4 250 150 450 350       # □  a box
     sh tools/pressfull.sh 11 300 200 400 200      # ○  a circle
+    echo "=== picking a command with its one-letter key"
+    sh tools/keycheck.sh D 10
+    sh tools/keycheck.sh C 1
     echo "=== the line a half-finished command drags (the rest is 丸数字)"
     sh tools/bandcheck.sh 3 300 200 450 320
     sh tools/bandcheck.sh 4 250 150 450 350

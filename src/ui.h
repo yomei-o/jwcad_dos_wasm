@@ -85,6 +85,11 @@ void jw_ui_text(VGA *v, int col, int row, unsigned fg, unsigned bg,
 const char *jw_ui_menu_label(int command);
 char jw_ui_menu_key(int command);
 
+/* And the other way: which command a key picks, or 0.  The capitals take the
+ * right column and the small letters the left -- typing `X` in the original
+ * puts it into ／ exactly as pressing the item does. */
+int jw_ui_key_command(int key);
+
 /* Which command a point in the menu picks, or 0.  The menu is fifteen rows of
  * two columns; the original draws them at rows 5 to 19 of the character grid,
  * the left column from column 2 and the right from column 10. */

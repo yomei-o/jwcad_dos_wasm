@@ -11,6 +11,13 @@
 #
 # The numbering is the original's own (USER_MNU.DAT): 複写 to 測定 are 1 to 15
 # down the right column, 移動 to 入出力 are 16 to 30 down the left.
+#
+# It waits a long time after the press, so the screen has certainly settled.
+#
+# The pointer is left on the menu item, which is where a press leaves it.  That
+# matters: the line at columns 17 and 22 saying what the right button would snap
+# to is only there when the pointer is over the drawing, so it is not part of
+# what an item puts up -- it follows the mouse.
 set -e
 # The breakpoint report goes to stdout and the emulator's own messages to
 # stderr, so stderr is dropped rather than merged: merging lets a 'wrote

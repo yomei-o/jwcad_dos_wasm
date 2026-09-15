@@ -198,6 +198,23 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y)
     return 0;
 }
 
+/* A key.  The one-letter keys down the menu pick a command, which is all the
+ * original does with them here; anything else is ignored for now. */
+EMSCRIPTEN_KEEPALIVE int jw_key(int key)
+{
+    const int pick = jw_ui_key_command(key);
+
+    if (!pick) {
+        return 0;
+    }
+    ui.command = pick;
+    ui.guide = 0;
+    ui.stage = 0;
+    jw_cmd_pick(&cmd, pick);
+    present();
+    return pick;
+}
+
 /* Which menu command a point picks, or 0.  The page uses it to show the name
  * of what is under the pointer. */
 EMSCRIPTEN_KEEPALIVE int jw_menu_at(int x, int y)
