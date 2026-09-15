@@ -26,6 +26,7 @@ typedef struct {
      * 100 / (518/297) / 1. */
     int stage;
     double num[2];
+    int dec[2];                 /* how many decimals each is shown to */
 } JwCmd;
 
 /* Start a command, or leave it (0). */

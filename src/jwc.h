@@ -138,6 +138,7 @@ typedef struct {
     int line_type;              /* 1 to 8 is a pen, past that a named style */
     int write_layer;            /* field 10 -- the button drawn filled in */
     float denom;                /* the scale: S=1/denom */
+    int decimals;               /* how many decimals a length is shown to */
     /* How long the drawing has been worked on, in seconds -- field 18.  The
      * original does not keep it as a duration: at startup it sets its session
      * clock to `time() - this`, so that `time() - clock` gives the total back.

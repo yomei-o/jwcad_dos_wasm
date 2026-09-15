@@ -88,15 +88,17 @@ def capture(n, pts):
 
 
 def with_formats(s):
-    """Turn each run of digits into a %w.3f of the width it occupied."""
-    n = 0
+    """Turn each run of digits into a `%*.*f`, keeping the width it occupied.
+
+    The number of decimals is not fixed: it comes from the scale (see
+    jwc.c), so it is passed in rather than baked in here."""
+    widths = []
 
     def one(m):
-        nonlocal n
-        n += 1
-        return '%%%d.3f' % len(m.group(1))
+        widths.append(len(m.group(1)))
+        return '%*.*f'
 
-    return NUM.sub(one, s), n
+    return NUM.sub(one, s), widths
 
 
 def escape(s):
@@ -131,7 +133,8 @@ def main():
  *
  * The numbers are the drawing being made -- the length and the angle for a
  * line, the two sides for a box, the radius and the diameter for a circle -- so
- * they are here as `%%w.3f` and src/ui.c fills them in.
+ * they are here as `%%*.*f` and src/ui.c fills in the value, the width it had
+ * and how many decimals the drawing's scale calls for.
  */
 #ifndef JW_STAGE_H
 #define JW_STAGE_H
@@ -140,11 +143,12 @@ typedef struct {
     int command;                /* the menu item, or 0 to end the table */
     int stage;                  /* 1 = a point taken, 2 = the thing is drawn */
     int col, row, fg, bg;
-    int numbers;                /* how many %f the text has */
+    int numbers;                /* how many %*.*f the text has */
     int first;                  /* which of the command's numbers the first one
                                  * is: the row under the counts carries the
                                  * second (角度, 縦, 直径), every other row the
                                  * first */
+    int width[2];               /* the field width each of them had */
     const char *text;
 } JwStage;
 
@@ -153,11 +157,12 @@ static const JwStage JW_STAGE[] = {
     for n in sorted(rows):
         for stage, items in enumerate(rows[n], 1):
             for col, row, fg, bg, s in items:
-                t, k = with_formats(s)
-                f.write('    { %2d, %d, %2d, %d, %d, 0x%04x, %d, %d, %s },\n'
-                        % (n, stage, col, row, fg, bg, k,
-                           1 if row == 3 else 0, escape(t)))
-    f.write('    { 0, 0, 0, 0, 0, 0, 0, 0, 0 },\n};\n\n#endif\n')
+                t, w = with_formats(s)
+                w = (w + [0, 0])[:2]
+                f.write('    { %2d, %d, %2d, %d, %d, 0x%04x, %d, %d, { %d, %d }, %s },\n'
+                        % (n, stage, col, row, fg, bg, len([x for x in w if x]),
+                           1 if row == 3 else 0, w[0], w[1], escape(t)))
+    f.write('    { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0 },\n};\n\n#endif\n')
     f.close()
     print('wrote src/stage.h')
 

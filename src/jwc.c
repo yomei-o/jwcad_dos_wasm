@@ -310,8 +310,32 @@ static void panel(const char *line, Jwc *d)
     d->pen = (f = field(line, 12)) ? (int)strtol(f, NULL, 10) : 1;
     d->line_type = (f = field(line, 13)) ? (int)strtol(f, NULL, 10) : 1;
     d->write_layer = (f = field(line, 10)) ? (int)strtol(f, NULL, 10) : 0;
+    /* Field 9 says the scale too, and it agrees in every drawing that ships,
+     * but the original does not read it: changing it with tools/asktext.py
+     * leaves the panel saying what it said before.  What it reads is the word
+     * table in the memory image -- see scales() below. */
     d->denom = (f = field(line, 9)) ? (float)atof(f) : 1.0f;
     d->work_seconds = (f = field(line, 18)) ? strtol(f, NULL, 10) : 0;
+}
+
+/* How many decimals the panel shows a length to.  It is not stored: it comes
+ * off the scale.  Sweeping the scale in the running original -- thirteen of the
+ * fourteen drawings keep it as a word at 0x705, and tools/askword.py changes it
+ * -- gives three decimals up to 1/10, two from 1/20 to 1/100 and one from 1/150
+ * up.  That is "start at three and take one off every time the scale goes past
+ * ten", and the same sweep says an angle is always three: it is degrees, and the
+ * scale has nothing to say about it. */
+static void decimals(Jwc *d)
+{
+    float s;
+
+    d->decimals = 3;
+    for (s = d->denom; s > 10.0f; s /= 10.0f) {
+        d->decimals--;
+    }
+    if (d->decimals < 0) {
+        d->decimals = 0;
+    }
 }
 
 static int header(const unsigned char *file, Jwc *d)
@@ -334,6 +358,7 @@ static int header(const unsigned char *file, Jwc *d)
     grid(buf, d);
     panel(buf, d);
     d->old_format = (unsigned char)(field(buf, 30) == NULL);
+    decimals(d);
 
     /* "%lp,%lp" -- the second one's offset is how long the string pool is. */
     memcpy(buf, file + TEXT_LINE * 3, TEXT_LINE - 1);

@@ -179,6 +179,8 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y)
         ui.stage = cmd.stage;
         ui.num[0] = cmd.num[0];
         ui.num[1] = cmd.num[1];
+        ui.dec[0] = cmd.dec[0];
+        ui.dec[1] = cmd.dec[1];
         present();
         return -1;
     }

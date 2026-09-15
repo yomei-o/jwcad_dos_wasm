@@ -30,6 +30,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
         c->pressed = 1;
         c->stage = 1;
         c->num[0] = c->num[1] = 0.0;
+        c->dec[0] = c->dec[1] = d->decimals;
         return 0;
     }
     c->pressed = 0;
@@ -38,6 +39,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
         const double mm = d->unit_mm > 0.0f ? d->denom / d->unit_mm : 1.0;
         const double dx = x - c->x0, dy = y - c->y0;
 
+        c->dec[0] = c->dec[1] = d->decimals;
         if (c->command == 4) {
             c->num[0] = (dx < 0 ? -dx : dx) * mm;
             c->num[1] = (dy < 0 ? -dy : dy) * mm;
@@ -46,7 +48,10 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
             c->num[1] = c->num[0] * 2.0;
         } else {
             c->num[0] = sqrt(dx * dx + dy * dy) * mm;
+            /* An angle is degrees, so the drawing's scale has nothing to say
+             * about it: always three decimals. */
             c->num[1] = atan2(dy, dx) * 180.0 / 3.14159265358979323846;
+            c->dec[1] = 3;
         }
     }
     /* Both take the pen and the line type the panel shows and go on the layer

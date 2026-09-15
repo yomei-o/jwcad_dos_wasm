@@ -34,6 +34,7 @@ int main(int argc, char **argv)
     int mx = 200, my = 200;     /* where the original leaves the pointer */
     int press[8][2], n_press = 0, stage = 0;
     double num[2] = { 0.0, 0.0 };
+    int dec[2] = { 3, 3 };
     const char *in, *out;
     const char *why;
     unsigned char rgb[16][3];
@@ -110,6 +111,8 @@ int main(int argc, char **argv)
         stage = c.stage;
         num[0] = c.num[0];
         num[1] = c.num[1];
+        dec[0] = c.dec[0];
+        dec[1] = c.dec[1];
     }
     /* The drawing first: jw_view_draw clears the screen before it starts, the
      * way the original does when it opens a file.  The frame goes on after and
@@ -124,6 +127,8 @@ int main(int argc, char **argv)
         s.stage = stage;
         s.num[0] = num[0];
         s.num[1] = num[1];
+        s.dec[0] = dec[0];
+        s.dec[1] = dec[1];
         if (command) {
             /* the line of guidance goes the moment anything is picked */
             s.guide = 0;

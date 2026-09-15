@@ -275,6 +275,7 @@ void jw_ui_default(JwUi *s)
     memset(s, 0, sizeof(*s));
     s->pen = 2;
     s->line_type = 1;
+    s->dec[0] = s->dec[1] = 3;
     s->paper = 3;
     s->denom = 100.0;
     s->group = 0;
@@ -301,6 +302,7 @@ void jw_ui_from(JwUi *s, const Jwc *d)
     s->layer = d->write_layer;
     s->name = d->layer_name[(s->group << 4) | (s->layer & 15)];
     s->work_seconds = d->work_seconds;
+    s->dec[0] = s->dec[1] = d->decimals;
     for (i = 0; i < 16; i++) {
         const unsigned char layer = (unsigned char)((s->group << 4) | i);
         long k;
@@ -625,10 +627,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     continue;
                 }
                 if (q->numbers == 2) {
-                    sprintf(out, q->text, s->num[q->first],
-                            s->num[q->first + 1 > 1 ? 1 : q->first + 1]);
+                    const int k = q->first + 1 > 1 ? 1 : q->first + 1;
+
+                    sprintf(out, q->text, q->width[0], s->dec[q->first],
+                            s->num[q->first], q->width[1], s->dec[k],
+                            s->num[k]);
                 } else if (q->numbers == 1) {
-                    sprintf(out, q->text, s->num[q->first]);
+                    sprintf(out, q->text, q->width[0], s->dec[q->first],
+                            s->num[q->first]);
                 } else {
                     strcpy(out, q->text);
                 }
