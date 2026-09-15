@@ -822,18 +822,17 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
             && cy - r >= v->clip_y0 && cy + r <= v->clip_y1) {
             /* The pixel routine is not given a tilt: the original folds it
              * into the two angles on the way in (`start + tilt`, `end + tilt`
-             * at 0def:0389) and hands over a plain circle.  Screen y runs
-             * downwards, so the sweep is mirrored -- the same reason to_y
-             * subtracts. */
-            const double ts = (a->start + ((long)a->tilt << 16)) / 65536.0;
-            const double te = (a->end + ((long)a->tilt << 16)) / 65536.0;
+             * at 0def:0389) and hands over a plain circle.  The angles stay
+             * the drawing's own -- anticlockwise from the x axis -- because
+             * the boxes jw_arc builds from them turn them into screen
+             * coordinates itself. */
+            const double ts = (a->start + a->tilt) / 65536.0;
+            const double te = (a->end + a->tilt) / 65536.0;
 
-            jw_arc(v, to_x(w, a->cx), to_y(v, w, a->cy), rx, a->flatten,
-                   0, -te, -ts,
+            jw_arc(v, cx, cy, r, ts, te,
                    pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
         } else {
-            jw_arc_poly(v, cx, cy, r, a->flatten, a->start, a->end,
-                        (long)a->tilt << 16,
+            jw_arc_poly(v, cx, cy, r, a->flatten, a->start, a->end, a->tilt,
                         pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
         }
     }

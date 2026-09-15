@@ -14,6 +14,8 @@
 #include "draw.h"
 
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 /* FUN_20a9_0732 */
 void jw_set_colour(VGA *v, unsigned colour, unsigned rop)
@@ -257,70 +259,103 @@ void jw_point(VGA *v, int x, int y, unsigned colour, unsigned rop)
     vga_outw(v, 0x3ce, 0xff08);
 }
 
-/* The arc's inner plotter, FUN_20a9_0d1a: one offset from the centre, mirrored
- * into the four quadrants, each mirror kept only if it is inside that
- * quadrant's angle bounds.  The original indexes a table of up to five
- * quadrant pieces; the sweep here is one range, which is the same thing said
- * more directly. */
+/* The arc's inner plotter, FUN_20a9_0d1a (link 10a9:0d1a), and the table of
+ * pieces it reads.
+ *
+ * The sweep does not reach it as a pair of angles.  It reaches it as a list of
+ * at most five pieces, each one a quadrant and a *box* in screen coordinates,
+ * and every offset the walk produces is mirrored into the piece's quadrant and
+ * kept only if it lands inside that piece's box:
+ *
+ *     cmp [bx+si+0x32], ax   jge ...    x <= box.xhi
+ *     cmp [bx+si+0x3c], ax   jle ...    x >= box.xlo
+ *     cmp [bx+si+0x46], ax   jl  ...    y <= box.yhi
+ *     cmp [bx+si+0x50], ax   jg  ...    y >= box.ylo
+ *
+ * with the quadrant at [bx+si+0x28] and -1 ending the list.  A box is an
+ * axis-aligned rectangle, so it is not the same thing as the angles it was
+ * built from: a pixel a little past the end angle is still drawn when it sits
+ * inside the rectangle, which is exactly what the original does and what no
+ * angle test can be made to do.
+ *
+ * The table is read out of the original rather than guessed at.  One arc of 0
+ * to 22 degrees, radius 5, centred at (150,120), under
+ *
+ *     DOSEMU_BP=11B9:0D1A DOSEMU_BPPTR=8 DOSEMU_BPPTRAT=40 DOSEMU_BPPTRN=50
+ *
+ * prints one piece: quadrant 0, x 154..155, y 118..120.  Giving the same arc a
+ * centre of (150.5, 120.25) and a radius of 5.6 prints those same numbers, so
+ * the box is built from the *truncated* centre and radius, the ones the walk
+ * itself uses -- 154 is (int)(150 + 5*cos 22) and 118 is (int)(120 - 5*sin 22),
+ * the truncation coming after the centre is added, not before. */
+typedef struct {
+    int q;                                  /* which mirror: 0..3, anticlockwise */
+    int xlo, xhi, ylo, yhi;
+} ArcPiece;
+
+/* The sweep cut at the quadrant boundaries, each piece carrying the box its own
+ * two ends make.  At most five pieces: a sweep that starts inside a quadrant
+ * and runs a whole turn comes back into it, and that is the fifth. */
+static int arc_pieces(ArcPiece *p, int cx, int cy, int rx, int ry,
+                      double start, double end)
+{
+    static const double RAD = 3.14159265358979323846 / 180.0;
+    int n = 0;
+    double a = start;
+
+    while (a < end && n < 5) {
+        const double q = floor(a / 90.0);
+        double b = (q + 1.0) * 90.0;
+        double x0, x1, y0, y1;
+
+        if (b > end) {
+            b = end;
+        }
+        x0 = cx + rx * cos(a * RAD);
+        x1 = cx + rx * cos(b * RAD);
+        y0 = cy - ry * sin(a * RAD);
+        y1 = cy - ry * sin(b * RAD);
+        p[n].q = ((int)q) & 3;
+        p[n].xlo = (int)(x0 < x1 ? x0 : x1);
+        p[n].xhi = (int)(x0 < x1 ? x1 : x0);
+        p[n].ylo = (int)(y0 < y1 ? y0 : y1);
+        p[n].yhi = (int)(y0 < y1 ? y1 : y0);
+        n++;
+        a = b;
+    }
+    return n;
+}
+
 static void arc_pixel(VGA *v, int cx, int cy, int dx, int dy,
-                      double s, double e, double tilt_c, double tilt_s,
-                      double rx, double ry,
+                      const ArcPiece *pieces, int n,
                       unsigned colour, unsigned rop, int *style)
 {
     static const int SX[4] = { 1, -1, -1,  1 };
-    static const int SY[4] = { 1,  1, -1, -1 };
-    int q;
+    static const int SY[4] = { -1, -1,  1,  1 };   /* screen y, so 0 is upwards */
+    int draw = 1, i;
 
-    for (q = 0; q < 4; q++) {
-        double ux = dx * SX[q], uy = dy * SY[q];
-        double ang;
-        int px, py;
-
-        if ((dx == 0 && SX[q] < 0) || (dy == 0 && SY[q] < 0)) {
-            continue;                       /* the axes belong to one quadrant */
-        }
-        /* Which angle on the unturned ellipse this pixel is, in degrees --
-         * worked out in the first quadrant and mirrored, which is what decides
-         * the diagonals.
-         *
-         * A pixel that sits exactly on a diagonal counts as **just inside the
-         * axis**, not exactly on 45 degrees.  A radius-1 circle swept from 45
-         * to 315 leaves out its two diagonal pixels as well as the one at 0,
-         * and draws five; swept from 0 to 90 it draws three, diagonal and both
-         * ends included.  Only a 45 that is a hair under 45 gives both.  The
-         * axes stay exact -- nudging those would drop the ends of a quarter
-         * circle. */
-        {
-            const double a = fabs(ux) / (rx > 0.0 ? rx : 1.0);
-            const double b = fabs(uy) / (ry > 0.0 ? ry : 1.0);
-            double a0 = atan2(b, a) * 180.0 / 3.14159265358979323846;
-
-            if (a0 > 0.0 && a0 < 90.0) {
-                a0 -= 1e-9;
-            }
-            ang = ux >= 0.0 ? (uy >= 0.0 ? a0 : 360.0 - a0)
-                            : (uy >= 0.0 ? 180.0 - a0 : 180.0 + a0);
-            if (ang >= 360.0) {
-                ang -= 360.0;
-            }
-        }
-        if (ang < s) {
-            ang += 360.0;
-        }
-        if (ang > e) {
-            continue;
-        }
-        px = cx + (int)(ux * tilt_c - uy * tilt_s);
-        py = cy + (int)(ux * tilt_s + uy * tilt_c);
-
-        if (*style != JW_STYLE_SOLID && !(*style & 1)) {
-            continue;
-        }
-        jw_point(v, px, py, colour, rop);
-    }
+    /* The style word is rotated once per step whatever gets drawn, and the bit
+     * that decides is the one leaving the top: `test byte [bx+0x5b], 0x80` and
+     * then `shl word [bx+0x5a], 1` with that same bit put back at the bottom.
+     * jw_line's inner loops do it in that order too. */
     if (*style != JW_STYLE_SOLID) {
-        /* `*(int *)(state + 0x5a) <<= 1` with a 1 shifted in, once per step. */
         *style = ((*style << 1) | ((*style >> 15) & 1)) & 0xffff;
+        draw = *style & 1;
+    }
+    if (!draw) {
+        return;
+    }
+    for (i = 0; i < n; i++) {
+        const int px = cx + dx * SX[pieces[i].q];
+        const int py = cy + dy * SY[pieces[i].q];
+
+        /* A pixel on an axis belongs to two mirrors, and one at a quadrant
+         * boundary to two pieces; the original plots it twice and so does
+         * this, which is the same picture. */
+        if (px >= pieces[i].xlo && px <= pieces[i].xhi
+            && py >= pieces[i].ylo && py <= pieces[i].yhi) {
+            jw_point(v, px, py, colour, rop);
+        }
     }
 }
 
@@ -503,6 +538,12 @@ static void clipped_line(VGA *v, double x0, double y0, double x1, double y1,
         if (by < v->clip_y0) by = v->clip_y0;
         if (ay > v->clip_y1) ay = v->clip_y1;
         if (by > v->clip_y1) by = v->clip_y1;
+        /* JW_TRACE=1 prints the chain the same way the original's own line
+         * calls come out of the emulator, which is what tools/qpoly.py sets
+         * the two side by side with. */
+        if (getenv("JW_TRACE")) {
+            printf("(%9.4f,%9.4f)-(%9.4f,%9.4f)\n", x0, y0, x1, y1);
+        }
         jw_line(v, ax, ay, bx, by, colour, rop, style);
     }
 }
@@ -546,14 +587,15 @@ void jw_arc_poly(VGA *v, double cx, double cy, double r, int flatten,
     clipped_line(v, px, py, qx, qy, colour, rop, style);
 }
 
-void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
+void jw_arc(VGA *v, double cxf, double cyf, double r,
             double start, double end, unsigned colour, unsigned rop, int style)
 {
-    double ry = rx * (flatten > 0 ? flatten / 10000.0 : 1.0);
-    double t = tilt * 3.14159265358979323846 / 180.0;
-    double tc = cos(t), ts = sin(t);
-    double a = rx, b = ry;
+    ArcPiece pieces[5];
+    const int cx = (int)cxf, cy = (int)cyf;
+    const int rx = (int)r;
+    double a = rx, b = rx;
     double x, y, d1, d2;
+    int n;
 
     /* A radius that truncates to nothing is one dot at the truncated centre,
      * whatever the sweep says.  SAMPLE2 has eight of them (radii 0.37 and
@@ -566,14 +608,28 @@ void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
         jw_point(v, cx, cy, colour, rop);
         return;
     }
-    /* Fold the sweep into [0,360) and make the end come after the start, so a
-     * pixel's own angle can be compared against it directly.  start == end is
-     * the whole ellipse, which is how the .JWC record says "a circle". */
-    start = start - 360.0 * floor(start / 360.0);
-    end = end - 360.0 * floor(end / 360.0);
+    /* Both angles into the range the original puts them in: the start into
+     * [0,360) and the end into (0,360], each by whole turns -- four loops at
+     * 0def:194a that add or subtract 360 one turn at a time.  An end that is
+     * not past the start is a turn further on, which is how the record says
+     * "the whole circle" and also what makes a sweep that crosses zero come
+     * out as pieces on both sides of it. */
+    while (start < 0.0) {
+        start += 360.0;
+    }
+    while (start >= 360.0) {
+        start -= 360.0;
+    }
+    while (end <= 0.0) {
+        end += 360.0;
+    }
+    while (end > 360.0) {
+        end -= 360.0;
+    }
     if (end <= start) {
         end += 360.0;
     }
+    n = arc_pieces(pieces, cx, cy, rx, rx, start, end);
 
     /* Radius one is its own case.  The original plots three dots for it --
      * (0,1), (1,1), (1,0) -- where the two-region walk below gives only the
@@ -582,9 +638,9 @@ void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
      * circles; for every radius from two to nine the walk below is right to
      * the dot. */
     if (a == 1.0 && b == 1.0) {
-        arc_pixel(v, cx, cy, 0, 1, start, end, tc, ts, a, b, colour, rop, &style);
-        arc_pixel(v, cx, cy, 1, 1, start, end, tc, ts, a, b, colour, rop, &style);
-        arc_pixel(v, cx, cy, 1, 0, start, end, tc, ts, a, b, colour, rop, &style);
+        arc_pixel(v, cx, cy, 0, 1, pieces, n, colour, rop, &style);
+        arc_pixel(v, cx, cy, 1, 1, pieces, n, colour, rop, &style);
+        arc_pixel(v, cx, cy, 1, 0, pieces, n, colour, rop, &style);
         return;
     }
 
@@ -598,8 +654,7 @@ void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
      * (0,1)(1,1)(1,0) -- the (3,3) and the (1,1) are exactly the points the
      * textbook form drops. */
     while (a * a * y > b * b * x) {
-        arc_pixel(v, cx, cy, (int)x, (int)y, start, end, tc, ts, a, b,
-                  colour, rop, &style);
+        arc_pixel(v, cx, cy, (int)x, (int)y, pieces, n, colour, rop, &style);
         if (d1 < 0.0) {
             x += 1.0;
             d1 += 2.0 * b * b * x + b * b;
@@ -612,8 +667,7 @@ void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
     d2 = b * b * (x + 0.5) * (x + 0.5) + a * a * (y - 1.0) * (y - 1.0)
        - a * a * b * b;
     while (y >= 0.0) {
-        arc_pixel(v, cx, cy, (int)x, (int)y, start, end, tc, ts, a, b,
-                  colour, rop, &style);
+        arc_pixel(v, cx, cy, (int)x, (int)y, pieces, n, colour, rop, &style);
         if (d2 > 0.0) {
             y -= 1.0;
             d2 += a * a - 2.0 * a * a * y;

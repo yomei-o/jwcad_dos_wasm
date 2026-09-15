@@ -468,7 +468,11 @@ Jwc *jwc_load(const char *path, const char **why)
         /* 16.16 fixed degrees, both of them -- see jwc.h. */
         d->arcs[k].start = rd_i32(r + 14);
         d->arcs[k].end = rd_i32(r + 18);
-        d->arcs[k].tilt = rd_i16(r + 24);
+        /* The tilt is a whole 16.16 long as well, not a degree with two spare
+         * bytes in front of it.  SAMPLE2 has four ellipses turned by
+         * 0x0059ffeb -- 88.99968 degrees -- and reading only the high word
+         * puts every vertex of their chains a pixel out. */
+        d->arcs[k].tilt = rd_i32(r + 22);
         d->arcs[k].type = r[26];
         d->arcs[k].pen = r[27];
         d->arcs[k].layer = r[28];

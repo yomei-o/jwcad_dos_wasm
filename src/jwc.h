@@ -35,7 +35,7 @@ typedef struct {
     short flatten;      /* minor/major x10000; 10000 is a circle */
     long start;         /* 16.16 fixed degrees */
     long end;           /* end == start means the whole ellipse */
-    short tilt;         /* degrees the ellipse is turned by */
+    long tilt;          /* how far the ellipse is turned, 16.16 degrees too */
     unsigned char type, pen;
     unsigned char layer;
     unsigned char rest[4];

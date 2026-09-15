@@ -45,8 +45,9 @@ void jw_arc_poly(VGA *v, double cx, double cy, double r, int flatten,
                  long start, long end, long tilt, unsigned colour, unsigned rop,
                  int style);
 
-void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,
-            double start, double end, unsigned colour, unsigned rop, int style);
+void jw_arc(VGA *v, double cx, double cy, double r,
+            double start, double end,
+            unsigned colour, unsigned rop, int style);
 
 /* FUN_20a9_014e -- stamp one glyph's bitmap at a pixel position, in write
  * mode 3, painting the background where the glyph's bits are clear.  Pass
