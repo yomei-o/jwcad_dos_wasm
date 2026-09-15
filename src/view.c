@@ -463,9 +463,11 @@ static void draw_text_turned(VGA *v, const JwcText *t, const JwView *w,
  *
  * so the two ends are `floor(x)` and `ceil(y)` -- the same rounding the upright
  * routine uses -- the far side is `floor(end + (int)height * n)` in each
- * coordinate, and **the fifth line is the baseline again, one pixel to the
- * right**.  Not one pixel towards the text, which is what the upright routine
- * does; both turned boxes say `+1` in x and nothing in y. */
+ * coordinate, and the fifth line is the baseline again, one pixel across its
+ * own major axis: `+1` in x when the baseline is the more vertical of the two
+ * and `-1` in y when it is the more horizontal.  Seven boxes measured, at
+ * 90, 45, 39, -64, -19 and two more degrees, and they all say that -- and so
+ * does the upright box, whose fifth line is the row above the baseline. */
 static void draw_text_box_turned(VGA *v, const JwView *w, double x0, double y0,
                                  double x1, double y1, double ux, double uy,
                                  int h, unsigned colour)
@@ -484,8 +486,14 @@ static void draw_text_box_turned(VGA *v, const JwView *w, double x0, double y0,
     jw_line(v, bx, by, cx, cy, colour, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, cx, cy, dx, dy, colour, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, dx, dy, ax, ay, colour, ROP_REPLACE, JW_STYLE_SOLID);
-    if (inside(w, ax + 1, ay) && inside(w, bx + 1, by)) {
-        jw_line(v, ax + 1, ay, bx + 1, by, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    {
+        const int ex = fabs(uy) >= fabs(ux) ? 1 : 0;
+        const int ey = fabs(uy) >= fabs(ux) ? 0 : -1;
+
+        if (inside(w, ax + ex, ay + ey) && inside(w, bx + ex, by + ey)) {
+            jw_line(v, ax + ex, ay + ey, bx + ex, by + ey,
+                    colour, ROP_REPLACE, JW_STYLE_SOLID);
+        }
     }
 }
 
