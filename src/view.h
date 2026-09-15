@@ -56,6 +56,16 @@ int jw_view_fonts(const char *dir);
  * with them too, at their own size -- the original's menus go through the same
  * DOS/V font it hands the drawing. */
 const Fontx *jw_view_ank(void);
+
+/* One text, in a colour of the caller's choosing.  jw_view_draw uses the pen
+ * the drawing gives it; 消去 paints what it has picked again in colour 2, and
+ * that is the only reason this is not private to view.c. */
+void jw_view_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
+                  unsigned colour);
+
+/* And one arc, the same way. */
+void jw_view_arc(VGA *v, const Jwc *d, const JwcArc *a, const JwView *w,
+                 unsigned colour);
 const Fontx *jw_view_kanji(void);
 
 /* What colour a pen draws in -- the original's own table, DGROUP 0x0a70.

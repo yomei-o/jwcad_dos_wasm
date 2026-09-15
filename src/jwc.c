@@ -659,6 +659,16 @@ void jwc_remove_arc(Jwc *d, long k)
     d->n_arcs--;
 }
 
+void jwc_remove_text(Jwc *d, long k)
+{
+    if (k < 0 || k >= d->n_texts) {
+        return;
+    }
+    memmove(d->texts + k, d->texts + k + 1,
+            (size_t)(d->n_texts - k - 1) * sizeof *d->texts);
+    d->n_texts--;
+}
+
 int jwc_add_arc(Jwc *d, float cx, float cy, float r,
                 unsigned char type, unsigned char pen, unsigned char layer)
 {

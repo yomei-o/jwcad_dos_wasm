@@ -99,6 +99,36 @@ static int is_lead(unsigned char c)
     return (c >= 0x81 && c <= 0x9f) || (c >= 0xe0 && c <= 0xfc);
 }
 
+/* The top line as characters, so that jw_ui_top_item can find the bars.  One
+ * byte per cell, filled in as jw_ui_text writes row 1 and cleared when
+ * jw_ui_draw paints that row black again. */
+static char top_line[82];
+
+static void top_clear(void)
+{
+    memset(top_line, ' ', sizeof top_line - 1);
+    top_line[sizeof top_line - 1] = 0;
+}
+
+int jw_ui_top_item(int x, int y)
+{
+    const int col = x / 8 + 1;
+    int i, bars = 0;
+
+    if (y < 0 || y > 15 || col < 1 || col > 80) {
+        return 0;
+    }
+    if (top_line[col - 1] == '|') {
+        return 0;               /* the bar itself does nothing */
+    }
+    for (i = 0; i < col - 1; i++) {
+        if (top_line[i] == '|') {
+            bars++;
+        }
+    }
+    return bars;                /* 0 = before the first bar, so not an item */
+}
+
 void jw_ui_text(VGA *v, int col, int row, unsigned fg, unsigned bg,
                 const char *s)
 {
@@ -109,6 +139,13 @@ void jw_ui_text(VGA *v, int col, int row, unsigned fg, unsigned bg,
 
     if (!p || !ank->data) {
         return;
+    }
+    if (row == 1) {
+        int i;
+
+        for (i = 0; p[i] && col - 1 + i < 80; i++) {
+            top_line[col - 1 + i] = (char)p[i];
+        }
     }
     /* 0def:23c5 reads its last argument as three cases, not as a colour:
      * 0 paints the background black behind the letters, 2 leaves what is
@@ -612,6 +649,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
     /* -- the title and the guidance ------------------------------------- */
     fill(v, 0, 0, 639, 15, 0);
+    top_clear();
     if (s->command >= 1 && s->command <= 30) {
         /* what the original writes there once an item is picked, piece by
          * piece and in its own order -- see src/prompt.h */
@@ -660,6 +698,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
             fill(v, 0, 0, 639, 15, 0);
+            top_clear();
             if (own) {
                 fill(v, 1, 17, 120, 47, 4);
             } else {

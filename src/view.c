@@ -606,6 +606,44 @@ static void draw_text_box_turned(VGA *v, const JwView *w, double x0, double y0,
     }
 }
 
+/* One arc.  The colour is the caller's: jw_view_draw hands it the record's own
+ * pen, and 消去 hands it colour 2 to paint what it has picked. */
+void jw_view_arc(VGA *v, const Jwc *d, const JwcArc *a, const JwView *w,
+                 unsigned colour)
+{
+    /* The original's arc routine works in screen coordinates, with the centre
+     * and the radius still floats and the two angles the record's own 16.16
+     * degrees.  Pass them through untouched. */
+    const double cx = (a->cx - w->ox) * w->scale + w->ax;
+    const double cy = w->ay - (a->cy - w->oy) * w->scale;
+    const double r = a->r * w->scale;
+    const int rx = (int)r;
+
+    (void)d;
+    /* Which of the two the original picks (1def:0228, the tests at 0def:03e0):
+     * the pixel routine only for a true circle under ten pixels across whose
+     * box lies wholly inside the drawing area -- it does no clipping -- and the
+     * chain of straight pieces for all the rest, including every ellipse
+     * however small. */
+    if (a->flatten == 10000 && rx < 10
+        && cx - r >= v->clip_x0 && cx + r <= v->clip_x1
+        && cy - r >= v->clip_y0 && cy + r <= v->clip_y1) {
+        /* The pixel routine is not given a tilt: the original folds it into the
+         * two angles on the way in (`start + tilt`, `end + tilt` at 0def:0389)
+         * and hands over a plain circle.  The angles stay the drawing's own --
+         * anticlockwise from the x axis -- because the boxes jw_arc builds from
+         * them turn them into screen coordinates itself. */
+        const double ts = (a->start + a->tilt) / 65536.0;
+        const double te = (a->end + a->tilt) / 65536.0;
+
+        jw_arc(v, cx, cy, r, ts, te, colour, ROP_REPLACE,
+               jw_view_line_style(a->type));
+    } else {
+        jw_arc_poly(v, cx, cy, r, a->flatten, a->start, a->end, a->tilt,
+                    colour, ROP_REPLACE, jw_view_line_style(a->type));
+    }
+}
+
 static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
                       double unit, unsigned colour)
 {
@@ -913,41 +951,10 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
                 jw_view_pen_colour(l->pen), ROP_REPLACE, jw_view_line_style(l->type));
     }
     for (k = 0; k < d->n_arcs; k++) {
-        const JwcArc *a = &d->arcs[k];
-        /* The original's arc routine works in screen coordinates, with the
-         * centre and the radius still floats and the two angles the record's
-         * own 16.16 degrees.  Pass them through untouched. */
-        const double cx = (a->cx - w->ox) * w->scale + w->ax;
-        const double cy = w->ay - (a->cy - w->oy) * w->scale;
-        const double r = a->r * w->scale;
-        const int rx = (int)r;
-
-        if (!jwc_visible(d, a->layer)) {
+        if (!jwc_visible(d, d->arcs[k].layer)) {
             continue;
         }
-        /* Which of the two the original picks (1def:0228, the tests at
-         * 0def:03e0): the pixel routine only for a true circle under ten
-         * pixels across whose box lies wholly inside the drawing area -- it
-         * does no clipping -- and the chain of straight pieces for all the
-         * rest, including every ellipse however small. */
-        if (a->flatten == 10000 && rx < 10
-            && cx - r >= v->clip_x0 && cx + r <= v->clip_x1
-            && cy - r >= v->clip_y0 && cy + r <= v->clip_y1) {
-            /* The pixel routine is not given a tilt: the original folds it
-             * into the two angles on the way in (`start + tilt`, `end + tilt`
-             * at 0def:0389) and hands over a plain circle.  The angles stay
-             * the drawing's own -- anticlockwise from the x axis -- because
-             * the boxes jw_arc builds from them turn them into screen
-             * coordinates itself. */
-            const double ts = (a->start + a->tilt) / 65536.0;
-            const double te = (a->end + a->tilt) / 65536.0;
-
-            jw_arc(v, cx, cy, r, ts, te,
-                   jw_view_pen_colour(a->pen), ROP_REPLACE, jw_view_line_style(a->type));
-        } else {
-            jw_arc_poly(v, cx, cy, r, a->flatten, a->start, a->end, a->tilt,
-                        jw_view_pen_colour(a->pen), ROP_REPLACE, jw_view_line_style(a->type));
-        }
+        jw_view_arc(v, d, &d->arcs[k], w, jw_view_pen_colour(d->arcs[k].pen));
     }
     for (k = 0; k < d->n_texts; k++) {
         if (!jwc_visible(d, d->texts[k].layer)) {
@@ -1027,6 +1034,12 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         jw_line(v, mx - 2, my - 1, mx - 2, my + 1, mc, ROP_REPLACE, JW_STYLE_SOLID);
         jw_line(v, mx + 2, my - 1, mx + 2, my + 1, mc, ROP_REPLACE, JW_STYLE_SOLID);
     }
+}
+
+void jw_view_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
+                  unsigned colour)
+{
+    draw_text(v, d, t, w, (double)d->unit_mm * w->scale, colour);
 }
 
 void jw_view_rgba(const VGA *v, const unsigned char *pixels, unsigned char *rgba)

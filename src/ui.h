@@ -113,4 +113,15 @@ void jw_ui_cursor(VGA *v, int x, int y);
 /* The line of guidance the original shows when it has nothing to say. */
 const char *jw_ui_guide(void);
 
+/* Which item on the top line a screen pixel picks, or 0.
+ *
+ * The top line is a menu of its own: the runs between its `|` characters are
+ * the items, numbered from the left.  Measured on 消去's
+ * `復活出来ません |① 実行(L)|② 中止(R)|` -- columns 24 to 33 carry the erase
+ * out, columns 35 to 44 call it off, and column 34, the bar itself, does
+ * nothing at all.  Anything before the first bar is not an item either.
+ *
+ * It reads the line jw_ui_draw last drew, so call it after that. */
+int jw_ui_top_item(int x, int y);
+
 #endif

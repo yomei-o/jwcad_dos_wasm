@@ -32,7 +32,7 @@ int main(int argc, char **argv)
      * -c N: and with menu item N picked, the way a click leaves it. */
     int ui = 0, original = 0, command = 0, a = 1;
     int mx = 200, my = 200;     /* where the original leaves the pointer */
-    int press[8][3], n_press = 0, stage = 0;
+    int press[8][3], n_press = 0, stage = 0, top_x = -1;
     double num[2] = { 0.0, 0.0 };
     int dec[2] = { 3, 3 };
     JwCmd c;
@@ -67,12 +67,16 @@ int main(int argc, char **argv)
             press[n_press][2] = 1;
             n_press++;
             a += 3;
+        } else if (strcmp(argv[a], "-t") == 0 && a + 1 < argc) {
+            /* a press on the top line, which is a menu of its own */
+            top_x = atoi(argv[a + 1]);
+            a += 2;
         } else if (strcmp(argv[a], "-c") == 0 && a + 1 < argc) {
             command = atoi(argv[a + 1]);
             ui = original = 1;
             a += 2;
         } else {
-            fprintf(stderr, "usage: drawing [-o|-u] [-c N] [-m X Y] [-p|-r X Y] IN.JWC OUT\n");
+            fprintf(stderr, "usage: drawing [-o|-u] [-c N] [-m X Y] [-p|-r X Y] [-t X] IN.JWC OUT\n");
             return 2;
         }
     }
@@ -117,6 +121,25 @@ int main(int argc, char **argv)
         for (i = 0; i < n_press; i++) {
             jw_cmd_press(&c, d, &w, press[i][0], press[i][1], press[i][2]);
         }
+    }
+    /* -t: a press on the top line.  Which item that is depends on the line the
+     * chrome has drawn, so the chrome is drawn once first -- jw_view_draw
+     * clears the screen below, so nothing of it survives. */
+    if (top_x >= 0) {
+        JwUi t;
+
+        jw_ui_from(&t, d);
+        t.command = command;
+        t.guide = 0;
+        t.stage = c.stage;
+        t.num[0] = c.num[0];
+        t.num[1] = c.num[1];
+        t.dec[0] = c.dec[0];
+        t.dec[1] = c.dec[1];
+        t.snap = 0;
+        t.missed = c.missed;
+        jw_ui_draw(&v, &t);
+        jw_cmd_top(&c, d, jw_ui_top_item(top_x, 8));
     }
     /* the pointer is where it is, and a command in hand keeps its reading up
      * to date as it moves */

@@ -270,6 +270,19 @@ static int in_reach_layer(const Jwc *d, unsigned char layer)
            && d->group_edit[layer >> 4];
 }
 
+/* An arc counts as inside when the box its centre and radius make is.  A line
+ * and a text are settled by their two ends, which is what SAMPLE0's erase
+ * showed; for an arc there is nothing in the fourteen drawings that separates
+ * "the box" from "the two ends", so the box is what this uses. */
+static int arc_in_range(const JwCmd *c, const JwcArc *a)
+{
+    const double rx = a->r;
+    const double ry = a->r * (a->flatten > 0 ? a->flatten / 10000.0 : 1.0);
+    const double m = rx > ry ? rx : ry;
+
+    return jw_cmd_in_range(c, a->cx - m, a->cy - m, a->cx + m, a->cy + m);
+}
+
 void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 {
     long k;
@@ -289,6 +302,32 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         at_screen(w, l->x1, l->y1, &x1, &y1);
         jw_line(v, x0, y0, x1, y1, 2, ROP_REPLACE,
                 jw_view_line_style(l->type));
+    }
+    for (k = 0; k < d->n_arcs; k++) {
+        const JwcArc *a = &d->arcs[k];
+
+        if (in_reach_layer(d, a->layer) && arc_in_range(c, a)) {
+            jw_view_arc(v, d, a, w, 2);
+        }
+    }
+    for (k = 0; k < d->n_texts; k++) {
+        const JwcText *t = &d->texts[k];
+
+        if (in_reach_layer(d, t->layer)
+            && jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1)) {
+            jw_view_text(v, d, t, w, 2);
+        }
+    }
+    for (k = 0; k < d->n_points; k++) {
+        const JwcPoint *p = &d->points[k];
+        int px, py;
+
+        if (!in_reach_layer(d, p->layer)
+            || !jw_cmd_in_range(c, p->x, p->y, p->x, p->y)) {
+            continue;
+        }
+        at_screen(w, p->x, p->y, &px, &py);
+        jw_point(v, px, py, 2, ROP_REPLACE);
     }
 }
 
@@ -314,6 +353,22 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
         if (in_reach_layer(d, l->layer)
             && jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)) {
             jwc_remove_line(d, k);
+            changed = 1;
+        }
+    }
+    for (k = d->n_arcs - 1; k >= 0; k--) {
+        if (in_reach_layer(d, d->arcs[k].layer)
+            && arc_in_range(c, &d->arcs[k])) {
+            jwc_remove_arc(d, k);
+            changed = 1;
+        }
+    }
+    for (k = d->n_texts - 1; k >= 0; k--) {
+        const JwcText *t = &d->texts[k];
+
+        if (in_reach_layer(d, t->layer)
+            && jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1)) {
+            jwc_remove_text(d, k);
             changed = 1;
         }
     }
