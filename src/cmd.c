@@ -1,6 +1,8 @@
 /* The command state machine.  See cmd.h. */
 #include "cmd.h"
 
+#include "read.h"
+
 #include "draw.h"
 
 #include <math.h>
@@ -225,6 +227,25 @@ long jw_cmd_arc_at(const Jwc *d, const JwView *w, int sx, int sy)
     return found;
 }
 
+/* Where a press puts its point: the left button takes the pointer, the right
+ * one snaps to what is already drawn.  Returns 0 when the right button found
+ * nothing, which is when the original says 読取可能データ無 and does nothing
+ * else -- no point is taken, so the command stays where it was. */
+static int take(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
+                int right, double *x, double *y)
+{
+    if (!right) {
+        jw_cmd_at(w, sx, sy, x, y);
+        return 1;
+    }
+    if (!jw_read(d, w, sx, sy, x, y)) {
+        c->missed = 1;
+        return 0;
+    }
+    c->missed = 0;
+    return 1;
+}
+
 int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
 {
     double x, y;
@@ -260,17 +281,15 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         return 1;
     }
     if (c->command == 22) {
-        /* 点: the left button drops a 仮点 where it was pressed.  The original
-         * changes neither count (SAMPLE0 stays at 30|13), writes nothing on the
-         * top line, and repaints the panel -- read off a press at (300,250)
-         * with 点 picked, which leaves the twelve white pixels of a circle of
-         * radius two there and nothing else.  Two presses leave two.
-         *
-         * The right button is (R)Read, the snap, which is not done yet. */
-        if (right || d->n_temp >= JWC_TEMP_MAX) {
+        /* 点: a press drops a 仮点.  The original changes neither count
+         * (SAMPLE0 stays at 30|13), writes nothing on the top line, and
+         * repaints the panel -- read off a press at (300,250) with 点 picked,
+         * which leaves the twelve white pixels of a circle of radius two there
+         * and nothing else.  Two presses leave two. */
+        if (!take(c, d, w, sx, sy, right, &x, &y)
+            || d->n_temp >= JWC_TEMP_MAX) {
             return 0;
         }
-        jw_cmd_at(w, sx, sy, &x, &y);
         d->temp_x[d->n_temp] = (float)x;
         d->temp_y[d->n_temp] = (float)y;
         d->n_temp++;
@@ -284,7 +303,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         && c->command != 11) {
         return 0;               /* ＋ line on an axis, ／ line, □ box, ○ circle */
     }
-    jw_cmd_at(w, sx, sy, &x, &y);
+    if (!take(c, d, w, sx, sy, right, &x, &y)) {
+        return 0;
+    }
     if (!c->pressed) {
         c->x0 = x;
         c->y0 = y;

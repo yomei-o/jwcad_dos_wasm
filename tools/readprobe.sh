@@ -11,6 +11,9 @@ mkdir -p tmp/probe
 rm -f tmp/probe/*.raw
 EMU=../dosv_emu_cpp/dosemu.exe
 DRAWING="${DRAWING:-SAMPLE0}"
+# how long to hold the button and how long to let the answer settle
+HOLD="${HOLD:-3000000}"
+AFTER="${AFTER:-14000000}"
 ALL="$*"
 {
     echo "wait 40000000"
@@ -26,9 +29,9 @@ ALL="$*"
         echo "mouse $1 $2"
         echo "wait 3000000"
         echo "down right"
-        echo "wait 3000000"
+        echo "wait $HOLD"
         echo "up right"
-        echo "wait 14000000"
+        echo "wait $AFTER"
         echo "mouse 600 450"
         echo "wait 6000000"
         echo "shot ../jwcad_dos_wasm/tmp/probe/s$i.raw"

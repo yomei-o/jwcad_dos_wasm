@@ -33,9 +33,18 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/pressfull.sh 3 200 100 500 400       # ／  a line
     sh tools/pressfull.sh 4 250 150 450 350       # □  a box
     sh tools/pressfull.sh 11 300 200 400 200      # ○  a circle
+    echo "=== the right button reading a point, against the original's answer"
+    sh tools/readcheck.sh 170 150 214 152 383 401 388 401 386 404 380 393         165 143 380 249 324 249 233 190
+    DRAWING=SAMPLE1 sh tools/readcheck.sh 500 57 503 60
+    DRAWING=SAMPLE6 sh tools/readcheck.sh 470 305 468 183 448 191
+    DRAWING=TEST1 sh tools/readcheck.sh 245 341 201 341 450 290
+    echo "=== a command started from a read point"
+    sh tools/pressfull.sh 3 r 170 150 l 400 300
+    DRAWING=SAMPLE6 sh tools/pressfull.sh 3 r 470 305 l 400 300
     echo "=== 点 dropping a 仮点 (the rest is 丸数字, as everywhere else)"
     sh tools/pressfull.sh 22 300 250
     sh tools/pressfull.sh 22 300 250 400 300
+    sh tools/pressfull.sh 22 r 383 401
     echo "=== taking a line away with 線消 (the rest is the original's own"
     echo "    erase clipping its neighbours, which it never paints back)"
     sh tools/delcheck.sh 380 140
