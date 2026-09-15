@@ -86,9 +86,23 @@ typedef struct {
     float unit_mm;
     /* The older of the two .JWC layouts: thirty fields on the second line and
      * a third line holding one number instead of twenty-eight.  TEST1 to TEST5
-     * are like that and everything else is not, and it decides where a text's
-     * size comes from -- see view.c. */
+     * are like that and everything else is not. */
     unsigned char old_format;
+    /* The ten character sizes, in tenths of a millimetre on the paper, and the
+     * gap after each.  **They belong to the drawing, not to JW_CAD**: three
+     * tables of eleven words sit at a fixed place in the preamble, and index 0
+     * is the size currently selected for drawing with.  TEST2 is the one that
+     * shows it -- its type 10 is 15.0 mm where every other drawing says 10.0,
+     * and with the built-in table its headings come out two thirds of the size
+     * the original draws them.  See view.c for what the three are used for. */
+    short text_w[11];
+    short text_h[11];
+    short text_gap[11];
+    /* And which pen each character type draws with -- `MPEN` in the .JWF, but
+     * the drawing carries its own copy just ahead of the sizes.  TEST2's is
+     * 1 1 2 2 2 3 3 3 3 3 where everything else says 1 1 2 2 3 3 4 4 5 5, so
+     * its headings come out green and not cyan. */
+    short text_pen[11];
 } Jwc;
 
 /* Returns NULL and leaves `why` pointing at a reason on failure. */

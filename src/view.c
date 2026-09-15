@@ -235,16 +235,14 @@ static const unsigned char *scale_glyph(const unsigned char *g, int sw,
 /* 1def:23c5 -- walk a Shift-JIS string, one glyph at a time.  The original
  * works on a character grid; here the baseline the .JWC record carries sets
  * the position and the size, so the glyphs follow the text's own box. */
-/* JW_CAD's ten character sizes, in tenths of a millimetre on the paper, and the
- * gap it leaves between characters.  Index 0 is the size currently selected for
- * drawing with; 1-10 are the sizes a record can name.  Read straight out of the
- * running original -- three word tables at DGROUP 0x182, 0x198 and 0x1ae, which
- * FUN_28b3_0a63 indexes with the record's size byte.
- *
- * The heights are the same numbers as the widths, so only one table is kept. */
-static const short TEXT_MM[11]  = {30, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100};
-static const short TEXT_GAP[11] = { 5,  0,  0,  5,  5,  5, 10, 10, 10, 10,  10};
+/* The ten character sizes -- width, height and the gap after -- live in
+ * Jwc.text_w / text_h / text_gap, because **they belong to the drawing**: the
+ * running original has them at DGROUP 0x182, 0x198 and 0x1ae, and it fills
+ * those from the file (see jwc.c).  Every drawing here but TEST2 happens to
+ * carry the same numbers, which is why a built-in table looked right for a
+ * long time.
 
+ */
 static unsigned pen_colour(unsigned pen)
 {
     static const unsigned char LCOLLOR[9] = { 5, 5, 7, 4, 6, 3, 1, 2, 1 };
@@ -262,16 +260,18 @@ static unsigned pen_colour(unsigned pen)
  * a type-1 text is pen 1 is magenta and a type-3 text is pen 2 is white, and
  * that is exactly what the original puts on the screen: TEST6 draws its type-1
  * strings in 5 and its type-10 strings in 3, SAMPLE3 its type-2 in 5 and its
- * type-3 in 7, SAMPLE1 and SAMPLE2 all type-3 and all white.  Every text in the
- * six drawings compared agrees.
+ * type-3 in 7, SAMPLE1 and SAMPLE2 all type-3 and all white.
  *
- * (Type 0 means "the size currently selected", whose pen is the one for type 3;
- * no sample uses it.) */
-static unsigned text_colour(unsigned size)
+ * The pens are the drawing's, not JW_CAD's: the file carries its own copy of
+ * MPEN alongside the sizes (jwc.c).  TEST2's is `1 1 2 2 2 3 3 3 3 3`, so its
+ * type-10 headings are pen 3 and green, where the same records under the
+ * built-in table come out pen 5 and cyan -- 2,258 pixels in the right place
+ * and the wrong colour.
+ *
+ * (Type 0 means "the size currently selected".) */
+static unsigned text_colour(const Jwc *d, unsigned size)
 {
-    static const unsigned char MPEN[11] = {2, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5};
-
-    return pen_colour(MPEN[size <= 10 ? size : 0]);
+    return pen_colour((unsigned)d->text_pen[size <= 10 ? size : 0]);
 }
 
 /* Below this many pixels the original does not draw the glyphs at all -- it
@@ -318,16 +318,16 @@ static const unsigned short WIDE[95] = {
  * in TEST7, where every coordinate has been multiplied by 518/678, it is 72
  * against 42.  Neither ever puts a *wrong* bitmap down; the box's step just
  * drifts a pixel along a long string. */
-static double text_height(const JwcText *t, double unit)
+static double text_height(const Jwc *d, const JwcText *t, double unit)
 {
-    return TEXT_MM[t->size <= 10 ? t->size : 0] / 10.0 * unit;
+    return d->text_h[t->size <= 10 ? t->size : 0] / 10.0 * unit;
 }
 
-static double text_step(const JwcText *t, double unit)
+static double text_step(const Jwc *d, const JwcText *t, double unit)
 {
     const int size = t->size <= 10 ? t->size : 0;
 
-    return (TEXT_MM[size] + TEXT_GAP[size]) / 10.0 * unit / 2.0;
+    return (d->text_w[size] + d->text_gap[size]) / 10.0 * unit / 2.0;
 }
 
 /* The box the original draws in place of a string too small to read.
@@ -356,8 +356,8 @@ static void draw_text_box(VGA *v, const JwView *w, int x0, int x1, int base,
     jw_line(v, x0, base - 1, x1, base - 1, colour, ROP_REPLACE, JW_STYLE_SOLID);
 }
 
-static void draw_text(VGA *v, const JwcText *t, const JwView *w, double unit,
-                      unsigned colour)
+static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
+                      double unit, unsigned colour)
 {
     const unsigned char *p = (const unsigned char *)t->text;
     double dx = t->x1 - t->x0, dy = t->y1 - t->y0;
@@ -393,7 +393,7 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, double unit,
      * other drawings have whole-number baselines and do not care. */
     y = (int)ceil((double)(w->ay - (t->y0 - w->oy) * w->scale));
 
-    height = text_height(t, unit);
+    height = text_height(d, t, unit);
     if ((int)height < TEXT_GLYPH_MIN) {
         draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1), y, (int)height,
                       colour);
@@ -412,7 +412,7 @@ static void draw_text(VGA *v, const JwcText *t, const JwView *w, double unit,
          * coordinates of 254.0000, 378.7037, 150.0324 and 477.6236.  With it,
          * all 26 cells of TEST6's longest heading, all 12 of its shorter one
          * and all 18 of TEST7's land where the original puts them. */
-        const double step = text_step(t, unit);
+        const double step = text_step(d, t, unit);
         const double x0 = floor((t->x0 - w->ox) * w->scale + w->ax) + 1.0;
         double walk = 0.0;
         int i = 0;
@@ -620,8 +620,8 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         if (!jwc_visible(d, d->texts[k].layer)) {
             continue;
         }
-        draw_text(v, &d->texts[k], w, (double)d->unit_mm * w->scale,
-                  text_colour(d->texts[k].size));
+        draw_text(v, d, &d->texts[k], w, (double)d->unit_mm * w->scale,
+                  text_colour(d, d->texts[k].size));
     }
     for (k = 0; k < d->n_points; k++) {
         int x = to_x(w, d->points[k].x);

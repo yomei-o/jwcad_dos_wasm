@@ -229,6 +229,57 @@ static void grid(const char *line, Jwc *d)
     d->grid_on = d->grid_x > 0.0f && d->grid_y > 0.0f;
 }
 
+/* The drawing's own character sizes.
+ *
+ * Three tables of eleven words, in tenths of a millimetre on the paper: the
+ * width, the height and the gap after the character.  Index 0 is whatever size
+ * is selected for drawing with; 1 to 10 are the types a record can name.
+ *
+ * They are **not** JW_CAD's -- they are the drawing's, and the file carries
+ * them.  TEST2's type 10 is 15.0 mm where every other drawing here says 10.0,
+ * and its headings measure 13.95 pixels a character against the 9.59 the
+ * built-in table gives; reading the tables out of the file puts all four of
+ * its long strings on the pixel the original puts them.  The offsets are
+ * absolute in the preamble, which is a fixed 800 bytes of text followed by a
+ * fixed block of settings -- SAMPLE2, whose geometry starts 32 bytes later
+ * than everyone else's, has its tables in the same place.
+ *
+ * Found by searching every drawing's preamble for a run of words beginning
+ * 20 25 30 40, which is the run the running original has at DGROUP 0x182. */
+static void sizes(const unsigned char *file, long len, Jwc *d)
+{
+    static const short DEF_W[11] = {30, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100};
+    static const short DEF_G[11] = { 5,  0,  0,  5,  5,  5, 10, 10, 10, 10,  10};
+    static const short DEF_P[11] = { 2,  1,  1,  2,  2,  3,  3,  4,  4,  5,   5};
+    int i;
+
+    memcpy(d->text_w, DEF_W, sizeof d->text_w);
+    memcpy(d->text_h, DEF_W, sizeof d->text_h);
+    memcpy(d->text_gap, DEF_G, sizeof d->text_gap);
+    memcpy(d->text_pen, DEF_P, sizeof d->text_pen);
+    if (len < 0x06ef + 22) {
+        return;
+    }
+    for (i = 0; i < 11; i++) {
+        d->text_pen[i] = rd_i16(file + 0x06ad + i * 2);
+        d->text_w[i] = rd_i16(file + 0x06c3 + i * 2);
+        d->text_h[i] = rd_i16(file + 0x06d9 + i * 2);
+        d->text_gap[i] = rd_i16(file + 0x06ef + i * 2);
+    }
+    /* A drawing with nothing sane there keeps the defaults rather than drawing
+     * every string as a dot. */
+    for (i = 1; i < 11; i++) {
+        if (d->text_w[i] <= 0 || d->text_h[i] <= 0 || d->text_gap[i] < 0
+            || d->text_pen[i] < 1 || d->text_pen[i] > 8) {
+            memcpy(d->text_w, DEF_W, sizeof d->text_w);
+            memcpy(d->text_h, DEF_W, sizeof d->text_h);
+            memcpy(d->text_gap, DEF_G, sizeof d->text_gap);
+            memcpy(d->text_pen, DEF_P, sizeof d->text_pen);
+            return;
+        }
+    }
+}
+
 static int header(const unsigned char *file, Jwc *d)
 {
     char buf[TEXT_LINE];
@@ -313,6 +364,7 @@ Jwc *jwc_load(const char *path, const char **why)
         *why = "cannot read the counts";
         return NULL;
     }
+    sizes(file, len, d);
 
     b = file + DATA_AT;
     blen = len - DATA_AT;
