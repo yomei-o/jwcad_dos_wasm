@@ -37,6 +37,9 @@ typedef struct {
     int dec[2];                 /* how many decimals each of them is shown to:
                                  * a length follows the drawing's scale, an
                                  * angle is always three */
+    int snap;                   /* the pointer is over the drawing, so the two
+                                 * words saying what the right button would
+                                 * take are on the screen */
     int group;                  /* the layer group the buttons show */
     unsigned char layer_on[16]; /* which of its sixteen layers are shown */
     /* The two little bars over each button.  The left one is on when the layer

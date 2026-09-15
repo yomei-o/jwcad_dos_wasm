@@ -6,6 +6,7 @@
 #include "view.h"
 
 #include "prompt.h"
+#include "snap.h"
 #include "stage.h"
 
 #include <stdio.h>
@@ -670,6 +671,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg,
                            out);
             }
+        }
+        /* What the right button would take, which is there whenever the
+         * pointer is over the drawing -- see src/snap.h.  Last, because a
+         * stage writes spaces at column 17 on a black background and those
+         * reach across column 22. */
+        if (s->snap && JW_SNAP[s->command - 1][0]) {
+            jw_ui_text(v, 17, 2, 7, 0, JW_SNAP[s->command - 1][0]);
+        }
+        if (s->snap && JW_SNAP[s->command - 1][1]) {
+            jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[s->command - 1][1]);
         }
     } else {
         jw_ui_text(v, 8, 1, 7, 0,

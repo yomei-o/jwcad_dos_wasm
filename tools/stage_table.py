@@ -27,6 +27,7 @@ B = chr(92)
 # command, and the presses to make.  The points are the ones tools/presscheck.sh
 # uses, so the same runs check out.
 COMMANDS = [
+    (2, (300, 200, 450, 250)),      # ＋  a line along an axis
     (3, (300, 200, 400, 200)),      # ／  a line
     (4, (250, 150, 450, 350)),      # □  a box
     (11, (300, 200, 400, 200)),     # ○  a circle
@@ -42,11 +43,12 @@ NUM = re.compile(r'( *-?\d+\.\d+)')
 
 # The two counts and the label under them belong to the panel, not to the
 # command, and src/ui.c already draws them from the drawing; what is kept from
-# those two cells is only what carries a measurement.  (Columns 17 and 22 of the
-# same row are the command's: they say what the right button would snap to.)
-# The "please wait" flash is dropped too -- it is gone by the time the screen
-# settles.
-PANEL = {(1, 2), (1, 3)}
+# those two cells is only what carries a measurement.  The "please wait" flash
+# is dropped too -- it is gone by the time the screen settles.
+# Columns 17 and 22 of the same row say what the right button would take.  They
+# follow the pointer rather than the stage -- pick an item with the pointer on
+# the menu and neither is there -- so they live in src/snap.h and are left out.
+PANEL = {(1, 2), (1, 3), (17, 2), (22, 2)}
 WAIT = '\x81\x96\x82\xa8\x91\xd2\x82\xbf\x89\xba\x82\xb3\x82\xa2\x81\x96'
 
 

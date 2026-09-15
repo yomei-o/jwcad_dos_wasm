@@ -26,6 +26,21 @@ static void at_screen(const JwView *w, double x, double y, int *sx, int *sy)
     *sy = (int)(w->ay - (y - w->oy) * w->scale);
 }
 
+/* ＋ draws a line along one axis: whichever of the two the pointer is further
+ * along.  Measured -- (300,200) to (450,250) comes out 150 pixels at 0 degrees
+ * and (300,200) to (350,350) 150 pixels at -90, and the two equal at 100 each
+ * go down, so it is "sideways only when sideways is the longer". */
+static void axis(const JwCmd *c, double *x, double *y)
+{
+    const double dx = *x - c->x0, dy = *y - c->y0;
+
+    if ((dx < 0 ? -dx : dx) > (dy < 0 ? -dy : dy)) {
+        *y = c->y0;
+    } else {
+        *x = c->x0;
+    }
+}
+
 /* What the panel shows for a command in hand: a length and an angle for a line,
  * the two sides for a box, the radius and the diameter for a circle.  A length
  * is millimetres of the real thing -- drawing units over `unit_mm`, times the
@@ -60,6 +75,9 @@ void jw_cmd_track(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy)
         return;
     }
     jw_cmd_at(w, sx, sy, &x, &y);
+    if (c->command == 2) {
+        axis(c, &x, &y);
+    }
     measure(c, d, x, y);
 }
 
@@ -81,8 +99,18 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
 
         jw_arc_poly(v, px, py, sqrt(dx * dx + dy * dy), 10000, 0, 0, 0,
                     2, 0x18, JW_STYLE_SOLID);
-    } else if (c->command == 3) {
-        jw_line(v, px, py, sx, sy, 2, 0x18, JW_STYLE_SOLID);
+    } else if (c->command == 2 || c->command == 3) {
+        int qx = sx, qy = sy;
+
+        if (c->command == 2) {
+            double x, y;
+
+            /* the axis is chosen in drawing units, so go there and back */
+            jw_cmd_at(w, sx, sy, &x, &y);
+            axis(c, &x, &y);
+            at_screen(w, x, y, &qx, &qy);
+        }
+        jw_line(v, px, py, qx, qy, 2, 0x18, JW_STYLE_SOLID);
     }
 }
 
@@ -90,8 +118,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
 {
     double x, y;
 
-    if (!d || (c->command != 3 && c->command != 4 && c->command != 11)) {
-        return 0;               /* ／ line, □ box, ○ circle */
+    if (!d || (c->command != 2 && c->command != 3 && c->command != 4
+               && c->command != 11)) {
+        return 0;               /* ＋ line on an axis, ／ line, □ box, ○ circle */
     }
     jw_cmd_at(w, sx, sy, &x, &y);
     if (!c->pressed) {
@@ -105,6 +134,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
     }
     c->pressed = 0;
     c->stage = 2;
+    if (c->command == 2) {
+        axis(c, &x, &y);
+    }
     measure(c, d, x, y);
     /* Both take the pen and the line type the panel shows and go on the layer
      * being written to -- SAMPLE0 writes with pen 2, and what the original

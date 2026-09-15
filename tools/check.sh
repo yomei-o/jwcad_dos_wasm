@@ -29,6 +29,7 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "=== every drawing, the whole screen"
     sh tools/full.sh
     echo "=== the whole screen after a drawing command, against the original's"
+    sh tools/pressfull.sh 2 300 200 450 250       # ＋  a line on an axis
     sh tools/pressfull.sh 3 200 100 500 400       # ／  a line
     sh tools/pressfull.sh 4 250 150 450 350       # □  a box
     sh tools/pressfull.sh 11 300 200 400 200      # ○  a circle
