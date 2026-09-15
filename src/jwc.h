@@ -84,6 +84,11 @@ typedef struct {
      * area (518 pixels) over the paper's width.  The character sizes are in
      * millimetres, so this is what turns them into pixels. */
     float unit_mm;
+    /* The older of the two .JWC layouts: thirty fields on the second line and
+     * a third line holding one number instead of twenty-eight.  TEST1 to TEST5
+     * are like that and everything else is not, and it decides where a text's
+     * size comes from -- see view.c. */
+    unsigned char old_format;
 } Jwc;
 
 /* Returns NULL and leaves `why` pointing at a reason on failure. */

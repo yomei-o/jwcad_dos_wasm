@@ -247,6 +247,7 @@ static int header(const unsigned char *file, Jwc *d)
     d->n_points = g;
     d->scale = saved_width_ratio(buf);
     grid(buf, d);
+    d->old_format = (unsigned char)(field(buf, 30) == NULL);
 
     /* "%lp,%lp" -- the second one's offset is how long the string pool is. */
     memcpy(buf, file + TEXT_LINE * 3, TEXT_LINE - 1);

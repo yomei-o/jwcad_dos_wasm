@@ -41,6 +41,10 @@ int main(int argc, char **argv)
     printf("%s: %ld lines, %ld arcs, %d texts, %d points, data +%ld..%ld\n",
            in, d->n_lines, d->n_arcs, d->n_texts, d->n_points,
            d->data_at, d->data_end);
+    /* The two numbers every text measurement needs: how many drawing units a
+     * millimetre of paper is, and what the coordinates were multiplied by on
+     * the way in. */
+    printf("  unit_mm %.6f  scale %.6f\n", (double)d->unit_mm, (double)d->scale);
 
     vga_reset(&v, 0x12);
     if (!jw_view_fonts("font")) {
