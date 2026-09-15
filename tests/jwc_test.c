@@ -63,8 +63,12 @@ static int check(const char *name)
             bad(name, "arc flatten is not a ratio", (double)a->flatten);
             break;
         }
-        if (a->start < -360 || a->start > 720 || a->end < -360 || a->end > 720) {
-            bad(name, "arc sweep is not degrees", (double)a->start);
+        /* 16.16 fixed degrees, so the whole-degree part is what to range
+         * check.  A sweep is allowed to run past 360 -- start == end means the
+         * whole ellipse and the drawing routine adds a turn to the end. */
+        if (a->start < -360L * 65536 || a->start > 720L * 65536
+            || a->end < -360L * 65536 || a->end > 720L * 65536) {
+            bad(name, "arc sweep is not degrees", a->start / 65536.0);
             break;
         }
     }

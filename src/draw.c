@@ -305,94 +305,133 @@ static void arc_pixel(VGA *v, int cx, int cy, int dx, int dy,
     }
 }
 
-/* JW_CAD's own integer cosine, and the polyline it builds arcs out of.
+/* JW_CAD's own fixed-point trigonometry, and the polyline it builds arcs out of.
  *
- * Big arcs are not drawn dot by dot: the pixel routine (20a9:0d1a) only ever
- * sees radii up to four -- of SAMPLE6's 64 arcs it is called for the 55 small
- * ones and for none of the others -- and everything else goes to the line
- * routine as a chain of straight pieces.  Watching which instruction writes the
- * screen bytes under one of SAMPLE6's door swings says so, and reading the line
- * calls gives the chain.
+ * Big arcs are not drawn dot by dot: the pixel routine only ever sees small
+ * circles, and everything else goes to the line routine as a chain of straight
+ * pieces.  Watching which instruction writes the screen bytes under one of
+ * SAMPLE6's door swings says so (dosv_emu_cpp, `DOSEMU_WATCH=A2A9F-A2A9F` ->
+ * `20a9:094b`, the line routine), and reading the line calls gives the chain.
  *
- * The endpoints handed to the line routine are the *float* centre plus a whole
- * number: every one of them has exactly the centre's fraction.  The whole
- * number comes from an integer trig routine (1000:0965) which takes the
- * truncated radius and a 32-bit angle whose high word is degrees.  Asking the
- * original for 636 of them -- a drawing of thirty quarter circles, radii 5 to
- * 34, in each of the four quadrants, read back through the emulator -- pins it
- * exactly:
+ * The routine that generates it is 1def:0228, and what follows is a
+ * transcription of it -- read from the instructions (`python tools/disasm.py
+ * 0def:03e0 0x440`) and checked against the arguments it is handed
+ * (`DOSEMU_BP=0EFF:0228 DOSEMU_BPN=24 DOSEMU_BPDBL=2,6,10`).  It gets the
+ * centre and the radius as doubles in *screen* units, the two angles as 32-bit
+ * 16.16 fixed-point degrees, and the flatten and tilt as the record stores
+ * them.  From those:
  *
- *     cos_fixed(a) = round(cos a * 32768)            1.15 fixed point
- *     value(r, a)  = (r * cos_fixed + 16384) >> 15   arithmetic shift
- *                    and one less again if cos a < 0
+ *     rx    = (long)r                        the radius, truncated
+ *     ry    = (long)(flatten * r * 0.0001)   the other semi-axis, likewise
+ *     step  = 20 degrees below rx 20, then 10, 8, 5, 2 and 1
+ *             at 80, 160, 320 and 640
  *
- * The last line is the off-by-one of a routine that folds the angle into the
- * first quadrant and negates, and it matters: it is what makes the chain sit a
- * pixel inside the true circle on the left and below.  All 636 agree.
+ * and the vertices are the start angle exactly, then *whole degrees* from
+ * floor(start) + step on while they stay inside the sweep, then the end angle
+ * exactly.  Dropping the start's fraction is the original's own doing: it
+ * builds the loop variable as `angle.high = start.high + step` and stores a
+ * zero over the low word, which is also why almost every vertex comes out of
+ * the table below rather than out of floating point.
  *
- * The step is twenty degrees up to radius 19 and ten from 20 on -- measured the
- * same way, one radius at a time, with no gaps.  Vertices are the start, then
- * every step while inside the sweep, then the end. */
-static int int_cos(int r, double deg)
-{
-    const double d2r = 3.14159265358979323846 / 180.0;
-    double m = fmod(deg, 360.0);
-    double f, v;
-    long t, p;
-    int q;
+ * Each vertex is the float centre plus a whole number -- every endpoint the
+ * line routine is handed carries exactly the centre's fraction -- and the whole
+ * number is the two trig values turned by the tilt, in 16.16:
+ *
+ *     u = cos16(rx, angle)      v = -sin16(ry, angle)
+ *     x = cx + ((u*ct) >> 16) + ((v*st) >> 16)
+ *     y = cy + ((v*ct) >> 16) - ((u*st) >> 16)
+ *
+ * Screen y runs downwards and that sign convention already accounts for it, so
+ * nothing here flips anything: the caller passes screen coordinates. */
 
-    if (m < 0.0) {
-        m += 360.0;
+/* round(cos(d) * 65536) for d = 0..90 -- the table the original keeps at
+ * DGROUP 0x1b44..0x1cac and reads in four directions: forwards for a sine,
+ * backwards for a cosine, negated past 90 and past 180.  Written out rather
+ * than computed, so that the port cannot disagree with it over one ulp of some
+ * platform's cos(). */
+static const long kCos16[91] = {
+    65536, 65526, 65496, 65446, 65376, 65287, 65177, 65048, 64898, 64729,
+    64540, 64332, 64104, 63856, 63589, 63303, 62997, 62672, 62328, 61966,
+    61584, 61183, 60764, 60326, 59870, 59396, 58903, 58393, 57865, 57319,
+    56756, 56175, 55578, 54963, 54332, 53684, 53020, 52339, 51643, 50931,
+    50203, 49461, 48703, 47930, 47143, 46341, 45525, 44695, 43852, 42995,
+    42126, 41243, 40348, 39441, 38521, 37590, 36647, 35693, 34729, 33754,
+    32768, 31772, 30767, 29753, 28729, 27697, 26656, 25607, 24550, 23486,
+    22415, 21336, 20252, 19161, 18064, 16962, 15855, 14742, 13626, 12505,
+    11380, 10252,  9121,  7987,  6850,  5712,  4572,  3430,  2287,  1144,
+        0
+};
+
+/* The angle in whole degrees, folded the way the original folds it. */
+static long fix_cos(int deg)
+{
+    int d = deg % 360;
+
+    if (d < 0) d += 360;
+    if (d <=  90) return  kCos16[d];
+    if (d <= 180) return -kCos16[180 - d];
+    if (d <= 270) return -kCos16[d - 180];
+    return kCos16[360 - d];
+}
+
+static long fix_sin(int deg)
+{
+    int d = deg % 360;
+
+    if (d < 0) d += 360;
+    if (d <=  90) return  kCos16[90 - d];
+    if (d <= 180) return  kCos16[d - 90];
+    if (d <= 270) return -kCos16[270 - d];
+    return -kCos16[d - 270];
+}
+
+/* `mov ax, dx` after a 32-bit multiply: the high word of a signed long, which
+ * is a floor and not a truncation.  Written as a divide so that it does not
+ * depend on how this compiler shifts a negative number. */
+static long sar16(long x)
+{
+    return x >= 0 ? x / 65536L : -((-x + 65535L) / 65536L);
+}
+
+/* 1000:0965 (cosine) and 1000:083a (sine), which differ only in which way they
+ * read the table.  `ang` is 16.16 fixed degrees, `r` a whole radius.
+ *
+ * A whole number of degrees goes through the table; anything else is computed
+ * in floating point, by the same routine, with the degrees-to-radians constant
+ * the original keeps at DGROUP 0x91e0 (which is exactly pi/180/65536).
+ *
+ * The rounding is the part that could not be guessed: the product is nudged by
+ * half a unit *away from zero* and then floored, so that value(r, 180) is
+ * -r-1 rather than -r and value(r, 90) is -1 rather than 0.  That one pixel is
+ * what makes the original's chains sit inside the true circle on the left and
+ * below. */
+static int trig16(int r, long ang, int want_sin)
+{
+    long prod;
+
+    if (ang & 0xffffL) {
+        const double d2r = 3.14159265358979323846 / 180.0 / 65536.0;
+        const double rad = (double)ang * d2r;
+
+        prod = (long)((double)r * (want_sin ? sin(rad) : cos(rad)) * 65536.0);
+    } else {
+        const int deg = (int)(ang >> 16);
+
+        prod = (long)r * (want_sin ? fix_sin(deg) : fix_cos(deg));
     }
-    q = (int)(m / 90.0);
-    f = (m - 90.0 * q) * d2r;
-    /* Folded into the first quadrant, so that cos 60 is a half to the last bit
-     * and the rounding of the fixed-point table is the original's. */
-    switch (q) {
-    case 0:  v =  cos(f); break;
-    case 1:  v = -sin(f); break;
-    case 2:  v = -cos(f); break;
-    default: v =  sin(f); break;
-    }
-    t = v >= 0.0 ? (long)floor(v * 32768.0 + 0.5)
-                 : -(long)floor(-v * 32768.0 + 0.5);
-    p = (long)floor(((double)r * (double)t + 16384.0) / 32768.0);
-    /* `<= 0`, not `< 0`: at ninety degrees, where the cosine is nothing at all,
-     * the original still takes the negative branch.  Its own first vertex for
-     * SAMPLE6's quarter circle is one pixel along the axis, not on it, and the
-     * 636 measured values never land on zero so they cannot tell the two
-     * apart. */
-    return (int)(t <= 0 ? p - 1 : p);
+    prod = prod > 0 ? prod + 32768L : prod - 32768L;
+    return (int)sar16(prod);
 }
 
 /* One vertex of the chain, in screen pixels, as a float. */
-static void arc_vertex(double cx, double cy, int rx, int ry, double ang,
-                       int tilt, double *px, double *py)
+static void arc_vertex(double cx, double cy, int rx, int ry, long ang,
+                       long ct, long st, double *px, double *py)
 {
-    /* The drawing's y runs up, the screen's down; the record's tilt turns the
-     * offsets, not the angle.  For the whole-quadrant tilts every drawing here
-     * uses, that is an exact swap of the two whole numbers. */
-    const double d2r = 3.14159265358979323846 / 180.0;
-    int dx = int_cos(rx, ang);
-    int dy = int_cos(ry, ang - 90.0);
-    int t = ((tilt % 360) + 360) % 360;
+    const long u = trig16(rx, ang, 0);
+    const long v = -trig16(ry, ang, 1);
 
-    if (t % 90 == 0) {
-        int n = t / 90, i, a;
-
-        for (i = 0; i < n; i++) {
-            a = dx;
-            dx = -dy;
-            dy = a;
-        }
-        *px = cx + dx;
-        *py = cy - dy;
-    } else {
-        const double c = cos(t * d2r), s = sin(t * d2r);
-
-        *px = cx + (dx * c - dy * s);
-        *py = cy - (dx * s + dy * c);
-    }
+    *px = cx + (double)(sar16(u * ct) + sar16(v * st));
+    *py = cy + (double)(sar16(v * ct) - sar16(u * st));
 }
 
 /* One piece of the chain, cut to the clip.
@@ -449,24 +488,42 @@ static void clipped_line(VGA *v, double x0, double y0, double x1, double y1,
     }
 }
 
-void jw_arc_poly(VGA *v, double cx, double cy, int rx, int ry, int tilt,
-                 double start, double end, unsigned colour, unsigned rop,
+void jw_arc_poly(VGA *v, double cx, double cy, double r, int flatten,
+                 long start, long end, long tilt, unsigned colour, unsigned rop,
                  int style)
 {
-    const double step = rx <= 19 ? 20.0 : 10.0;
-    double a, px, py, qx, qy;
+    const double d2r = 3.14159265358979323846 / 180.0 / 65536.0;
+    const int rx = (int)r;
+    const int ry = (int)((double)flatten * r * 0.0001);
+    const long step = (long)(rx < 20 ? 20 : rx < 80 ? 10 : rx < 160 ? 8
+                             : rx < 320 ? 5 : rx < 640 ? 2 : 1) << 16;
+    /* The tilt's own cosine and sine, at the same 16.16 scale.
+     *
+     * The one that has to be measured rather than worked out is a quarter turn:
+     * the original's sine comes back a hair short of one there, so the whole
+     * number it stores is 65535 and not 65536.  Its cosine at no turn at all is
+     * the full 65536, and at a half and a three-quarter turn both come back
+     * exactly -65536, so this is the sine alone.  Read straight out of the
+     * original for all four (dosv_emu_cpp, `DOSEMU_BP=0EFF:061E,0EFF:0667`).
+     * It is not a rounding nicety: at 65536 the whole chain of an arc tilted by
+     * ninety degrees sits one pixel across from where the original puts it. */
+    const double trad = (double)tilt * d2r;
+    const long ct = (long)(cos(trad) * 65536.0);
+    long st = (long)(sin(trad) * 65536.0);
+    long a, eff_end = end > start ? end : end + (360L << 16);
+    double px, py, qx, qy;
 
-    if (end <= start) {
-        end += 360.0;
+    if (st == 65536L) {
+        st = 65535L;
     }
-    arc_vertex(cx, cy, rx, ry, start, tilt, &px, &py);
-    for (a = start + step; a < end; a += step) {
-        arc_vertex(cx, cy, rx, ry, a, tilt, &qx, &qy);
+    arc_vertex(cx, cy, rx, ry, start, ct, st, &px, &py);
+    for (a = ((start >> 16) << 16) + step; a <= eff_end; a += step) {
+        arc_vertex(cx, cy, rx, ry, a, ct, st, &qx, &qy);
         clipped_line(v, px, py, qx, qy, colour, rop, style);
         px = qx;
         py = qy;
     }
-    arc_vertex(cx, cy, rx, ry, end, tilt, &qx, &qy);
+    arc_vertex(cx, cy, rx, ry, end, ct, st, &qx, &qy);
     clipped_line(v, px, py, qx, qy, colour, rop, style);
 }
 

@@ -33,12 +33,16 @@ void jw_point(VGA *v, int x, int y, unsigned colour, unsigned rop);
  * These are the units the .JWC arc record stores, and the original's own, which
  * works in whole degrees out of 360 (`0x168` all through FUN_20a9_0e18).
  */
-/* An arc as the original draws it once the radius reaches five: a chain of
- * straight pieces, the vertices being the float centre plus whole numbers from
- * its own integer cosine.  `start`/`end` are the record's own degrees and
- * `tilt` its own tilt -- this routine does the screen flip itself. */
-void jw_arc_poly(VGA *v, double cx, double cy, int rx, int ry, int tilt,
-                 double start, double end, unsigned colour, unsigned rop,
+/* 1def:0228 -- an arc as a chain of straight pieces, which is how the original
+ * draws every one that does not go to the pixel routine.
+ *
+ * Everything is in the units the original is handed: `cx`, `cy` and `r` are
+ * screen coordinates as doubles, `start`, `end` and `tilt` are 32-bit 16.16
+ * fixed-point degrees (the record stores them that way), and `flatten` is the
+ * other semi-axis as a ratio x10000.  The vertices are the float centre plus
+ * whole numbers; see draw.c for where each of those comes from. */
+void jw_arc_poly(VGA *v, double cx, double cy, double r, int flatten,
+                 long start, long end, long tilt, unsigned colour, unsigned rop,
                  int style);
 
 void jw_arc(VGA *v, int cx, int cy, int rx, int flatten, int tilt,

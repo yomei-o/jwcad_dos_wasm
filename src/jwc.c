@@ -74,6 +74,14 @@ static unsigned rd_u16(const unsigned char *p)
     return (unsigned)(p[0] | (p[1] << 8));
 }
 
+/* A signed 32-bit field.  The arc angles are 16.16 fixed point, so the low
+ * word is the fraction and the pair has to be read together. */
+static long rd_i32(const unsigned char *p)
+{
+    return (long)(int)((unsigned)p[0] | ((unsigned)p[1] << 8)
+                       | ((unsigned)p[2] << 16) | ((unsigned)p[3] << 24));
+}
+
 static int sane(float f)
 {
     return f == f && f > -1e6f && f < 1e6f;
@@ -378,11 +386,9 @@ Jwc *jwc_load(const char *path, const char **why)
          * behind it and turns 10000 into nonsense wherever that field is not
          * zero -- 33 of SAMPLE2.JWC's 98 arcs. */
         d->arcs[k].flatten = rd_i16(r + 12);
-        d->arcs[k].flatten2 = rd_i16(r + 14);
-        d->arcs[k].start = rd_i16(r + 16);
-        d->arcs[k].start_frac = rd_i16(r + 18);
-        d->arcs[k].end = rd_i16(r + 20);
-        d->arcs[k].end_frac = rd_i16(r + 22);
+        /* 16.16 fixed degrees, both of them -- see jwc.h. */
+        d->arcs[k].start = rd_i32(r + 14);
+        d->arcs[k].end = rd_i32(r + 18);
         d->arcs[k].tilt = rd_i16(r + 24);
         d->arcs[k].type = r[26];
         d->arcs[k].pen = r[27];

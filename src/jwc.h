@@ -24,13 +24,18 @@ typedef struct {
     unsigned char rest[4];
 } JwcLine;
 
+/* The two angles are 32-bit 16.16 fixed-point degrees, not degrees with a
+ * separate fraction: SAMPLE6's tilted ellipse stores 0x00a247f8 for a start of
+ * 162.2655, and that is exactly the long the original hands its arc routine
+ * (dosv_emu_cpp, `DOSEMU_BP=0EFF:0228 DOSEMU_BPN=24`).  Read as a degree and a
+ * fraction x10000 the same bytes come out as 160.158, which is a degree and a
+ * half wrong and moves every vertex of the chain. */
 typedef struct {
     float cx, cy, r;
     short flatten;      /* minor/major x10000; 10000 is a circle */
-    short flatten2;     /* zero in most records */
-    short start, start_frac;    /* degrees, and a fraction x10000 */
-    short end, end_frac;        /* end == start means the whole ellipse */
-    short tilt;                 /* degrees the ellipse is turned by */
+    long start;         /* 16.16 fixed degrees */
+    long end;           /* end == start means the whole ellipse */
+    short tilt;         /* degrees the ellipse is turned by */
     unsigned char type, pen;
     unsigned char layer;
     unsigned char rest[4];

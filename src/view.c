@@ -580,35 +580,40 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
     }
     for (k = 0; k < d->n_arcs; k++) {
         const JwcArc *a = &d->arcs[k];
-        double s = a->start + a->start_frac / 10000.0;
-        double e = a->end + a->end_frac / 10000.0;
+        /* The original's arc routine works in screen coordinates, with the
+         * centre and the radius still floats and the two angles the record's
+         * own 16.16 degrees.  Pass them through untouched. */
+        const double cx = (a->cx - w->ox) * w->scale + w->ax;
+        const double cy = w->ay - (a->cy - w->oy) * w->scale;
+        const double r = a->r * w->scale;
+        const int rx = (int)r;
 
         if (!jwc_visible(d, a->layer)) {
             continue;
         }
+        /* Which of the two the original picks (1def:0228, the tests at
+         * 0def:03e0): the pixel routine only for a true circle under ten
+         * pixels across whose box lies wholly inside the drawing area -- it
+         * does no clipping -- and the chain of straight pieces for all the
+         * rest, including every ellipse however small. */
+        if (a->flatten == 10000 && rx < 10
+            && cx - r >= v->clip_x0 && cx + r <= v->clip_x1
+            && cy - r >= v->clip_y0 && cy + r <= v->clip_y1) {
+            /* The pixel routine is not given a tilt: the original folds it
+             * into the two angles on the way in (`start + tilt`, `end + tilt`
+             * at 0def:0389) and hands over a plain circle.  Screen y runs
+             * downwards, so the sweep is mirrored -- the same reason to_y
+             * subtracts. */
+            const double ts = (a->start + ((long)a->tilt << 16)) / 65536.0;
+            const double te = (a->end + ((long)a->tilt << 16)) / 65536.0;
 
-        {
-            /* The radius is truncated: the original hands its arc routine a
-             * radius of 1 for a record that says 1.8459 and 7 for 7.401. */
-            const int rx = (int)(a->r * w->scale);
-            const int ry = (int)(a->r * w->scale
-                                 * (a->flatten > 0 ? a->flatten / 10000.0 : 1.0));
-
-            if (rx >= 5) {
-                /* Five and up the original draws a chain of straight pieces,
-                 * from the *float* centre.  Screen y runs downwards, and
-                 * jw_arc_poly does that flip itself. */
-                jw_arc_poly(v, (a->cx - w->ox) * w->scale + w->ax,
-                            w->ay - (a->cy - w->oy) * w->scale,
-                            rx, ry, a->tilt, s, e,
-                            pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
-            } else {
-                /* Screen y runs downwards, so the turn and the sweep are both
-                 * mirrored -- the same reason to_y subtracts. */
-                jw_arc(v, to_x(w, a->cx), to_y(v, w, a->cy), rx, a->flatten,
-                       -a->tilt, -e, -s,
-                       pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
-            }
+            jw_arc(v, to_x(w, a->cx), to_y(v, w, a->cy), rx, a->flatten,
+                   0, -te, -ts,
+                   pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
+        } else {
+            jw_arc_poly(v, cx, cy, r, a->flatten, a->start, a->end,
+                        (long)a->tilt << 16,
+                        pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
         }
     }
     for (k = 0; k < d->n_texts; k++) {
