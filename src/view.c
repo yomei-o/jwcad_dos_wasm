@@ -434,6 +434,44 @@ static void draw_text_turned(VGA *v, const JwcText *t, const JwView *w,
     }
 }
 
+/* The same box, for a string whose baseline is not horizontal.
+ *
+ * Read off two of TEST3's, one straight up and one at forty-five degrees
+ * (tools/askone.sh, then tools/lr.py).  For the 45-degree one, whose record
+ * runs from (331.832, 352.397) to (336.457, 347.773) on screen, the original
+ * draws
+ *
+ *     (331,353)-(336,348)  (336,348)-(334,346)  (334,346)-(329,351)
+ *     (329,351)-(331,353)  (332,353)-(337,348)
+ *
+ * so the two ends are `floor(x)` and `ceil(y)` -- the same rounding the upright
+ * routine uses -- the far side is `floor(end + (int)height * n)` in each
+ * coordinate, and **the fifth line is the baseline again, one pixel to the
+ * right**.  Not one pixel towards the text, which is what the upright routine
+ * does; both turned boxes say `+1` in x and nothing in y. */
+static void draw_text_box_turned(VGA *v, const JwView *w, double x0, double y0,
+                                 double x1, double y1, double ux, double uy,
+                                 int h, unsigned colour)
+{
+    const double nx = uy, ny = -ux;
+    const int ax = (int)floor(x0), ay = (int)ceil(y0);
+    const int bx = (int)floor(x1), by = (int)ceil(y1);
+    const int cx = (int)floor(bx + h * nx), cy = (int)floor(by + h * ny);
+    const int dx = (int)floor(ax + h * nx), dy = (int)floor(ay + h * ny);
+
+    if (!inside(w, ax, ay) || !inside(w, bx, by) ||
+        !inside(w, cx, cy) || !inside(w, dx, dy)) {
+        return;
+    }
+    jw_line(v, ax, ay, bx, by, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, bx, by, cx, cy, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, cx, cy, dx, dy, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, dx, dy, ax, ay, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    if (inside(w, ax + 1, ay) && inside(w, bx + 1, by)) {
+        jw_line(v, ax + 1, ay, bx + 1, by, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    }
+}
+
 static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
                       double unit, unsigned colour)
 {
@@ -473,8 +511,19 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
 
     height = text_height(d, t, unit);
     if ((int)height < TEXT_GLYPH_MIN) {
-        draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1), y, (int)height,
-                      colour);
+        if (dy != 0.0) {
+            const double m = sqrt(len);
+
+            draw_text_box_turned(v, w,
+                                 (t->x0 - w->ox) * w->scale + w->ax,
+                                 w->ay - (t->y0 - w->oy) * w->scale,
+                                 (t->x1 - w->ox) * w->scale + w->ax,
+                                 w->ay - (t->y1 - w->oy) * w->scale,
+                                 dx / m, -dy / m, (int)height, colour);
+        } else {
+            draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1), y, (int)height,
+                          colour);
+        }
         return;
     }
     /* A baseline that is not horizontal goes to the routine above, which is a

@@ -3,8 +3,9 @@
     python tools/lr.py tmp/lr_one.txt [x0 y0 x1 y1]
 
 Each line of the log carries [2]..[5] as four little-endian floats: the two
-ends of the segment in drawing coordinates.  Screen is x+121, 463-y, which is
-what gets printed; with a box, only segments that touch it are shown.
+ends of the segment, **already in screen pixels** -- `x+121` and `463-y` is
+what turns a record into a screen position, and by the time the line routine
+sees it that has been done.  With a box, only segments that touch it are shown.
 """
 import re
 import struct
@@ -28,15 +29,13 @@ def calls(path):
 
 def main():
     want = tuple(float(x) for x in sys.argv[2:6]) if len(sys.argv) == 6 else None
-    for i, (x0, y0, x1, y1) in enumerate(calls(sys.argv[1])):
-        sx0, sy0, sx1, sy1 = x0 + 121, 463 - y0, x1 + 121, 463 - y1
+    for i, (sx0, sy0, sx1, sy1) in enumerate(calls(sys.argv[1])):
         if want:
             if max(sx0, sx1) < want[0] or min(sx0, sx1) > want[2]:
                 continue
             if max(sy0, sy1) < want[1] or min(sy0, sy1) > want[3]:
                 continue
-        print('%5d (%10.5f,%10.5f)-(%10.5f,%10.5f)  screen (%8.4f,%8.4f)-(%8.4f,%8.4f)'
-              % (i, x0, y0, x1, y1, sx0, sy0, sx1, sy1))
+        print('%5d (%9.4f,%9.4f)-(%9.4f,%9.4f)' % (i, sx0, sy0, sx1, sy1))
 
 
 if __name__ == '__main__':
