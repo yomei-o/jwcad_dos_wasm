@@ -158,6 +158,73 @@ long jw_cmd_line_at(const Jwc *d, const JwView *w, int sx, int sy)
     return found;
 }
 
+/* Which arc is under a point, or -1.  Same reach as a line, and measured the
+ * way the shape says: how far the point is from the circle, and then whether it
+ * is on the part of it the arc actually draws.
+ *
+ * Both halves were read off the original with 線消 on SAMPLE6, whose arcs 19 to
+ * 24 are quarter circles of radius 27.9 far enough from everything else to be
+ * tested on their own (tools/press.sh 10 r X Y, watching 円･文数 fall):
+ *
+ *     (245,141)  7.8  from arc 19's curve   77 -> 76
+ *     (244,140)  8.53 from it               unchanged
+ *
+ * so the reach is the same REACH as a line's.  And on the three quarters of
+ * arc 19's circle that it does not draw, (254,120) and (255,118) sit 0.28 and
+ * 0.31 from the circle and nothing at all happens, so the sweep is tested too.
+ *
+ * Only a round one is handled: `flatten` other than 10000 is an ellipse and its
+ * distance is not this difference.  None of the fourteen drawings has one far
+ * enough from its neighbours to measure, so it is left alone rather than
+ * guessed at. */
+long jw_cmd_arc_at(const Jwc *d, const JwView *w, int sx, int sy)
+{
+    double x, y, best = REACH;
+    long k, found = -1;
+
+    if (!d) {
+        return -1;
+    }
+    jw_cmd_at(w, sx, sy, &x, &y);
+    for (k = 0; k < d->n_arcs; k++) {
+        const JwcArc *a = &d->arcs[k];
+        const double dx = x - a->cx, dy = y - a->cy;
+        /* The record's angles are anticlockwise from the x axis in the shape's
+         * own frame, which the tilt turns; jw_arc_poly draws from `start` to
+         * `end`, taking `end` a whole turn further when it is not past it.
+         * Undo the tilt on the point and ask the same question. */
+        const double s = a->start / 65536.0;
+        const double e0 = a->end / 65536.0;
+        const double e = e0 > s ? e0 : e0 + 360.0;
+        double away = sqrt(dx * dx + dy * dy) - a->r;
+        double ang;
+
+        if (!jwc_visible(d, a->layer) || a->flatten != 10000) {
+            continue;
+        }
+        if (away < 0.0) {
+            away = -away;
+        }
+        if (away > best) {
+            continue;
+        }
+        ang = atan2(dy, dx) * (180.0 / 3.14159265358979323846)
+              - a->tilt / 65536.0;
+        while (ang < s) {
+            ang += 360.0;
+        }
+        while (ang - 360.0 >= s) {
+            ang -= 360.0;
+        }
+        if (ang > e) {
+            continue;
+        }
+        best = away;
+        found = k;
+    }
+    return found;
+}
+
 int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
 {
     double x, y;
@@ -168,12 +235,27 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     if (c->command == 10) {
         /* 線消: the right button takes the whole line away.  (The left one
          * starts cutting a piece out of it, which is not done yet.) */
-        long k = right ? jw_cmd_line_at(d, w, sx, sy) : -1;
+        /* The search runs for either button -- 線消 at (244,140) on SAMPLE6
+         * writes the same "found nothing" line whichever one is pressed -- and
+         * a line comes first whatever the distances say: on SAMPLE6 (283,236)
+         * is right on arc 21 and 2.19 from a line, and (351,179) right on
+         * arc 20 and 0.06 from one, and both times it is 線数 that falls. */
+        long k = jw_cmd_line_at(d, w, sx, sy);
+        long j = k < 0 ? jw_cmd_arc_at(d, w, sx, sy) : -1;
 
-        if (k < 0) {
+        if (k < 0 && j < 0) {
+            c->missed = 1;      /* nothing within reach; the drawing stands */
             return 0;
         }
-        jwc_remove_line(d, k);
+        c->missed = 0;
+        if (!right) {
+            return 0;           /* 部分消去, cutting a piece out: not done yet */
+        }
+        if (k >= 0) {
+            jwc_remove_line(d, k);
+        } else {
+            jwc_remove_arc(d, j);
+        }
         c->stage = 1;
         return 1;
     }

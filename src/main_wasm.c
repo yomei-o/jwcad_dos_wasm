@@ -173,6 +173,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         ui.guide = 0;
         jw_cmd_pick(&cmd, pick);
         ui.stage = 0;
+        ui.missed = 0;          /* picking an item clears the band */
         mouse_x = x;
         mouse_y = y;
         present();
@@ -194,6 +195,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         ui.num[1] = cmd.num[1];
         ui.dec[0] = cmd.dec[0];
         ui.dec[1] = cmd.dec[1];
+        ui.missed = cmd.missed;
         present();
         return -1;
     }
@@ -212,6 +214,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     ui.command = pick;
     ui.guide = 0;
     ui.stage = 0;
+    ui.missed = 0;
     jw_cmd_pick(&cmd, pick);
     present();
     return pick;

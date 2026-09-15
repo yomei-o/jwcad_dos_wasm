@@ -37,6 +37,14 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "    erase clipping its neighbours, which it never paints back)"
     sh tools/delcheck.sh 380 140
     sh tools/delcheck.sh 197 157
+    echo "=== and an arc: the original's 線消 says 線,円弧, and takes either"
+    DRAWING=SAMPLE6 sh tools/delcheck.sh 446 189
+    DRAWING=SAMPLE6 sh tools/delcheck.sh 260 152
+    DRAWING=SAMPLE6 sh tools/delcheck.sh 191 259
+    echo "=== a press that finds nothing: 8.5 from an arc, and on the three"
+    echo "    quarters of its circle it does not draw"
+    DRAWING=SAMPLE6 sh tools/delcheck.sh 244 140
+    DRAWING=SAMPLE6 sh tools/delcheck.sh 254 120
     echo "=== picking a command with its one-letter key"
     sh tools/keycheck.sh D 10
     sh tools/keycheck.sh C 1

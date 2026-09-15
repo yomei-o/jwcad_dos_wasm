@@ -130,6 +130,21 @@ void jw_ui_text(VGA *v, int col, int row, unsigned fg, unsigned bg,
             g = fontx_glyph(kanji, (unsigned)(p[i] << 8) | p[i + 1]);
             w = 16;
             i += 2;
+        } else if (p[i] < 0x20) {
+            /* A control byte takes its cell and paints nothing.  The original
+             * never even asks the font driver for one: 「読取可能データ無」
+             * begins with a BEL, and with DOSEMU_FONT_TRACE=1 on the run that
+             * writes it there is no request for code 0007 at all, while what
+             * follows lands one cell along -- so the cell is stepped over, not
+             * dropped.  JWANK16.FNT does carry a glyph there (a small ring),
+             * which is what drawing it would put on the screen.
+             *
+             * The BEL is the only byte under 0x20 in any string the original
+             * writes, so that is the one this is measured on; the rest are
+             * taken the same way for want of anything to measure them by. */
+            g = 0;
+            w = 8;
+            i += 1;
         } else {
             g = fontx_glyph(ank, p[i]);
             w = 8;
@@ -681,6 +696,28 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         }
         if (s->snap && JW_SNAP[s->command - 1][1]) {
             jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[s->command - 1][1]);
+        }
+        /* 「読取可能データ無」 -- what a command that looks for an entity
+         * says when the press found none.  Read off the original with 線消 on
+         * SAMPLE6 and a press at (244,140), which is 8.5 from the nearest arc
+         * and further from every line:
+         *
+         *     [bp] 0DEF:23C5  col=0x20 row=0x0002 fg=0x0007 bg=0x0000
+         *          07 93 C7 8E E6 89 C2 94 5C 83 66 81 5B 83 5E 96 B3
+         *
+         * The first byte is a BEL, which takes a cell and paints nothing --
+         * the emulator's log prints every byte under 0x20 as a dot, so it
+         * reads as a full stop there and is not one.
+         *
+         * It stays up: a second press that misses leaves it, and it goes only
+         * when a press finds something (the band is repainted) or another item
+         * is picked.  Both were measured -- 線消 at (244,140) then (446,189)
+         * leaves the band empty, and picking 複写 after the miss clears it. */
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
     } else {
         jw_ui_text(v, 8, 1, 7, 0,

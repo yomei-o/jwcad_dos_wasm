@@ -178,6 +178,9 @@ int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
  * what the original's count shows: thirty lines become twenty-nine. */
 void jwc_remove_line(Jwc *d, long k);
 
+/* Take an arc out, the same way. */
+void jwc_remove_arc(Jwc *d, long k);
+
 /* And a circle: the whole ellipse, which is what `start == end` means. */
 int jwc_add_arc(Jwc *d, float cx, float cy, float r,
                 unsigned char type, unsigned char pen, unsigned char layer);

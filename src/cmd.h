@@ -27,6 +27,10 @@ typedef struct {
     int stage;
     double num[2];
     int dec[2];                 /* how many decimals each is shown to */
+    /* The last press looked for an entity and found none, which the original
+     * says in the band beside the counts.  It stays up until a press finds
+     * something or another item is picked -- see src/ui.c. */
+    int missed;
 } JwCmd;
 
 /* Start a command, or leave it (0). */
@@ -45,6 +49,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right);
  * diagonal drawn for the purpose, which is not picked from the far side of its
  * own bounding box. */
 long jw_cmd_line_at(const Jwc *d, const JwView *w, int sx, int sy);
+
+/* And which arc, or -1.  The original's 線消 says 線,円弧 and takes either. */
+long jw_cmd_arc_at(const Jwc *d, const JwView *w, int sx, int sy);
 
 /* Move the pointer without pressing.  While a command has a point in hand the
  * original keeps the reading under the counts up to date -- the length and the

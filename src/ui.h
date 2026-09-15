@@ -40,6 +40,10 @@ typedef struct {
     int snap;                   /* the pointer is over the drawing, so the two
                                  * words saying what the right button would
                                  * take are on the screen */
+    /* A press that searched for something and found nothing.  The original
+     * says so in the band beside the counts and leaves it there until the next
+     * press finds something or another item is picked; see jw_ui_draw. */
+    int missed;
     int group;                  /* the layer group the buttons show */
     unsigned char layer_on[16]; /* which of its sixteen layers are shown */
     /* The two little bars over each button.  The left one is on when the layer

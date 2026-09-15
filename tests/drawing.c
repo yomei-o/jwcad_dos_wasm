@@ -142,6 +142,7 @@ int main(int argc, char **argv)
         /* the two words about the right button are there while the pointer is
          * over the drawing */
         s.snap = mx >= 122 && mx <= 638 && my >= 17 && my <= 462;
+        s.missed = c.missed;
         if (command) {
             /* the line of guidance goes the moment anything is picked */
             s.guide = 0;
