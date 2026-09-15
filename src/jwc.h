@@ -55,6 +55,14 @@ typedef struct {
     unsigned char rest[4];
 } JwcPoint;
 
+/* How many 仮点 the original keeps: a hundred.  Measured -- 点 picked and a
+ * hundred and thirty presses on a grid over SAMPLE0 leave a hundred rings, the
+ * first hundred, and the thirty after them draw nothing at all.  It is not a
+ * ring: every one of the first hundred is still there.  Nor does it complain --
+ * the top line and the band beside the counts are the same after the hundred
+ * and thirtieth press as after the hundredth. */
+#define JWC_TEMP_MAX 100
+
 typedef struct {
     char title[64];             /* the drawing's name, Shift-JIS */
     long n_lines;
@@ -128,6 +136,15 @@ typedef struct {
     int n_marks;
     float mark_x[101];
     float mark_y[101];
+    /* 仮点 -- the points the 点 command drops while the program runs.  They are
+     * not in the file and not entities: dropping one leaves both counts alone
+     * (SAMPLE0 stays at 30|13), and it survives picking another item.  The
+     * original draws the same little circle at each as it does for a 指定点 --
+     * a press at (300,250) leaves exactly the twelve pixels of a circle of
+     * radius two around it, in white.  See jw_cmd_press. */
+    int n_temp;
+    float temp_x[JWC_TEMP_MAX];
+    float temp_y[JWC_TEMP_MAX];
     /* What the panel down the left says, out of the same first line.  Each was
      * read out of the running original rather than guessed at: the numbers it
      * keeps in DGROUP while a drawing is up are 0x0a68 = the paper, 0x0a6a =

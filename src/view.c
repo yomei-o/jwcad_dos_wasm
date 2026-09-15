@@ -1010,7 +1010,23 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         jw_line(v, mx + 2, my - 1, mx + 2, my + 1, mc, ROP_REPLACE, JW_STYLE_SOLID);
     }
     draw_grid(v, d, w);
+    /* The 仮点 last of all.  The original drops one straight onto the screen
+     * when the 点 command is pressed, over whatever is already there -- so on
+     * every screen there is to compare against, the ring is on top of the grid
+     * and of the drawing.  What it would do on a redraw of its own is not
+     * known; nothing in the fourteen drawings can be made to show it. */
+    for (k = 0; k < d->n_temp; k++) {
+        const int mx = to_x(w, d->temp_x[k]), my = to_y(v, w, d->temp_y[k]);
+        const unsigned mc = jw_view_pen_colour(2);
 
+        if (!inside(w, mx - 2, my - 2) || !inside(w, mx + 2, my + 2)) {
+            continue;
+        }
+        jw_line(v, mx - 1, my - 2, mx + 1, my - 2, mc, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_line(v, mx - 1, my + 2, mx + 1, my + 2, mc, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_line(v, mx - 2, my - 1, mx - 2, my + 1, mc, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_line(v, mx + 2, my - 1, mx + 2, my + 1, mc, ROP_REPLACE, JW_STYLE_SOLID);
+    }
 }
 
 void jw_view_rgba(const VGA *v, const unsigned char *pixels, unsigned char *rgba)

@@ -259,6 +259,27 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->stage = 1;
         return 1;
     }
+    if (c->command == 22) {
+        /* 点: the left button drops a 仮点 where it was pressed.  The original
+         * changes neither count (SAMPLE0 stays at 30|13), writes nothing on the
+         * top line, and repaints the panel -- read off a press at (300,250)
+         * with 点 picked, which leaves the twelve white pixels of a circle of
+         * radius two there and nothing else.  Two presses leave two.
+         *
+         * The right button is (R)Read, the snap, which is not done yet. */
+        if (right || d->n_temp >= JWC_TEMP_MAX) {
+            return 0;
+        }
+        jw_cmd_at(w, sx, sy, &x, &y);
+        d->temp_x[d->n_temp] = (float)x;
+        d->temp_y[d->n_temp] = (float)y;
+        d->n_temp++;
+        /* It writes its line again afterwards -- [ESC], the dot at column 6 and
+         * the whole prompt -- which is stage 1 in src/stage.h.  Picking the
+         * item alone does not put [ESC] up; the first press does. */
+        c->stage = 1;
+        return 1;
+    }
     if (c->command != 2 && c->command != 3 && c->command != 4
         && c->command != 11) {
         return 0;               /* ＋ line on an axis, ／ line, □ box, ○ circle */

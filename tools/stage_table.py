@@ -32,6 +32,7 @@ COMMANDS = [
     (4, (250, 150, 450, 350)),      # □  a box
     (11, (300, 200, 400, 200)),     # ○  a circle
     (10, ('r', 380, 140)),          # 線消  the right button takes a line away
+    (22, (300, 250)),               # 点  the left button drops a 仮点
 ]
 
 # tools/press.sh: 40M to start, 2M for the menu press, 24M to settle, then per
