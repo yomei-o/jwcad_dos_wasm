@@ -33,4 +33,7 @@ DOSEMU_BP=+0DEF:23C5 DOSEMU_BPSTR=2 DOSEMU_BPN=20000 \
 "$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
        --script tmp/read/script.txt orig/JW_CADV.EXE "$DRAWING.JWC" \
        2>/dev/null > tmp/read/str.txt
-X="$x" Y="$y" D="$DRAWING" python tools/read.py
+UNIT_MM=$(./tests/drawing.exe -o -u "orig/$DRAWING.JWC" tmp/read/x.raw | awk '/unit_mm/ { print $2 }')
+DENOM=$(./tests/drawing.exe -o -u "orig/$DRAWING.JWC" tmp/read/x.raw | awk '/unit_mm/ { print $6 }')
+export UNIT_MM DENOM
+X="$x" Y="$y" python tools/read.py

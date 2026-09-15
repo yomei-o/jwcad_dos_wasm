@@ -91,7 +91,9 @@ int main(int argc, char **argv)
     /* The two numbers every text measurement needs: how many drawing units a
      * millimetre of paper is, and what the coordinates were multiplied by on
      * the way in. */
-    printf("  unit_mm %.6f  scale %.6f\n", (double)d->unit_mm, (double)d->scale);
+    printf("  unit_mm %.6f  scale %.6f  denom %.6f  write layer %d\n",
+           (double)d->unit_mm, (double)d->scale, (double)d->denom,
+           d->write_layer);
 
     vga_reset(&v, 0x12);
     if (!jw_view_fonts("font")) {

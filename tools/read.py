@@ -34,10 +34,11 @@ if length is None or angle is None:
     print('(%g,%g) -> nothing read%s'
           % (px, py, '  (読取可能データ無)' if nothing else ''))
     sys.exit(0)
-# The band's length is millimetres of the real thing; jw_view_original is one
-# drawing unit to the pixel, so units = mm * unit_mm.
-unit_mm = float(os.environ.get('UNIT_MM', '1.744108'))
-r = length * unit_mm
+# The band's length is millimetres of the paper: src/cmd.c's measure() makes it
+# `units * denom / unit_mm`, so units come back as `mm * unit_mm / denom`.
+unit_mm = float(os.environ['UNIT_MM'])
+denom = float(os.environ['DENOM'])
+r = length * unit_mm / denom
 dx = r * math.cos(math.radians(angle))
 dy = r * math.sin(math.radians(angle))
 ux, uy = px - 121.0, 463.0 - py
