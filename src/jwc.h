@@ -118,6 +118,22 @@ typedef struct {
     int n_marks;
     float mark_x[101];
     float mark_y[101];
+    /* What the panel down the left says, out of the same first line.  Each was
+     * read out of the running original rather than guessed at: the numbers it
+     * keeps in DGROUP while a drawing is up are 0x0a68 = the paper, 0x0a6a =
+     * the pen, 0x0a6c = the line type and 0x0b26 = the scale, and they match
+     * fields 11, 12, 13 and 9 in every one of the fourteen drawings. */
+    int paper;                  /* 0 = A-0 ... 4 = A-4, and on past that */
+    int pen;                    /* 1 to 8 */
+    int line_type;              /* 1 to 8 is a pen, past that a named style */
+    int write_layer;            /* field 10 -- the button drawn filled in */
+    float denom;                /* the scale: S=1/denom */
+    /* What each layer is called: eight bytes a layer, 256 of them, sitting
+     * straight after the last point record.  The panel writes the name of the
+     * layer being written to at row 22, and the four drawings that have one
+     * put it exactly write_layer * 8 bytes in -- SAMPLE2 writes to layer 9 and
+     * shows 図名, TEST6 to layer 1 and shows タイトル. */
+    char layer_name[256][9];
 } Jwc;
 
 /* Returns NULL and leaves `why` pointing at a reason on failure. */

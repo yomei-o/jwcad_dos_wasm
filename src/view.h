@@ -50,6 +50,10 @@ int jw_view_fonts(const char *dir);
 /* The two fonts jw_view_fonts loaded.  The screen chrome in src/ui.c draws
  * with them too, at their own size -- the original's menus go through the same
  * DOS/V font it hands the drawing. */
+/* What colour a pen draws in -- the original's own table, DGROUP 0x0a70.
+ * The panel down the left writes `Pen.n` in it too. */
+unsigned jw_view_pen_colour(unsigned pen);
+
 const Fontx *jw_view_ank(void);
 const Fontx *jw_view_kanji(void);
 

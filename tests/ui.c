@@ -35,10 +35,7 @@ int main(int argc, char **argv)
     }
     jw_view_palette(&v, "orig/JW_PAL.DAT");
     jw_ui_default(&s);
-    s.guide = "\x93\xae\x8d\xec\x8f\xf0\x8c\x8f\xa5\x90\xa7\x8c\xc0\x8e\x96"
-              "\x8d\x80\x93\x99\x82\xc9\x82\xc2\x82\xa2\x82\xc4\x82\xcd\xa4"
-              "\x95\x74\x91\xae\x82\xcc JW_CAD.DOC \x82\xf0\x82\xb2\x97\x97"
-              "\x82\xad\x82\xbe\x82\xb3\x82\xa2\xa1";
+    s.guide = jw_ui_guide();
     jw_ui_draw(&v, &s);
     /* and the pointer where the original leaves it: DS:c3ba = DS:c3bc = 200 */
     jw_ui_cursor(&v, 200, 200);

@@ -11,6 +11,7 @@
  */
 #include "jwc.h"
 #include "png.h"
+#include "ui.h"
 #include "view.h"
 
 #include <stdio.h>
@@ -24,7 +25,10 @@ static unsigned char pal[256][3];
 
 int main(int argc, char **argv)
 {
-    int original = argc > 1 && strcmp(argv[1], "-o") == 0;
+    /* -u: the whole screen, the frame around the drawing as well, so it can be
+     * compared with the original's picture with nothing masked out. */
+    int ui = argc > 1 && strcmp(argv[1], "-u") == 0;
+    int original = ui || (argc > 1 && strcmp(argv[1], "-o") == 0);
     const char *in = argc > 1 + original ? argv[1 + original] : "orig/SAMPLE2.JWC";
     const char *out = argc > 2 + original ? argv[2 + original] : "tmp/drawing.png";
     const char *why;
@@ -61,7 +65,18 @@ int main(int argc, char **argv)
     } else {
         jw_view_fit(&w, &v, d);
     }
+    /* The drawing first: jw_view_draw clears the screen before it starts, the
+     * way the original does when it opens a file.  The frame goes on after and
+     * the pointer, which is exclusive-or, last of all. */
     jw_view_draw(&v, d, &w);
+    if (ui) {
+        JwUi s;
+
+        jw_ui_from(&s, d);
+        s.guide = jw_ui_guide();
+        jw_ui_draw(&v, &s);
+        jw_ui_cursor(&v, 200, 200);
+    }
     vga_render(&v, pixels);
 
     if (n > 4 && strcmp(out + n - 4, ".raw") == 0) {

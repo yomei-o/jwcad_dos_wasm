@@ -192,20 +192,143 @@ static void jw_ui_blit(VGA *v, int x, int y, unsigned code, unsigned colour)
 
 /* ------------------------------------------------------------------ state */
 
+/* The paper's width in millimetres.  0885:100d picks the label off the same
+ * number: past 14 it is "err", 14 is "100", 13 "50m", 12 "10m", 8 and up
+ * "%1dA" with six taken off, and below that "A-%1d". */
+static const float PAPER_MM[5] = { 1189.0f, 841.0f, 594.0f, 420.0f, 297.0f };
+
+static void paper_name(char *out, int paper)
+{
+    if (paper > 14) {
+        strcpy(out, "err");
+    } else if (paper == 14) {
+        strcpy(out, "100");
+    } else if (paper == 13) {
+        strcpy(out, "50m");
+    } else if (paper == 12) {
+        strcpy(out, "10m");
+    } else if (paper >= 8) {
+        sprintf(out, "%1d`", paper - 6);
+    } else {
+        sprintf(out, "A-%1d", paper);
+    }
+}
+
+/* 0885:1079.  Below 1 it is written the other way up, and a scale under 4.9
+ * keeps a decimal: SAMPLE0's 1 comes out "S=1/1.0" and SAMPLE1's 100 "S=1/100".
+ * The three thresholds are doubles in the original's DGROUP -- 0.99989 at
+ * 0x9134, 4.9 at 0x9118 and the 0.5 it rounds with at 0x9128. */
+static void scale_name(char *out, double denom)
+{
+    if (denom > 0.99989468) {
+        if (denom < 4.9) {
+            sprintf(out, "S=1/%3.1f", denom);
+        } else {
+            sprintf(out, "S=1/%d", (int)(denom + 0.5));
+        }
+    } else if (denom > 0.0) {
+        double up = 1.0 / denom;
+
+        if (up < 4.9) {
+            sprintf(out, "S=%3.1f/1", up);
+        } else {
+            sprintf(out, "S=%3.0f/1", up);
+        }
+    } else {
+        strcpy(out, "S=1/1.0");
+    }
+}
+
+/* 0885:0b3b.  A line type of 8 or less is a pen and the label is its number;
+ * past that it is one of three named styles. */
+static void pen_name(char *out, int pen, int line_type)
+{
+    if (line_type <= 8) {
+        sprintf(out, "Pen.%1d", pen);
+    } else if (line_type <= 10) {
+        strcpy(out, "Addi.L");
+    } else if (line_type <= 15) {
+        sprintf(out, "Rnd.f%1d", line_type - 10);
+    } else if (line_type <= 18) {
+        strcpy(out, "Long.L");
+    } else {
+        *out = 0;
+    }
+}
+
+/* 表示倍率: 170 millimetres of screen over the paper's width, in float, which
+ * is what the original keeps at DGROUP 0x8972 -- 0.5723907 for A-4, 0.4047619
+ * for A-3, 0.2861953 for A-2 and 0.2021402 for A-1, all of them 170.0f over
+ * the width this table holds. */
+static double magnification(int paper)
+{
+    return paper >= 0 && paper <= 4 ? 170.0f / PAPER_MM[paper] : 0.0;
+}
+
 void jw_ui_default(JwUi *s)
 {
     int i;
 
     memset(s, 0, sizeof(*s));
     s->pen = 2;
-    s->paper = "A-3";
-    s->scale_denom = 100;
+    s->line_type = 1;
+    s->paper = 3;
+    s->denom = 100.0;
     s->group = 0;
     s->layer = 0;
-    s->zoom = 0.40;
     for (i = 0; i < 16; i++) {
         s->layer_on[i] = 1;
     }
+}
+
+void jw_ui_from(JwUi *s, const Jwc *d)
+{
+    int i;
+
+    jw_ui_default(s);
+    /* The right-hand count is the arcs **and** the texts: the label over it
+     * reads 円ｰ文数, and 20 + 4 is the 24 the original shows for SAMPLE1. */
+    s->n_lines = d->n_lines;
+    s->n_arcs = d->n_arcs + d->n_texts;
+    s->pen = d->pen;
+    s->line_type = d->line_type;
+    s->paper = d->paper;
+    s->denom = d->denom;
+    s->layer = d->write_layer;
+    s->name = d->layer_name[(s->group << 4) | (s->layer & 15)];
+    for (i = 0; i < 16; i++) {
+        const unsigned char layer = (unsigned char)((s->group << 4) | i);
+        long k;
+
+        s->layer_on[i] = (unsigned char)jwc_visible(d, layer);
+        for (k = 0; k < d->n_lines; k++) {
+            if (d->lines[k].layer == layer) {
+                s->layer_geom[i] = 1;
+                break;
+            }
+        }
+        for (k = 0; k < d->n_arcs && !s->layer_geom[i]; k++) {
+            if (d->arcs[k].layer == layer) {
+                s->layer_geom[i] = 1;
+            }
+        }
+        for (k = 0; k < d->n_texts; k++) {
+            if (d->texts[k].layer == layer) {
+                s->layer_text[i] = 1;
+                break;
+            }
+        }
+    }
+}
+
+/* The line of guidance the original comes up with, out of its own DGROUP --
+ * 作図条件・制限事項等については、付属の JW_CAD.DOC をご覧ください。 */
+const char *jw_ui_guide(void)
+{
+    return "\x93\xae\x8d\xec\x8f\xf0\x8c\x8f\xa5\x90\xa7\x8c\xc0\x8e\x96"
+    "\x8d\x80\x93\x99\x82\xc9\x82\xc2\x82\xa2\x82\xc4\x82\xcd\xa4"
+    "\x95\x74\x91\xae\x82\xcc JW_CAD.DOC \x82\xf0\x82\xb2\x97\x97"
+    "\x82\xad\x82\xbe\x82\xb3\x82\xa2\xa1";
 }
 
 /* ------------------------------------------------------------------- draw */
@@ -233,7 +356,7 @@ static void menu(VGA *v)
 
 void jw_ui_draw(VGA *v, const JwUi *s)
 {
-    char buf[64];
+    char buf[64], name[32];
     int i;
 
     v->clip_x0 = 0;
@@ -297,22 +420,26 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
     fill(v, 1, 321, 120, 335, 0);
     fill(v, 1, 321, 36, 335, 4);
-    sprintf(buf, " %-15s", s->paper);
+    paper_name(name, s->paper);
+    sprintf(buf, " %-15s", name);
     jw_ui_text(v, 1, 21, 0, 0, buf);
-    sprintf(buf, "S=1/%ld", s->scale_denom);
+    scale_name(buf, s->denom);
     jw_ui_text(v, 7, 21, 6, 0, buf);
     box(v, 0, 320, 121, 336, 7);
 
     fill(v, 1, 306, 120, 318, 0);
     jw_ui_text(v, 1, 20, 7, 0, "               ");
-    sprintf(buf, "Pen.%d", s->pen);
-    jw_ui_text(v, 2, 20, 7, 0, buf);
+    pen_name(buf, s->pen, s->line_type);
+    jw_ui_text(v, 2, 20, jw_view_pen_colour((unsigned)s->pen), 0, buf);
     jw_line(v, 64, 312, 110, 312, 7, ROP_REPLACE, JW_STYLE_SOLID);
     fill(v, 0, 304, 121, 305, 7);
     jw_line(v, 0, 16, 0, 463, 7, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, 121, 16, 121, 463, 7, ROP_REPLACE, JW_STYLE_SOLID);
 
     jw_ui_text(v, 1, 22, 7, 0, "        ");
+    if (s->name && *s->name) {
+        jw_ui_text(v, 1, 22, 7, 0, s->name);
+    }
     jw_ui_text(v, 9, 22, 6, 0, "\xb8\xde\xd9\xb0\xcc\xdf");
     fill(v, 110, 336, 121, 352, 5);
     box(v, 110, 336, 121, 352, 7);
@@ -333,17 +460,19 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         const int bx = 12 + 14 * (i & 7), by = 358 + 16 * (i >> 3);
         const unsigned digit = 0x100u | (i < 10 ? '0' + i : 'A' + i - 10);
 
-        jw_ui_blit(v, bx, by, digit, i == s->layer ? 0 : 6);
-        jw_arc(v, bx + 4, by + 3, 5.0, 0.0, 0.0, 6, ROP_REPLACE,
-               JW_STYLE_SOLID);
+        if (s->layer_on[i]) {
+            jw_ui_blit(v, bx, by, digit, i == s->layer ? 0 : 6);
+            jw_arc(v, bx + 4, by + 3, 5.0, 0.0, 0.0, 6, ROP_REPLACE,
+                   JW_STYLE_SOLID);
+        }
     }
     jw_line(v, 55, 360, 55, 362, 0, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, 56, 360, 56, 362, 0, ROP_REPLACE, JW_STYLE_SOLID);
     for (i = 0; i < 16; i++) {
         const int bx = 10 + 14 * (i & 7), by = 353 + 16 * (i >> 3);
 
-        fill(v, bx, by, bx + 6, by + 1, 0);
-        fill(v, bx + 7, by, bx + 12, by + 1, 0);
+        fill(v, bx, by, bx + 6, by + 1, s->layer_geom[i] ? 3 : 0);
+        fill(v, bx + 7, by, bx + 12, by + 1, s->layer_text[i] ? 3 : 0);
     }
 
     jw_ui_text(v, 1, 25, 7, 0, " \x83\x54\x83\x75\x89\xe6\x96\xca \x95\x5c\x8e\xa6 ");
@@ -363,7 +492,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     jw_ui_text(v, 17, 30, 7, 0, "\x91\x4f\x94\x7b\x97\xa6[NFER]");
     fill(v, 224, 463, 438, 479, 6);
     sprintf(buf, "Zoom[\xbd\xcd\xdf\xb0\xbd] \x95\x5c\x8e\xa6\x94\x7b\x97\xa6 %4.2f ",
-            s->zoom);
+            magnification(s->paper));
     jw_ui_text(v, 30, 30, 0, 0, buf);
     jw_ui_text(v, 56, 30, 7, 0, "\x94\x7b\x97\xa6\x8e\x77\x92\xe8[XFER]");
     fill(v, 550, 464, 606, 478, 4);

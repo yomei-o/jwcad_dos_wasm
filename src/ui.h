@@ -17,23 +17,38 @@
 #ifndef JW_UI_H
 #define JW_UI_H
 
+#include "jwc.h"
 #include "vga.h"
 
 typedef struct {
-    long n_lines;               /* the two counts at the top left */
-    long n_arcs;
-    int pen;                    /* `Pen.2` */
-    const char *paper;          /* `A-3` */
-    long scale_denom;           /* `S=1/100` */
+    long n_lines;               /* 線数, the left-hand count */
+    long n_arcs;                /* 円ｰ文数 -- the arcs and the texts together */
+    int pen;                    /* 1 to 8; `Pen.1` and its colour come from it */
+    int line_type;              /* past 8 the label is a style, not a pen */
+    int paper;                  /* 0 = A-0 ... 4 = A-4, and on past that */
+    double denom;               /* `S=1/100` */
     int group;                  /* the layer group the buttons show */
     unsigned char layer_on[16]; /* which of its sixteen layers are shown */
+    /* The two little bars over each button.  The left one is on when the layer
+     * carries a line or an arc and the right one when it carries a text; they
+     * are colour 3 and nothing else moves them.  Read off the original with
+     * every one of the fourteen drawings loaded -- SAMPLE2's layer 6 has
+     * thirty-seven texts and no lines and shows the right bar alone, its layer
+     * 9 one text and nothing else and the same, and its layer 7 eighteen lines
+     * and eight texts and shows both.  Points do not count. */
+    unsigned char layer_geom[16];
+    unsigned char layer_text[16];
     int layer;                  /* the one being written to, highlighted */
-    double zoom;                /* 表示倍率, the number on the bottom strip */
+    const char *name;           /* what the write layer is called, or NULL */
     const char *guide;          /* the line of guidance, or NULL */
 } JwUi;
 
 /* Fill it in the way the original comes up with no drawing loaded. */
 void jw_ui_default(JwUi *s);
+
+/* And the way it comes up with this drawing loaded.  Everything but the
+ * guidance line comes out of the drawing's own first line; see jwc.c. */
+void jw_ui_from(JwUi *s, const Jwc *d);
 
 /* Draw the whole chrome.  The drawing area (122,17)-(638,462) is left alone. */
 void jw_ui_draw(VGA *v, const JwUi *s);
@@ -64,5 +79,8 @@ int jw_ui_menu_hit(int x, int y);
  * (x, y) and then five steps of a three-pixel tail; the arrow is pulled up so
  * that it ends no lower than DS:0a60, the bottom of the drawing area. */
 void jw_ui_cursor(VGA *v, int x, int y);
+
+/* The line of guidance the original shows when it has nothing to say. */
+const char *jw_ui_guide(void);
 
 #endif

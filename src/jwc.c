@@ -297,6 +297,22 @@ static void marks(const unsigned char *file, long len, Jwc *d, int count)
     }
 }
 
+/* The five numbers the panel down the left of the screen shows.  The original
+ * keeps them in DGROUP -- 0x0a68 the paper, 0x0a6a the pen, 0x0a6c the line
+ * type, 0x0b26 the scale -- and dumping those while it has each of the
+ * fourteen drawings up gives exactly fields 11, 12, 13 and 9 of this line.
+ * Field 10 is the layer being written to, which is the button it fills. */
+static void panel(const char *line, Jwc *d)
+{
+    const char *f;
+
+    d->paper = (f = field(line, 11)) ? (int)strtol(f, NULL, 10) : 3;
+    d->pen = (f = field(line, 12)) ? (int)strtol(f, NULL, 10) : 1;
+    d->line_type = (f = field(line, 13)) ? (int)strtol(f, NULL, 10) : 1;
+    d->write_layer = (f = field(line, 10)) ? (int)strtol(f, NULL, 10) : 0;
+    d->denom = (f = field(line, 9)) ? (float)atof(f) : 1.0f;
+}
+
 static int header(const unsigned char *file, Jwc *d)
 {
     char buf[TEXT_LINE];
@@ -315,6 +331,7 @@ static int header(const unsigned char *file, Jwc *d)
     d->n_points = g;
     d->scale = saved_width_ratio(buf);
     grid(buf, d);
+    panel(buf, d);
     d->old_format = (unsigned char)(field(buf, 30) == NULL);
 
     /* "%lp,%lp" -- the second one's offset is how long the string pool is. */
@@ -428,6 +445,16 @@ Jwc *jwc_load(const char *path, const char **why)
     if (at >= 288) {
         memcpy(d->group_on, b + at - 288, sizeof d->group_on);
         memcpy(d->layer_on, b + at - 272, sizeof d->layer_on);
+    }
+
+    /* The layer names come straight after the geometry, eight bytes each. */
+    for (k = 0; k < 256; k++) {
+        long o = d->data_end + k * 8;
+
+        if (o + 8 <= blen) {
+            memcpy(d->layer_name[k], b + o, 8);
+        }
+        d->layer_name[k][8] = 0;
     }
 
     d->lines = (JwcLine *)calloc((size_t)(d->n_lines + 1), sizeof *d->lines);

@@ -270,7 +270,7 @@ static const unsigned char *scale_glyph(const unsigned char *g, int sw,
  * long time.
 
  */
-static unsigned pen_colour(unsigned pen)
+unsigned jw_view_pen_colour(unsigned pen)
 {
     static const unsigned char LCOLLOR[9] = { 5, 5, 7, 4, 6, 3, 1, 2, 1 };
 
@@ -298,7 +298,7 @@ static unsigned pen_colour(unsigned pen)
  * (Type 0 means "the size currently selected".) */
 static unsigned text_colour(const Jwc *d, unsigned size)
 {
-    return pen_colour((unsigned)d->text_pen[size <= 10 ? size : 0]);
+    return jw_view_pen_colour((unsigned)d->text_pen[size <= 10 ? size : 0]);
 }
 
 /* Below this many pixels the original does not draw the glyphs at all -- it
@@ -876,7 +876,7 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
             const int px = (int)fx0, py = (int)fy0;
 
             if (inside(w, px, py)) {
-                jw_point(v, px, py, pen_colour(l->pen), ROP_REPLACE);
+                jw_point(v, px, py, jw_view_pen_colour(l->pen), ROP_REPLACE);
             }
             continue;
         }
@@ -889,7 +889,7 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
             clip_far(w, fx0, fy0, &fx1, &fy1);
         }
         jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy1,
-                pen_colour(l->pen), ROP_REPLACE, line_style(l->type));
+                jw_view_pen_colour(l->pen), ROP_REPLACE, line_style(l->type));
     }
     for (k = 0; k < d->n_arcs; k++) {
         const JwcArc *a = &d->arcs[k];
@@ -922,10 +922,10 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
             const double te = (a->end + a->tilt) / 65536.0;
 
             jw_arc(v, cx, cy, r, ts, te,
-                   pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
+                   jw_view_pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
         } else {
             jw_arc_poly(v, cx, cy, r, a->flatten, a->start, a->end, a->tilt,
-                        pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
+                        jw_view_pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
         }
     }
     for (k = 0; k < d->n_texts; k++) {
@@ -968,7 +968,7 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
          * is nothing to read.  One pixel beats both the cross and nothing at
          * all on every drawing that has points, which is as far as the evidence
          * goes. */
-        jw_point(v, x, y, pen_colour(d->points[k].rest[1]), ROP_REPLACE);
+        jw_point(v, x, y, jw_view_pen_colour(d->points[k].rest[1]), ROP_REPLACE);
     }
     /* The grid last: the original's dots sit *on top of* the drawing.  Thirteen
      * of SAMPLE1's land on a line, and there the original shows the dot's white
@@ -978,7 +978,7 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
      * white there rather than the point's cyan. */
     for (k = 0; k < d->n_marks; k++) {
         const int mx = to_x(w, d->mark_x[k]), my = to_y(v, w, d->mark_y[k]);
-        const unsigned mc = pen_colour(2);
+        const unsigned mc = jw_view_pen_colour(2);
 
         if (!inside(w, mx - 2, my - 2) || !inside(w, mx + 2, my + 2)) {
             continue;
