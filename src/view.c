@@ -43,7 +43,8 @@ static int inside(const JwView *w, int x, int y)
  *
  * Which end is kept matters for the dashes: the pattern starts at the line's
  * own beginning, so moving the far end leaves it alone. */
-static void clip_far(const JwView *w, int x0, int y0, int *x1, int *y1)
+static void clip_far(const JwView *w, double x0, double y0,
+                     double *x1, double *y1)
 {
     double t = 1.0, dx = *x1 - x0, dy = *y1 - y0;
 
@@ -59,8 +60,15 @@ static void clip_far(const JwView *w, int x0, int y0, int *x1, int *y1)
     }
     if (t < 0.0) t = 0.0;
     if (t < 1.0) {
-        *x1 = x0 + (int)(dx * t);
-        *y1 = y0 + (int)(dy * t);
+        *x1 = x0 + dx * t;
+        *y1 = y0 + dy * t;
+        /* Clamped as well as cut: truncating the parameter's own rounding can
+         * land the pixel one past the edge, and in the browser's zoomed view
+         * that shows up as a dot outside the window. */
+        if (*x1 < w->x0) *x1 = w->x0;
+        if (*x1 > w->x1) *x1 = w->x1;
+        if (*y1 < w->y0) *y1 = w->y0;
+        if (*y1 > w->y1) *y1 = w->y1;
     }
 }
 
@@ -706,21 +714,29 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
 
     for (k = 0; k < d->n_lines; k++) {
         const JwcLine *l = &d->lines[k];
-        int sx0 = to_x(w, l->x0), sy0 = to_y(v, w, l->y0);
-        int sx1 = to_x(w, l->x1), sy1 = to_y(v, w, l->y1);
+        /* Cut to the window in floats and turn into pixels afterwards.  The
+         * original hands its line routine the whole line as it stands and lets
+         * that clip; a long line cut at truncated endpoints comes out along a
+         * slightly different slope, and TEST7's longest dashed one lands a
+         * pixel to the left for its whole length -- 207 of the drawing's 281
+         * differing line pixels. */
+        double fx0 = (l->x0 - w->ox) * w->scale + w->ax;
+        double fy0 = w->ay - (l->y0 - w->oy) * w->scale;
+        double fx1 = (l->x1 - w->ox) * w->scale + w->ax;
+        double fy1 = w->ay - (l->y1 - w->oy) * w->scale;
 
         if (!jwc_visible(d, l->layer)) {
             continue;
         }
-        if (!inside(w, sx0, sy0)) {
-            if (!inside(w, sx1, sy1)) {
+        if (!inside(w, (int)fx0, (int)fy0)) {
+            if (!inside(w, (int)fx1, (int)fy1)) {
                 continue;
             }
-            clip_far(w, sx1, sy1, &sx0, &sy0);
+            clip_far(w, fx1, fy1, &fx0, &fy0);
         } else {
-            clip_far(w, sx0, sy0, &sx1, &sy1);
+            clip_far(w, fx0, fy0, &fx1, &fy1);
         }
-        jw_line(v, sx0, sy0, sx1, sy1,
+        jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy1,
                 pen_colour(l->pen), ROP_REPLACE, line_style(l->type));
     }
     for (k = 0; k < d->n_arcs; k++) {
