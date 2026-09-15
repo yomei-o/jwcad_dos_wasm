@@ -72,6 +72,13 @@ typedef struct {
     /* Which layers and layer groups are shown, out of the preamble. */
     unsigned char layer_on[256];
     unsigned char group_on[16];
+    /* And the first of the two copies of the same tables.  It says something
+     * else about the layer -- the layer buttons draw a ring round the digit
+     * only where it is set, and TEST7 is the one drawing where the two copies
+     * differ: its layers C, D and E are off in this one, and the original
+     * writes their digits with no ring round them. */
+    unsigned char layer_edit[256];
+    unsigned char group_edit[16];
     /* What the coordinates were multiplied by on the way in: JW_CAD's own
      * drawing-area width over the one the file was saved with.  1 unless the
      * drawing came off a wider screen. */
@@ -128,6 +135,14 @@ typedef struct {
     int line_type;              /* 1 to 8 is a pen, past that a named style */
     int write_layer;            /* field 10 -- the button drawn filled in */
     float denom;                /* the scale: S=1/denom */
+    /* How long the drawing has been worked on, in seconds -- field 18.  The
+     * original does not keep it as a duration: at startup it sets its session
+     * clock to `time() - this`, so that `time() - clock` gives the total back.
+     * That is how it was found -- the long at DGROUP 0xc134 plus field 18 is
+     * the same constant (the emulator's fixed clock, 745786800) in every one
+     * of the fourteen drawings.  The thin bar between the two menu columns is
+     * this number. */
+    long work_seconds;
     /* What each layer is called: eight bytes a layer, 256 of them, sitting
      * straight after the last point record.  The panel writes the name of the
      * layer being written to at row 22, and the four drawings that have one

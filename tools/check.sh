@@ -26,6 +26,8 @@ echo "=== the drawing reader"
 if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "=== the screen around the drawing"
     sh tools/ui.sh
+    echo "=== every drawing, the whole screen"
+    sh tools/full.sh
 else
     echo "=== the screen around the drawing -- skipped, no ../dosv_emu_cpp"
 fi

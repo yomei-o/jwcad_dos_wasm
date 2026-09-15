@@ -278,6 +278,7 @@ void jw_ui_default(JwUi *s)
     s->layer = 0;
     for (i = 0; i < 16; i++) {
         s->layer_on[i] = 1;
+        s->layer_ring[i] = 1;
     }
 }
 
@@ -296,11 +297,15 @@ void jw_ui_from(JwUi *s, const Jwc *d)
     s->denom = d->denom;
     s->layer = d->write_layer;
     s->name = d->layer_name[(s->group << 4) | (s->layer & 15)];
+    s->work_seconds = d->work_seconds;
     for (i = 0; i < 16; i++) {
         const unsigned char layer = (unsigned char)((s->group << 4) | i);
         long k;
 
         s->layer_on[i] = (unsigned char)jwc_visible(d, layer);
+        s->layer_ring[i] = (unsigned char)(s->layer_on[i]
+                                           && d->layer_edit[layer]
+                                           && d->group_edit[layer >> 4]);
         for (k = 0; k < d->n_lines; k++) {
             if (d->lines[k].layer == layer) {
                 s->layer_geom[i] = 1;
@@ -309,6 +314,11 @@ void jw_ui_from(JwUi *s, const Jwc *d)
         }
         for (k = 0; k < d->n_arcs && !s->layer_geom[i]; k++) {
             if (d->arcs[k].layer == layer) {
+                s->layer_geom[i] = 1;
+            }
+        }
+        for (k = 0; k < d->n_points && !s->layer_geom[i]; k++) {
+            if (d->points[k].layer == layer) {
                 s->layer_geom[i] = 1;
             }
         }
@@ -394,6 +404,27 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     box(v, 1, 49, 120, 305, 7);
     fill(v, 65, 64, 70, 303, 7);
     fill(v, 67, 64, 68, 303, 0);
+    /* The working time, two pixels wide, down the black core of the bar
+     * between the two menu columns (0885:38b0).  The original turns seconds
+     * into `q = seconds * 16 / 3600` and draws `q % 160` of it up from the
+     * bottom in colour 5 and `q / 10`, at most 240, down from the top in
+     * colour 6.  Both were read off it: q is 39 for SAMPLE1's 8,939 seconds
+     * and 252 for TEST6's 56,704, and the two bars are 39 and 3, and 92 and
+     * 25 -- 252 % 160 and 252 / 10. */
+    {
+        long q = s->work_seconds * 16 / 3600;
+        long lo = q % 160, hi = q / 10;
+
+        if (hi > 240) {
+            hi = 240;
+        }
+        if (lo > 0) {
+            fill(v, 67, (int)(304 - lo), 68, 303, 5);
+        }
+        if (hi > 0) {
+            fill(v, 67, 64, 68, (int)(63 + hi), 6);
+        }
+    }
     jw_line(v, 55, 64, 55, 304, 7, ROP_REPLACE, 0x5555);
     jw_line(v, 111, 64, 111, 304, 7, ROP_REPLACE, 0x5555);
     fill(v, 0, 48, 7, 304, 7);
@@ -431,7 +462,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     jw_ui_text(v, 1, 20, 7, 0, "               ");
     pen_name(buf, s->pen, s->line_type);
     jw_ui_text(v, 2, 20, jw_view_pen_colour((unsigned)s->pen), 0, buf);
-    jw_line(v, 64, 312, 110, 312, 7, ROP_REPLACE, JW_STYLE_SOLID);
+    /* the sample beside Pen.n: the pen's own colour and the line type's
+     * pattern (TEST7 writes with type 9 and the sample comes out dotted) */
+    jw_line(v, 64, 312, 110, 312, jw_view_pen_colour((unsigned)s->pen),
+            ROP_REPLACE, jw_view_line_style((unsigned)s->line_type));
     fill(v, 0, 304, 121, 305, 7);
     jw_line(v, 0, 16, 0, 463, 7, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, 121, 16, 121, 463, 7, ROP_REPLACE, JW_STYLE_SOLID);
@@ -462,8 +496,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
         if (s->layer_on[i]) {
             jw_ui_blit(v, bx, by, digit, i == s->layer ? 0 : 6);
-            jw_arc(v, bx + 4, by + 3, 5.0, 0.0, 0.0, 6, ROP_REPLACE,
-                   JW_STYLE_SOLID);
+            if (s->layer_ring[i]) {
+                jw_arc(v, bx + 4, by + 3, 5.0, 0.0, 0.0, 6, ROP_REPLACE,
+                       JW_STYLE_SOLID);
+            }
         }
     }
     jw_line(v, 55, 360, 55, 362, 0, ROP_REPLACE, JW_STYLE_SOLID);

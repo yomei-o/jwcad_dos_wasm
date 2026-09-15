@@ -35,10 +35,18 @@ typedef struct {
      * every one of the fourteen drawings loaded -- SAMPLE2's layer 6 has
      * thirty-seven texts and no lines and shows the right bar alone, its layer
      * 9 one text and nothing else and the same, and its layer 7 eighteen lines
-     * and eight texts and shows both.  Points do not count. */
+     * and eight texts and shows both.  A point counts as geometry: SAMPLE3's
+     * layer 5 has sixty-one texts and twenty points and nothing else, and both
+     * bars are on. */
     unsigned char layer_geom[16];
     unsigned char layer_text[16];
+    /* Whether the digit gets a ring round it.  A layer that is not shown has
+     * neither digit nor ring (SAMPLE0's layer 1); one that is shown but off in
+     * the drawing's first layer table gets the digit and no ring (TEST7's
+     * layers C, D and E). */
+    unsigned char layer_ring[16];
     int layer;                  /* the one being written to, highlighted */
+    long work_seconds;          /* 作業時間 -- the thin bar down the menu */
     const char *name;           /* what the write layer is called, or NULL */
     const char *guide;          /* the line of guidance, or NULL */
 } JwUi;

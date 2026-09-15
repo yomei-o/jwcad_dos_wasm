@@ -761,7 +761,7 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
  * Type 1 is solid.  It is mapped to JW_STYLE_SOLID rather than 0xFFFF so the
  * line routine keeps its whole-byte fast path; the pixels are the same either
  * way, and every drawing is mostly type 1. */
-static int line_style(unsigned type)
+int jw_view_line_style(unsigned type)
 {
     static const unsigned short PATTERN[16] = {
         0x5555, 0xFFFF, 0x9999, 0xC3C3, 0xE7E7, 0xEBEB, 0xF99F, 0xD5D5,
@@ -889,7 +889,7 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
             clip_far(w, fx0, fy0, &fx1, &fy1);
         }
         jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy1,
-                jw_view_pen_colour(l->pen), ROP_REPLACE, line_style(l->type));
+                jw_view_pen_colour(l->pen), ROP_REPLACE, jw_view_line_style(l->type));
     }
     for (k = 0; k < d->n_arcs; k++) {
         const JwcArc *a = &d->arcs[k];
@@ -922,10 +922,10 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
             const double te = (a->end + a->tilt) / 65536.0;
 
             jw_arc(v, cx, cy, r, ts, te,
-                   jw_view_pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
+                   jw_view_pen_colour(a->pen), ROP_REPLACE, jw_view_line_style(a->type));
         } else {
             jw_arc_poly(v, cx, cy, r, a->flatten, a->start, a->end, a->tilt,
-                        jw_view_pen_colour(a->pen), ROP_REPLACE, line_style(a->type));
+                        jw_view_pen_colour(a->pen), ROP_REPLACE, jw_view_line_style(a->type));
         }
     }
     for (k = 0; k < d->n_texts; k++) {

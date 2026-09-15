@@ -311,6 +311,7 @@ static void panel(const char *line, Jwc *d)
     d->line_type = (f = field(line, 13)) ? (int)strtol(f, NULL, 10) : 1;
     d->write_layer = (f = field(line, 10)) ? (int)strtol(f, NULL, 10) : 0;
     d->denom = (f = field(line, 9)) ? (float)atof(f) : 1.0f;
+    d->work_seconds = (f = field(line, 18)) ? strtol(f, NULL, 10) : 0;
 }
 
 static int header(const unsigned char *file, Jwc *d)
@@ -442,9 +443,15 @@ Jwc *jwc_load(const char *path, const char **why)
      * running original and searching the file for them. */
     memset(d->group_on, 1, sizeof d->group_on);
     memset(d->layer_on, 1, sizeof d->layer_on);
+    memset(d->group_edit, 1, sizeof d->group_edit);
+    memset(d->layer_edit, 1, sizeof d->layer_edit);
     if (at >= 288) {
         memcpy(d->group_on, b + at - 288, sizeof d->group_on);
         memcpy(d->layer_on, b + at - 272, sizeof d->layer_on);
+    }
+    if (at >= 560) {
+        memcpy(d->group_edit, b + at - 560, sizeof d->group_edit);
+        memcpy(d->layer_edit, b + at - 544, sizeof d->layer_edit);
     }
 
     /* The layer names come straight after the geometry, eight bytes each. */

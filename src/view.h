@@ -54,6 +54,10 @@ int jw_view_fonts(const char *dir);
  * The panel down the left writes `Pen.n` in it too. */
 unsigned jw_view_pen_colour(unsigned pen);
 
+/* And the bit pattern a line type draws with -- DGROUP 0x0a88.  The short
+ * line in the panel beside `Pen.n` is a sample drawn in both. */
+int jw_view_line_style(unsigned type);
+
 const Fontx *jw_view_ank(void);
 const Fontx *jw_view_kanji(void);
 
