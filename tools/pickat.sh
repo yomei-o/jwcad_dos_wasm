@@ -2,6 +2,7 @@
 # Which entity does the original pick when 追加･除外 is pressed at a point?
 #
 #   sh tools/pickat.sh 197 157 200 140 324 250
+#   sh tools/pickat.sh f5 300 330          # [F5] first, then the press
 #   DRAWING=SAMPLE6 WAIT=150000000 sh tools/pickat.sh 209 242 214 245
 #   AX=170 AY=235 BX=215 BY=260 sh tools/pickat.sh 209 242    # a different range
 #
@@ -44,7 +45,15 @@ P="mouse %d %d\nwait 3000000\ndown left\nwait 3000000\nup left\nwait $PWAIT\n"
     printf "$P" "$ax" "$ay"
     printf "$P" "$bx" "$by"
     printf "$P" $dummy
-    while [ $# -ge 2 ]; do
+    while [ $# -ge 1 ]; do
+        case $1 in
+            f*)             # a function key: [F1] to [F10], in its turn
+                printf 'key %s\nwait %s\n' "$1" "$PWAIT"
+                shift
+                continue
+                ;;
+        esac
+        [ $# -ge 2 ] || break
         printf "$P" "$1" "$2"
         shift 2
     done

@@ -353,6 +353,9 @@ int jw_cmd_in_range(const JwCmd *c, double ax, double ay, double bx, double by)
     const double lo_y = c->y0 < c->y1 ? c->y0 : c->y1;
     const double hi_y = c->y0 < c->y1 ? c->y1 : c->y0;
 
+    if (c->cleared) {           /* [F2] threw the range's own answer away */
+        return 0;
+    }
     return ax >= lo_x && ax <= hi_x && bx >= lo_x && bx <= hi_x
            && ay >= lo_y && ay <= hi_y && by >= lo_y && by <= hi_y;
 }
@@ -639,6 +642,23 @@ int jw_cmd_key(JwCmd *c, const Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
 
+    /* [F2] while 消去 is asking 追加･除外: **the selection goes**.  Measured:
+     * on SAMPLE0 with (150,130)-(245,170) the 224 red pixels go back to their
+     * own colours and ①範囲 確定 → ①実行 then deletes nothing at all (the
+     * counts stay at 30|13); on SAMPLE6 the same, 182 pixels.  Pressing it a
+     * second time brings nothing back, and [F1] and [F3] to [F10] do nothing
+     * at any time -- they are the attribute keys JW_VER.DOC describes, and
+     * those only work with the `-L6` option, which is not on here.
+     *
+     * A press afterwards *adds*: on SAMPLE0, pressing (197,157) after [F2]
+     * turns 70 white pixels red.  So the range's answer is thrown away and
+     * the presses build a new set up from nothing, which is exactly
+     * `cleared` plus the flip list this already keeps. */
+    if (key == JW_KEY_F2 && c->command == 25 && c->stage == 3) {
+        c->cleared = 1;
+        c->n_flip = 0;
+        return 1;
+    }
     if (!c->typing) {
         return 0;
     }

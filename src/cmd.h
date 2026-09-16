@@ -73,6 +73,10 @@ typedef struct {
      * ignored, which is the one place this is not the original. */
     struct { unsigned char kind; long at; } flip[JW_FLIP_MAX];
     int n_flip;
+    /* [F2] in 追加･除外 empties the selection: after it the range holds
+     * nothing and the presses build a new set up from nothing.  Measured --
+     * see jw_cmd_key. */
+    int cleared;
 } JwCmd;
 
 /* Start a command, or leave it (0). */
@@ -138,7 +142,9 @@ int jw_cmd_key(JwCmd *c, const Jwc *d, int key);
  * and pressing [Enter] (measured: [F1] and [F3] both go straight to
  * `○ 複写方向マウス指示(L)` with the value in the band). */
 #define JW_KEY_F1 0x101
+#define JW_KEY_F2 0x102
 #define JW_KEY_F5 0x105
+#define JW_KEY_F10 0x10a
 
 /* Move the pointer without pressing.  While a command has a point in hand the
  * original keeps the reading under the counts up to date -- the length and the

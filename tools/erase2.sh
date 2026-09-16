@@ -30,6 +30,9 @@ P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 24000000\n'
     printf 'wait %s\nmouse 30 216\nwait 2000000\nclick left\nwait 24000000\n' "$WAIT"
     printf "$P" "$ax" "$ay" left left
     printf "$P" "$bx" "$by" left left
+    # FKEY=2 で [F2]——選択がまるごと消えます（4.9b）。そのあとの押しは
+    # 外すのではなく足すほうになります。
+    [ -n "$FKEY" ] && printf 'key f%s\nwait 40000000\n' "$FKEY"
     printf "$P" "$tx" "$ty" left left
     if [ -z "$STOP" ]; then
         printf "$P" "$ok" 8 left left
@@ -39,13 +42,15 @@ P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 24000000\n'
 } > tmp/er/check.txt
 "$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
        --script tmp/er/check.txt orig/JW_CADV.EXE "$DRAWING.JWC" > /dev/null 2>&1
+set -- -c 25 -p "$ax" "$ay" -p "$bx" "$by"
+[ -n "$FKEY" ] && set -- "$@" -f "$FKEY"
+set -- "$@" -p "$tx" "$ty"
 if [ -n "$STOP" ]; then
-    set -- -m "$tx" "$ty"
+    set -- "$@" -m "$tx" "$ty"
 else
-    set -- -t "$ok" -t "$go" -m "$go" 8
+    set -- "$@" -t "$ok" -t "$go" -m "$go" 8
 fi
-./tests/drawing.exe -u -c 25 -p "$ax" "$ay" -p "$bx" "$by" -p "$tx" "$ty" \
-    "$@" "orig/$DRAWING.JWC" "tmp/er/${out}_port.raw" > /dev/null
-printf '消去 追加･除外%s (%s,%s)-(%s,%s) 外す(%s,%s)  ' \
-    "${STOP:+（確定前）}" "$ax" "$ay" "$bx" "$by" "$tx" "$ty"
+./tests/drawing.exe -u "$@" "orig/$DRAWING.JWC" "tmp/er/${out}_port.raw" > /dev/null
+printf '消去 追加･除外%s%s (%s,%s)-(%s,%s) 指す(%s,%s)  ' \
+    "${FKEY:+ [F$FKEY]}" "${STOP:+（確定前）}" "$ax" "$ay" "$bx" "$by" "$tx" "$ty"
 python tools/fulldiff.py "tmp/er/${out}_orig.raw" "tmp/er/${out}_port.raw"

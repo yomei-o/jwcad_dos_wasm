@@ -48,6 +48,11 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "=== 消去 with the left button: 追加･除外, then 範囲確定 and 実行"
     echo "    (the 2 left over are the original's own erase clipping)"
     sh tools/erase2.sh 150 130 245 170 197 157
+    echo "=== and [F2], which throws the whole selection away (4.9b)"
+    FKEY=2 STOP=1 sh tools/erase2.sh 150 130 245 170 197 157
+    FKEY=2 sh tools/erase2.sh 150 130 245 170 197 157
+    echo "=== 追加･除外 on SAMPLE6, which only its pen-4 entities answer"
+    DRAWING=SAMPLE6 WAIT=150000000 STOP=1 sh tools/erase2.sh 170 235 215 260 209 242
     echo "=== 点 dropping a 仮点"
     sh tools/pressfull.sh 22 300 250
     sh tools/pressfull.sh 22 300 250 400 300
