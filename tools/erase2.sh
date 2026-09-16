@@ -24,6 +24,7 @@ go="${GO:-220}"                 # 上の行の ①実行
 # もの（白に戻る）をそのまま見たいときはこちら。撮影先も分けてあります
 # ——台本を作り替えたら撮影先も変えること（「刺された罠」）。
 if [ -n "$STOP" ]; then out=stop; else out=go; fi
+if [ -n "$RIGHT" ]; then btn=right; else btn=left; fi
 
 P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 24000000\n'
 {
@@ -33,18 +34,27 @@ P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 24000000\n'
     # FKEY=2 で [F2]——選択がまるごと消えます（4.9b）。そのあとの押しは
     # 外すのではなく足すほうになります。
     [ -n "$FKEY" ] && printf 'key f%s\nwait 40000000\n' "$FKEY"
-    printf "$P" "$tx" "$ty" left left
+    # DUMMY="x y" があれば、その点を先に左で押します。**追加･除外 の最初の
+    # 押しは 11f2:573f まで届きません**（別の道を通っているらしい）ので、
+    # 右ボタンの 文字(R) を試すときは捨て駒を 1 回挟む必要があります。
+    [ -n "$DUMMY" ] && printf "$P" $DUMMY left left
+    # RIGHT=1 なら 3 回目を右で——追加･除外 の 文字(R) のほう。
+    printf "$P" "$tx" "$ty" "$btn" "$btn"
     if [ -z "$STOP" ]; then
         printf "$P" "$ok" 8 left left
         printf "$P" "$go" 8 left left
     fi
+    # 撮る前にもうひと呼吸——「※お待ち下さい※」が出ている最中に撮ると、
+    # その帯が写り込んで数百画素の差になります。
+    printf 'wait 40000000\n'
     printf 'shot ../jwcad_dos_wasm/tmp/er/%s_orig.raw\n' "$out"
 } > tmp/er/check.txt
 "$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
        --script tmp/er/check.txt orig/JW_CADV.EXE "$DRAWING.JWC" > /dev/null 2>&1
 set -- -c 25 -p "$ax" "$ay" -p "$bx" "$by"
+[ -n "$DUMMY" ] && set -- "$@" -p $DUMMY
 [ -n "$FKEY" ] && set -- "$@" -f "$FKEY"
-set -- "$@" -p "$tx" "$ty"
+if [ -n "$RIGHT" ]; then set -- "$@" -r "$tx" "$ty"; else set -- "$@" -p "$tx" "$ty"; fi
 if [ -n "$STOP" ]; then
     set -- "$@" -m "$tx" "$ty"
 else
@@ -52,5 +62,5 @@ else
 fi
 ./tests/drawing.exe -u "$@" "orig/$DRAWING.JWC" "tmp/er/${out}_port.raw" > /dev/null
 printf '消去 追加･除外%s%s (%s,%s)-(%s,%s) 指す(%s,%s)  ' \
-    "${FKEY:+ [F$FKEY]}" "${STOP:+（確定前）}" "$ax" "$ay" "$bx" "$by" "$tx" "$ty"
+    "${FKEY:+ [F$FKEY]}${RIGHT:+ 文字(R)}" "${STOP:+（確定前）}" "$ax" "$ay" "$bx" "$by" "$tx" "$ty"
 python tools/fulldiff.py "tmp/er/${out}_orig.raw" "tmp/er/${out}_port.raw"

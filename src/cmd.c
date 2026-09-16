@@ -327,6 +327,61 @@ long jw_cmd_arc_at(const Jwc *d, const JwView *w, int sx, int sy)
     return jw_cmd_arc_at_kind(d, w, sx, sy, 0);
 }
 
+/* Which text a press takes, or -1.
+ *
+ * 消去's 追加･除外 asks for a text with the **right** button (its line says
+ * `線・円(L) 文字(R)`), and what it takes is not "the nearest" but "the one
+ * whose baseline this point is inside the box of", the box being the baseline
+ * opened out by ten in x and in y.  A box and not a distance -- that is the
+ * measurement that separates the two:
+ *
+ *     SAMPLE0's text 0 runs (51.17,310.96) to (93.03,310.96)
+ *     press at drawing (42,320)   9.17 out in x, 9.04 in y, 12.88 away   taken
+ *     press at drawing (103,302)  9.97 out in x, 8.96 in y, 14.09 away   taken
+ *     press at drawing (69,300)   inside in x, 10.96 in y, 10.96 away    not
+ *     press at drawing (104,311)  10.97 out in x, inside in y, 10.97     not
+ *
+ * so a point twelve and fourteen away is taken and one eleven away is not.
+ * The edge is between 9.97 and 10.04 each way, and ten is the round number in
+ * that gap.  It is a bigger reach than a line's eight (REACH).
+ *
+ * All of it was read off the original with the right button in 追加･除外 and
+ * the 132 pixels of that text turning from red to white and back.
+ *
+ * What is **not** measured: a text that is not horizontal (SAMPLE0's are, and
+ * the tilted ones in the drawings that ship are all on layers 消去 does not
+ * reach), which of two overlapping texts wins, and whether the character type
+ * is filtered the way a line's pen and type are.  The earliest record is taken
+ * where several would do, which is what a line does when two are the same
+ * distance away. */
+#define TEXT_REACH 10.0
+
+long jw_cmd_text_at(const Jwc *d, const JwView *w, int sx, int sy)
+{
+    double x, y;
+    long k;
+
+    if (!d) {
+        return -1;
+    }
+    jw_cmd_at(w, sx, sy, &x, &y);
+    for (k = 0; k < d->n_texts; k++) {
+        const JwcText *t = &d->texts[k];
+        const double lo_x = (t->x0 < t->x1 ? t->x0 : t->x1) - TEXT_REACH;
+        const double hi_x = (t->x0 > t->x1 ? t->x0 : t->x1) + TEXT_REACH;
+        const double lo_y = (t->y0 < t->y1 ? t->y0 : t->y1) - TEXT_REACH;
+        const double hi_y = (t->y0 > t->y1 ? t->y0 : t->y1) + TEXT_REACH;
+
+        if (!jwc_visible(d, t->layer)) {
+            continue;
+        }
+        if (x >= lo_x && x <= hi_x && y >= lo_y && y <= hi_y) {
+            return k;
+        }
+    }
+    return -1;
+}
+
 /* Where a press puts its point: the left button takes the pointer, the right
  * one snaps to what is already drawn.  Returns 0 when the right button found
  * nothing, which is when the original says 読取可能データ無 and does nothing
@@ -850,12 +905,15 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             /* 追加･除外: 線・円 with the left button, 文字 with the right. */
             long k, j;
 
-            if (right) {
-                /* 文字(R).  How near a text has to be pointed at is not
-                 * measured -- a line's reach was read off the original
-                 * (RESUME 4.7) and a text's has not been -- so this does
-                 * nothing rather than guess. */
-                return 0;
+            if (right) {                /* 文字(R) */
+                k = jw_cmd_text_at(d, w, sx, sy);
+                if (k < 0) {
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                flip(c, JW_FLIP_TEXT, k);
+                return 1;
             }
             k = jw_cmd_line_at_kind(d, w, sx, sy, 1);
             j = k < 0 ? jw_cmd_arc_at_kind(d, w, sx, sy, 1) : -1;

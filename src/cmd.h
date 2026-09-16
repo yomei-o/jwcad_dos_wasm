@@ -107,6 +107,10 @@ long jw_cmd_arc_at(const Jwc *d, const JwView *w, int sx, int sy);
 long jw_cmd_arc_at_kind(const Jwc *d, const JwView *w, int sx, int sy,
                         int only_writing);
 
+/* Which text a press takes, or -1 -- 消去's 追加･除外 with the right button.
+ * A box around the baseline, not a distance; see src/cmd.c. */
+long jw_cmd_text_at(const Jwc *d, const JwView *w, int sx, int sy);
+
 /* Is this entity inside 消去's fixed range?  Only what falls **wholly** inside
  * is taken -- SAMPLE0's line 5 and line 6 and text 0 go when (150,130)-(245,170)
  * is drawn round them, and line 1, which merely crosses the box, stays. */
