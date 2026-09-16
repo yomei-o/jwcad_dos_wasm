@@ -6,6 +6,7 @@
 #include "draw.h"
 
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,6 +14,11 @@ void jw_cmd_pick(JwCmd *c, int command)
 {
     memset(c, 0, sizeof(*c));
     c->command = command;
+    /* 複線 remembers the interval between runs, and its line says so before
+     * anything has been typed: `(R)同じ寸法[    1000.000]`.  A thousand is
+     * what the original had when src/prompt.h was captured -- the program's
+     * state, like the five numbers [F1] to [F5] stand for. */
+    c->gap = 1000.0;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -85,7 +91,8 @@ void jw_cmd_track(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy)
 }
 
 static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
-                       double *ax, double *ay, double *bx, double *by);
+                       double *ax, double *ay, double *bx, double *by,
+                       double *side);
 
 void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
 {
@@ -99,7 +106,7 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
     if (c->command == 5 && c->stage == 2) {
         double ax, ay, bx, by;
 
-        if (offset_ends(c, w, sx, sy, &ax, &ay, &bx, &by)) {
+        if (offset_ends(c, w, sx, sy, &ax, &ay, &bx, &by, 0)) {
             int qx, qy;
 
             at_screen(w, ax, ay, &px, &py);
@@ -357,7 +364,34 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
     long k;
     int changed = 0;
 
-    if (!d || c->command != 25 || c->pressed != 2) {
+    if (!d) {
+        return 0;
+    }
+    /* 複線's 「②連続」: one more copy, the same distance again and on the same
+     * side.  Measured on SAMPLE0 -- the line at y=157 with 20 puts the first
+     * copy at y=122 and 連続 puts the next at y=87, and the count goes up each
+     * time.  (「①間隔取得」 beside it asks for a 基準線 to take the interval
+     * off, which is not done.) */
+    if (c->command == 5 && c->stage == 3) {
+        const double units = c->gap * c->per_mm;
+        double ax, ay, bx, by;
+
+        if (item != 2) {
+            return 0;
+        }
+        ax = c->lx0 + c->nx * units;
+        ay = c->ly0 + c->ny * units;
+        bx = c->lx1 + c->nx * units;
+        by = c->ly1 + c->ny * units;
+        if (!jwc_add_line(d, (float)ax, (float)ay, (float)bx, (float)by,
+                          (unsigned char)d->line_type, (unsigned char)d->pen,
+                          (unsigned char)d->write_layer)) {
+            return 0;
+        }
+        c->lx0 = ax; c->ly0 = ay; c->lx1 = bx; c->ly1 = by;
+        return 1;
+    }
+    if (c->command != 25 || c->pressed != 2) {
         return 0;
     }
     if (item == 2) {            /* ②中止 -- the picked entities go back */
@@ -412,7 +446,8 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
  * on the line at (400,157), which draws the copy at y=122, the same side as
  * a pointer above it. */
 static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
-                       double *ax, double *ay, double *bx, double *by)
+                       double *ax, double *ay, double *bx, double *by,
+                       double *side)
 {
     double dx, dy, len, nx, ny, px, py, at, units;
 
@@ -433,6 +468,10 @@ static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
         nx = -nx;
         ny = -ny;
     }
+    if (side) {
+        side[0] = nx;
+        side[1] = ny;
+    }
     units = c->gap * c->per_mm;
     *ax = c->lx0 + nx * units;
     *ay = c->ly0 + ny * units;
@@ -444,9 +483,9 @@ static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
 /* And the press that fixes it. */
 static int offset_line(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
 {
-    double ax, ay, bx, by;
+    double ax, ay, bx, by, side[2];
 
-    if (!offset_ends(c, w, sx, sy, &ax, &ay, &bx, &by)) {
+    if (!offset_ends(c, w, sx, sy, &ax, &ay, &bx, &by, side)) {
         return 0;
     }
     /* The copy is made with the pen and line type the drawing is *writing*
@@ -461,6 +500,10 @@ static int offset_line(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
                       (unsigned char)d->write_layer)) {
         return 0;
     }
+    /* 「②連続」 puts another copy the same distance beyond this one, so what
+     * it works from is the copy, not the line that was pointed at. */
+    c->lx0 = ax; c->ly0 = ay; c->lx1 = bx; c->ly1 = by;
+    c->nx = side[0]; c->ny = side[1];
     c->stage = 3;
     return 1;
 }
@@ -468,8 +511,18 @@ static int offset_line(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
 /* A key while a command is asking for a number.  See cmd.h. */
 int jw_cmd_key(JwCmd *c, const Jwc *d, int key)
 {
+    static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
+
     if (!c->typing) {
         return 0;
+    }
+    if (key >= JW_KEY_F1 && key <= JW_KEY_F5) {
+        /* The five the top line offers.  They belong to the program's state,
+         * like the numbers in src/prompt.h, and are here as the original had
+         * them when src/typed.h was captured. */
+        sprintf(c->typed, "%g", F[key - JW_KEY_F1]);
+        c->typed_n = (int)strlen(c->typed);
+        key = 13;
     }
     if (key == 13 || key == 10) {               /* [Enter] */
         c->typed[c->typed_n] = 0;
@@ -524,7 +577,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         if (c->typing) {
             return 0;           /* the number has to be finished first */
         }
-        if (c->stage < 2) {
+        if (c->stage != 2) {    /* not waiting for a side: pick a line */
             const long k = jw_cmd_line_at(d, w, sx, sy);
 
             if (k < 0) {
@@ -532,9 +585,6 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 return 0;
             }
             c->missed = 0;
-            if (right) {
-                return 0;       /* (R)同じ寸法, the interval last used: not done */
-            }
             c->pick = k;
             c->lx0 = d->lines[k].x0;
             c->ly0 = d->lines[k].y0;
@@ -542,6 +592,19 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->ly1 = d->lines[k].y1;
             c->per_mm = (d->unit_mm > 0.0f ? d->unit_mm : 1.0f)
                       / (d->denom > 0.0 ? d->denom : 1.0);
+            /* The right button takes the interval last used and goes straight
+             * to choosing the side -- `(R)同じ寸法`, as the command's own line
+             * says.  No field, no `点指示 or 間隔=`: measured by running 複線
+             * once with 20 and then pointing at another line with the right
+             * button, which writes `[       20.00]` in the band and nothing
+             * else. */
+            if (right) {
+                c->num[0] = c->num[1] = c->gap;
+                c->dec[0] = 2;
+                c->dec[1] = d->decimals;
+                c->stage = 2;
+                return 0;
+            }
             c->typing = 1;
             c->typed_n = 0;
             c->typed[0] = 0;

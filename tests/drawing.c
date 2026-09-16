@@ -67,6 +67,13 @@ int main(int argc, char **argv)
             press[n_press][2] = 1;
             n_press++;
             a += 3;
+        } else if (strcmp(argv[a], "-f") == 0 && a + 1 < argc && n_press < 8) {
+            /* [F1] to [F5], at this point in the sequence */
+            press[n_press][0] = -3;
+            press[n_press][1] = atoi(argv[a + 1]);
+            press[n_press][2] = 0;
+            n_press++;
+            a += 2;
         } else if (strcmp(argv[a], "-K") == 0 && a + 1 < argc && n_press < 8) {
             /* the same, but without the [Enter] -- the field still open */
             press[n_press][0] = -2;
@@ -94,7 +101,7 @@ int main(int argc, char **argv)
             a += 2;
         } else {
             fprintf(stderr, "usage: drawing [-o|-u] [-c N] [-m X Y] [-p|-r X Y]"
-                            " [-k|-K KEYS] [-t X] IN.JWC OUT\n");
+                            " [-k|-K KEYS] [-f N] [-t X] IN.JWC OUT\n");
             return 2;
         }
     }
@@ -137,7 +144,11 @@ int main(int argc, char **argv)
     jw_cmd_pick(&c, command);
     if (n_press) {
         for (i = 0; i < n_press; i++) {
-            if (press[i][0] < 0) {              /* -k: keys, then [Enter] */
+            if (press[i][0] == -3) {            /* -f: a function key */
+                jw_cmd_key(&c, d, JW_KEY_F1 + press[i][1] - 1);
+                continue;
+            }
+            if (press[i][0] < 0) {              /* -k / -K: keys */
                 const char *k = argv[press[i][1]];
 
                 for (; *k; k++) {

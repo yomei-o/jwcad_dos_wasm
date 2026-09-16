@@ -52,6 +52,8 @@ typedef struct {
      * so that neither can be looking at a line that has moved since. */
     double lx0, ly0, lx1, ly1;
     double per_mm;              /* drawing units to a millimetre of paper */
+    double nx, ny;              /* the side the last copy went to, as a unit
+                                 * normal -- 「②連続」 repeats it */
 } JwCmd;
 
 /* Start a command, or leave it (0). */
@@ -101,6 +103,15 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item);
  * it, which is how [BS] can put the field back.  src/ui.c draws the field from
  * `typed` and gets the same picture. */
 int jw_cmd_key(JwCmd *c, const Jwc *d, int key);
+
+/* The function keys, for jw_cmd_key.  They are not characters, so they are
+ * numbered past the byte the rest of the keys come in as.  While 複線 is
+ * asking for a number, [F1] to [F5] are the five it offers along the top --
+ * 1000, 100, 200, 300 and 500 -- and pressing one is the same as typing that
+ * and pressing [Enter] (measured: [F1] and [F3] both go straight to
+ * `○ 複写方向マウス指示(L)` with the value in the band). */
+#define JW_KEY_F1 0x101
+#define JW_KEY_F5 0x105
 
 /* Move the pointer without pressing.  While a command has a point in hand the
  * original keeps the reading under the counts up to date -- the length and the
