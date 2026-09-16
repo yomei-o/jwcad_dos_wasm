@@ -372,6 +372,21 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
      * copy at y=122 and 連続 puts the next at y=87, and the count goes up each
      * time.  (「①間隔取得」 beside it asks for a 基準線 to take the interval
      * off, which is not done.) */
+    /* 複線's 「①間隔取得」: take the interval off the drawing instead of
+     * typing it.  It asks for a line and then for a point, and the interval
+     * becomes how far the point is from the line -- in millimetres of paper,
+     * like a typed one.  Measured on SAMPLE0 with the line at y=157 and four
+     * points: (197,419) gives 150.000, (197,300) 81.770, (400,250) 53.102 and
+     * (250,60) 55.836, all of them `距離 / unit_mm * 分母` to the last digit.
+     *
+     * It is on the command's line from the start, and again after a copy has
+     * been drawn, so it is taken here whatever stage the command is at. */
+    if (c->command == 5 && item == 1
+        && (c->stage == 0 || c->stage == 3 || c->stage == 6)) {
+        c->stage = 4;
+        c->pick = -1;
+        return 0;
+    }
     if (c->command == 5 && c->stage == 3) {
         const double units = c->gap * c->per_mm;
         double ax, ay, bx, by;
@@ -576,6 +591,41 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
          * lands on 139, 122 and 87, which is that, truncated. */
         if (c->typing) {
             return 0;           /* the number has to be finished first */
+        }
+        if (c->stage == 4) {    /* 間隔取得: the line to measure from */
+            const long k = jw_cmd_line_at(d, w, sx, sy);
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->pick = k;
+            c->lx0 = d->lines[k].x0;
+            c->ly0 = d->lines[k].y0;
+            c->lx1 = d->lines[k].x1;
+            c->ly1 = d->lines[k].y1;
+            c->per_mm = (d->unit_mm > 0.0f ? d->unit_mm : 1.0f)
+                      / (d->denom > 0.0 ? d->denom : 1.0);
+            c->stage = 5;
+            return 0;
+        }
+        if (c->stage == 5) {    /* 間隔取得: the point to measure to */
+            const double dx = c->lx1 - c->lx0, dy = c->ly1 - c->ly0;
+            const double len = sqrt(dx * dx + dy * dy);
+            double px, py, away;
+
+            if (len <= 0.0) {
+                return 0;
+            }
+            jw_cmd_at(w, sx, sy, &px, &py);
+            away = ((px - c->lx0) * dy - (py - c->ly0) * dx) / len;
+            c->gap = (away < 0.0 ? -away : away) / c->per_mm;
+            c->num[0] = c->num[1] = c->gap;
+            c->dec[0] = 2;
+            c->dec[1] = d->decimals;
+            c->stage = 6;
+            return 0;
         }
         if (c->stage != 2) {    /* not waiting for a side: pick a line */
             const long k = jw_cmd_line_at(d, w, sx, sy);

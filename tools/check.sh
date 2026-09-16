@@ -73,6 +73,7 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     FKEY=5 sh tools/multicheck.sh - 197 300
     RIGHT=1 sh tools/multicheck.sh 20 197 120
     CONT=1 sh tools/multicheck.sh 20 197 120
+    GET=197,419 sh tools/multicheck.sh - 300 300
     echo "=== picking a command with its one-letter key"
     sh tools/keycheck.sh D 10
     sh tools/keycheck.sh C 1

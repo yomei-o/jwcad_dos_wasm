@@ -829,6 +829,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * pointer is over the drawing -- see src/snap.h.  Last, because a
          * stage writes spaces at column 17 on a black background and those
          * reach across column 22. */
+        /* 複線's 間隔取得 asks for a point, and while it is asking, the word
+         * for what the right button would take is on the screen even though
+         * the command has none of its own (src/snap.h has nothing for 5).
+         * Column 22 only -- the original writes 円周1/4点 there, the same
+         * as □ and ○ do, and leaves column 17 alone. */
+        if (s->snap && s->command == 5 && s->stage == 5) {
+            jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[3][1]);
+        }
         if (s->snap && JW_SNAP[s->command - 1][0]) {
             jw_ui_text(v, 17, 2, 7, 0, JW_SNAP[s->command - 1][0]);
         }
