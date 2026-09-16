@@ -92,8 +92,16 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right);
  * own bounding box. */
 long jw_cmd_line_at(const Jwc *d, const JwView *w, int sx, int sy);
 
+/* The same, but taking only what is drawn with the pen and line type that
+ * are selected for writing when `only_writing` is set.  That is what 消去's
+ * 追加･除外 does and 線消 does not -- see src/cmd.c. */
+long jw_cmd_line_at_kind(const Jwc *d, const JwView *w, int sx, int sy,
+                         int only_writing);
+
 /* And which arc, or -1.  The original's 線消 says 線,円弧 and takes either. */
 long jw_cmd_arc_at(const Jwc *d, const JwView *w, int sx, int sy);
+long jw_cmd_arc_at_kind(const Jwc *d, const JwView *w, int sx, int sy,
+                        int only_writing);
 
 /* Is this entity inside 消去's fixed range?  Only what falls **wholly** inside
  * is taken -- SAMPLE0's line 5 and line 6 and text 0 go when (150,130)-(245,170)

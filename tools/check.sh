@@ -64,6 +64,10 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "    quarters of its circle it does not draw"
     DRAWING=SAMPLE6 sh tools/delcheck.sh 244 140
     DRAWING=SAMPLE6 sh tools/delcheck.sh 254 120
+    echo "=== which entity a press picks, against the original's own answer"
+    sh tools/pickcheck.sh
+    DRAWING=SAMPLE0 sh tools/pickcheck.sh 197 157 200 140 324 250 162 175 300 249
+    DRAWING=SAMPLE6 WAIT=150000000 AX=170 AY=235 BX=215 BY=260 sh tools/pickcheck.sh 209 243 210 243 214 245 499 271 560 210 210 249
     echo "=== saving: the port writes the file, the original opens it"
     sh tools/savecheck.sh
     sh tools/savecheck.sh -c 3 -p 200 100 -p 500 400

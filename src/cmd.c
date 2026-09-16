@@ -174,7 +174,33 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
  * SAMPLE0's top edge takes it and eight does not. */
 #define REACH 8.0
 
-long jw_cmd_line_at(const Jwc *d, const JwView *w, int sx, int sy)
+/* Does this entity pass the writing pen and line type?
+ *
+ * 消去's 追加･除外 takes **only entities drawn with the pen and the line type
+ * that are selected for writing**; 線消 takes anything.  That is the whole of
+ * the difference between the two, and it was read out of the original rather
+ * than guessed: tools/mkpick.py's `bytes` drawing puts twelve lines ten pixels
+ * apart that differ only in the bytes behind the coordinates, and
+ * tools/pickat.sh presses on each and reads the number the original's search
+ * answers.  Ten are taken; the two refused are the one with line type 2 and
+ * the one with pen 5, SAMPLE0 writing with type 1 and pen 2.  The trailing
+ * four bytes make no difference at all, nor does the layer once every layer
+ * table is on.
+ *
+ * It is why SAMPLE6 looked unexplainable: it writes with pen 4, so its walls
+ * (pen 1, 2 and 5) cannot be taken out of a range however exactly they are
+ * pointed at, and the little pen-4 fittings beside them can.
+ *
+ * The same test is in the original at 11f2:5993 -- `pen != DGROUP 0xa6a ||
+ * type != DGROUP 0xa6c` skips the record -- and jwc.h has those two addresses
+ * as the panel's pen and line type. */
+static int writing_kind(const Jwc *d, int type, int pen)
+{
+    return type == d->line_type && pen == d->pen;
+}
+
+long jw_cmd_line_at_kind(const Jwc *d, const JwView *w, int sx, int sy,
+                         int only_writing)
 {
     double x, y, best = REACH;
     long k, found = -1;
@@ -190,7 +216,8 @@ long jw_cmd_line_at(const Jwc *d, const JwView *w, int sx, int sy)
         const double len = sqrt(dx * dx + dy * dy);
         double away;
 
-        if (!jwc_visible(d, l->layer)) {
+        if (!jwc_visible(d, l->layer)
+            || (only_writing && !writing_kind(d, l->type, l->pen))) {
             continue;
         }
         /* Within the ends' box, opened out by the reach ... */
@@ -206,12 +233,24 @@ long jw_cmd_line_at(const Jwc *d, const JwView *w, int sx, int sy)
         if (away < 0.0) {
             away = -away;
         }
-        if (away <= best) {
+        /* Strictly nearer, so that a tie keeps the **earlier** record.  That
+         * is the original's own answer: tools/mkpick.py puts two lines on the
+         * same row with overlapping ends and two more ten pixels apart, and
+         * pressing between them gives 6 where the later record would be 7, and
+         * 1 where it would be 2 (tools/pickat.sh reads the number the
+         * original's search returns).  `best` starts at the reach, so a line
+         * exactly REACH away is out -- seven is taken and eight is not. */
+        if (away < best) {
             best = away;
             found = k;
         }
     }
     return found;
+}
+
+long jw_cmd_line_at(const Jwc *d, const JwView *w, int sx, int sy)
+{
+    return jw_cmd_line_at_kind(d, w, sx, sy, 0);
 }
 
 /* Which arc is under a point, or -1.  Same reach as a line, and measured the
@@ -233,7 +272,8 @@ long jw_cmd_line_at(const Jwc *d, const JwView *w, int sx, int sy)
  * distance is not this difference.  None of the fourteen drawings has one far
  * enough from its neighbours to measure, so it is left alone rather than
  * guessed at. */
-long jw_cmd_arc_at(const Jwc *d, const JwView *w, int sx, int sy)
+long jw_cmd_arc_at_kind(const Jwc *d, const JwView *w, int sx, int sy,
+                        int only_writing)
 {
     double x, y, best = REACH;
     long k, found = -1;
@@ -255,13 +295,14 @@ long jw_cmd_arc_at(const Jwc *d, const JwView *w, int sx, int sy)
         double away = sqrt(dx * dx + dy * dy) - a->r;
         double ang;
 
-        if (!jwc_visible(d, a->layer) || a->flatten != 10000) {
+        if (!jwc_visible(d, a->layer) || a->flatten != 10000
+            || (only_writing && !writing_kind(d, a->type, a->pen))) {
             continue;
         }
         if (away < 0.0) {
             away = -away;
         }
-        if (away > best) {
+        if (away >= best) {     /* strictly nearer, as for a line */
             continue;
         }
         ang = atan2(dy, dx) * (180.0 / 3.14159265358979323846)
@@ -279,6 +320,11 @@ long jw_cmd_arc_at(const Jwc *d, const JwView *w, int sx, int sy)
         found = k;
     }
     return found;
+}
+
+long jw_cmd_arc_at(const Jwc *d, const JwView *w, int sx, int sy)
+{
+    return jw_cmd_arc_at_kind(d, w, sx, sy, 0);
 }
 
 /* Where a press puts its point: the left button takes the pointer, the right
@@ -791,8 +837,8 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                  * nothing rather than guess. */
                 return 0;
             }
-            k = jw_cmd_line_at(d, w, sx, sy);
-            j = k < 0 ? jw_cmd_arc_at(d, w, sx, sy) : -1;
+            k = jw_cmd_line_at_kind(d, w, sx, sy, 1);
+            j = k < 0 ? jw_cmd_arc_at_kind(d, w, sx, sy, 1) : -1;
             if (k < 0 && j < 0) {
                 c->missed = 1;
                 return 0;

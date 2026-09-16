@@ -20,6 +20,10 @@ ax="${1:-150}"; ay="${2:-130}"; bx="${3:-245}"; by="${4:-170}"
 tx="${5:-197}"; ty="${6:-157}"
 ok="${OK:-580}"                 # 上の行の ①範囲 確定
 go="${GO:-220}"                 # 上の行の ①実行
+# STOP=1 で ①範囲 確定 の手前で止めます。選ばれているもの（赤）と外した
+# もの（白に戻る）をそのまま見たいときはこちら。撮影先も分けてあります
+# ——台本を作り替えたら撮影先も変えること（「刺された罠」）。
+if [ -n "$STOP" ]; then out=stop; else out=go; fi
 
 P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 24000000\n'
 {
@@ -27,13 +31,21 @@ P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 24000000\n'
     printf "$P" "$ax" "$ay" left left
     printf "$P" "$bx" "$by" left left
     printf "$P" "$tx" "$ty" left left
-    printf "$P" "$ok" 8 left left
-    printf "$P" "$go" 8 left left
-    printf 'shot ../jwcad_dos_wasm/tmp/er/orig.raw\n'
+    if [ -z "$STOP" ]; then
+        printf "$P" "$ok" 8 left left
+        printf "$P" "$go" 8 left left
+    fi
+    printf 'shot ../jwcad_dos_wasm/tmp/er/%s_orig.raw\n' "$out"
 } > tmp/er/check.txt
 "$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
        --script tmp/er/check.txt orig/JW_CADV.EXE "$DRAWING.JWC" > /dev/null 2>&1
+if [ -n "$STOP" ]; then
+    set -- -m "$tx" "$ty"
+else
+    set -- -t "$ok" -t "$go" -m "$go" 8
+fi
 ./tests/drawing.exe -u -c 25 -p "$ax" "$ay" -p "$bx" "$by" -p "$tx" "$ty" \
-    -t "$ok" -t "$go" -m "$go" 8 "orig/$DRAWING.JWC" tmp/er/port.raw > /dev/null
-printf '消去 追加･除外 (%s,%s)-(%s,%s) 外す(%s,%s)  ' "$ax" "$ay" "$bx" "$by" "$tx" "$ty"
-python tools/fulldiff.py tmp/er/orig.raw tmp/er/port.raw
+    "$@" "orig/$DRAWING.JWC" "tmp/er/${out}_port.raw" > /dev/null
+printf '消去 追加･除外%s (%s,%s)-(%s,%s) 外す(%s,%s)  ' \
+    "${STOP:+（確定前）}" "$ax" "$ay" "$bx" "$by" "$tx" "$ty"
+python tools/fulldiff.py "tmp/er/${out}_orig.raw" "tmp/er/${out}_port.raw"
