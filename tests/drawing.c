@@ -67,6 +67,23 @@ int main(int argc, char **argv)
             press[n_press][2] = 1;
             n_press++;
             a += 3;
+        } else if (strcmp(argv[a], "-K") == 0 && a + 1 < argc && n_press < 8) {
+            /* the same, but without the [Enter] -- the field still open */
+            press[n_press][0] = -2;
+            press[n_press][1] = a + 1;
+            press[n_press][2] = 0;
+            n_press++;
+            a += 2;
+        } else if (strcmp(argv[a], "-k") == 0 && a + 1 < argc && n_press < 8) {
+            /* Keys, at this point in the sequence: a command asking for a
+             * number takes them, and [Enter] is added at the end because that
+             * is what ends the field.  複線 needs this between its two presses
+             * (RESUME.md 4.12). */
+            press[n_press][0] = -1;
+            press[n_press][1] = a + 1;
+            press[n_press][2] = 0;
+            n_press++;
+            a += 2;
         } else if (strcmp(argv[a], "-t") == 0 && a + 1 < argc) {
             /* a press on the top line, which is a menu of its own */
             top_x = atoi(argv[a + 1]);
@@ -76,7 +93,8 @@ int main(int argc, char **argv)
             ui = original = 1;
             a += 2;
         } else {
-            fprintf(stderr, "usage: drawing [-o|-u] [-c N] [-m X Y] [-p|-r X Y] [-t X] IN.JWC OUT\n");
+            fprintf(stderr, "usage: drawing [-o|-u] [-c N] [-m X Y] [-p|-r X Y]"
+                            " [-k|-K KEYS] [-t X] IN.JWC OUT\n");
             return 2;
         }
     }
@@ -119,6 +137,17 @@ int main(int argc, char **argv)
     jw_cmd_pick(&c, command);
     if (n_press) {
         for (i = 0; i < n_press; i++) {
+            if (press[i][0] < 0) {              /* -k: keys, then [Enter] */
+                const char *k = argv[press[i][1]];
+
+                for (; *k; k++) {
+                    jw_cmd_key(&c, d, (unsigned char)*k);
+                }
+                if (press[i][0] == -1) {        /* -k ends with [Enter] */
+                    jw_cmd_key(&c, d, 13);
+                }
+                continue;
+            }
             jw_cmd_press(&c, d, &w, press[i][0], press[i][1], press[i][2]);
         }
     }
@@ -132,6 +161,8 @@ int main(int argc, char **argv)
         t.command = command;
         t.guide = 0;
         t.stage = c.stage;
+        memcpy(t.typed, c.typed, sizeof t.typed);
+        t.typed_n = c.typed_n;
         t.num[0] = c.num[0];
         t.num[1] = c.num[1];
         t.dec[0] = c.dec[0];
@@ -163,6 +194,8 @@ int main(int argc, char **argv)
         s.guide = jw_ui_guide();
         s.command = command;
         s.stage = stage;
+        memcpy(s.typed, c.typed, sizeof s.typed);
+        s.typed_n = c.typed_n;
         s.num[0] = num[0];
         s.num[1] = num[1];
         s.dec[0] = dec[0];

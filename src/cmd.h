@@ -35,6 +35,23 @@ typedef struct {
      * `pressed` counts the presses -- 1 while the box is being dragged, 2 once
      * it is fixed and what it picked is painted in colour 2. */
     double x1, y1;
+    /* 複線: the line it was pointed at, the number being typed, and the
+     * interval that number came to.  See RESUME.md 4.12.
+     *
+     * `typing` is on between the press that picks the line and the Enter that
+     * ends the number; while it is on the keys are the command's, not the
+     * menu's.  The field is eight columns wide, which is how much the original
+     * clears for it. */
+    long pick;
+    int typing;
+    char typed[9];
+    int typed_n;
+    double gap;                 /* millimetres of paper, as typed */
+    /* The line that was pointed at, kept here so that the band it drags and
+     * the press that fixes it can both work without the drawing in hand, and
+     * so that neither can be looking at a line that has moved since. */
+    double lx0, ly0, lx1, ly1;
+    double per_mm;              /* drawing units to a millimetre of paper */
 } JwCmd;
 
 /* Start a command, or leave it (0). */
@@ -73,6 +90,17 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
  * 35 to 44 call it off, and column 34, the bar itself, does nothing.
  * Returns 1 if the drawing changed. */
 int jw_cmd_top(JwCmd *c, Jwc *d, int item);
+
+/* A key, while a command is asking for a number.  Digits and a point go into
+ * the field, [BS] takes one back and [Enter] ends it; anything else is left
+ * alone.  Returns 1 if the key was the command's, so that the caller knows not
+ * to treat it as a menu key.
+ *
+ * The original echoes each character itself, one cell along from the last --
+ * `"2  "` at column 22, `"0  "` at column 23 -- and clears the two cells after
+ * it, which is how [BS] can put the field back.  src/ui.c draws the field from
+ * `typed` and gets the same picture. */
+int jw_cmd_key(JwCmd *c, const Jwc *d, int key);
 
 /* Move the pointer without pressing.  While a command has a point in hand the
  * original keeps the reading under the counts up to date -- the length and the

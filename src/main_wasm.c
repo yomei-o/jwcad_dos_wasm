@@ -53,6 +53,21 @@ EMSCRIPTEN_KEEPALIVE void jw_init(void)
     strcpy(status, jw_view_fonts("font") ? "ready" : "ready (no font)");
 }
 
+/* Everything the chrome shows that belongs to the command in hand.  Three
+ * places need it -- moving the pointer, pressing, and typing -- so it is in
+ * one place. */
+static void sync_ui(void)
+{
+    ui.stage = cmd.stage;
+    ui.typed_n = cmd.typed_n;
+    memcpy(ui.typed, cmd.typed, sizeof ui.typed);
+    ui.num[0] = cmd.num[0];
+    ui.num[1] = cmd.num[1];
+    ui.dec[0] = cmd.dec[0];
+    ui.dec[1] = cmd.dec[1];
+    ui.missed = cmd.missed;
+}
+
 /* Redraw at the current view and unpack the planes for the canvas.  The order
  * is the original's: the drawing (which clears the screen first), then the
  * frame round it, then the pointer, which is exclusive-or and has to go last. */
@@ -152,11 +167,7 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
     /* a command with a point in hand keeps its reading up to date as the
      * pointer moves, the way the original does */
     jw_cmd_track(&cmd, drawing, &view, x, y);
-    ui.stage = cmd.stage;
-    ui.num[0] = cmd.num[0];
-    ui.num[1] = cmd.num[1];
-    ui.dec[0] = cmd.dec[0];
-    ui.dec[1] = cmd.dec[1];
+    sync_ui();
     present();
 }
 
@@ -193,8 +204,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         }
         mouse_x = x;
         mouse_y = y;
-        ui.stage = cmd.stage;
-        ui.missed = cmd.missed;
+        sync_ui();
         present();
         return -1;
     }
@@ -209,12 +219,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             ui.command = cmd.command;
             ui.guide = 0;
         }
-        ui.stage = cmd.stage;
-        ui.num[0] = cmd.num[0];
-        ui.num[1] = cmd.num[1];
-        ui.dec[0] = cmd.dec[0];
-        ui.dec[1] = cmd.dec[1];
-        ui.missed = cmd.missed;
+        sync_ui();
         present();
         return -1;
     }
@@ -225,7 +230,18 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
  * original does with them here; anything else is ignored for now. */
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
-    const int pick = jw_ui_key_command(key);
+    int pick;
+
+    /* A command that is asking for a number has the keyboard until [Enter]:
+     * the one-letter keys would otherwise pick another item out from under it
+     * (`5` is not a menu key, but `.` and the digits share the line with
+     * nothing and the next key after [Enter] must go back to the menu). */
+    if (jw_cmd_key(&cmd, drawing, key)) {
+        sync_ui();
+        present();
+        return -1;
+    }
+    pick = jw_ui_key_command(key);
 
     if (!pick) {
         return 0;

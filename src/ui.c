@@ -8,6 +8,7 @@
 #include "prompt.h"
 #include "snap.h"
 #include "stage.h"
+#include "typed.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -428,6 +429,29 @@ void jw_ui_from(JwUi *s, const Jwc *d)
     }
 }
 
+/* One row of a stage table, with the command's numbers filled in.  Both
+ * tables -- the generated src/stage.h and the hand-written src/typed.h -- hold
+ * the same shape and are replayed through here. */
+static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
+{
+    char out[160];
+
+    if (q->command != s->command || q->stage != stage) {
+        return;
+    }
+    if (q->numbers == 2) {
+        const int k = q->first + 1 > 1 ? 1 : q->first + 1;
+
+        sprintf(out, q->text, q->width[0], s->dec[q->first], s->num[q->first],
+                q->width[1], s->dec[k], s->num[k]);
+    } else if (q->numbers == 1) {
+        sprintf(out, q->text, q->width[0], s->dec[q->first], s->num[q->first]);
+    } else {
+        strcpy(out, q->text);
+    }
+    jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, out);
+}
+
 /* The line of guidance the original comes up with, out of its own DGROUP --
  * 作図条件・制限事項等については、付属の JW_CAD.DOC をご覧ください。 */
 const char *jw_ui_guide(void)
@@ -683,6 +707,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         const JwPrompt *p = JW_PROMPT[s->command - 1];
         const JwPrompt *q;
 
+        /* Picking an item also clears the two rows under the top line, right
+         * across the drawing.  It shows only on a drawing that has something
+         * up there: SAMPLE1 has 1,515 lit pixels in rows 32 to 47 and every
+         * one of them is gone the moment an item is picked, while SAMPLE2 --
+         * which tools/menucheck.sh uses -- has none, which is why this went
+         * unnoticed.  Rows 17 to 47, columns 122 to 638: text rows 2 and 3,
+         * the same band the prompts write in. */
+        fill(v, 122, 17, 638, 47, 0);
+
         /* A command that writes in the band under the top line clears the two
          * counts out of the way first -- the original fills (1,17)-(120,47)
          * with colour 4 again, line by line, just before it writes there
@@ -724,7 +757,20 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                                  * same row are beside it, not in it */
                 }
             }
+            for (q = JW_TYPED; q->command; q++) {
+                if (q->command == s->command && q->stage == i
+                    && q->row != 1 && q->col <= 15) {
+                    own = 1;
+                }
+            }
             fill(v, 0, 0, 639, 15, 0);
+            /* The band right of the counts box goes too.  複線 leaves
+             * `[F1]`..`[F5]` and the interval there while it asks, and the
+             * original wipes the lot on the way to the next stage: the line
+             * calls after the press are `(122,17)-(638,17)` down to
+             * `(122,31)-(638,31)`, all in black.  The counts box itself
+             * (columns 1 to 15) is painted separately just below. */
+            fill(v, 122, 17, 638, 31, 0);
             top_clear();
             if (own) {
                 fill(v, 1, 17, 120, 47, 4);
@@ -732,25 +778,34 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 counts(v, s);
             }
             for (q = JW_STAGE; q->command; q++) {
-                char out[128];
+                stage_text(v, q, s, i);
+            }
+            /* The stages you can only reach by typing -- src/typed.h -- are
+             * replayed the same way, out of their own table. */
+            for (q = JW_TYPED; q->command; q++) {
+                stage_text(v, q, s, i);
+            }
+            /* And the field itself: what has been typed, one character to a
+             * cell from column 22, each of them clearing the two cells after
+             * it the way the original writes them. */
+            if (s->command == 5 && i == 1) {
+                int n;
 
-                if (q->command != s->command || q->stage != i) {
-                    continue;
-                }
-                if (q->numbers == 2) {
-                    const int k = q->first + 1 > 1 ? 1 : q->first + 1;
+                for (n = 0; n < s->typed_n && n < 8; n++) {
+                    char one[4];
 
-                    sprintf(out, q->text, q->width[0], s->dec[q->first],
-                            s->num[q->first], q->width[1], s->dec[k],
-                            s->num[k]);
-                } else if (q->numbers == 1) {
-                    sprintf(out, q->text, q->width[0], s->dec[q->first],
-                            s->num[q->first]);
-                } else {
-                    strcpy(out, q->text);
+                    one[0] = s->typed[n];
+                    one[1] = one[2] = ' ';
+                    one[3] = 0;
+                    jw_ui_text(v, 22 + n, 1, 7, 0, one);
                 }
-                jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg,
-                           out);
+                /* And the cursor: a green block in the lower nine rows of the
+                 * cell the next character goes in.  Measured on the original
+                 * with nothing typed (x168..175, y7..15, colour 4) and with
+                 * two characters in (x184..191, the same rows), so it is the
+                 * cell at column 22 + however many have been typed. */
+                n = s->typed_n < 8 ? s->typed_n : 8;
+                fill(v, 168 + n * 8, 7, 175 + n * 8, 15, 4);
             }
         }
         /* □ shows where the box it is about to draw is anchored: a little

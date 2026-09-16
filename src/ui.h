@@ -33,6 +33,11 @@ typedef struct {
      * line are the length and the angle, for a box the two sides, and for a
      * circle the radius and the diameter.  See src/stage.h. */
     int stage;
+    /* 複線's number, as it is being typed: the field at column 22 of the top
+     * line.  The command keeps it (src/cmd.h) and the front end copies it in
+     * with the rest. */
+    char typed[9];
+    int typed_n;
     double num[2];
     int dec[2];                 /* how many decimals each of them is shown to:
                                  * a length follows the drawing's scale, an

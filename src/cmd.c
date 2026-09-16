@@ -6,6 +6,7 @@
 #include "draw.h"
 
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
 void jw_cmd_pick(JwCmd *c, int command)
@@ -83,10 +84,30 @@ void jw_cmd_track(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy)
     measure(c, d, x, y);
 }
 
+static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
+                       double *ax, double *ay, double *bx, double *by);
+
 void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
 {
     int px, py;
 
+    /* 複線 drags a whole line, not a rubber band from a point: once the
+     * interval is in, the copy follows the pointer from one side of the
+     * chosen line to the other.  Colour 2, exclusive-or, solid, like every
+     * other band -- and at the same pixels the copy lands on, so the press
+     * that fixes it changes nothing but the colour. */
+    if (c->command == 5 && c->stage == 2) {
+        double ax, ay, bx, by;
+
+        if (offset_ends(c, w, sx, sy, &ax, &ay, &bx, &by)) {
+            int qx, qy;
+
+            at_screen(w, ax, ay, &px, &py);
+            at_screen(w, bx, by, &qx, &qy);
+            jw_line(v, px, py, qx, qy, 2, 0x18, JW_STYLE_SOLID);
+        }
+        return;
+    }
     if (!c->pressed) {
         return;
     }
@@ -377,12 +398,157 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
     return changed;
 }
 
+/* Where 複線's copy goes: the line it was pointed at, moved `gap` millimetres
+ * of paper towards the side the pointer is on.  Both ends move the same way,
+ * so the copy is parallel and the same length.
+ *
+ * The interval is millimetres of paper, so it comes back to drawing units the
+ * way the panel's lengths go the other way: `gap * unit_mm / denom`.  SAMPLE0's
+ * line at y=157 with 10, 20 and 40 lands on 139, 122 and 87, which is that,
+ * truncated (RESUME.md 4.12).
+ *
+ * A pointer exactly on the line goes to the +normal side, which for a line
+ * drawn left to right is up the screen -- measured with the pointer put back
+ * on the line at (400,157), which draws the copy at y=122, the same side as
+ * a pointer above it. */
+static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
+                       double *ax, double *ay, double *bx, double *by)
+{
+    double dx, dy, len, nx, ny, px, py, at, units;
+
+    if (c->pick < 0) {
+        return 0;
+    }
+    dx = c->lx1 - c->lx0;
+    dy = c->ly1 - c->ly0;
+    len = sqrt(dx * dx + dy * dy);
+    if (len <= 0.0) {
+        return 0;
+    }
+    nx = -dy / len;             /* the unit normal, either way along it */
+    ny = dx / len;
+    jw_cmd_at(w, sx, sy, &px, &py);
+    at = (px - c->lx0) * nx + (py - c->ly0) * ny;
+    if (at < 0.0) {
+        nx = -nx;
+        ny = -ny;
+    }
+    units = c->gap * c->per_mm;
+    *ax = c->lx0 + nx * units;
+    *ay = c->ly0 + ny * units;
+    *bx = c->lx1 + nx * units;
+    *by = c->ly1 + ny * units;
+    return 1;
+}
+
+/* And the press that fixes it. */
+static int offset_line(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
+{
+    double ax, ay, bx, by;
+
+    if (!offset_ends(c, w, sx, sy, &ax, &ay, &bx, &by)) {
+        return 0;
+    }
+    /* The copy is made with the pen and line type the drawing is *writing*
+     * with, not the ones the line it was taken from has.  Measured: the copy
+     * comes out colour 7 on SAMPLE0, whose writing pen is 2, and colour 5 on
+     * SAMPLE1, whose writing pen is 1 -- and SAMPLE1's source line is white,
+     * so it is not inheriting anything.  (The layer goes the same way for
+     * want of a drawing that separates it: none of the fourteen has a line
+     * worth copying off the layer it writes to.) */
+    if (!jwc_add_line(d, (float)ax, (float)ay, (float)bx, (float)by,
+                      (unsigned char)d->line_type, (unsigned char)d->pen,
+                      (unsigned char)d->write_layer)) {
+        return 0;
+    }
+    c->stage = 3;
+    return 1;
+}
+
+/* A key while a command is asking for a number.  See cmd.h. */
+int jw_cmd_key(JwCmd *c, const Jwc *d, int key)
+{
+    if (!c->typing) {
+        return 0;
+    }
+    if (key == 13 || key == 10) {               /* [Enter] */
+        c->typed[c->typed_n] = 0;
+        c->gap = atof(c->typed);
+        c->typing = 0;
+        c->stage = 2;
+        /* The interval is shown twice and to two different numbers of
+         * decimals: two in the band while the side is being chosen, three on
+         * the command's own line once the copy is drawn.  Both come out of
+         * src/typed.h through the same %*.*f, so it is kept in both. */
+        c->num[0] = c->num[1] = c->gap;
+        /* The band's field is always two decimals; the command's own line
+         * follows the drawing's scale, like every other length the panel
+         * shows.  SAMPLE0 (S=1/1) writes `[      20.000]` and SAMPLE1
+         * (S=1/100) `[      500.00]`, and both write `.00` in the band. */
+        c->dec[0] = 2;
+        c->dec[1] = d ? d->decimals : 3;
+        return 1;
+    }
+    if (key == 8) {                             /* [BS] */
+        if (c->typed_n > 0) {
+            c->typed[--c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if ((key >= '0' && key <= '9') || key == '.') {
+        if (c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    return 1;                   /* while it is asking, the keys are its own */
+}
+
 int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
 {
     double x, y;
 
     if (!d) {
         return 0;
+    }
+    if (c->command == 5) {
+        /* 複線: point at a line, type how far away the copy goes, and press
+         * the side it goes to.  RESUME.md 4.12 has the whole sequence as the
+         * original writes it.
+         *
+         * The interval is millimetres of paper, so it comes back to drawing
+         * units the same way the panel's lengths go the other way:
+         * `gap * unit_mm / denom`.  SAMPLE0's line at y=157 with 10, 20 and 40
+         * lands on 139, 122 and 87, which is that, truncated. */
+        if (c->typing) {
+            return 0;           /* the number has to be finished first */
+        }
+        if (c->stage < 2) {
+            const long k = jw_cmd_line_at(d, w, sx, sy);
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            if (right) {
+                return 0;       /* (R)同じ寸法, the interval last used: not done */
+            }
+            c->pick = k;
+            c->lx0 = d->lines[k].x0;
+            c->ly0 = d->lines[k].y0;
+            c->lx1 = d->lines[k].x1;
+            c->ly1 = d->lines[k].y1;
+            c->per_mm = (d->unit_mm > 0.0f ? d->unit_mm : 1.0f)
+                      / (d->denom > 0.0 ? d->denom : 1.0);
+            c->typing = 1;
+            c->typed_n = 0;
+            c->typed[0] = 0;
+            c->stage = 1;
+            return 0;
+        }
+        return offset_line(c, d, w, sx, sy);
     }
     if (c->command == 10) {
         /* 線消: the right button takes the whole line away.  (The left one

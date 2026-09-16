@@ -59,6 +59,15 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "    quarters of its circle it does not draw"
     DRAWING=SAMPLE6 sh tools/delcheck.sh 244 140
     DRAWING=SAMPLE6 sh tools/delcheck.sh 254 120
+    echo "=== 複線 with a number typed in (src/cmd.c, RESUME 4.12)"
+    sh tools/multicheck.sh 20 197 120
+    sh tools/multicheck.sh 40 197 300
+    DRAWING=SAMPLE1 LX=300 LY=200 sh tools/multicheck.sh 500 300 160
+    DRAWING=SAMPLE1 LX=200 LY=400 sh tools/multicheck.sh 500 200 360
+    echo "=== and on a slanted line: the 3 left over are the original drawing"
+    echo "    the copy on top of a finished screen, where the port redraws"
+    DRAWING=SAMPLE6 LX=499 LY=192 sh tools/multicheck.sh 300 520 230
+    DRAWING=SAMPLE6 LX=499 LY=192 sh tools/multicheck.sh 300 470 160
     echo "=== picking a command with its one-letter key"
     sh tools/keycheck.sh D 10
     sh tools/keycheck.sh C 1
