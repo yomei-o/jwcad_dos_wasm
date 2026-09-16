@@ -4,8 +4,7 @@
 #   sh tools/bandcheck.sh 3 300 200 450 320      # ／ with one point taken
 #
 # Picks the item, presses the first point, moves the pointer, and compares the
-# whole screen.  What is left over is the circled digits ①②③ the command's
-# line is full of -- see tools/menucheck.sh for why neither side draws them.
+# whole screen.
 set -e
 cd "$(dirname "$0")/.."
 EMU=../dosv_emu_cpp/dosemu.exe

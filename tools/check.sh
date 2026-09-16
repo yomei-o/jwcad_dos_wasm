@@ -41,9 +41,9 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "=== a command started from a read point"
     sh tools/pressfull.sh 3 r 170 150 l 400 300
     DRAWING=SAMPLE6 sh tools/pressfull.sh 3 r 470 305 l 400 300
-    echo "=== 消去 picking a range (the rest is 丸数字, as everywhere else)"
+    echo "=== 消去 picking a range"
     sh tools/pressfull.sh 25 150 130 r 245 170
-    echo "=== 点 dropping a 仮点 (the rest is 丸数字, as everywhere else)"
+    echo "=== 点 dropping a 仮点"
     sh tools/pressfull.sh 22 300 250
     sh tools/pressfull.sh 22 300 250 400 300
     sh tools/pressfull.sh 22 r 383 401
@@ -62,7 +62,7 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "=== picking a command with its one-letter key"
     sh tools/keycheck.sh D 10
     sh tools/keycheck.sh C 1
-    echo "=== the line a half-finished command drags (the rest is 丸数字)"
+    echo "=== the line a half-finished command drags"
     sh tools/bandcheck.sh 3 300 200 450 320
     sh tools/bandcheck.sh 4 250 150 450 350
     if [ -f tmp/menus/c01.raw ]; then

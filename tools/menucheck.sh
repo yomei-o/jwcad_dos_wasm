@@ -8,11 +8,7 @@
 # emulator's mouse and leaves tmp/menus/cNN.raw.  This draws the same screen
 # with src/ui.c and counts the pixels that differ.
 #
-# What is left is the circled digits ①②③ the prompts are full of.  They are
-# NEC row 13, which is not in JIS X 0208 and so not in the Shinonome fonts this
-# port carries; the original never even asks the font driver for them and puts
-# whatever was in its glyph buffer on the screen, so neither side is drawing
-# the right thing.  Thirty to forty pixels a digit, and nothing else.
+# What is left is one pixel each on 複写 and 移動, at (0,16) -- see 4.11.
 set -e
 cd "$(dirname "$0")/.."
 if [ $# -gt 0 ]; then cmds="$*"; else cmds=$(seq 1 30); fi

@@ -164,7 +164,34 @@ void jw_ui_text(VGA *v, int col, int row, unsigned fg, unsigned bg,
         int w;
 
         if (is_lead(p[i]) && p[i + 1]) {
-            g = fontx_glyph(kanji, (unsigned)(p[i] << 8) | p[i + 1]);
+            unsigned code = (unsigned)(p[i] << 8) | p[i + 1];
+
+            /* ①〜⑨ are never drawn as themselves.  They are NEC's own row 13,
+             * which the IBM font has no glyph for, so the original takes them
+             * apart: `add ax,78f1h` turns 8740h..8748h into '1'..'9' and the
+             * two halves of the double-width cell get the digit and a ')'.
+             * The menus are full of them (`|①実行(L)|②中止(R)|`), and drawing
+             * nothing there left 67 pixels of the top row differing.
+             *
+             * At 0x1046d the original guards this with bit 0 of DGROUP 0x129,
+             * and falls through to the ordinary kanji path when it is set --
+             * a machine whose font *does* have row 13, which is to say a
+             * PC-98.  On DOS/V the byte is zero (read back with
+             * `dump +3375:0129`), so this is the only path there is here. */
+            if (code >= 0x8740 && code <= 0x8748) {
+                g = fontx_glyph(ank, (code + 0x78f1) & 0xff);
+                if (g) {
+                    jw_glyph(v, x, y, 8, 16, g, fg, bg);
+                }
+                g = fontx_glyph(ank, ')');
+                if (g) {
+                    jw_glyph(v, x + 8, y, 8, 16, g, fg, bg);
+                }
+                x += 16;
+                i += 2;
+                continue;
+            }
+            g = fontx_glyph(kanji, code);
             w = 16;
             i += 2;
         } else if (p[i] < 0x20) {

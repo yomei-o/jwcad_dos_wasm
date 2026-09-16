@@ -179,6 +179,25 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         present();
         return pick;
     }
+    /* The top line is a menu too.  消去 finishes there and nowhere else: the
+     * `|①実行(L)|` the original writes after a range is picked is a real
+     * target, and pressing the drawing area instead leaves the entities red
+     * (4.9 in RESUME.md).  jw_ui_top_item reads the line the chrome last
+     * wrote, so the chrome has to have been drawn -- present() does that at
+     * the end of every press, so by the time anyone can click it has. */
+    if (cmd.command && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
+        if (jw_cmd_top(&cmd, drawing, jw_ui_top_item(x, y))) {
+            jw_ui_from(&ui, drawing);       /* the counts move with it */
+            ui.command = cmd.command;
+            ui.guide = 0;
+        }
+        mouse_x = x;
+        mouse_y = y;
+        ui.stage = cmd.stage;
+        ui.missed = cmd.missed;
+        present();
+        return -1;
+    }
     if (cmd.command && x >= AREA_X0 && x <= AREA_X1
         && y >= AREA_Y0 && y <= AREA_Y1) {
         const int changed = jw_cmd_press(&cmd, drawing, &view, x, y, right);

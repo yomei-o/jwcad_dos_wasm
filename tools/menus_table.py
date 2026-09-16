@@ -10,7 +10,19 @@ the menu item was picked, with the column it wrote it at.
 import sys
 
 B = chr(92)
-AFTER = 43_000_000          # past the click and the "please wait" flash
+AFTER = 43_000_000          # past the click
+
+# 「※お待ち下さい※」, the flash the original puts up while it loads the
+# overlay.  It is gone before the command's own line goes up -- and it is not
+# taken away with the string routine, so there is no piece here that undoes it
+# (`      ` at column 1 appears for some commands and not others).  Waiting a
+# fixed number of instructions was not enough: 測定 and 図面 are slow enough to
+# load that the flash lands *after* AFTER, and then the port drew it and left
+# it there, 103 and 164 pixels in the top left corner.  So it is dropped by
+# what it says, and everything before it with it: whatever the original wrote
+# up to that point has been painted over by the time the command's line goes up.
+WAIT = ('¨Ò¿º'
+        '³¢')
 
 
 def escape(s):
@@ -43,6 +55,9 @@ def pieces(n):
         if row > 3:
             continue
         out.append((col, row, fg, bg, s))
+    for i in range(len(out) - 1, -1, -1):
+        if out[i][4] == WAIT:
+            return out[i + 1:]
     return out
 
 
