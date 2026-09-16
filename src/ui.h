@@ -49,6 +49,11 @@ typedef struct {
      * says so in the band beside the counts and leaves it there until the next
      * press finds something or another item is picked; see jw_ui_draw. */
     int missed;
+    /* 消去's ②範囲外消去.  The original leaves the `＿` at column 6 off
+     * in that mode -- the mark that says the left button can be dragged --
+     * and writes the rest of the 追加･除外 line exactly as it does for
+     * ①範囲内消去. */
+    int outside;
     int group;                  /* the layer group the buttons show */
     unsigned char layer_on[16]; /* which of its sixteen layers are shown */
     /* The two little bars over each button.  The left one is on when the layer

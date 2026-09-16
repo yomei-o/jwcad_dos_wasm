@@ -29,6 +29,9 @@ if [ -n "$RIGHT" ]; then btn=right; else btn=left; fi
 P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 24000000\n'
 {
     printf 'wait %s\nmouse 30 216\nwait 2000000\nclick left\nwait 24000000\n' "$WAIT"
+    # OUT=1 なら先に上の行の ②範囲外消去 を押します（桁 42〜53、x 328〜431）。
+    [ -n "$OUT" ] && { printf "$P" 380 8 left left; printf 'wait 30000000
+'; }
     printf "$P" "$ax" "$ay" left left
     printf "$P" "$bx" "$by" left left
     # FKEY=2 で [F2]——選択がまるごと消えます（4.9b）。そのあとの押しは
@@ -51,7 +54,9 @@ P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 24000000\n'
 } > tmp/er/check.txt
 "$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
        --script tmp/er/check.txt orig/JW_CADV.EXE "$DRAWING.JWC" > /dev/null 2>&1
-set -- -c 25 -p "$ax" "$ay" -p "$bx" "$by"
+set -- -c 25
+[ -n "$OUT" ] && set -- "$@" -t 380
+set -- "$@" -p "$ax" "$ay" -p "$bx" "$by"
 [ -n "$DUMMY" ] && set -- "$@" -p $DUMMY
 [ -n "$FKEY" ] && set -- "$@" -f "$FKEY"
 if [ -n "$RIGHT" ]; then set -- "$@" -r "$tx" "$ty"; else set -- "$@" -p "$tx" "$ty"; fi
@@ -62,5 +67,5 @@ else
 fi
 ./tests/drawing.exe -u "$@" "orig/$DRAWING.JWC" "tmp/er/${out}_port.raw" > /dev/null
 printf '消去 追加･除外%s%s (%s,%s)-(%s,%s) 指す(%s,%s)  ' \
-    "${FKEY:+ [F$FKEY]}${RIGHT:+ 文字(R)}" "${STOP:+（確定前）}" "$ax" "$ay" "$bx" "$by" "$tx" "$ty"
+    "${OUT:+ 範囲外}${FKEY:+ [F$FKEY]}${RIGHT:+ 文字(R)}" "${STOP:+（確定前）}" "$ax" "$ay" "$bx" "$by" "$tx" "$ty"
 python tools/fulldiff.py "tmp/er/${out}_orig.raw" "tmp/er/${out}_port.raw"

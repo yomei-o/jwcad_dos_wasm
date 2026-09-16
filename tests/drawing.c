@@ -176,6 +176,7 @@ int main(int argc, char **argv)
                 t.dec[1] = c.dec[1];
                 t.snap = 0;
                 t.missed = c.missed;
+                t.outside = c.outside;
                 jw_ui_draw(&v, &t);
                 jw_cmd_top(&c, d, jw_ui_top_item(press[i][1], 8));
                 continue;
@@ -234,6 +235,7 @@ int main(int argc, char **argv)
          * over the drawing */
         s.snap = mx >= 122 && mx <= 638 && my >= 17 && my <= 462;
         s.missed = c.missed;
+        s.outside = c.outside;
         if (command) {
             /* the line of guidance goes the moment anything is picked */
             s.guide = 0;

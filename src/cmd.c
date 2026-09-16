@@ -408,11 +408,108 @@ int jw_cmd_in_range(const JwCmd *c, double ax, double ay, double bx, double by)
     const double lo_y = c->y0 < c->y1 ? c->y0 : c->y1;
     const double hi_y = c->y0 < c->y1 ? c->y1 : c->y0;
 
+    int in;
+
     if (c->cleared) {           /* [F2] threw the range's own answer away */
         return 0;
     }
-    return ax >= lo_x && ax <= hi_x && bx >= lo_x && bx <= hi_x
-           && ay >= lo_y && ay <= hi_y && by >= lo_y && by <= hi_y;
+    in = ax >= lo_x && ax <= hi_x && bx >= lo_x && bx <= hi_x
+         && ay >= lo_y && ay <= hi_y && by >= lo_y && by <= hi_y;
+    /* ②範囲外消去 turns the question round: what the box does not hold. */
+    return c->outside ? !in : in;
+}
+
+/* ②範囲外消去 is a **cut**, not a plain erase.
+ *
+ * `JW_VER.DOC`: 「消去コマンドのうち、範囲内／範囲外消去を、切り取り消去と
+ * した」.  Measured on SAMPLE0 with the range (150,130)-(245,170):
+ *
+ *   * a line wholly outside the box is selected and goes -- seven of the
+ *     eleven lines on the layer 消去 reaches (2,3,4,7,8,9,10);
+ *   * a line wholly inside is not selected and stays (5 and 6);
+ *   * a line that **crosses** the edge is cut at it, and what was inside the
+ *     box stays.  Line 1 runs x 40.97 to 477 at y 323.06 and comes back
+ *     running x 40.97 to 124, which is the box's right edge; the counts go
+ *     30|13 to 23|10, so it is one record still, shortened.
+ *
+ * The screen says the same thing before ①実行 is pressed: a line wholly
+ * outside is painted solid red, and a line that crosses is painted **dotted**
+ * -- every other pixel, the 0x5555 of jw_view_line_style(0) -- which is how
+ * the original shows what it is about to cut rather than take away.
+ *
+ * What is not measured: what a crossing arc or a crossing text does (SAMPLE0
+ * has no arcs, and its texts are either wholly in or wholly out), and what
+ * 追加･除外 does to a line that crosses.  Those are left alone here rather
+ * than guessed at.
+ */
+
+/* Clip a segment to the range, Liang-Barsky.  Returns 0 if none of it is
+ * inside, and otherwise writes the part that is. */
+static int clip_to_range(const JwCmd *c, double *ax, double *ay,
+                         double *bx, double *by)
+{
+    const double lo_x = c->x0 < c->x1 ? c->x0 : c->x1;
+    const double hi_x = c->x0 < c->x1 ? c->x1 : c->x0;
+    const double lo_y = c->y0 < c->y1 ? c->y0 : c->y1;
+    const double hi_y = c->y0 < c->y1 ? c->y1 : c->y0;
+    const double dx = *bx - *ax, dy = *by - *ay;
+    double t0 = 0.0, t1 = 1.0;
+    int i;
+
+    for (i = 0; i < 4; i++) {
+        const double p = i == 0 ? -dx : i == 1 ? dx : i == 2 ? -dy : dy;
+        const double q = i == 0 ? *ax - lo_x : i == 1 ? hi_x - *ax
+                       : i == 2 ? *ay - lo_y : hi_y - *ay;
+        double r;
+
+        if (p == 0.0) {
+            if (q < 0.0) {
+                return 0;               /* parallel to this edge and outside */
+            }
+            continue;
+        }
+        r = q / p;
+        if (p < 0.0) {
+            if (r > t1) {
+                return 0;
+            }
+            if (r > t0) {
+                t0 = r;
+            }
+        } else {
+            if (r < t0) {
+                return 0;
+            }
+            if (r < t1) {
+                t1 = r;
+            }
+        }
+    }
+    *bx = *ax + t1 * dx;
+    *by = *ay + t1 * dy;
+    *ax = *ax + t0 * dx;
+    *ay = *ay + t0 * dy;
+    return 1;
+}
+
+/* Where a line stands against the range in ②範囲外消去: 0 wholly inside,
+ * 1 crossing (and the part inside comes back in the four), 2 wholly outside. */
+#define JW_OUT_IN    0
+#define JW_OUT_CROSS 1
+#define JW_OUT_OUT   2
+
+static int outside_kind(const JwCmd *c, double *ax, double *ay,
+                        double *bx, double *by)
+{
+    const double ax0 = *ax, ay0 = *ay, bx0 = *bx, by0 = *by;
+
+    if (!clip_to_range(c, ax, ay, bx, by)) {
+        return JW_OUT_OUT;
+    }
+    if (*ax == ax0 && *ay == ay0 && *bx == bx0 && *by == by0) {
+        return JW_OUT_IN;
+    }
+    return JW_OUT_CROSS;
 }
 
 /* The same question the read asks of a layer: shown *and* ringed.  消去 takes
@@ -423,6 +520,26 @@ static int in_reach_layer(const Jwc *d, unsigned char layer)
 {
     return jwc_visible(d, layer) && d->layer_edit[layer]
            && d->group_edit[layer >> 4];
+}
+
+/* In ②範囲外消去, is this thing wholly outside the range?
+ *
+ * Only those are taken.  A line that crosses is cut instead (see
+ * outside_kind), and what the original does with an **arc** or a **text** that
+ * crosses is not measured -- SAMPLE0's visible texts are each wholly in or
+ * wholly out and it has no arcs -- so they are left alone rather than guessed
+ * at.  `ax..by` is the thing's own box. */
+static int wholly_outside(const JwCmd *c, double ax, double ay,
+                          double bx, double by)
+{
+    const double lo_x = c->x0 < c->x1 ? c->x0 : c->x1;
+    const double hi_x = c->x0 < c->x1 ? c->x1 : c->x0;
+    const double lo_y = c->y0 < c->y1 ? c->y0 : c->y1;
+    const double hi_y = c->y0 < c->y1 ? c->y1 : c->y0;
+    const double x0 = ax < bx ? ax : bx, x1 = ax > bx ? ax : bx;
+    const double y0 = ay < by ? ay : by, y1 = ay > by ? ay : by;
+
+    return x1 < lo_x || x0 > hi_x || y1 < lo_y || y0 > hi_y;
 }
 
 /* Is this entity in 消去's selection?  Everything wholly inside the range is,
@@ -479,22 +596,54 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     for (k = 0; k < d->n_lines; k++) {
         const JwcLine *l = &d->lines[k];
         int x0, y0, x1, y1;
+        int style = jw_view_line_style(l->type);
 
-        if (!in_reach_layer(d, l->layer)
-            || jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)
-               == flipped(c, JW_FLIP_LINE, k)) {
+        if (!in_reach_layer(d, l->layer)) {
+            continue;
+        }
+        if (c->outside) {
+            /* ②範囲外消去 paints a line that crosses the edge dotted, because
+             * it is going to be cut and not taken away.  See outside_kind. */
+            double ax = l->x0, ay = l->y0, bx = l->x1, by = l->y1;
+            const int kind = outside_kind(c, &ax, &ay, &bx, &by);
+
+            if (kind == JW_OUT_CROSS) {
+                /* Pressing one takes it out of the cut: the original stops
+                 * showing it dotted and leaves it white (measured -- all 437
+                 * pixels of SAMPLE0's line 1 go back). */
+                if (flipped(c, JW_FLIP_LINE, k)) {
+                    continue;
+                }
+                style = jw_view_line_style(0);          /* 0x5555 */
+            } else if ((kind == JW_OUT_OUT) == flipped(c, JW_FLIP_LINE, k)) {
+                /* 追加･除外 turns a single one round here too: a line wholly
+                 * inside goes red when it is pressed (measured -- 69 pixels
+                 * of SAMPLE0's line 5). */
+                continue;
+            }
+        } else if (jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)
+                   == flipped(c, JW_FLIP_LINE, k)) {
             continue;
         }
         at_screen(w, l->x0, l->y0, &x0, &y0);
         at_screen(w, l->x1, l->y1, &x1, &y1);
-        jw_line(v, x0, y0, x1, y1, 2, ROP_REPLACE,
-                jw_view_line_style(l->type));
+        if (style != jw_view_line_style(l->type)) {
+            /* The dotted one is not painted *over* the line: the original
+             * blacks the whole of it first, so the gaps come out background
+             * and not the white that was there.  Measured -- the gaps are
+             * 000000 in the original's screen, not ffffff. */
+            jw_line(v, x0, y0, x1, y1, 0, ROP_REPLACE, JW_STYLE_SOLID);
+        }
+        jw_line(v, x0, y0, x1, y1, 2, ROP_REPLACE, style);
     }
     for (k = 0; k < d->n_arcs; k++) {
         const JwcArc *a = &d->arcs[k];
+        const double m = a->r;
 
         if (in_reach_layer(d, a->layer)
-            && arc_in_range(c, a) != flipped(c, JW_FLIP_ARC, k)) {
+            && (c->outside
+                ? wholly_outside(c, a->cx - m, a->cy - m, a->cx + m, a->cy + m)
+                : arc_in_range(c, a)) != flipped(c, JW_FLIP_ARC, k)) {
             jw_view_arc(v, d, a, w, 2);
         }
     }
@@ -502,7 +651,8 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         const JwcText *t = &d->texts[k];
 
         if (in_reach_layer(d, t->layer)
-            && jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1)
+            && (c->outside ? wholly_outside(c, t->x0, t->y0, t->x1, t->y1)
+                           : jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1))
                != flipped(c, JW_FLIP_TEXT, k)) {
             jw_view_text(v, d, t, w, 2);
         }
@@ -567,6 +717,23 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
         c->lx0 = ax; c->ly0 = ay; c->lx1 = bx; c->ly1 = by;
         return 1;
     }
+    /* 消去's own line, before any point is pressed:
+     * `●消去範囲 始点指示 |①範囲内消去|②範囲外消去|③指定範囲|`.
+     *
+     * ②範囲外消去 keeps the same three presses and the same 追加･除外 after
+     * them; what changes is which entities the range picks -- everything the
+     * range does *not* hold.  Measured on SAMPLE0 with (150,130)-(245,170):
+     * 1,865 pixels go red, spread from x 161 to 598 and y 139 to 419, where
+     * ①範囲内消去 reddens 224 in the box.
+     *
+     * ③指定範囲 is the data selection 複写 and 移動 use; it is not done. */
+    if (c->command == 25 && c->pressed == 0 && c->stage == 0) {
+        if (item == 1 || item == 2) {
+            c->outside = item == 2;
+            return 0;
+        }
+        return 0;
+    }
     if (c->command != 25 || c->pressed != 2) {
         return 0;
     }
@@ -585,18 +752,44 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
         return 0;
     }
     for (k = d->n_lines - 1; k >= 0; k--) {
-        const JwcLine *l = &d->lines[k];
+        JwcLine *l = &d->lines[k];
 
-        if (in_reach_layer(d, l->layer)
-            && jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)
-               != flipped(c, JW_FLIP_LINE, k)) {
+        if (!in_reach_layer(d, l->layer)) {
+            continue;
+        }
+        if (c->outside) {
+            double ax = l->x0, ay = l->y0, bx = l->x1, by = l->y1;
+            const int kind = outside_kind(c, &ax, &ay, &bx, &by);
+
+            if (kind == JW_OUT_CROSS) {          /* cut, not taken away */
+                if (flipped(c, JW_FLIP_LINE, k)) {
+                    continue;                        /* pressed: left alone */
+                }
+                l->x0 = (float)ax;
+                l->y0 = (float)ay;
+                l->x1 = (float)bx;
+                l->y1 = (float)by;
+                changed = 1;
+            } else if ((kind == JW_OUT_OUT) != flipped(c, JW_FLIP_LINE, k)) {
+                jwc_remove_line(d, k);
+                changed = 1;
+            }
+            continue;
+        }
+        if (jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)
+            != flipped(c, JW_FLIP_LINE, k)) {
             jwc_remove_line(d, k);
             changed = 1;
         }
     }
     for (k = d->n_arcs - 1; k >= 0; k--) {
-        if (in_reach_layer(d, d->arcs[k].layer)
-            && arc_in_range(c, &d->arcs[k]) != flipped(c, JW_FLIP_ARC, k)) {
+        const JwcArc *a = &d->arcs[k];
+        const double m = a->r;
+
+        if (in_reach_layer(d, a->layer)
+            && (c->outside
+                ? wholly_outside(c, a->cx - m, a->cy - m, a->cx + m, a->cy + m)
+                : arc_in_range(c, a)) != flipped(c, JW_FLIP_ARC, k)) {
             jwc_remove_arc(d, k);
             changed = 1;
         }
@@ -605,7 +798,8 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
         const JwcText *t = &d->texts[k];
 
         if (in_reach_layer(d, t->layer)
-            && jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1)
+            && (c->outside ? wholly_outside(c, t->x0, t->y0, t->x1, t->y1)
+                           : jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1))
                != flipped(c, JW_FLIP_TEXT, k)) {
             jwc_remove_text(d, k);
             changed = 1;
@@ -613,6 +807,11 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
     }
     c->pressed = 0;
     c->stage = 0;
+    /* `読取可能データ無` goes when ①実行 runs: the original writes
+     * `消去 再度(L)` over it.  Measured -- press somewhere with nothing there
+     * and then ①実行, and the band beside the counts says 消去 再度(L), not
+     * the complaint. */
+    c->missed = 0;
     return changed;
 }
 

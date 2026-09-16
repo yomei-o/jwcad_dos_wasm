@@ -59,6 +59,13 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     DUMMY="600 450" RIGHT=1 STOP=1 sh tools/erase2.sh 150 130 245 170 190 163
     DUMMY="600 450" RIGHT=1 STOP=1 sh tools/erase2.sh 150 130 245 170 225 152
     DUMMY="600 450" RIGHT=1 sh tools/erase2.sh 150 130 245 170 190 152
+    echo "=== ②範囲外消去, which is a **cut**: what crosses the edge is shown"
+    echo "    dotted and comes back shortened, not taken away"
+    OUT=1 DUMMY="600 450" STOP=1 sh tools/erase2.sh 150 130 245 170 600 460
+    OUT=1 DUMMY="600 450" STOP=1 sh tools/erase2.sh 150 130 245 170 197 157
+    OUT=1 DUMMY="600 450" STOP=1 sh tools/erase2.sh 150 130 245 170 500 250
+    OUT=1 DUMMY="600 450" sh tools/erase2.sh 150 130 245 170 600 460
+    OUT=1 DUMMY="600 450" sh tools/erase2.sh 150 130 245 170 197 157
     echo "=== 追加･除外 on SAMPLE6, which only its pen-4 entities answer"
     DRAWING=SAMPLE6 WAIT=150000000 STOP=1 sh tools/erase2.sh 170 235 215 260 209 242
     echo "=== 点 dropping a 仮点"

@@ -77,6 +77,9 @@ typedef struct {
      * nothing and the presses build a new set up from nothing.  Measured --
      * see jw_cmd_key. */
     int cleared;
+    /* 消去's ②範囲外消去: the range picks what it does *not* hold.  Its own
+     * line offers it before the first press. */
+    int outside;
 } JwCmd;
 
 /* Start a command, or leave it (0). */

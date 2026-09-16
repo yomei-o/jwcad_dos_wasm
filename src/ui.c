@@ -439,6 +439,10 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
     if (q->command != s->command || q->stage != stage) {
         return;
     }
+    /* ②範囲外消去 has no `＿` in front of its 追加･除外 line. */
+    if (s->outside && q->command == 25 && q->stage == 3 && q->col == 6) {
+        return;
+    }
     if (q->numbers == 2) {
         const int k = q->first + 1 > 1 ? 1 : q->first + 1;
 
