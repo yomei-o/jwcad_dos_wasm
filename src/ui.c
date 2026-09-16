@@ -753,6 +753,23 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                            out);
             }
         }
+        /* □ shows where the box it is about to draw is anchored: a little
+         * frame at the right-hand end of the top line, in the blank after
+         * 「④基点変」.  Four solid white lines, read straight off the
+         * original -- (580,3)-(590,3)-(590,13)-(580,13) and back -- drawn the
+         * moment the first point is taken.  Pressing ④基点変 puts a blob in
+         * the middle of it and pressing again takes it away, which is the
+         * anchor moving; that part is not measured yet, so only the empty
+         * frame is here.
+         *
+         * Only □, and only while it is waiting for the second point: the
+         * frame is gone again once the box is drawn, and the original writes
+         * its own words over that corner.  All thirty items were picked in
+         * turn and pressed once (SAMPLE0 at (250,150)); item 4 is the only one
+         * that draws it. */
+        if (s->command == 4 && s->stage == 1) {
+            box(v, 580, 3, 590, 13, 7);
+        }
         /* What the right button would take, which is there whenever the
          * pointer is over the drawing -- see src/snap.h.  Last, because a
          * stage writes spaces at column 17 on a black background and those
