@@ -13,6 +13,15 @@
 #include "jwc.h"
 #include "view.h"
 
+/* How many entities 消去 can have picked out of its range by hand.  See the
+ * `flip` list below. */
+#define JW_FLIP_MAX 64
+
+/* What kind of entity a `flip` entry names. */
+#define JW_FLIP_LINE 0
+#define JW_FLIP_ARC  1
+#define JW_FLIP_TEXT 2
+
 typedef struct {
     int command;                /* the menu item in force, 1 to 30, or 0 */
     int pressed;                /* how many points have been taken */
@@ -54,6 +63,16 @@ typedef struct {
     double per_mm;              /* drawing units to a millimetre of paper */
     double nx, ny;              /* the side the last copy went to, as a unit
                                  * normal -- 「②連続」 repeats it */
+    /* 消去's 追加･除外: what has been taken out of the range by hand, and what
+     * has been put in from outside it.  The selection is "inside the range,
+     * exclusive-or this list", so both directions need only the one list.
+     *
+     * A list rather than a flag on every entity: this is the command's own
+     * state and lives only as long as the command does, and what a person
+     * picks out one at a time is a handful.  Past JW_FLIP_MAX the press is
+     * ignored, which is the one place this is not the original. */
+    struct { unsigned char kind; long at; } flip[JW_FLIP_MAX];
+    int n_flip;
 } JwCmd;
 
 /* Start a command, or leave it (0). */

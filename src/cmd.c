@@ -118,6 +118,29 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
     if (!c->pressed) {
         return;
     }
+    if (c->command == 25 && c->pressed == 2) {
+        /* 追加･除外 keeps the range on the screen: four lines in colour 4,
+         * exclusive-or.  The right button's 範囲確定 does not -- its screen
+         * has no green at all, and this one has 264 pixels of it (SAMPLE0,
+         * (150,130)-(245,170)).
+         *
+         * Exclusive-or, and each side drawn corner to corner, is what the
+         * screen says: the **four corners come out black**, because each of
+         * them is drawn twice and the second turns it back, and where the box
+         * crosses a blue pixel it goes magenta (1 xor 4 = 5) instead of
+         * green.  Both would be impossible if it were painted flat. */
+        if (c->stage == 3) {
+            int qx, qy;
+
+            at_screen(w, c->x0, c->y0, &px, &py);
+            at_screen(w, c->x1, c->y1, &qx, &qy);
+            jw_line(v, px, py, qx, py, 4, 0x18, JW_STYLE_SOLID);
+            jw_line(v, qx, py, qx, qy, 4, 0x18, JW_STYLE_SOLID);
+            jw_line(v, qx, qy, px, qy, 4, 0x18, JW_STYLE_SOLID);
+            jw_line(v, px, qy, px, py, 4, 0x18, JW_STYLE_SOLID);
+        }
+        return;
+    }
     if (c->command == 25 && c->pressed != 1) {
         return;                 /* the box is only dragged while it is open */
     }
@@ -298,6 +321,37 @@ static int in_reach_layer(const Jwc *d, unsigned char layer)
            && d->group_edit[layer >> 4];
 }
 
+/* Is this entity in 消去's selection?  Everything wholly inside the range is,
+ * and 追加･除外 turns single ones the other way. */
+static int flipped(const JwCmd *c, int kind, long at)
+{
+    int i;
+
+    for (i = 0; i < c->n_flip; i++) {
+        if (c->flip[i].kind == kind && c->flip[i].at == at) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void flip(JwCmd *c, int kind, long at)
+{
+    int i;
+
+    for (i = 0; i < c->n_flip; i++) {
+        if (c->flip[i].kind == kind && c->flip[i].at == at) {
+            c->flip[i] = c->flip[--c->n_flip];
+            return;
+        }
+    }
+    if (c->n_flip < JW_FLIP_MAX) {
+        c->flip[c->n_flip].kind = (unsigned char)kind;
+        c->flip[c->n_flip].at = at;
+        c->n_flip++;
+    }
+}
+
 /* An arc counts as inside when the box its centre and radius make is.  A line
  * and a text are settled by their two ends, which is what SAMPLE0's erase
  * showed; for an arc there is nothing in the fourteen drawings that separates
@@ -323,7 +377,8 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         int x0, y0, x1, y1;
 
         if (!in_reach_layer(d, l->layer)
-            || !jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)) {
+            || jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)
+               == flipped(c, JW_FLIP_LINE, k)) {
             continue;
         }
         at_screen(w, l->x0, l->y0, &x0, &y0);
@@ -334,7 +389,8 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     for (k = 0; k < d->n_arcs; k++) {
         const JwcArc *a = &d->arcs[k];
 
-        if (in_reach_layer(d, a->layer) && arc_in_range(c, a)) {
+        if (in_reach_layer(d, a->layer)
+            && arc_in_range(c, a) != flipped(c, JW_FLIP_ARC, k)) {
             jw_view_arc(v, d, a, w, 2);
         }
     }
@@ -342,7 +398,8 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         const JwcText *t = &d->texts[k];
 
         if (in_reach_layer(d, t->layer)
-            && jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1)) {
+            && jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1)
+               != flipped(c, JW_FLIP_TEXT, k)) {
             jw_view_text(v, d, t, w, 2);
         }
     }
@@ -409,6 +466,12 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
     if (c->command != 25 || c->pressed != 2) {
         return 0;
     }
+    if (c->stage == 3) {        /* 追加･除外's 「①範囲 確定」 */
+        if (item == 1) {
+            c->stage = 2;
+        }
+        return 0;
+    }
     if (item == 2) {            /* ②中止 -- the picked entities go back */
         c->pressed = 0;
         c->stage = 0;
@@ -421,14 +484,15 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
         const JwcLine *l = &d->lines[k];
 
         if (in_reach_layer(d, l->layer)
-            && jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)) {
+            && jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)
+               != flipped(c, JW_FLIP_LINE, k)) {
             jwc_remove_line(d, k);
             changed = 1;
         }
     }
     for (k = d->n_arcs - 1; k >= 0; k--) {
         if (in_reach_layer(d, d->arcs[k].layer)
-            && arc_in_range(c, &d->arcs[k])) {
+            && arc_in_range(c, &d->arcs[k]) != flipped(c, JW_FLIP_ARC, k)) {
             jwc_remove_arc(d, k);
             changed = 1;
         }
@@ -437,7 +501,8 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
         const JwcText *t = &d->texts[k];
 
         if (in_reach_layer(d, t->layer)
-            && jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1)) {
+            && jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1)
+               != flipped(c, JW_FLIP_TEXT, k)) {
             jwc_remove_text(d, k);
             changed = 1;
         }
@@ -695,9 +760,6 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
          * with the right button, fixes it -- 範囲確定, as the line it puts up
          * says.  What the box holds whole is then painted in colour 2 and the
          * top line asks for ①実行.  See RESUME.md 4.9. */
-        if (c->pressed == 2) {
-            return 0;           /* the answer comes from the top line now */
-        }
         jw_cmd_at(w, sx, sy, &x, &y);
         if (!c->pressed) {
             c->x0 = x;
@@ -706,14 +768,40 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->stage = 1;
             return 0;
         }
-        if (!right) {
-            return 0;           /* 追加･除外 with the left button: not done */
+        if (c->pressed == 1) {
+            c->x1 = x;
+            c->y1 = y;
+            c->pressed = 2;
+            /* The right button fixes the range and asks for ①実行; the left
+             * one fixes the same range but stays, so that entities can be
+             * taken out of it and put back one at a time.  Measured: both
+             * leave the same 224 red pixels on SAMPLE0's (150,130)-(245,170),
+             * and only the top line differs. */
+            c->stage = right ? 2 : 3;
+            return 1;
         }
-        c->x1 = x;
-        c->y1 = y;
-        c->pressed = 2;
-        c->stage = 2;
-        return 1;
+        if (c->stage == 3) {
+            /* 追加･除外: 線・円 with the left button, 文字 with the right. */
+            long k, j;
+
+            if (right) {
+                /* 文字(R).  How near a text has to be pointed at is not
+                 * measured -- a line's reach was read off the original
+                 * (RESUME 4.7) and a text's has not been -- so this does
+                 * nothing rather than guess. */
+                return 0;
+            }
+            k = jw_cmd_line_at(d, w, sx, sy);
+            j = k < 0 ? jw_cmd_arc_at(d, w, sx, sy) : -1;
+            if (k < 0 && j < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            flip(c, k >= 0 ? JW_FLIP_LINE : JW_FLIP_ARC, k >= 0 ? k : j);
+            return 1;
+        }
+        return 0;
     }
     if (c->command == 22) {
         /* 点: a press drops a 仮点.  The original changes neither count

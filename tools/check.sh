@@ -43,6 +43,9 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     DRAWING=SAMPLE6 sh tools/pressfull.sh 3 r 470 305 l 400 300
     echo "=== 消去 picking a range"
     sh tools/pressfull.sh 25 150 130 r 245 170
+    echo "=== 消去 with the left button: 追加･除外, then 範囲確定 and 実行"
+    echo "    (the 2 left over are the original's own erase clipping)"
+    sh tools/erase2.sh 150 130 245 170 197 157
     echo "=== 点 dropping a 仮点"
     sh tools/pressfull.sh 22 300 250
     sh tools/pressfull.sh 22 300 250 400 300
