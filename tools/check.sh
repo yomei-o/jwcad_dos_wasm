@@ -20,6 +20,8 @@ echo "=== the line routine"
 ./tests/draw_test.exe
 echo "=== the drawing reader"
 ./tests/jwc_test.exe
+echo "=== reading a drawing and writing it straight back"
+./tests/roundtrip.exe orig/*.JWC
 
 # The screen around the drawing, against the original's own picture of it.
 # Needs the emulator; skipped where it is not built.
@@ -62,6 +64,12 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "    quarters of its circle it does not draw"
     DRAWING=SAMPLE6 sh tools/delcheck.sh 244 140
     DRAWING=SAMPLE6 sh tools/delcheck.sh 254 120
+    echo "=== saving: the port writes the file, the original opens it"
+    sh tools/savecheck.sh
+    sh tools/savecheck.sh -c 3 -p 200 100 -p 500 400
+    sh tools/savecheck.sh -c 11 -p 300 200 -p 400 200
+    sh tools/savecheck.sh -c 10 -r 380 140
+    DRAWING=SAMPLE6 BOOT=150000000 sh tools/savecheck.sh -c 5 -p 499 192 -k 300 -p 520 230
     echo "=== 複線 with a number typed in (src/cmd.c, RESUME 4.12)"
     sh tools/multicheck.sh 20 197 120
     sh tools/multicheck.sh 40 197 300
@@ -124,7 +132,11 @@ for f in orig/SAMPLE1.JWC orig/SAMPLE2.JWC orig/SAMPLE3.JWC orig/SAMPLE5.JWC \
          orig/SAMPLE6.JWC orig/TEST6.JWC orig/TEST7.JWC; do
     ./tests/drawing.exe -u "$f" tmp/n.raw > /dev/null
     "$NODE" tests/wasm_check.js "$f" tmp/w.raw > /dev/null
-    if cmp -s tmp/n.raw tmp/w.raw; then
+    # and the file the browser's 保存 button would hand over, against the file
+    # the native build writes -- the same src/jwc.c, so it has to be the same
+    ./tests/drawing.exe -u -w tmp/n.JWC "$f" tmp/n.raw > /dev/null
+    "$NODE" tests/wasm_check.js "$f" tmp/w.JWC > /dev/null
+    if cmp -s tmp/n.raw tmp/w.raw && cmp -s tmp/n.JWC tmp/w.JWC; then
         echo "  same   $f"
     else
         echo "  DIFFER $f"

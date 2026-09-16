@@ -367,6 +367,7 @@ static int header(const unsigned char *file, Jwc *d)
         return 0;
     }
     d->text_len = (long)o2;
+    d->text_seg = s2;
     return a >= 0 && c >= 0 && e >= 0 && g >= 0;
 }
 
@@ -591,13 +592,15 @@ Jwc *jwc_load(const char *path, const char **why)
         }
     }
 
-    free(file);
+    d->raw = file;              /* kept: jwc_save writes most of it back */
+    d->raw_len = len;
     return d;
 }
 
 void jwc_free(Jwc *d)
 {
     if (d) {
+        free(d->raw);
         free(d->lines);
         free(d->arcs);
         free(d->texts);
@@ -605,6 +608,256 @@ void jwc_free(Jwc *d)
         free(d->text);
         free(d);
     }
+}
+
+/* Writing a drawing back.
+ *
+ * A .JWC is a memory image, so saving is mostly *copying*: in front of the
+ * geometry sit 1,589 bytes (1,621 in SAMPLE2) of settings this port does not
+ * model, and behind it 2,304 bytes of layer names, and the original keeps both
+ * exactly as they were.  That was measured rather than assumed -- tools/save.sh
+ * takes the original through its own save and leaves the file it wrote.  Saving
+ * SAMPLE0 with nothing changed changes five things and nothing else:
+ *
+ *   1. the counts on the second line, if anything was drawn or erased;
+ *   2. the far pointer on the fourth line, and the same segment repeated in
+ *      every text record -- it is wherever the string pool happened to land in
+ *      memory this run, and means nothing in a file;
+ *   3. the third line, which is the settings of the moment (複線's interval,
+ *      the character size) and not the drawing's;
+ *   4. the character-size table at 0x6c3, for the same reason;
+ *   5. a byte at offset 22 of the first line, which turns from '.' into 'f',
+ *      and with it the sixteen layer-group scales at 0x705, which turn from
+ *      sixteen words into sixteen floats and make the file 32 bytes longer.
+ *
+ * The port writes none of those five except the counts and the pool's length.
+ * Number 5 is worth a note: it is an upgrade of the file's format, the one
+ * SAMPLE2 already has, and the original does *not* always do it -- SAMPLE0,
+ * SAMPLE1 and TEST1 come back upgraded, SAMPLE6 and TEST7 come back with the
+ * words still words.  What decides it has not been read out of the original
+ * yet, so the port does not guess: it writes the table back in the form it
+ * found it, which every version reads.
+ *
+ * The one number the writer does change on its own is the drawing-area width,
+ * the field after thirty commas on the second line.  jwc_load multiplies every
+ * coordinate by 518/width on the way in, so what is in memory is always in
+ * JW_CAD's own 518-pixel width -- and the original writes 518 there too, which
+ * is how TEST7 (saved on an 800x600 screen, so 678) comes back from a save
+ * saying 518 with every coordinate moved to match.
+ */
+static void wr_f32(unsigned char *p, float f)
+{
+    unsigned long v;
+
+    memcpy(&v, &f, 4);
+    p[0] = (unsigned char)(v & 0xff);
+    p[1] = (unsigned char)((v >> 8) & 0xff);
+    p[2] = (unsigned char)((v >> 16) & 0xff);
+    p[3] = (unsigned char)((v >> 24) & 0xff);
+}
+
+static void wr_u16(unsigned char *p, unsigned v)
+{
+    p[0] = (unsigned char)(v & 0xff);
+    p[1] = (unsigned char)((v >> 8) & 0xff);
+}
+
+static void wr_i32(unsigned char *p, long v)
+{
+    unsigned long u = (unsigned long)v;
+
+    p[0] = (unsigned char)(u & 0xff);
+    p[1] = (unsigned char)((u >> 8) & 0xff);
+    p[2] = (unsigned char)((u >> 16) & 0xff);
+    p[3] = (unsigned char)((u >> 24) & 0xff);
+}
+
+/* One of the four header lines: 199 bytes holding the text, a NUL and then
+ * spaces, and a newline in the last byte. */
+static void put_header(unsigned char *dst, const char *text)
+{
+    size_t n = strlen(text);
+
+    if (n > TEXT_LINE - 2) {
+        n = TEXT_LINE - 2;
+    }
+    memset(dst, ' ', TEXT_LINE - 1);
+    memcpy(dst, text, n);
+    dst[n] = '\0';
+    dst[TEXT_LINE - 1] = '\n';
+}
+
+/* Append a comma and a piece of text, if there is room for it. */
+static void add_field(char *out, size_t cap, const char *piece, size_t len)
+{
+    size_t n = strlen(out);
+
+    if (n + len + 2 > cap) {
+        return;
+    }
+    out[n] = ',';
+    memcpy(out + n + 1, piece, len);
+    out[n + 1 + len] = '\0';
+}
+
+/* Copy the fields of `src` from the one after `skip` commas to the end, and
+ * put `width` in place of the one after thirty commas when `width` is not
+ * NULL.  That is the drawing-area width, and it is the only field of the line
+ * the port has anything of its own to say about. */
+static void keep_fields(char *out, size_t cap, const char *src, int skip,
+                        const char *width)
+{
+    const char *f = field(src, skip);
+    int k = skip;
+
+    for (; f; k++) {
+        const char *end = strchr(f, ',');
+        size_t len = end ? (size_t)(end - f) : strlen(f);
+
+        if (width && k == 30) {
+            add_field(out, cap, width, strlen(width));
+        } else {
+            add_field(out, cap, f, len);
+        }
+        f = end ? end + 1 : NULL;
+    }
+}
+
+/* One of the four lines as it was read: 199 bytes with a NUL somewhere in
+ * them, so it can be handed to the field routines as a string. */
+static void read_header(char *out, const unsigned char *raw, int which)
+{
+    memcpy(out, raw + TEXT_LINE * which, TEXT_LINE - 1);
+    out[TEXT_LINE - 1] = '\0';
+}
+
+unsigned char *jwc_bytes(const Jwc *d, long *out_len, const char **why)
+{
+    char src[TEXT_LINE], line[TEXT_LINE * 2];
+    unsigned char *out;
+    long span, tail_at, tail_len, len, p, k;
+
+    *why = NULL;
+    *out_len = 0;
+    if (!d->raw || d->raw_len < DATA_AT || d->data_at <= 0) {
+        *why = "nothing was read in";
+        return NULL;
+    }
+    span = d->n_lines * LINE_SIZE + d->n_arcs * ARC_SIZE
+         + (long)d->n_texts * TEXT_SIZE + d->text_len
+         + (long)d->n_points * POINT_SIZE;
+    tail_at = DATA_AT + d->data_end;
+    tail_len = d->raw_len > tail_at ? d->raw_len - tail_at : 0;
+    len = DATA_AT + d->data_at + span + tail_len;
+
+    out = (unsigned char *)malloc((size_t)len);
+    if (!out) {
+        *why = "out of memory";
+        return NULL;
+    }
+    /* the preamble, and the layer names behind the geometry, exactly as read */
+    memcpy(out, d->raw, (size_t)(DATA_AT + d->data_at));
+    if (tail_len) {
+        memcpy(out + DATA_AT + d->data_at + span, d->raw + tail_at,
+               (size_t)tail_len);
+    }
+
+    /* the counts, and the width the coordinates are now in */
+    read_header(src, d->raw, 1);
+    sprintf(line, "%ld,%ld,%d,%d", d->n_lines, d->n_arcs, d->n_texts,
+            d->n_points);
+    keep_fields(line, sizeof line, src, 4, "518");
+    put_header(out + TEXT_LINE, line);
+
+    /* the string pool's length, which is the offset half of the second of the
+     * two far pointers */
+    read_header(src, d->raw, 3);
+    sprintf(line, "%04X:0000,%04X:%04lX", d->text_seg, d->text_seg,
+            d->text_len & 0xffff);
+    keep_fields(line, sizeof line, src, 2, NULL);
+    put_header(out + TEXT_LINE * 3, line);
+
+    p = DATA_AT + d->data_at;
+    for (k = 0; k < d->n_lines; k++, p += LINE_SIZE) {
+        unsigned char *r = out + p;
+
+        wr_f32(r, d->lines[k].x0);
+        wr_f32(r + 4, d->lines[k].y0);
+        wr_f32(r + 8, d->lines[k].x1);
+        wr_f32(r + 12, d->lines[k].y1);
+        r[16] = d->lines[k].type;
+        r[17] = d->lines[k].pen;
+        r[18] = d->lines[k].layer;
+        memcpy(r + 19, d->lines[k].rest + 1, 3);
+    }
+    for (k = 0; k < d->n_arcs; k++, p += ARC_SIZE) {
+        unsigned char *r = out + p;
+
+        wr_f32(r, d->arcs[k].cx);
+        wr_f32(r + 4, d->arcs[k].cy);
+        wr_f32(r + 8, d->arcs[k].r);
+        wr_u16(r + 12, (unsigned)(unsigned short)d->arcs[k].flatten);
+        wr_i32(r + 14, d->arcs[k].start);
+        wr_i32(r + 18, d->arcs[k].end);
+        wr_i32(r + 22, d->arcs[k].tilt);
+        r[26] = d->arcs[k].type;
+        r[27] = d->arcs[k].pen;
+        r[28] = d->arcs[k].layer;
+        memcpy(r + 29, d->arcs[k].rest + 1, 3);
+    }
+    for (k = 0; k < d->n_texts; k++, p += TEXT_SIZE) {
+        unsigned char *r = out + p;
+        long off = d->texts[k].text ? (long)(d->texts[k].text - d->text) : 0;
+
+        wr_f32(r, d->texts[k].x0);
+        wr_f32(r + 4, d->texts[k].y0);
+        wr_f32(r + 8, d->texts[k].x1);
+        wr_f32(r + 12, d->texts[k].y1);
+        wr_u16(r + 16, (unsigned)(off & 0xffff));
+        wr_u16(r + 18, d->text_seg);
+        r[20] = d->texts[k].size;
+        r[21] = d->texts[k].layer;
+        memcpy(r + 22, d->texts[k].rest + 2, 2);
+    }
+    memcpy(out + p, d->text, (size_t)d->text_len);
+    p += d->text_len;
+    for (k = 0; k < d->n_points; k++, p += POINT_SIZE) {
+        unsigned char *r = out + p;
+
+        wr_f32(r, d->points[k].x);
+        wr_f32(r + 4, d->points[k].y);
+        r[8] = d->points[k].layer;
+        memcpy(r + 9, d->points[k].rest + 1, 3);
+    }
+
+    *out_len = len;
+    return out;
+}
+
+int jwc_save(const Jwc *d, const char *path, const char **why)
+{
+    long len = 0;
+    unsigned char *out = jwc_bytes(d, &len, why);
+    FILE *f;
+
+    if (!out) {
+        return 0;
+    }
+    f = fopen(path, "wb");
+    if (!f) {
+        free(out);
+        *why = "cannot open for writing";
+        return 0;
+    }
+    if ((long)fwrite(out, 1, (size_t)len, f) != len) {
+        fclose(f);
+        free(out);
+        *why = "cannot write";
+        return 0;
+    }
+    fclose(f);
+    free(out);
+    return 1;
 }
 
 int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
@@ -635,6 +888,13 @@ int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
     l->type = type;
     l->pen = pen;
     l->layer = layer;
+    /* The three bytes behind the layer.  A line the original draws has 03 00
+     * 00 there, whatever the drawing, the layer and the pen: measured by
+     * drawing two lines in SAMPLE0 and one in SAMPLE6 and having the original
+     * save each (tools/save.sh with PRE=).  What the 3 means is not known --
+     * the lines that ship carry 0x41, 0x18 and 0x4f there, and a second byte
+     * of 0, 2 or 3 behind it -- so it is written back and not invented. */
+    l->rest[1] = 3;
     d->n_lines++;
     return 1;
 }
@@ -697,6 +957,12 @@ int jwc_add_arc(Jwc *d, float cx, float cy, float r,
     a->type = type;
     a->pen = pen;
     a->layer = layer;
+    /* And an arc's three: 00 00 52.  Four circles drawn in the original --
+     * two in SAMPLE0 and one in SAMPLE6, on different layers and with
+     * different pens -- all come back from its own save with 0x52 in the last
+     * byte.  The arcs that ship carry 0x3b and 0x52 there, so it is something
+     * the drawing already distinguishes; it is written back, not invented. */
+    a->rest[3] = 0x52;
     d->n_arcs++;
     return 1;
 }

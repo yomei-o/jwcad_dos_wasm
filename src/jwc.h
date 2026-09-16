@@ -164,6 +164,20 @@ typedef struct {
      * of the fourteen drawings.  The thin bar between the two menu columns is
      * this number. */
     long work_seconds;
+    /* The file exactly as it was read.  Saving is not a fresh serialisation:
+     * a .JWC is a memory image, and most of it -- the 1,589 or 1,621 bytes of
+     * preamble in front of the geometry and the 2,304 bytes of layer names
+     * behind it -- is state this port does not model.  The original keeps it
+     * too: saving SAMPLE0 straight back leaves every one of those bytes where
+     * it was.  So the writer copies this and changes only what it knows about.
+     * See jwc_save. */
+    unsigned char *raw;
+    long raw_len;
+    /* The segment half of the far pointer the text records carry.  It is a
+     * memory address and means nothing in a file -- the reader only wants the
+     * offset -- but the original writes one, so the writer writes the same one
+     * back rather than inventing a number. */
+    unsigned text_seg;
     /* What each layer is called: eight bytes a layer, 256 of them, sitting
      * straight after the last point record.  The panel writes the name of the
      * layer being written to at row 22, and the four drawings that have one
@@ -174,6 +188,21 @@ typedef struct {
 
 /* Returns NULL and leaves `why` pointing at a reason on failure. */
 Jwc *jwc_load(const char *path, const char **why);
+
+/* Write the drawing out again.  Returns 0 and leaves `why` set on failure.
+ *
+ * What the original does when it saves was measured rather than guessed --
+ * tools/save.sh takes it through 入出力 → ①ファイル → ①保存 → ①選択確定 →
+ * the ◆memo lines → ①上書きする → ①実行 and leaves the file it wrote.  Saving
+ * SAMPLE0 with nothing changed gives back a file that differs from the one it
+ * opened in five places and nowhere else, and saving it after one line is
+ * drawn adds exactly that line's twenty-two bytes.  jwc.c lists the five. */
+int jwc_save(const Jwc *d, const char *path, const char **why);
+
+/* The same bytes, in memory, for a front end that has no file system to write
+ * to -- the browser wants them so it can hand the page a Blob.  The caller
+ * frees what comes back; NULL means failure and `why` says what. */
+unsigned char *jwc_bytes(const Jwc *d, long *out_len, const char **why);
 void jwc_free(Jwc *d);
 
 /* Is an entity on a layer that is shown?  `layer` is rest[0].

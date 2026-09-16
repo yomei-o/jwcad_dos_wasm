@@ -31,6 +31,7 @@ int main(int argc, char **argv)
      * compared with the original's picture with nothing masked out.
      * -c N: and with menu item N picked, the way a click leaves it. */
     int ui = 0, original = 0, command = 0, a = 1;
+    const char *write_to = NULL;        /* -w: save the drawing when it is done */
     int mx = 200, my = 200;     /* where the original leaves the pointer */
     int press[8][3], n_press = 0, stage = 0;
     double num[2] = { 0.0, 0.0 };
@@ -101,13 +102,20 @@ int main(int argc, char **argv)
             press[n_press][2] = 0;
             n_press++;
             a += 2;
+        } else if (strcmp(argv[a], "-w") == 0 && a + 1 < argc) {
+            /* Write the drawing out when the presses are done, the way the
+             * original's 入出力 → ﾌｧｲﾙ → 保存 does.  tools/savecheck.sh then
+             * opens what came out in the original and compares the screens. */
+            write_to = argv[a + 1];
+            a += 2;
         } else if (strcmp(argv[a], "-c") == 0 && a + 1 < argc) {
             command = atoi(argv[a + 1]);
             ui = original = 1;
             a += 2;
         } else {
             fprintf(stderr, "usage: drawing [-o|-u] [-c N] [-m X Y] [-p|-r X Y]"
-                            " [-k|-K KEYS] [-f N] [-t X] IN.JWC OUT\n");
+                            " [-k|-K KEYS] [-f N] [-t X] [-w OUT.JWC]"
+                            " IN.JWC OUT\n");
             return 2;
         }
     }
@@ -189,6 +197,10 @@ int main(int argc, char **argv)
             }
             jw_cmd_press(&c, d, &w, press[i][0], press[i][1], press[i][2]);
         }
+    }
+    if (write_to && !jwc_save(d, write_to, &why)) {
+        fprintf(stderr, "%s: %s\n", write_to, why);
+        return 1;
     }
     /* the pointer is where it is, and a command in hand keeps its reading up
      * to date as it moves */

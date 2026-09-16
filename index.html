@@ -39,7 +39,7 @@
     1999 年の DOS 用 CAD を逆コンパイルして C に書き直したものです。図面だけでなく
     まわりの画面 —— メニュー、レイヤ釦、下の帯、矢印 —— も本物の呼び出しを読んで
     作りました。同梱の図面 14 枚のうち 13 枚は、本物を DOS/V エミュレータで走らせた
-    画面と <b>640×480 全部が 1 画素も違いません</b>。
+    画面と <b>640×480 全部が 1 画素も違いません</b>（残る 1 枚も 6 画素）。
   </p>
 
   <div class="bar">
@@ -48,6 +48,7 @@
     <button id="fit">全体表示</button>
     <button id="zin">＋</button>
     <button id="zout">−</button>
+    <button id="save">保存</button>
     <span class="status" id="status">読み込み中…</span>
   </div>
 
@@ -62,6 +63,8 @@
     複線（F）は線を押して間隔を打ち、[Enter] のあと逃がす側を押すと複製が引けます
     （[F1]〜[F5] でもよく、そのあと上の行の ②連続 で何本でも。
     ①間隔取得 を押せば間隔を図面から測り取れます）。<br>
+    保存を押すと、いま画面にある図面をそのまま .JWC で書き出します。本物の
+    ＪＷ＿ＣＡＤ がそれを開いて同じ画面を描くところまで確かめてあります。<br>
     ＪＷ＿ＣＡＤ の著作権は jw_software club にあります。
     <a href="https://github.com/yomei-o/jwcad_dos_wasm">解析と移植のソース</a>
   </footer>
@@ -135,6 +138,22 @@ createJwcad().then(M => {
   pick.onchange = () => open(pick.value);
   open(FILES[0][0]);
 });
+
+/* 保存 -- the port writes the .JWC itself (src/jwc.c's jwc_save), the same
+   bytes tests/roundtrip.exe checks and the real JW_CAD opens in
+   tools/savecheck.sh.  The page only wraps them in a Blob. */
+document.getElementById('save').onclick = () => {
+  if (!Module || !Module._jw_save()) { say(); return; }
+  const p = Module._jw_saved(), n = Module._jw_saved_size();
+  const bytes = Module.HEAPU8.slice(p, p + n);
+  const name = loaded.replace(/^.*[/]/, '');
+  const url = URL.createObjectURL(new Blob([bytes], {type: 'application/octet-stream'}));
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+  say(name + ' — ' + n + ' バイト');
+};
 
 document.getElementById('home').onclick = () => { Module._jw_home(); blit(); };
 document.getElementById('fit').onclick = () => { Module._jw_fit(); blit(); };

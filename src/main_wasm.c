@@ -21,6 +21,7 @@
 
 #include <emscripten/emscripten.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* The drawing area, as the original hands it to its own clip (0def:12e8). */
@@ -111,6 +112,36 @@ EMSCRIPTEN_KEEPALIVE int jw_open(const char *path)
             d->n_lines, d->n_arcs, d->n_texts, d->n_points);
     return 1;
 }
+
+/* Saving.
+ *
+ * The page cannot hand a C function a file, and the port has no file system
+ * here, so the bytes are made in memory and the page reads them out of the
+ * heap and makes a Blob of them.  They are the same bytes tests/roundtrip.exe
+ * checks and tools/savecheck.sh has the real JW_CAD open. */
+static unsigned char *saved;
+static long saved_len;
+
+EMSCRIPTEN_KEEPALIVE int jw_save(void)
+{
+    const char *why;
+
+    free(saved);
+    saved = NULL;
+    saved_len = 0;
+    if (!drawing) {
+        return 0;
+    }
+    saved = jwc_bytes(drawing, &saved_len, &why);
+    if (!saved) {
+        sprintf(status, "%s", why);
+        return 0;
+    }
+    return 1;
+}
+
+EMSCRIPTEN_KEEPALIVE const unsigned char *jw_saved(void) { return saved; }
+EMSCRIPTEN_KEEPALIVE int jw_saved_size(void) { return (int)saved_len; }
 
 /* Zoom about a point on the screen, so the drawing stays under the cursor. */
 EMSCRIPTEN_KEEPALIVE void jw_zoom(double factor, int sx, int sy)

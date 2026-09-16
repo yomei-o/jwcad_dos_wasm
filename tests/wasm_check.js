@@ -3,6 +3,10 @@
 //
 //   sh tools/build_wasm.sh
 //   node tests/wasm_check.js orig/SAMPLE2.JWC tmp/sample2.wasm.raw
+//   node tests/wasm_check.js orig/SAMPLE2.JWC tmp/sample2.wasm.JWC   # the save
+//
+// A .JWC out asks for the file the browser's 保存 button would hand over,
+// which has to be the file tests/roundtrip.exe makes natively.
 //
 // Both builds compile the same src/*.c, so any difference means the port has
 // picked up something platform-shaped, which is exactly what this is for.
@@ -22,6 +26,16 @@ createJwcad().then(M => {
       process.exit(1);
     }
     M._free(buf);
+    if (/[.]JWC$/i.test(out)) {
+      if (!M._jw_save()) {
+        console.error(M.UTF8ToString(M._jw_status()));
+        process.exit(1);
+      }
+      const q = M._jw_saved(), n = M._jw_saved_size();
+      fs.writeFileSync(out, Buffer.from(M.HEAPU8.buffer, q, n));
+      console.log(`${path}: -> ${out} (${n} bytes)`);
+      return;
+    }
     const w = M._jw_width(), h = M._jw_height();
     const p = M._jw_framebuffer();
     fs.writeFileSync(out, Buffer.from(M.HEAPU8.buffer, p, w * h * 4));
