@@ -11,6 +11,7 @@ EMU=../dosv_emu_cpp/dosemu.exe
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 DRAWING="${DRAWING:-SAMPLE0}"
 n="$1"; x="${2:-300}"; y="${3:-200}"
+# TWO="x y" があれば 2 点目も押してから [ESC]（範囲を取る命令用）
 if [ "$n" -le 15 ]; then mx=90; row=$((n - 1)); else mx=30; row=$((n - 16)); fi
 my=$((64 + 16 * row + 8))
 {
@@ -21,7 +22,9 @@ my=$((64 + 16 * row + 8))
 } > tmp/ec/check.txt
 "$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
        --script tmp/ec/check.txt orig/JW_CADV.EXE "$DRAWING.JWC" > /dev/null 2>&1
-./tests/drawing.exe -u -c "$n" -p "$x" "$y" -x -m "$x" "$y" \
+set -- -c "$n" -p "$x" "$y"
+[ -n "$TWO" ] && set -- "$@" -p $TWO
+./tests/drawing.exe -u "$@" -x -m "$x" "$y" \
     "orig/$DRAWING.JWC" tmp/ec/port.raw > /dev/null
 printf '[ESC] 命令 %s (%s,%s)  ' "$n" "$x" "$y"
 python tools/fulldiff.py tmp/ec/orig.raw tmp/ec/port.raw

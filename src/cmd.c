@@ -1307,6 +1307,30 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (!c->pressed || c->escaped) {
             return 0;
         }
+        if (JW_RANGE_CMD(c->command)) {
+            /* A command that takes a range goes all the way back to the line
+             * it came up with -- `◇消去範囲 始点指示 |①範囲内消去|…` with a
+             * `・` at column 6 -- whether the range was half taken or fixed.
+             * Measured on 消去 from both. */
+            c->pressed = 0;
+            c->stage = 0;
+            c->n_flip = 0;
+            c->cleared = 0;
+            c->moved = 0;
+            free(c->sel_line);
+            free(c->sel_arc);
+            free(c->sel_text);
+            c->sel_line = c->sel_arc = c->sel_text = 0;
+            return 1;
+        }
+        /* Only the commands whose "ask again" line has been read off the
+         * original (src/esc.h).  What [ESC] does in the others -- 複線 in the
+         * middle of a number, 線変更 after it has already changed something --
+         * is not measured, so it is left alone rather than guessed at. */
+        if (c->command != 2 && c->command != 3 && c->command != 4
+            && c->command != 11 && c->command != 12) {
+            return 0;
+        }
         c->pressed = 0;
         c->escaped = 1;
         c->moved = 0;

@@ -79,6 +79,12 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/esccheck.sh 4 300 200
     sh tools/esccheck.sh 11 300 200
     sh tools/esccheck.sh 12 300 200
+    echo "    (the range commands go all the way back to the line they came"
+    echo "     up with; 複写 and 移動 leave the original's own (0,16) pixel)"
+    sh tools/esccheck.sh 25 150 130
+    TWO="245 170" sh tools/esccheck.sh 25 150 130
+    sh tools/esccheck.sh 1 150 130
+    sh tools/esccheck.sh 16 150 130
     echo "=== 消去 picking a range"
     sh tools/pressfull.sh 25 150 130 r 245 170
     echo "=== 消去 with the left button: 追加･除外, then 範囲確定 and 実行"
