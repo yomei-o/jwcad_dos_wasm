@@ -32,6 +32,7 @@ COMMANDS = [
     (4, (250, 150, 450, 350)),      # □  a box
     (11, (300, 200, 400, 200)),     # ○  a circle
     (12, (300, 250, 400, 250, 350, 180)),   # （  任意の弧: centre, start, end
+    (24, (197, 157)),               # 線変更  one press takes a line or an arc
     (10, ('r', 380, 140)),          # 線消  the right button takes a line away
     (22, (300, 250)),               # 点  the left button drops a 仮点
     # 消去: the first press takes a corner of the range, the second (right)
@@ -74,14 +75,38 @@ NUM = re.compile(r'( *-?\d+\.\d+)')
 # taken well after the press has nothing there).  What takes it away is not a
 # string, so this capture cannot see it happen.
 PANEL = {(1, 2), (1, 3)}
-# These three never belong to a stage: 17 and 22 say what the right button
-# would snap to and follow the *pointer* (src/snap.h), and 18 is 線消's
-# transient サーチ.
-ALWAYS = {(17, 2), (22, 2), (18, 2)}
+# Column 18 never belongs to a stage: it is 線消's transient サーチ, gone by
+# the time the screen settles.
+ALWAYS = {(18, 2)}
+
+
+def snap_cells():
+    """Which of columns 17 and 22 each command uses for `what the right button
+    would take`.
+
+    Those two follow the *pointer*, not the stage, so they live in src/snap.h
+    and have to be left out here -- but only for the commands that have them.
+    線消 and 線変更 have none, and put their own message in the same two cells
+    (`線` at 20 and `変更` at 22), which would be thrown away by a blanket
+    rule."""
+    out = {}
+    text = open(os.path.join('src', 'snap.h'), encoding='latin-1').read()
+    rows = re.findall(r'\{ (".*?"|0), (".*?"|0) \}', text, re.S)
+    for i, (a, b) in enumerate(rows, 1):
+        cells = set()
+        if a != '0':
+            cells.add((17, 2))
+        if b != '0':
+            cells.add((22, 2))
+        out[i] = cells
+    return out
+
+
+SNAP = snap_cells()
 WAIT = '\x81\x96\x82\xa8\x91\xd2\x82\xbf\x89\xba\x82\xb3\x82\xa2\x81\x96'
 
 
-def keep(items):
+def keep(items, command):
     # A label in the counts box is kept when the same row carries a number
     # somewhere: 「（」writes `半径` at column 1 and `=    57.336` at column 5
     # as two separate calls, and dropping the label alone would leave the row
@@ -94,7 +119,7 @@ def keep(items):
         col, row, fg, bg, s = k
         if s == WAIT:
             continue
-        if (col, row) in ALWAYS:
+        if (col, row) in ALWAYS or (col, row) in SNAP.get(command, set()):
             continue
         if (col, row) in PANEL and not NUM.search(s) and row not in numbered:
             continue
@@ -143,13 +168,13 @@ def capture(n, pts):
         last[k][late][cell] = (cell[0], cell[1], int(f[10], 16), int(f[11], 16), s)
     out = []
     for k in range(n_press):
-        rows = [x + (0,) for x in keep([last[k][0][c] for c in order[k][0]])]
+        rows = [x + (0,) for x in keep([last[k][0][c] for c in order[k][0]], n)]
         # A late row that says the same thing as an early one is the same row
         # with a new number in it -- ○ writes `半径= 0.000` when it is pressed
         # and `半径= 0.573` when the pointer moves -- so compare with the
         # numbers taken out.
         seen = [(r[0], r[1], r[2], r[3], NUM.sub('#', r[4])) for r in rows]
-        for x in keep([last[k][1][c] for c in order[k][1]]):
+        for x in keep([last[k][1][c] for c in order[k][1]], n):
             if (x[0], x[1], x[2], x[3], NUM.sub('#', x[4])) not in seen:
                 rows.append(x + (1,))
         out.append(rows)

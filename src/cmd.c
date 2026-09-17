@@ -1127,6 +1127,62 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->stage = 1;
         return 1;
     }
+    if (c->command == 24) {
+        /* 線変更: one press, and the line or the arc under the pointer takes
+         * the pen, the line type and the layer being written to.
+         *
+         * Measured by having the original do it and save the file
+         * (`PRE=` with tools/save.sh).  SAMPLE6 writes with pen 4, line type 1
+         * and layer 2; pressing its line 38, which is pen 1 on layer 0, gives
+         *
+         *     before  type=1 pen=1 rest=00 f6 00 08
+         *     after   type=1 pen=4 rest=02 f6 01 08
+         *
+         * -- the pen, the layer, and **bit 0 of the third of the four bytes**,
+         * which is the mark the entity search leaves on whatever it found
+         * (RESUME 4.9b: the walk clears it on every record and sets it on the
+         * one it answers with).  Nothing else in the file moves: one record of
+         * 1,189 differs, and it is the only one with that bit set.
+         *
+         * The layer moves because the line offers `②レイヤ変更【有】`; what
+         * 【無】 does is not measured, and neither is `①指定範囲内変更` nor
+         * `③属性設定`.
+         *
+         * Which entity it takes is the plain pick -- no filtering by the
+         * writing pen, which would make the command useless -- so it is
+         * jw_cmd_line_at, the same as 線消's. */
+        const long k = jw_cmd_line_at(d, w, sx, sy);
+        const long j = k < 0 ? jw_cmd_arc_at(d, w, sx, sy) : -1;
+        const unsigned char layer =
+            (unsigned char)((0 << 4) | (d->write_layer & 15));
+
+        if (k < 0 && j < 0) {
+            /* Nothing there: the original writes `.読取可能データ無` and puts
+             * its own line back -- no `[ESC]`, which is the stage-1 line -- so
+             * the command stays where it was. */
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        /* The word beside the counts is `線` for a line and `円` for an arc
+         * (measured: pressing SAMPLE6's arc at (446,189) says 円 変更). */
+        c->hit_kind = k >= 0 ? 1 : 2;
+        if (k >= 0) {
+            d->lines[k].type = (unsigned char)d->line_type;
+            d->lines[k].pen = (unsigned char)d->pen;
+            d->lines[k].layer = layer;
+            d->lines[k].rest[0] = layer;
+            d->lines[k].rest[2] |= 1;
+        } else {
+            d->arcs[j].type = (unsigned char)d->line_type;
+            d->arcs[j].pen = (unsigned char)d->pen;
+            d->arcs[j].layer = layer;
+            d->arcs[j].rest[0] = layer;
+            d->arcs[j].rest[2] |= 1;
+        }
+        c->stage = 1;
+        return 1;
+    }
     if (c->command == 25) {
         /* 消去: the first press takes a corner of the range and the second,
          * with the right button, fixes it -- 範囲確定, as the line it puts up

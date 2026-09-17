@@ -450,6 +450,11 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
     if (q->moved && !s->moved) {
         return;
     }
+    /* 線変更's word beside the counts is the one thing in the table that
+     * depends on what the press found, so it is drawn below instead. */
+    if (q->command == 24 && q->col == 20 && q->row == 2) {
+        return;
+    }
     if (q->numbers == 3) {
         /* The one cell the original prints with a bare `%g` -- 「（」's radius
          * at the end of its line.  See tools/stage_table.py's LOOSE. */
@@ -816,6 +821,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * middle away (the ring alone) and pressing it again puts it back.
              * The port has no 基点変, so it draws the one the command starts
              * with -- the middle, which is the centre of the circle. */
+            /* 線変更 says `線` or `円` there, whichever it took. */
+            if (s->command == 24 && i == 1 && s->hit_kind) {
+                jw_ui_text(v, 20, 2, 7, 0xffff,
+                           s->hit_kind == 2 ? "\x89" "~" : "\x90" "\xfc");
+            }
             if (s->command == 11 && i == 1) {
                 jw_arc(v, 470, 8, 5, 0, 0, 7, ROP_REPLACE, JW_STYLE_SOLID);
                 jw_arc(v, 470, 8, 2, 0, 0, 7, ROP_REPLACE, JW_STYLE_SOLID);

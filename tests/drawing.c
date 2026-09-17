@@ -178,6 +178,7 @@ int main(int argc, char **argv)
                 t.missed = c.missed;
                 t.outside = c.outside;
                 t.moved = c.moved;
+                t.hit_kind = c.hit_kind;
                 jw_ui_draw(&v, &t);
                 jw_cmd_top(&c, d, jw_ui_top_item(press[i][1], 8));
                 continue;
@@ -238,6 +239,7 @@ int main(int argc, char **argv)
         s.missed = c.missed;
         s.outside = c.outside;
         s.moved = c.moved;
+        s.hit_kind = c.hit_kind;
         if (command) {
             /* the line of guidance goes the moment anything is picked */
             s.guide = 0;

@@ -44,6 +44,14 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/pressfull.sh 12 300 250
     sh tools/pressfull.sh 12 300 250 400 250
     sh tools/pressfull.sh 25 150 130
+    echo "=== 線変更: one press gives a line or an arc the writing pen, line"
+    echo "    type and layer; the word beside the counts says which it took"
+    sh tools/pressfull.sh 24 197 157
+    DRAWING=SAMPLE6 sh tools/pressfull.sh 24 499 271
+    DRAWING=SAMPLE6 sh tools/pressfull.sh 24 r 499 271
+    DRAWING=SAMPLE6 sh tools/pressfull.sh 24 446 189
+    DRAWING=SAMPLE6 sh tools/pressfull.sh 24 244 140
+    DRAWING=SAMPLE6 BOOT=150000000 sh tools/savecheck.sh -c 24 -p 499 271
     echo "=== （ 任意の弧: centre, start, end -- the record keeps the shorter"
     echo "    way round, whichever order the two were pressed in (4.13)"
     sh tools/pressfull.sh 12 300 250 400 250 350 180

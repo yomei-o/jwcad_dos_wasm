@@ -89,6 +89,9 @@ typedef struct {
      * (one pixel is 1/unit_mm millimetres of paper) and `角度= 0.000`. */
     int press_x, press_y;
     int moved;
+    /* What 線変更 took: 1 a line, 2 an arc, 0 nothing yet.  The word it writes
+     * beside the counts is `線` or `円` accordingly. */
+    int hit_kind;
 } JwCmd;
 
 /* Start a command, or leave it (0). */

@@ -69,6 +69,7 @@ static void sync_ui(void)
     ui.missed = cmd.missed;
     ui.outside = cmd.outside;
     ui.moved = cmd.moved;
+    ui.hit_kind = cmd.hit_kind;
 }
 
 /* Redraw at the current view and unpack the planes for the canvas.  The order

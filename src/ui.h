@@ -49,6 +49,8 @@ typedef struct {
      * says so in the band beside the counts and leaves it there until the next
      * press finds something or another item is picked; see jw_ui_draw. */
     int missed;
+    /* What 線変更 took: 1 a line, 2 an arc.  See JwCmd. */
+    int hit_kind;
     /* Has the pointer moved since the last press?  Until it does, the counts
      * box keeps the two counts rather than the command's length and angle --
      * see JwCmd. */
