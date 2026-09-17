@@ -840,6 +840,17 @@ static void copy_by_mm(JwCmd *c, Jwc *d)
     } else {
         copy_range(c, d, dx, dy);
     }
+    c->copies = 1;
+}
+
+/* ③連続: another copy of the same selection, one step further on. */
+static void copy_again(JwCmd *c, Jwc *d)
+{
+    const double per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
+    const double n = c->copies + 1.0;
+
+    copy_range(c, d, d->copy_x_mm * per * n, d->copy_y_mm * per * n);
+    c->copies++;
 }
 
 void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
@@ -934,6 +945,21 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         at_screen(w, p->x, p->y, &px, &py);
         jw_point(v, px, py, 2, ROP_REPLACE);
     }
+}
+
+void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
+{
+    long k;
+
+    if (!d || !JW_RANGE_CMD(c->command) || c->pressed != 2) {
+        return;
+    }
+    /* The drawing window again: the chrome leaves the clip open to the
+     * whole screen. */
+    v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+    v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+    v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+    v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
     /* Anything made since the range was fixed -- 複写's copies -- goes back on
      * top.  The original draws a new entity over the finished screen rather
      * than redrawing everything, so where a copy crosses one of the reddened
@@ -941,16 +967,10 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * distance, where 44 pixels of the overlap are white in the original and
      * were red here. */
     for (k = c->n0_lines; k < d->n_lines; k++) {
-        const JwcLine *l = &d->lines[k];
-        int x0, y0, x1, y1;
-
-        if (!jwc_visible(d, l->layer)) {
-            continue;
+        if (jwc_visible(d, d->lines[k].layer)) {
+            jw_view_line(v, d, &d->lines[k], w,
+                         jw_view_pen_colour(d->lines[k].pen));
         }
-        at_screen(w, l->x0, l->y0, &x0, &y0);
-        at_screen(w, l->x1, l->y1, &x1, &y1);
-        jw_line(v, x0, y0, x1, y1, jw_view_pen_colour(l->pen), ROP_REPLACE,
-                jw_view_line_style(l->type));
     }
     for (k = c->n0_arcs; k < d->n_arcs; k++) {
         if (jwc_visible(d, d->arcs[k].layer)) {
@@ -1053,6 +1073,12 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
          * becomes `複写  原図形の基準点位置 マウス指示 (L)free (R)Read`. */
         if (c->stage == 4 && item == 1) {
             c->stage = 5;
+            return 1;
+        }
+        if (c->stage == 8 && item == 3 && c->command == 1) {
+            /* ③連続 -- another copy, one step further on.  The line stays as
+             * it is and the counts go up again (32|14 to 34|15 on SAMPLE0). */
+            copy_again(c, d);
             return 1;
         }
         if (c->stage == 4 && item == 2) {

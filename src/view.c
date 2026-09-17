@@ -895,6 +895,56 @@ static void draw_grid(VGA *v, const Jwc *d, const JwView *w)
     }
 }
 
+/* One line, clipped and styled the way jw_view_draw does it.  複写 puts
+ * its copies back with this after the chrome has been drawn. */
+void jw_view_line(VGA *v, const Jwc *d, const JwcLine *l, const JwView *w,
+                  unsigned colour)
+{
+
+        /* Cut to the window in floats and turn into pixels afterwards.  The
+     * original hands its line routine the whole line as it stands and lets
+     * that clip; a long line cut at truncated endpoints comes out along a
+     * slightly different slope, and TEST7's longest dashed one lands a
+     * pixel to the left for its whole length -- 207 of the drawing's 281
+     * differing line pixels. */
+    double fx0 = (l->x0 - w->ox) * w->scale + w->ax;
+    double fy0 = w->ay - (l->y0 - w->oy) * w->scale;
+    double fx1 = (l->x1 - w->ox) * w->scale + w->ax;
+    double fy1 = w->ay - (l->y1 - w->oy) * w->scale;
+
+    if (!jwc_visible(d, l->layer)) {
+        return;
+    }
+    /* A line the record marks with bit 0x10 of its fourth trailing byte is
+     * **one dot**, at the truncated start, however long the two ends say it
+     * is.  Measured: the same geometry drawn twice, once with the bit and
+     * once without, comes out as one pixel and as eleven.  No other bit of
+     * those three bytes changes anything.
+     *
+     * Every line carrying it is under 1.36 pixels long -- 3,294 of TEST7's
+     * 4,083 and 404 of SAMPLE2's -- so it is the drawing saying "this one
+     * is shorter than a dot".  Without it the port puts down two pixels
+     * wherever the two ends happen to truncate to different ones. */
+    if (l->rest[2] & 0x10) {
+        const int px = (int)fx0, py = (int)fy0;
+
+        if (inside(w, px, py)) {
+        jw_point(v, px, py, jw_view_pen_colour(l->pen), ROP_REPLACE);
+        }
+        return;
+    }
+    if (!inside(w, (int)fx0, (int)fy0)) {
+        if (!inside(w, (int)fx1, (int)fy1)) {
+        return;
+        }
+        clip_far(w, fx1, fy1, &fx0, &fy0);
+    } else {
+        clip_far(w, fx0, fy0, &fx1, &fy1);
+    }
+    jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy1,
+        jw_view_pen_colour(l->pen), ROP_REPLACE, jw_view_line_style(l->type));
+    }
+
 void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
 {
     long k;
@@ -906,49 +956,8 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
     v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
     v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
     for (k = 0; k < d->n_lines; k++) {
-        const JwcLine *l = &d->lines[k];
-        /* Cut to the window in floats and turn into pixels afterwards.  The
-         * original hands its line routine the whole line as it stands and lets
-         * that clip; a long line cut at truncated endpoints comes out along a
-         * slightly different slope, and TEST7's longest dashed one lands a
-         * pixel to the left for its whole length -- 207 of the drawing's 281
-         * differing line pixels. */
-        double fx0 = (l->x0 - w->ox) * w->scale + w->ax;
-        double fy0 = w->ay - (l->y0 - w->oy) * w->scale;
-        double fx1 = (l->x1 - w->ox) * w->scale + w->ax;
-        double fy1 = w->ay - (l->y1 - w->oy) * w->scale;
-
-        if (!jwc_visible(d, l->layer)) {
-            continue;
-        }
-        /* A line the record marks with bit 0x10 of its fourth trailing byte is
-         * **one dot**, at the truncated start, however long the two ends say it
-         * is.  Measured: the same geometry drawn twice, once with the bit and
-         * once without, comes out as one pixel and as eleven.  No other bit of
-         * those three bytes changes anything.
-         *
-         * Every line carrying it is under 1.36 pixels long -- 3,294 of TEST7's
-         * 4,083 and 404 of SAMPLE2's -- so it is the drawing saying "this one
-         * is shorter than a dot".  Without it the port puts down two pixels
-         * wherever the two ends happen to truncate to different ones. */
-        if (l->rest[2] & 0x10) {
-            const int px = (int)fx0, py = (int)fy0;
-
-            if (inside(w, px, py)) {
-                jw_point(v, px, py, jw_view_pen_colour(l->pen), ROP_REPLACE);
-            }
-            continue;
-        }
-        if (!inside(w, (int)fx0, (int)fy0)) {
-            if (!inside(w, (int)fx1, (int)fy1)) {
-                continue;
-            }
-            clip_far(w, fx1, fy1, &fx0, &fy0);
-        } else {
-            clip_far(w, fx0, fy0, &fx1, &fy1);
-        }
-        jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy1,
-                jw_view_pen_colour(l->pen), ROP_REPLACE, jw_view_line_style(l->type));
+        jw_view_line(v, d, &d->lines[k], w,
+                     jw_view_pen_colour(d->lines[k].pen));
     }
     for (k = 0; k < d->n_arcs; k++) {
         if (!jwc_visible(d, d->arcs[k].layer)) {

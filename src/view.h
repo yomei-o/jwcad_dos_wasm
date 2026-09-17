@@ -68,6 +68,10 @@ void jw_view_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
  * of what it reddened. */
 unsigned jw_view_text_colour(const Jwc *d, unsigned size);
 
+/* One line, clipped the way jw_view_draw clips it. */
+void jw_view_line(VGA *v, const Jwc *d, const JwcLine *l, const JwView *w,
+                  unsigned colour);
+
 /* And one arc, the same way. */
 void jw_view_arc(VGA *v, const Jwc *d, const JwcArc *a, const JwView *w,
                  unsigned colour);

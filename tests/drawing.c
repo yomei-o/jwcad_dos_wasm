@@ -269,6 +269,8 @@ int main(int argc, char **argv)
             s.guide = 0;
         }
         jw_ui_draw(&v, &s);
+        /* and what 複写 has made since, over the top of it (see jw_cmd_after) */
+        jw_cmd_after(&c, &v, d, &w);
         /* the line a half-finished command drags, then the pointer -- both
          * exclusive-or, and both after everything else */
         jw_cmd_band(&c, &v, &w, mx, my);

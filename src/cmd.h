@@ -107,6 +107,11 @@ typedef struct {
      * The line it wrote over is still there, so the chrome replays the stage
      * that was up and then puts src/esc.h's three pieces on top. */
     int escaped;
+    /* How many copies 複写 has made of the same selection.  ③連続 makes
+     * another, one step further on: the first lands at the distance, the
+     * second at twice it.  Measured -- SAMPLE0's lines go from (161,139) to
+     * (196,87) and then to (231,40) with 20,30. */
+    int copies;
     /* 複写's base point -- 原図形の基準点位置.  Kept apart from x0,y0, which
      * are the range's first corner and are still needed to work out what the
      * range holds. */
@@ -187,6 +192,13 @@ int jw_cmd_in_range(const JwCmd *c, double ax, double ay, double bx, double by);
  * the range again, in colour 2, on top of the drawing.  Nothing else moves --
  * 224 white pixels turn red and not one other pixel changes. */
 void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
+
+/* And what the command has **made** since the range was fixed -- 複写's
+ * copies -- drawn over the finished screen, chrome and all.  That is the
+ * original's own order: it paints a new entity on top rather than redrawing,
+ * and the two rows under the top line were cleared once, when the item was
+ * picked.  Call it after jw_ui_draw. */
+void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
 
 /* A press on the top line, which is a menu of its own: the runs between the
  * `|` characters are the items, numbered from the left.  Measured on 消去's

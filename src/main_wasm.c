@@ -89,6 +89,7 @@ static void present(void)
     ui.snap = mouse_x >= AREA_X0 && mouse_x <= AREA_X1
         && mouse_y >= AREA_Y0 && mouse_y <= AREA_Y1;
     jw_ui_draw(&vga, &ui);
+    jw_cmd_after(&cmd, &vga, drawing, &view);
     /* the line a half-finished command drags, then the pointer -- both
      * exclusive-or, and both after everything else */
     jw_cmd_band(&cmd, &vga, &view, mouse_x, mouse_y);

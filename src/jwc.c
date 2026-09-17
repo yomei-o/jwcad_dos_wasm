@@ -948,16 +948,29 @@ int jwc_dup_text(Jwc *d, long k, float dx, float dy)
 {
     const JwcText was = d->texts[k];
     JwcText *t;
+    char *keep;
 
     if (k < 0 || k >= d->n_texts) {
         return 0;
     }
     /* Through jwc_add_text, so that the string goes into the pool the way the
-     * original appends it; then the rest of the record is put back. */
-    if (!jwc_add_text(d, was.x0 + dx, was.y0 + dy, was.x1 + dx, was.y1 + dy,
-                      was.text ? was.text : "", was.size, was.layer)) {
+     * original appends it; then the rest of the record is put back.
+     *
+     * The string is copied out first.  jwc_add_text **reallocs the pool**, and
+     * `was.text` points into it: handing it the old pointer reads freed memory
+     * the moment the pool moves.  It survived the first copy and lost the text
+     * on the second (複写's ③連続), which is how it was found. */
+    keep = (char *)malloc(strlen(was.text ? was.text : "") + 1);
+    if (!keep) {
         return 0;
     }
+    strcpy(keep, was.text ? was.text : "");
+    if (!jwc_add_text(d, was.x0 + dx, was.y0 + dy, was.x1 + dx, was.y1 + dy,
+                      keep, was.size, was.layer)) {
+        free(keep);
+        return 0;
+    }
+    free(keep);
     t = &d->texts[d->n_texts - 1];
     t->rest[2] = was.rest[2];
     t->rest[3] = was.rest[3];

@@ -32,6 +32,12 @@ P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 30000000\n'
         echo "$num" | sed 's/./type &\nwait 6000000\n/g'
         [ -z "$STOP" ] && printf 'key enter\nwait 40000000\n'
     fi
+    # AGAIN=n で ③連続（桁 35〜40、x 272〜327）を n 回
+    i=0
+    while [ -n "$AGAIN" ] && [ "$i" -lt "$AGAIN" ]; do
+        printf "$P" 300 8 left left
+        i=$((i + 1))
+    done
     printf 'mouse 600 450\nwait 14000000\n'
     printf 'shot ../jwcad_dos_wasm/tmp/cn/orig.raw\n'
 } > tmp/cn/check.txt
@@ -42,8 +48,13 @@ if [ -n "$SAME" ]; then
     set -- "$@" -r 400 300
 else
     if [ -n "$STOP" ]; then set -- "$@" -K "$num"; else set -- "$@" -k "$num"; fi
+    i=0
+    while [ -n "$AGAIN" ] && [ "$i" -lt "$AGAIN" ]; do
+        set -- "$@" -t 300
+        i=$((i + 1))
+    done
 fi
 ./tests/drawing.exe -u "$@" -m 600 450 "orig/$DRAWING.JWC" tmp/cn/port.raw > /dev/null
 [ "$CMD" = 16 ] && NAME=移動 || NAME=複写
-printf '%s 数値位置%s %s  ' "$NAME" "${SAME:+（前回と同じ）}${STOP:+（打っただけ）}" "${SAME:+-}${SAME:--$num}"
+printf '%s 数値位置%s%s %s  ' "$NAME" "${AGAIN:+ 連続$AGAIN}" "${SAME:+（前回と同じ）}${STOP:+（打っただけ）}" "${SAME:+-}${SAME:--$num}"
 python tools/fulldiff.py tmp/cn/orig.raw tmp/cn/port.raw
