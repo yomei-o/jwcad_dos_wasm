@@ -35,6 +35,12 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/pressfull.sh 3 200 100 500 400       # ／  a line
     sh tools/pressfull.sh 4 250 150 450 350       # □  a box
     sh tools/pressfull.sh 11 300 200 400 200      # ○  a circle
+    echo "=== and the moment after a point is taken, before the pointer moves:"
+    echo "    the counts box keeps the two counts and nothing is dragged yet"
+    sh tools/pressfull.sh 2 300 200
+    sh tools/pressfull.sh 3 300 200
+    sh tools/pressfull.sh 4 250 150
+    sh tools/pressfull.sh 12 300 250 400 250
     echo "=== （ 任意の弧: centre, start, end -- the record keeps the shorter"
     echo "    way round, whichever order the two were pressed in (4.13)"
     sh tools/pressfull.sh 12 300 250 400 250 350 180

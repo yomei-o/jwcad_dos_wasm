@@ -443,6 +443,13 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
     if (s->outside && q->command == 25 && q->stage == 3 && q->col == 6) {
         return;
     }
+    /* Some of what a stage writes only goes up once the pointer has moved off
+     * the point just taken -- ／'s `長=` and `角度=`, 「（」's `半径=`.  The
+     * table says which (src/stage.h's `moved`, measured; ○ and □ write theirs
+     * the moment they are pressed and are not marked). */
+    if (q->moved && !s->moved) {
+        return;
+    }
     if (q->numbers == 3) {
         /* The one cell the original prints with a bare `%g` -- 「（」's radius
          * at the end of its line.  See tools/stage_table.py's LOOSE. */
@@ -760,7 +767,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
             for (q = JW_STAGE; q->command; q++) {
                 if (q->command == s->command && q->stage == i
-                    && q->row != 1 && q->col <= 15) {
+                    && q->row != 1 && q->col <= 15
+                    && !(q->moved && !s->moved)) {
                     own = 1;    /* inside the box; columns 17 and 22 of the
                                  * same row are beside it, not in it */
                 }

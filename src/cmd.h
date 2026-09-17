@@ -80,6 +80,15 @@ typedef struct {
     /* 消去's ②範囲外消去: the range picks what it does *not* hold.  Its own
      * line offers it before the first press. */
     int outside;
+    /* Where the last press was, on the screen, and whether the pointer has
+     * moved off it since.  **The counts box does not change the moment a point
+     * is taken**: the original writes the two counts back and only puts the
+     * length and the angle there once the pointer moves -- one pixel is
+     * enough.  Measured with ／ on SAMPLE0: press at (300,200) and the box
+     * still says `30| 13`, move to (301,200) and it says `長= 0.573`
+     * (one pixel is 1/unit_mm millimetres of paper) and `角度= 0.000`. */
+    int press_x, press_y;
+    int moved;
 } JwCmd;
 
 /* Start a command, or leave it (0). */

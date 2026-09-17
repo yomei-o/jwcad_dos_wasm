@@ -45,6 +45,19 @@ COMMANDS = [
 SHOT = 66_000_000
 PER_PRESS = 20_000_000
 DOWN = 3_000_000
+# How much of each press's window counts as "what the press wrote".  The window
+# is 20 million long, but the last three of those are after tools/press.sh has
+# moved the pointer to the next point -- and **the pointer moving is itself an
+# event**: the counts box keeps the two counts until the pointer moves off the
+# point just taken, and only then shows the length and the angle.  Taking the
+# last write per cell over the whole window therefore caught ／'s `長=` and
+# `角度=` as if the press had written them, when the press had written the
+# counts back.  Measured with ／ on SAMPLE0: press at (300,200) and the box
+# still says `30| 13`; move one pixel and it says `長= 0.573`.  ○ is the other
+# way -- it writes `半径= 0.000` about three million instructions after its
+# press, with nothing moved -- so this is per command and has to be captured,
+# not assumed.
+COLLECT = 16_000_000
 
 NUM = re.compile(r'( *-?\d+\.\d+)')
 
@@ -99,12 +112,17 @@ def keep(items):
 
 
 def capture(n, pts):
-    """Run the original and return, for each press, what it wrote afterwards --
-    the last thing per cell, because that is what is left on the screen."""
+    """For each press: what it wrote, and what the pointer moving wrote after.
+
+    Two lists per press.  The first is everything up to COLLECT -- the press
+    itself.  The second is what came after, which is the pointer moving on
+    toward the next point, and those rows are marked `moved` so src/ui.c holds
+    them back until the pointer has actually moved (see COLLECT)."""
     subprocess.run(['sh', 'tools/press.sh', str(n)] + [str(v) for v in pts],
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    stages = [[] for _ in range(len([v for v in pts if isinstance(v, int)]) // 2)]
-    lasts = [{} for _ in stages]
+    n_press = len([v for v in pts if isinstance(v, int)]) // 2
+    order = [([], []) for _ in range(n_press)]
+    last = [({}, {}) for _ in range(n_press)]
     for line in open('tmp/press/str.txt', encoding='latin-1'):
         f = line.split()
         if len(f) < 15 or f[0] != '[bp]' or line.count('"') < 2:
@@ -113,14 +131,29 @@ def capture(n, pts):
         if t < SHOT + DOWN:
             continue
         k = (t - SHOT - DOWN) // PER_PRESS
-        if k >= len(stages):
-            k = len(stages) - 1
+        late = 0
+        if k >= n_press:
+            k = n_press - 1
+        elif (t - SHOT - DOWN) % PER_PRESS >= COLLECT:
+            late = 1
         s = line[line.index('"') + 1:line.rindex('"')]
         cell = (int(f[8], 16), int(f[9], 16))
-        if cell not in stages[k]:
-            stages[k].append(cell)
-        lasts[k][cell] = (cell[0], cell[1], int(f[10], 16), int(f[11], 16), s)
-    return [keep([lasts[k][c] for c in stages[k]]) for k in range(len(stages))]
+        if cell not in order[k][late]:
+            order[k][late].append(cell)
+        last[k][late][cell] = (cell[0], cell[1], int(f[10], 16), int(f[11], 16), s)
+    out = []
+    for k in range(n_press):
+        rows = [x + (0,) for x in keep([last[k][0][c] for c in order[k][0]])]
+        # A late row that says the same thing as an early one is the same row
+        # with a new number in it -- ○ writes `半径= 0.000` when it is pressed
+        # and `半径= 0.573` when the pointer moves -- so compare with the
+        # numbers taken out.
+        seen = [(r[0], r[1], r[2], r[3], NUM.sub('#', r[4])) for r in rows]
+        for x in keep([last[k][1][c] for c in order[k][1]]):
+            if (x[0], x[1], x[2], x[3], NUM.sub('#', x[4])) not in seen:
+                rows.append(x + (1,))
+        out.append(rows)
+    return out
 
 
 # The cells the original prints with `%g` and not with a fixed field.
@@ -198,6 +231,10 @@ typedef struct {
                                  * second (角度, 縦, 直径), every other row the
                                  * first */
     int width[2];               /* the field width each of them had */
+    int moved;                  /* 1 when the original wrote it only after the
+                                 * pointer moved off the point just taken, not
+                                 * when the press itself landed (see COLLECT in
+                                 * tools/stage_table.py) */
     const char *text;
 } JwStage;
 
@@ -205,17 +242,17 @@ static const JwStage JW_STAGE[] = {
 ''')
     for n in sorted(rows):
         for stage, items in enumerate(rows[n], 1):
-            for col, row, fg, bg, s in items:
+            for col, row, fg, bg, s, moved in items:
                 if (n, stage, col, row) in LOOSE:
                     t, w, kind = NUM.sub('%g', s), [0, 0], 3
                 else:
                     t, w = with_formats(s)
                     w = (w + [0, 0])[:2]
                     kind = len([x for x in w if x])
-                f.write('    { %2d, %d, %2d, %d, %d, 0x%04x, %d, %d, { %d, %d }, %s },\n'
+                f.write('    { %2d, %d, %2d, %d, %d, 0x%04x, %d, %d, { %d, %d }, %d, %s },\n'
                         % (n, stage, col, row, fg, bg, kind,
-                           1 if row == 3 else 0, w[0], w[1], escape(t)))
-    f.write('    { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0 },\n};\n\n#endif\n')
+                           1 if row == 3 else 0, w[0], w[1], moved, escape(t)))
+    f.write('    { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0, 0 },\n};\n\n#endif\n')
     f.close()
     print('wrote src/stage.h')
 

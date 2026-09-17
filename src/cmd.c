@@ -115,6 +115,9 @@ void jw_cmd_track(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy)
 {
     double x, y;
 
+    if (sx != c->press_x || sy != c->press_y) {
+        c->moved = 1;           /* one pixel is enough -- see JwCmd.moved */
+    }
     if (!d || !c->pressed) {
         return;
     }
@@ -132,6 +135,15 @@ static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
 void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
 {
     int px, py;
+
+    /* Nothing is dragged until the pointer has moved off the point just taken.
+     * Measured: ／ pressed at (300,200) and left there leaves that pixel black
+     * in the original, where a band of no length would have put colour 2 on
+     * it -- the pointer is the only thing drawn, and its exclusive-or comes
+     * out ffff00 over black rather than 00ff00 over red. */
+    if (!c->moved) {
+        return;
+    }
 
     /* 複線 drags a whole line, not a rubber band from a point: once the
      * interval is in, the copy follows the pointer from one side of the
@@ -1000,6 +1012,11 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     if (!d) {
         return 0;
     }
+    /* Any press puts the two counts back in the box beside them; the length
+     * and the angle come back when the pointer moves off (JwCmd.moved). */
+    c->press_x = sx;
+    c->press_y = sy;
+    c->moved = 0;
     if (c->command == 5) {
         /* 複線: point at a line, type how far away the copy goes, and press
          * the side it goes to.  RESUME.md 4.12 has the whole sequence as the
