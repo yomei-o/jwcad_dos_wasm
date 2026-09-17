@@ -140,8 +140,12 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
      * Measured: ／ pressed at (300,200) and left there leaves that pixel black
      * in the original, where a band of no length would have put colour 2 on
      * it -- the pointer is the only thing drawn, and its exclusive-or comes
-     * out ffff00 over black rather than 00ff00 over red. */
-    if (!c->moved) {
+     * out ffff00 over black rather than 00ff00 over red.
+     *
+     * 文字 is the exception: its box does not follow the pointer at all -- it
+     * sits at the point that was pressed and grows with the string -- and it
+     * is there from the moment the point is taken. */
+    if (!c->moved && !(c->command == 13 && c->typing_text)) {
         return;
     }
 
@@ -186,6 +190,35 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
             jw_line(v, qx, qy, px, qy, 4, 0x18, JW_STYLE_SOLID);
             jw_line(v, px, qy, px, py, 4, 0x18, JW_STYLE_SOLID);
         }
+        return;
+    }
+    if (c->command == 13 && c->typing_text) {
+        /* 文字 shows where the string will land while it is being typed: a
+         * box round it, and two little marks just past its end.
+         *
+         * The box runs from the point that was pressed -- the bottom left,
+         * the base point -- to `x0 + the string's length` and up by the
+         * character height, both out of the drawing's own character table.
+         * Colour 2, exclusive-or, four lines, so the corners cancel and come
+         * out black, exactly like 消去's range box.  Measured: over a white
+         * line the edges read 00ffff, which is 7 exclusive-or 2.
+         *
+         * The two marks are at one and three pixels past the right edge, two
+         * pixels at the top and two at the bottom, in colour 4 -- over white
+         * they read ff00ff, which is 7 exclusive-or 4.  Measured with `A` and
+         * with `ABC`, and at two places on the screen. */
+        int x1, y1;
+
+        at_screen(w, c->x0, c->y0, &px, &py);
+        at_screen(w, c->x0 + c->text_wide, c->y0 + c->text_tall, &x1, &y1);
+        jw_line(v, px, py, px, y1, 2, 0x18, JW_STYLE_SOLID);
+        jw_line(v, px, y1, x1, y1, 2, 0x18, JW_STYLE_SOLID);
+        jw_line(v, x1, y1, x1, py, 2, 0x18, JW_STYLE_SOLID);
+        jw_line(v, x1, py, px, py, 2, 0x18, JW_STYLE_SOLID);
+        jw_line(v, x1 + 1, y1, x1 + 1, y1 + 1, 4, 0x18, JW_STYLE_SOLID);
+        jw_line(v, x1 + 3, y1, x1 + 3, y1 + 1, 4, 0x18, JW_STYLE_SOLID);
+        jw_line(v, x1 + 1, py - 1, x1 + 1, py, 4, 0x18, JW_STYLE_SOLID);
+        jw_line(v, x1 + 3, py - 1, x1 + 3, py, 4, 0x18, JW_STYLE_SOLID);
         return;
     }
     if (c->command == 25 && c->pressed != 1) {
@@ -939,6 +972,15 @@ static int offset_line(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
 }
 
 /* A key while a command is asking for a number.  See cmd.h. */
+/* How big the box 文字 draws round the string it is taking comes out. */
+static void text_box(JwCmd *c, const Jwc *d)
+{
+    const int t = d ? d->char_type : 1;
+
+    c->text_wide = d ? jwc_text_length(d, c->typed, (unsigned char)t) : 0.0;
+    c->text_tall = d ? d->text_h[t] / 10.0 * d->unit_mm : 0.0;
+}
+
 int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
@@ -966,7 +1008,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 
             c->typing_text = 0;
             c->pressed = 0;
-            c->stage = 0;
+            /* The line it leaves is not the one it started with: `[ESC]` goes
+             * in front and the right-hand half becomes
+             * `基点指示(L)free(R)Read|①基点変|②行連続|③列連続|` -- it is
+             * asking where the next string goes.  src/typed.h, stage 2. */
+            c->stage = 2;
             if (c->typed_n > 0 && d) {
                 /* The far end follows from the string and the character type
                  * -- see jwc_text_length.  The baseline is horizontal, which
@@ -986,12 +1032,14 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             if (c->typed_n > 0) {
                 c->typed[--c->typed_n] = 0;
             }
+            text_box(c, d);
             return 1;
         }
         if (key >= 0x20 && key < 0x7f
             && c->typed_n < (int)sizeof c->typed - 1) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
+            text_box(c, d);
             return 1;
         }
         return 1;               /* the field has the keyboard until [Enter] */
@@ -1185,6 +1233,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typing_text = 1;
         c->typed[0] = 0;
         c->typed_n = 0;
+        text_box(c, d);
         return 1;
     }
     if (c->command == 24) {

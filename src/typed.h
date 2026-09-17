@@ -64,6 +64,16 @@ static const JwStage JW_TYPED[] = {
     { 13, 1, 19, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "10\x81" "|\x81" "|\x81" "|\x81" "|\x81" "{\x81" "|\x81" "|\x81" "|\x81" "|20\x81" "|\x81" "|\x81" "|\x81" "|\x81" "{\x81" "|\x81" "|\x81" "|\x81" "|30\x81" "|\x81" "|\x81" "|\x81" "|\x81" "{\x81" "|\x81" "|\x81" "|\x81" "|40" },
     { 13, 1,  1, 4, 7, 0xffff, 0, 0, { 0, 0 }, 0, "\x8d" "\xb6" "\x89" "\xba" },
     { 13, 1,  5, 4, 7, 0xffff, 0, 0, { 0, 0 }, 0, "|\x8e" "\xed" " 3|Paste" },
+    /* And what it says once [Enter] has written the text: the same line
+     * with [ESC] in front and a different half -- it is asking where the
+     * next one goes.  The numbers are the drawing character type, put
+     * back by src/ui.c. */
+    { 13, 2,  1, 2, 0, 0x0000, 0, 0, { 0, 0 }, 0, " \xcd" "\xdf" "\xdd" "2 \x8a" "\xee" "\x93" "_ \x8d" "\xb6" "\x89" "\xba" " " },
+    { 13, 2,  1, 3, 0, 0x0000, 0, 0, { 0, 0 }, 0, " \x89" "\xa1" " 3.0 \x8f" "c 3.0 " },
+    { 13, 2,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 13, 2,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
+    { 13, 2,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x95" "\xb6" "\x8e" "\x9a" "\x8e" "\xed" "\x97" "\xde" "[F3]  \x8a" "\xee" "\x93" "_\x8e" "w\x8e" "\xa6" "(L)free(R)Read|\x87" "@\x8a" "\xee" "\x93" "_\x95" "\xcf" "|\x87" "A\x8d" "s\x98" "A\x91" "\xb1" "|\x87" "B\x97" "\xf1" "\x98" "A\x91" "\xb1" "|" },
+    { 13, 2, 73, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[BS]\x91" "O\x8d" "\x80" },
     { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0, 0 },
 };
 

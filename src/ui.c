@@ -487,20 +487,40 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
     if (q->moved && !s->moved) {
         return;
     }
+    /* 文字's field is only up while it is taking a string: once [Enter] has
+     * written the text the command is at stage 2 and none of stage 1 is on
+     * the screen any more (the original writes ` Get type[tab]` back at row 4
+     * and its own line over the top one). */
+    if (q->command == 13 && q->stage == 1 && !s->typing_text) {
+        return;
+    }
     /* 線変更's word beside the counts is the one thing in the table that
      * depends on what the press found, so it is drawn below instead. */
     if (q->command == 24 && q->col == 20 && q->row == 2) {
         return;
     }
-    /* And the character type in 文字's field is the drawing's, not the
-     * capture's. */
-    if (q->command == 13 && q->col == 5 && q->row == 4) {
-        char one[64];
-        double n = s->char_type;
+    /* And 文字's own numbers are the drawing's, not the capture's -- the
+     * character type in its field and in its line, and that type's pen, width
+     * and height in the panel.  Same as the prompt rows; see put_numbers. */
+    if (q->command == 13) {
+        double n[2];
+        int k = 0;
 
-        put_numbers(one, sizeof one, q->text, &n, 1, 0);
-        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
-        return;
+        if ((q->col == 5 && q->row == 4) || (q->col == 8 && q->row == 1)) {
+            n[k++] = s->char_type;
+        } else if (q->col == 1 && q->row == 2 && q->fg == 0) {
+            n[k++] = s->char_pen;
+        } else if (q->col == 1 && q->row == 3 && q->fg == 0) {
+            n[k++] = s->char_w / 10.0;
+            n[k++] = s->char_h / 10.0;
+        }
+        if (k) {
+            char one[160];
+
+            put_numbers(one, sizeof one, q->text, n, k, q->row == 3);
+            jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+            return;
+        }
     }
     if (q->numbers == 3) {
         /* The one cell the original prints with a bare `%g` -- 「（」's radius
@@ -866,7 +886,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * (columns 1 to 15) is painted separately just below. */
             fill(v, 122, 17, 638, 31, 0);
             top_clear();
-            if (s->command == 13 && i == 1) {
+            if (s->command == 13 && i == 1 && s->typing_text) {
                 /* 文字's field takes the screen over: the whole band under the
                  * top line goes black -- the counts and their label with it --
                  * and so does the strip along the very bottom.  Measured on
@@ -874,9 +894,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                  * 640 columns except the string being typed at column 1, and
                  * rows 464 to 479 are empty too, where every other command
                  * leaves the zoom bar alone. */
-                fill(v, 24, 16, 638, 47, 0);
-                fill(v, 0, 17, 23, 47, 0);
+                fill(v, 0, 17, 638, 47, 0);
+                fill(v, 639, 17, 639, 47, 0);   /* the frame's right edge too */
                 fill(v, 0, 464, 639, 479, 0);
+                /* The white line under the top one survives only under the
+                 * cells the string has filled: with `ABC` typed it is there
+                 * from x 0 to 23 and gone from 24 on, with `A` from 0 to 7.
+                 * The string is written in that row's cells, so what is left
+                 * is what the string has not reached. */
+                fill(v, s->typed_n * 8, 16, 638, 16, 0);
             } else if (own) {
                 fill(v, 1, 17, 120, 47, 4);
             } else {
@@ -1012,12 +1038,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                    "1991-1999 ||");
     }
     jw_line(v, 0, 16, 639, 16, 7, ROP_REPLACE, JW_STYLE_SOLID);
-    /* 文字's field takes the line under the top line away as well -- but only
-     * from column 4 across, which is where the string it is taking starts.
-     * Measured: with `ABC` typed, rows 16 to 47 are black from x 24 to 638 and
-     * the white line is still there at x 0 to 23 and at 639. */
+    /* 文字's field takes that line away from where the string it is taking
+     * has got to -- see the stage loop, where the rest of the band goes. */
     if (s->command == 13 && s->typing_text) {
-        fill(v, 24, 16, 638, 16, 0);
+        fill(v, s->typed_n * 8, 16, 638, 16, 0);
     }
     if (s->guide) {
         jw_ui_text(v, 17, 3, 7, 0, s->guide);

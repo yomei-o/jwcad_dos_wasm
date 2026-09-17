@@ -45,9 +45,9 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/pressfull.sh 12 300 250 400 250
     sh tools/pressfull.sh 25 150 130
     echo "=== 文字: a point, then the keys, then [Enter] writes the text"
-    echo "    (the 63 left over are the little frame the original shows"
-    echo "     while it is being typed -- RESUME 4.17)"
     sh tools/textcheck.sh 250 200 ABC
+    sh tools/textcheck.sh 250 200 A
+    sh tools/textcheck.sh 200 157 ABC
     ENTER=1 sh tools/textcheck.sh 250 200 ABC
     ENTER=1 sh tools/textcheck.sh 300 300 Hello
     echo "=== 線変更: one press gives a line or an arc the writing pen, line"

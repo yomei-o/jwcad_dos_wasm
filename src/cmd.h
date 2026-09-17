@@ -93,6 +93,10 @@ typedef struct {
      * as they come and [Enter] writes the text.  Measured -- the original
      * shows the whole string again at column 1 of row 2 after every key. */
     int typing_text;
+    /* How wide and how tall the string being typed comes out, in drawing
+     * units -- the box 文字 shows while it is being typed.  Worked out again
+     * after every key, because the width follows from the string. */
+    double text_wide, text_tall;
     /* What 線変更 took: 1 a line, 2 an arc, 0 nothing yet.  The word it writes
      * beside the counts is `線` or `円` accordingly. */
     int hit_kind;
