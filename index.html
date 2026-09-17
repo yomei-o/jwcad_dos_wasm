@@ -206,13 +206,15 @@ canvas.addEventListener('pointermove', e => {
 });
 /* The one-letter keys down the menu, the way the original takes them -- and,
    while a command is asking for a number, the digits, [BS], [Enter] and the
-   five function keys it offers (複線's [F1] to [F5]). */
+   five function keys it offers (複線's [F1] to [F5]).  [ESC] throws away the
+   point a command has in hand (RESUME.md 4.18). */
 window.addEventListener('keydown', e => {
   if (!Module || e.ctrlKey || e.metaKey || e.altKey) return;
   let code = 0;
   if (e.key.length === 1) code = e.key.charCodeAt(0);
   else if (e.key === 'Enter') code = 13;
   else if (e.key === 'Backspace') code = 8;
+  else if (e.key === 'Escape') code = 27;
   else if (/^F[1-5]$/.test(e.key)) code = 0x101 + (+e.key[1] - 1);
   if (!code) return;
   const cmd = Module._jw_key(code);
