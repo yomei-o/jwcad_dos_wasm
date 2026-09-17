@@ -684,6 +684,55 @@ static int arc_in_range(const JwCmd *c, const JwcArc *a)
     return jw_cmd_in_range(c, a->cx - m, a->cy - m, a->cx + m, a->cy + m);
 }
 
+/* Copy everything the range picked, moved by (dx,dy) drawing units.  Walks the
+ * arrays backwards from the count it started with, so that the copies it makes
+ * are not themselves copied.  Returns how many entities it made. */
+static int copy_range(const JwCmd *c, Jwc *d, double dx, double dy)
+{
+    const long lines = c->n0_lines, arcs = c->n0_arcs, texts = c->n0_texts;
+    int n = 0;
+    long k;
+
+    for (k = 0; k < lines; k++) {
+        const JwcLine *l = &d->lines[k];
+
+        if (in_reach_layer(d, l->layer)
+            && jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)
+               != flipped(c, JW_FLIP_LINE, k)) {
+            n += jwc_dup_line(d, k, (float)dx, (float)dy);
+        }
+    }
+    for (k = 0; k < arcs; k++) {
+        const JwcArc *a = &d->arcs[k];
+
+        if (in_reach_layer(d, a->layer) && arc_in_range(c, a)
+            != flipped(c, JW_FLIP_ARC, k)) {
+            n += jwc_dup_arc(d, k, (float)dx, (float)dy);
+        }
+    }
+    for (k = 0; k < texts && takes_text(c); k++) {
+        const JwcText *t = &d->texts[k];
+
+        if (in_reach_layer(d, t->layer)
+            && jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1)
+               != flipped(c, JW_FLIP_TEXT, k)) {
+            n += jwc_dup_text(d, k, (float)dx, (float)dy);
+        }
+    }
+    return n;
+}
+
+/* 複写's ②数値位置 asks for the distance in millimetres of paper; the drawing
+ * keeps them the same way 複線 keeps its interval -- `mm * unit_mm / denom`.
+ * Measured on SAMPLE0 (S=1/1, unit_mm 1.744108): 20,30 moves the copy 35
+ * pixels across and 52 up, which is 20*1.744 and 30*1.744 truncated. */
+static void copy_by_mm(const JwCmd *c, Jwc *d)
+{
+    const double per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
+
+    copy_range(c, d, d->copy_x_mm * per, d->copy_y_mm * per);
+}
+
 void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 {
     long k;
@@ -697,7 +746,7 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     if (!d || !JW_RANGE_CMD(c->command) || c->pressed != 2) {
         return;
     }
-    for (k = 0; k < d->n_lines; k++) {
+    for (k = 0; k < c->n0_lines; k++) {
         const JwcLine *l = &d->lines[k];
         int x0, y0, x1, y1;
         int style = jw_view_line_style(l->type);
@@ -740,7 +789,7 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         }
         jw_line(v, x0, y0, x1, y1, mark, ROP_REPLACE, style);
     }
-    for (k = 0; k < d->n_arcs; k++) {
+    for (k = 0; k < c->n0_arcs; k++) {
         const JwcArc *a = &d->arcs[k];
         const double m = a->r;
 
@@ -751,7 +800,7 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
             jw_view_arc(v, d, a, w, mark);
         }
     }
-    for (k = 0; k < d->n_texts; k++) {
+    for (k = 0; k < c->n0_texts; k++) {
         const JwcText *t = &d->texts[k];
 
         if (!takes_text(c)) {
@@ -774,6 +823,34 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         }
         at_screen(w, p->x, p->y, &px, &py);
         jw_point(v, px, py, 2, ROP_REPLACE);
+    }
+    /* Anything made since the range was fixed -- 複写's copies -- goes back on
+     * top.  The original draws a new entity over the finished screen rather
+     * than redrawing everything, so where a copy crosses one of the reddened
+     * originals it is the copy that shows.  Measured with a five-millimetre
+     * distance, where 44 pixels of the overlap are white in the original and
+     * were red here. */
+    for (k = c->n0_lines; k < d->n_lines; k++) {
+        const JwcLine *l = &d->lines[k];
+        int x0, y0, x1, y1;
+
+        if (!jwc_visible(d, l->layer)) {
+            continue;
+        }
+        at_screen(w, l->x0, l->y0, &x0, &y0);
+        at_screen(w, l->x1, l->y1, &x1, &y1);
+        jw_line(v, x0, y0, x1, y1, jw_view_pen_colour(l->pen), ROP_REPLACE,
+                jw_view_line_style(l->type));
+    }
+    for (k = c->n0_arcs; k < d->n_arcs; k++) {
+        if (jwc_visible(d, d->arcs[k].layer)) {
+            jw_view_arc(v, d, &d->arcs[k], w, jw_view_pen_colour(d->arcs[k].pen));
+        }
+    }
+    for (k = c->n0_texts; k < d->n_texts; k++) {
+        if (jwc_visible(d, d->texts[k].layer)) {
+            jw_view_text(v, d, &d->texts[k], w, jw_view_text_colour(d, d->texts[k].size));
+        }
     }
 }
 
@@ -866,6 +943,15 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
          * becomes `複写  原図形の基準点位置 マウス指示 (L)free (R)Read`. */
         if (c->stage == 4 && item == 1) {
             c->stage = 5;
+            return 1;
+        }
+        if (c->stage == 4 && item == 2) {
+            /* ②数値位置: `.距離 X,Y =` and a field at column 18.  The right
+             * button takes 前回と同じ, the keys a new distance. */
+            c->stage = 7;
+            c->typing = 1;
+            c->typed_n = 0;
+            c->typed[0] = 0;
             return 1;
         }
         return 0;
@@ -1119,6 +1205,40 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->typed_n = (int)strlen(c->typed);
         key = 13;
     }
+    if (c->command == 1 && c->stage == 7) {
+        /* 複写's distance: `X,Y` in millimetres of paper, and one number on
+         * its own means both.  Measured -- typing `2` alone moves the copy
+         * two millimetres each way. */
+        if (key == 13 || key == 10) {
+            const char *comma;
+
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                d->copy_x_mm = atof(c->typed);
+                comma = strchr(c->typed, ',');
+                d->copy_y_mm = comma ? atof(comma + 1) : d->copy_x_mm;
+            }
+            c->typing = 0;
+            c->stage = 8;
+            copy_by_mm(c, d);
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if ((key >= '0' && key <= '9') || key == '.' || key == ','
+            || key == '-') {
+            if (c->typed_n < 8) {
+                c->typed[c->typed_n++] = (char)key;
+                c->typed[c->typed_n] = 0;
+            }
+            return 1;
+        }
+        return 1;
+    }
     if (key == 13 || key == 10) {               /* [Enter] */
         c->typed[c->typed_n] = 0;
         c->gap = atof(c->typed);
@@ -1361,6 +1481,16 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
          * the same but for the word in front (src/copy.h).  Where it differs
          * is after 範囲確定: 消去 asks ①実行, 複写 asks **how** to copy. */
         jw_cmd_at(w, sx, sy, &x, &y);
+        if (c->command == 1 && c->stage == 7) {
+            /* 前回と同じ ﾏｳｽ(R): copy at the distance it remembers. */
+            if (!right) {
+                return 0;
+            }
+            c->typing = 0;
+            c->stage = 8;
+            copy_by_mm(c, d);
+            return 1;
+        }
         if (c->command == 1 && c->stage >= 4) {
             /* 複写's own stages: ①ﾏｳｽ位置 has been picked and the presses now
              * take the base point and the place to put the copy.  RESUME.md
@@ -1387,6 +1517,11 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->x1 = x;
             c->y1 = y;
             c->pressed = 2;
+            /* The selection is the entities that exist now; 複写's copies go
+             * on the end and are not part of it. */
+            c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
             /* The right button fixes the range and asks for ①実行; the left
              * one fixes the same range but stays, so that entities can be
              * taken out of it and put back one at a time.  Measured: both

@@ -471,6 +471,7 @@ Jwc *jwc_load(const char *path, const char **why)
      * pair at 0xb6c/0xc170 that FUN_21f2_06d1 reads, and the two differ only in
      * TEST7 among the samples.  Both were found by dumping the tables out of a
      * running original and searching the file for them. */
+    d->copy_x_mm = d->copy_y_mm = 1000.0;
     memset(d->group_on, 1, sizeof d->group_on);
     memset(d->layer_on, 1, sizeof d->layer_on);
     memset(d->group_edit, 1, sizeof d->group_edit);
@@ -901,6 +902,65 @@ int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
      * of 0, 2 or 3 behind it -- so it is written back and not invented. */
     l->rest[1] = 3;
     d->n_lines++;
+    return 1;
+}
+
+/* A copy of an entity, moved by (dx,dy).  複写 makes these, and the original's
+ * own copy keeps every byte of the record but the coordinates -- so this does
+ * too, rather than deciding what the trailing bytes ought to be. */
+int jwc_dup_line(Jwc *d, long k, float dx, float dy)
+{
+    JwcLine *l;
+
+    if (k < 0 || k >= d->n_lines) {
+        return 0;
+    }
+    if (!jwc_add_line(d, 0, 0, 0, 0, 0, 0, 0)) {
+        return 0;
+    }
+    l = &d->lines[d->n_lines - 1];
+    *l = d->lines[k];
+    l->x0 += dx;
+    l->y0 += dy;
+    l->x1 += dx;
+    l->y1 += dy;
+    return 1;
+}
+
+int jwc_dup_arc(Jwc *d, long k, float dx, float dy)
+{
+    JwcArc *a;
+
+    if (k < 0 || k >= d->n_arcs) {
+        return 0;
+    }
+    if (!jwc_add_arc(d, 0, 0, 1, 0, 0, 0)) {
+        return 0;
+    }
+    a = &d->arcs[d->n_arcs - 1];
+    *a = d->arcs[k];
+    a->cx += dx;
+    a->cy += dy;
+    return 1;
+}
+
+int jwc_dup_text(Jwc *d, long k, float dx, float dy)
+{
+    const JwcText was = d->texts[k];
+    JwcText *t;
+
+    if (k < 0 || k >= d->n_texts) {
+        return 0;
+    }
+    /* Through jwc_add_text, so that the string goes into the pool the way the
+     * original appends it; then the rest of the record is put back. */
+    if (!jwc_add_text(d, was.x0 + dx, was.y0 + dy, was.x1 + dx, was.y1 + dy,
+                      was.text ? was.text : "", was.size, was.layer)) {
+        return 0;
+    }
+    t = &d->texts[d->n_texts - 1];
+    t->rest[2] = was.rest[2];
+    t->rest[3] = was.rest[3];
     return 1;
 }
 

@@ -317,7 +317,7 @@ unsigned jw_view_pen_colour(unsigned pen)
  * and the wrong colour.
  *
  * (Type 0 means "the size currently selected".) */
-static unsigned text_colour(const Jwc *d, unsigned size)
+unsigned jw_view_text_colour(const Jwc *d, unsigned size)
 {
     return jw_view_pen_colour((unsigned)d->text_pen[size <= 10 ? size : 0]);
 }
@@ -961,7 +961,7 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
             continue;
         }
         draw_text(v, d, &d->texts[k], w, (double)d->unit_mm * w->scale,
-                  text_colour(d, d->texts[k].size));
+                  jw_view_text_colour(d, d->texts[k].size));
     }
     /* The 指定点 markers: a two-pixel circle at each, in white.  The original
      * draws it as four short lines -- for SAMPLE3's first, whose point is at

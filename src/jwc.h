@@ -142,6 +142,10 @@ typedef struct {
      * original draws the same little circle at each as it does for a 指定点 --
      * a press at (300,250) leaves exactly the twelve pixels of a circle of
      * radius two around it, in white.  See jw_cmd_press. */
+    /* 複写's ②数値位置 remembers how far the last copy went, in millimetres
+     * of paper, and offers it again as 前回と同じ.  The original starts at
+     * 1000 for both -- that is what its field says on a fresh run. */
+    double copy_x_mm, copy_y_mm;
     int n_temp;
     float temp_x[JWC_TEMP_MAX];
     float temp_y[JWC_TEMP_MAX];
@@ -227,6 +231,14 @@ int jwc_visible(const Jwc *d, unsigned char layer);
  * Returns 0 if there was no memory for it. */
 int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
                  unsigned char type, unsigned char pen, unsigned char layer);
+
+/* Copy an entity, moved by (dx,dy) -- what 複写 does.  Every byte of the
+ * record is kept but the coordinates, because what the trailing bytes mean is
+ * not known and the original's own copy keeps them.  Returns 0 if there was no
+ * memory for it. */
+int jwc_dup_line(Jwc *d, long k, float dx, float dy);
+int jwc_dup_arc(Jwc *d, long k, float dx, float dy);
+int jwc_dup_text(Jwc *d, long k, float dx, float dy);
 
 /* Take a line out, the way 線消 does.  The ones after it move down, which is
  * what the original's count shows: thirty lines become twenty-nine. */

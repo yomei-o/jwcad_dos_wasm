@@ -1001,6 +1001,26 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_arc(v, 470, 8, 1, 0, 0, 7, ROP_REPLACE, JW_STYLE_SOLID);
                 jw_point(v, 470, 8, 7, ROP_REPLACE);
             }
+            /* 複写's distance field, the same shape but from column 18:
+             * `[ESC].距離 X,Y =` fills columns 1 to 16 and the characters go in
+             * one to a cell after it. */
+            if (s->command == 1 && i == 7) {
+                int n;
+
+                for (n = 0; n < s->typed_n && n < 8; n++) {
+                    char one[4];
+
+                    one[0] = s->typed[n];
+                    one[1] = one[2] = ' ';
+                    one[3] = 0;
+                    jw_ui_text(v, 18 + n, 1, 7, 0, one);
+                }
+                /* The cursor, the same green block 複線 has: the lower nine
+                 * rows of the cell the next character goes in.  Measured with
+                 * `20,30` typed -- x176..183, y7..15, which is column 23. */
+                n = s->typed_n < 8 ? s->typed_n : 8;
+                fill(v, 136 + n * 8, 7, 143 + n * 8, 15, 4);
+            }
             /* And the field itself: what has been typed, one character to a
              * cell from column 22, each of them clearing the two cells after
              * it the way the original writes them. */
@@ -1057,7 +1077,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * points: 円周1/4点 at column 22 and nothing at 17.  Not while the
          * range is being taken -- the two presses that make the box are over
          * the drawing and the original writes neither word then. */
-        if (s->snap && s->command == 1 && s->stage >= 5) {
+        if (s->snap && s->command == 1 && (s->stage == 5 || s->stage == 6)) {
             jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[3][1]);
         }
         /* None of them while 文字 is taking a string: the band is black. */

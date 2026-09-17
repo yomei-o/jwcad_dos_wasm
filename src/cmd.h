@@ -92,6 +92,12 @@ typedef struct {
      * in the second.  See src/span.h. */
     int span;
     int with_text;
+    /* How many entities there were when the range was fixed.  The selection is
+     * that set and no other: 複写 puts its copies at the end of the arrays, and
+     * a copy that lands inside the box is **not** picked up by it -- the
+     * original leaves the copies white while the originals stay red.  Measured
+     * with a five-millimetre distance, where the copy overlaps the box. */
+    long n0_lines, n0_arcs, n0_texts;
     /* 複写's base point -- 原図形の基準点位置.  Kept apart from x0,y0, which
      * are the range's first corner and are still needed to work out what the
      * range holds. */

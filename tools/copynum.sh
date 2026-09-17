@@ -1,0 +1,45 @@
+#!/bin/sh
+# 複写（1 番）の ②数値位置 —— 距離を打ち込んで複製する —— を本物と移植の
+# 両方に通して 640x480 まるごと比べる。
+#
+#   sh tools/copynum.sh 20,30                 # 距離を打って [Enter]
+#   STOP=1 sh tools/copynum.sh 20,30          # 打ったところで止める
+#   SAME=1 sh tools/copynum.sh                # 前回と同じ ﾏｳｽ(R)
+#
+# 打ち込みは 1 文字ずつ送ります。まとめて送ると本物が読みきれず、最初の
+# 1 文字しか届きません。
+set -e
+cd "$(dirname "$0")/.."
+mkdir -p tmp/cn
+EMU=../dosv_emu_cpp/dosemu.exe
+[ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
+DRAWING="${DRAWING:-SAMPLE0}"
+WAIT="${WAIT:-40000000}"
+num="${1:-20,30}"
+P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 30000000\n'
+{
+    printf 'wait %s\nmouse 90 72\nwait 2000000\nclick left\nwait 24000000\n' "$WAIT"
+    printf "$P" 150 130 right right
+    printf "$P" 245 170 left left
+    printf "$P" 580 8 left left          # ①範囲 確定
+    printf "$P" 220 8 left left          # ②数値位置
+    if [ -n "$SAME" ]; then
+        printf "$P" 400 300 right right  # 前回と同じ
+    else
+        echo "$num" | sed 's/./type &\nwait 6000000\n/g'
+        [ -z "$STOP" ] && printf 'key enter\nwait 40000000\n'
+    fi
+    printf 'mouse 600 450\nwait 14000000\n'
+    printf 'shot ../jwcad_dos_wasm/tmp/cn/orig.raw\n'
+} > tmp/cn/check.txt
+"$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
+       --script tmp/cn/check.txt orig/JW_CADV.EXE "$DRAWING.JWC" > /dev/null 2>&1
+set -- -c 1 -r 150 130 -p 245 170 -t 580 -t 220
+if [ -n "$SAME" ]; then
+    set -- "$@" -r 400 300
+else
+    if [ -n "$STOP" ]; then set -- "$@" -K "$num"; else set -- "$@" -k "$num"; fi
+fi
+./tests/drawing.exe -u "$@" -m 600 450 "orig/$DRAWING.JWC" tmp/cn/port.raw > /dev/null
+printf '複写 数値位置%s %s  ' "${SAME:+（前回と同じ）}${STOP:+（打っただけ）}" "${SAME:+-}${SAME:--$num}"
+python tools/fulldiff.py tmp/cn/orig.raw tmp/cn/port.raw

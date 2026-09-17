@@ -63,6 +63,11 @@ const Fontx *jw_view_ank(void);
 void jw_view_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
                   unsigned colour);
 
+/* What colour a text of this character size comes out in -- the drawing's own
+ * MPEN table through LCOLLOR.  複写 needs it to put a copied text back on top
+ * of what it reddened. */
+unsigned jw_view_text_colour(const Jwc *d, unsigned size);
+
 /* And one arc, the same way. */
 void jw_view_arc(VGA *v, const Jwc *d, const JwcArc *a, const JwView *w,
                  unsigned colour);
