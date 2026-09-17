@@ -316,6 +316,10 @@ static void panel(const char *line, Jwc *d)
      * table in the memory image -- see scales() below. */
     d->denom = (f = field(line, 9)) ? (float)atof(f) : 1.0f;
     d->work_seconds = (f = field(line, 18)) ? strtol(f, NULL, 10) : 0;
+    d->char_type = (f = field(line, 5)) ? (int)strtol(f, NULL, 10) : 1;
+    if (d->char_type < 1 || d->char_type > 10) {
+        d->char_type = 1;
+    }
 }
 
 /* How many decimals the panel shows a length to.  It is not stored: it comes
@@ -502,6 +506,7 @@ Jwc *jwc_load(const char *path, const char **why)
         return NULL;
     }
     d->cap_lines = d->n_lines + 1;
+    d->cap_texts = d->n_texts + 1;
     d->cap_arcs = d->n_arcs + 1;
 
     p = at;
@@ -927,6 +932,117 @@ void jwc_remove_text(Jwc *d, long k)
     memmove(d->texts + k, d->texts + k + 1,
             (size_t)(d->n_texts - k - 1) * sizeof *d->texts);
     d->n_texts--;
+}
+
+/* Add a text, the way 文字 does.
+ *
+ * Two things grow: the array of records and **the string pool**, which is one
+ * run of NUL-separated Shift-JIS with the records pointing into it by offset.
+ * The original appends: writing `ABC` at (250,200) on SAMPLE0 puts the string
+ * at offset 76, which is where the pool ended, and the fourth header line goes
+ * from `60D1:004C` to `4612:0050` -- four bytes more, the three letters and
+ * the NUL.  jwc_save writes whatever `text_len` says, so growing it here is
+ * all the file needs.
+ *
+ * Every JwcText holds a **pointer** into the pool rather than an offset, so
+ * moving the pool moves them: the offsets are taken first and put back after.
+ */
+int jwc_add_text(Jwc *d, float x0, float y0, float x1, float y1,
+                 const char *str, unsigned char size, unsigned char layer)
+{
+    static const long BLOCK = 32;
+    const long len = (long)strlen(str);
+    long k, *off;
+    char *pool;
+    JwcText *t;
+
+    if (d->n_texts >= d->cap_texts) {
+        long want = d->cap_texts + BLOCK;
+        JwcText *grown = (JwcText *)realloc(d->texts, (size_t)want * sizeof *grown);
+
+        if (!grown) {
+            return 0;
+        }
+        d->texts = grown;
+        d->cap_texts = want;
+    }
+    off = (long *)malloc((size_t)(d->n_texts + 1) * sizeof *off);
+    if (!off) {
+        return 0;
+    }
+    for (k = 0; k < d->n_texts; k++) {
+        off[k] = d->texts[k].text ? (long)(d->texts[k].text - d->text) : 0;
+    }
+    pool = (char *)realloc(d->text, (size_t)(d->text_len + len + 2));
+    if (!pool) {
+        free(off);
+        return 0;
+    }
+    d->text = pool;
+    for (k = 0; k < d->n_texts; k++) {
+        d->texts[k].text = d->text + off[k];
+    }
+    free(off);
+
+    memcpy(d->text + d->text_len, str, (size_t)len);
+    d->text[d->text_len + len] = '\0';
+    d->text[d->text_len + len + 1] = '\0';      /* jwc_load's spare byte */
+    t = &d->texts[d->n_texts];
+    memset(t, 0, sizeof *t);
+    t->x0 = x0;
+    t->y0 = y0;
+    t->x1 = x1;
+    t->y1 = y1;
+    t->text = d->text + d->text_len;
+    t->size = size;
+    t->layer = layer;
+    t->rest[0] = size;          /* the record keeps the size first, then the
+                                 * layer -- see jwc.h */
+    t->rest[1] = layer;
+    d->text_len += len + 1;
+    d->n_texts++;
+    return 1;
+}
+
+/* How long a text's baseline is, in drawing units.
+ *
+ * It follows from the string and the character size, not from anything stored:
+ * in millimetres of paper it is
+ *
+ *     (cells * (width + gap) - last * gap) / 20
+ *
+ * where `cells` is the string's width in half-width cells (a full-width
+ * character is two) and `last` is 2 when the string ends in a full-width
+ * character and 1 when it does not.  The gap belongs to the character before
+ * it and is as wide as that character; only the last one's is left off.
+ *
+ * Measured against the original: all 106 of TEST7's texts come back from its
+ * own save at exactly that length, and `ABC` written on SAMPLE0 at character
+ * type 3 comes out 8.720535 where this gives 8.720539.  RESUME.md 4.16.
+ */
+double jwc_text_length(const Jwc *d, const char *str, unsigned char size)
+{
+    const unsigned char *p = (const unsigned char *)str;
+    const int k = size <= 10 ? size : 0;
+    long cells = 0, last = 1;
+
+    if (!p) {
+        return 0.0;
+    }
+    while (*p) {
+        if (((p[0] >= 0x81 && p[0] <= 0x9f) || (p[0] >= 0xe0 && p[0] <= 0xef))
+            && p[1]) {
+            cells += 2;
+            last = 2;
+            p += 2;
+        } else {
+            cells += 1;
+            last = 1;
+            p += 1;
+        }
+    }
+    return (cells * (double)(d->text_w[k] + d->text_gap[k])
+            - last * (double)d->text_gap[k]) / 20.0 * d->unit_mm;
 }
 
 int jwc_add_arc(Jwc *d, float cx, float cy, float r,

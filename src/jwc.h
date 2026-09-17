@@ -73,7 +73,7 @@ typedef struct {
     JwcArc *arcs;
     /* How many the arrays hold, which is not the same as how many are used
      * once a drawing command has added to them. */
-    long cap_lines, cap_arcs;
+    long cap_lines, cap_arcs, cap_texts;
     JwcText *texts;
     JwcPoint *points;
     char *text;                 /* the NUL-separated string pool */
@@ -156,6 +156,14 @@ typedef struct {
     int write_layer;            /* field 10 -- the button drawn filled in */
     float denom;                /* the scale: S=1/denom */
     int decimals;               /* how many decimals a length is shown to */
+    /* Which of the ten character types is selected for writing -- the field
+     * after five commas on the second line.  文字's own line says
+     * `文字種類[F3]` and the panel `ﾍﾟﾝ2 基点 左下` / `横 3.0 縦 3.0`, and all
+     * three come out of `text_pen`, `text_w` and `text_h` **at this index**,
+     * not at index 0.  Measured on three drawings whose index 0 says something
+     * else: SAMPLE3 is type 8 and writes 8.0 with pen 4, TEST7 type 6 and
+     * writes 6.0 with pen 3, SAMPLE0 type 3 and writes 3.0 with pen 2. */
+    int char_type;
     /* How long the drawing has been worked on, in seconds -- field 18.  The
      * original does not keep it as a duration: at startup it sets its session
      * clock to `time() - this`, so that `time() - clock` gives the total back.
@@ -229,6 +237,16 @@ void jwc_remove_arc(Jwc *d, long k);
 
 /* And a text. */
 void jwc_remove_text(Jwc *d, long k);
+
+/* Put one in, the way 文字 does: the record **and** the string, which is
+ * appended to the pool the way the original appends it.  Returns 0 if there
+ * was no memory for it. */
+int jwc_add_text(Jwc *d, float x0, float y0, float x1, float y1,
+                 const char *str, unsigned char size, unsigned char layer);
+
+/* How long that text's baseline comes out, in drawing units -- it follows from
+ * the string and the character size.  See jwc.c and RESUME.md 4.16. */
+double jwc_text_length(const Jwc *d, const char *str, unsigned char size);
 
 /* And a circle: the whole ellipse, which is what `start == end` means. */
 int jwc_add_arc(Jwc *d, float cx, float cy, float r,

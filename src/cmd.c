@@ -939,7 +939,7 @@ static int offset_line(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
 }
 
 /* A key while a command is asking for a number.  See cmd.h. */
-int jw_cmd_key(JwCmd *c, const Jwc *d, int key)
+int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
 
@@ -955,6 +955,47 @@ int jw_cmd_key(JwCmd *c, const Jwc *d, int key)
      * turns 70 white pixels red.  So the range's answer is thrown away and
      * the presses build a new set up from nothing, which is exactly
      * `cleared` plus the flip list this already keeps. */
+    /* 文字's field takes a string, not a number.  [Enter] writes the text and
+     * the command starts again -- the original puts the counts back and
+     * rewrites its own line, which is stage 0. */
+    if (c->typing_text) {
+        if (key == 13 || key == 10) {
+            const unsigned char size = (unsigned char)(d ? d->char_type : 1);
+            const unsigned char layer =
+                (unsigned char)(d ? ((0 << 4) | (d->write_layer & 15)) : 0);
+
+            c->typing_text = 0;
+            c->pressed = 0;
+            c->stage = 0;
+            if (c->typed_n > 0 && d) {
+                /* The far end follows from the string and the character type
+                 * -- see jwc_text_length.  The baseline is horizontal, which
+                 * is what ①水平 means, and the line offers ②垂直 and
+                 * ③角度指定 for the others; those are not done. */
+                const double len = jwc_text_length(d, c->typed, size);
+
+                jwc_add_text(d, (float)c->x0, (float)c->y0,
+                             (float)(c->x0 + len), (float)c->y0,
+                             c->typed, size, layer);
+            }
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (key >= 0x20 && key < 0x7f
+            && c->typed_n < (int)sizeof c->typed - 1) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+            return 1;
+        }
+        return 1;               /* the field has the keyboard until [Enter] */
+    }
     if (key == JW_KEY_F2 && c->command == 25 && c->stage == 3) {
         c->cleared = 1;
         c->n_flip = 0;
@@ -1125,6 +1166,25 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             jwc_remove_arc(d, j);
         }
         c->stage = 1;
+        return 1;
+    }
+    if (c->command == 13) {
+        /* 文字: one press takes the place the string starts at -- the base
+         * point is 左下, the bottom left, so it is the near end of the
+         * baseline -- and the top line turns into a field to type it in.
+         * [Enter] writes the text.  RESUME.md 4.17.
+         *
+         * Measured: pressing (250,200) on SAMPLE0 and typing `ABC` leaves
+         * a record whose baseline runs (129.000,263.000)-(137.721,263.000),
+         * the string at the end of the pool, character type 3 and layer 0. */
+        jw_cmd_at(w, sx, sy, &x, &y);
+        c->x0 = x;
+        c->y0 = y;
+        c->pressed = 1;
+        c->stage = 1;
+        c->typing_text = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
         return 1;
     }
     if (c->command == 24) {

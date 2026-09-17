@@ -36,7 +36,7 @@ typedef struct {
     /* 複線's number, as it is being typed: the field at column 22 of the top
      * line.  The command keeps it (src/cmd.h) and the front end copies it in
      * with the rest. */
-    char typed[9];
+    char typed[48];
     int typed_n;
     double num[2];
     int dec[2];                 /* how many decimals each of them is shown to:
@@ -49,6 +49,13 @@ typedef struct {
      * says so in the band beside the counts and leaves it there until the next
      * press finds something or another item is picked; see jw_ui_draw. */
     int missed;
+    /* 文字 is taking a string: the port draws it at column 1 of row 2. */
+    int typing_text;
+    /* 文字's own numbers: the character type selected for writing and that
+     * type's pen, width and height (tenths of a millimetre).  src/prompt.h
+     * holds the ones the capture happened to see, so these put them back --
+     * see Jwc.char_type. */
+    int char_type, char_pen, char_w, char_h;
     /* What 線変更 took: 1 a line, 2 an arc.  See JwCmd. */
     int hit_kind;
     /* Has the pointer moved since the last press?  Until it does, the counts

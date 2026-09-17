@@ -70,6 +70,7 @@ static void sync_ui(void)
     ui.outside = cmd.outside;
     ui.moved = cmd.moved;
     ui.hit_kind = cmd.hit_kind;
+    ui.typing_text = cmd.typing_text;
 }
 
 /* Redraw at the current view and unpack the planes for the canvas.  The order

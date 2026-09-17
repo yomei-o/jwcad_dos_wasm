@@ -53,7 +53,7 @@ typedef struct {
      * clears for it. */
     long pick;
     int typing;
-    char typed[9];
+    char typed[48];
     int typed_n;
     double gap;                 /* millimetres of paper, as typed */
     /* The line that was pointed at, kept here so that the band it drags and
@@ -89,6 +89,10 @@ typedef struct {
      * (one pixel is 1/unit_mm millimetres of paper) and `角度= 0.000`. */
     int press_x, press_y;
     int moved;
+    /* 文字 is taking a string rather than a number: the keys go into `typed`
+     * as they come and [Enter] writes the text.  Measured -- the original
+     * shows the whole string again at column 1 of row 2 after every key. */
+    int typing_text;
     /* What 線変更 took: 1 a line, 2 an arc, 0 nothing yet.  The word it writes
      * beside the counts is `線` or `円` accordingly. */
     int hit_kind;
@@ -152,7 +156,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item);
  * `"2  "` at column 22, `"0  "` at column 23 -- and clears the two cells after
  * it, which is how [BS] can put the field back.  src/ui.c draws the field from
  * `typed` and gets the same picture. */
-int jw_cmd_key(JwCmd *c, const Jwc *d, int key);
+int jw_cmd_key(JwCmd *c, Jwc *d, int key);
 
 /* The function keys, for jw_cmd_key.  They are not characters, so they are
  * numbered past the byte the rest of the keys come in as.  While 複線 is

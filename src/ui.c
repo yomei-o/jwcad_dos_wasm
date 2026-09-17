@@ -396,6 +396,10 @@ void jw_ui_from(JwUi *s, const Jwc *d)
     s->name = d->layer_name[(s->group << 4) | (s->layer & 15)];
     s->work_seconds = d->work_seconds;
     s->dec[0] = s->dec[1] = d->decimals;
+    s->char_type = d->char_type;
+    s->char_pen = d->text_pen[d->char_type];
+    s->char_w = d->text_w[d->char_type];
+    s->char_h = d->text_h[d->char_type];
     for (i = 0; i < 16; i++) {
         const unsigned char layer = (unsigned char)((s->group << 4) | i);
         long k;
@@ -432,6 +436,39 @@ void jw_ui_from(JwUi *s, const Jwc *d)
 /* One row of a stage table, with the command's numbers filled in.  Both
  * tables -- the generated src/stage.h and the hand-written src/typed.h -- hold
  * the same shape and are replayed through here. */
+/* Copy `text`, putting `n` numbers in place of its first `count` runs of
+ * digits.
+ *
+ * The prompts in src/prompt.h are the original's own bytes, captured while it
+ * had one particular drawing up, so the few that carry a number carry that
+ * drawing's number.  This puts the one in hand back without touching anything
+ * else; `decimal` says whether a run with a `.` in it is one number (`4.0`)
+ * or two. */
+static void put_numbers(char *out, size_t cap, const char *text,
+                        const double *n, int count, int decimal)
+{
+    size_t o = 0;
+    int k = 0;
+
+    while (*text && o + 24 < cap) {
+        if (k < count && *text >= '0' && *text <= '9') {
+            while (*text && ((*text >= '0' && *text <= '9')
+                             || (decimal && *text == '.'))) {
+                text++;
+            }
+            if (decimal) {
+                o += (size_t)sprintf(out + o, "%.1f", n[k]);
+            } else {
+                o += (size_t)sprintf(out + o, "%d", (int)n[k]);
+            }
+            k++;
+            continue;
+        }
+        out[o++] = *text++;
+    }
+    out[o] = 0;
+}
+
 static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
     char out[160];
@@ -453,6 +490,16 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
     /* 線変更's word beside the counts is the one thing in the table that
      * depends on what the press found, so it is drawn below instead. */
     if (q->command == 24 && q->col == 20 && q->row == 2) {
+        return;
+    }
+    /* And the character type in 文字's field is the drawing's, not the
+     * capture's. */
+    if (q->command == 13 && q->col == 5 && q->row == 4) {
+        char one[64];
+        double n = s->char_type;
+
+        put_numbers(one, sizeof one, q->text, &n, 1, 0);
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
         return;
     }
     if (q->numbers == 3) {
@@ -749,8 +796,34 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             }
         }
         for (; p->col; p++) {
+            char out[160];
+            const char *text = p->text;
+
+            /* 文字's three numbers belong to the drawing, not to the capture:
+             * the character type it writes with, and that type's pen, width
+             * and height.  src/prompt.h holds what SAMPLE2 said (`[F4]`,
+             * `ﾍﾟﾝ2`, `横 4.0 縦 4.0`), so the digits are put back from the
+             * file -- SAMPLE0 says `[F3]` and `3.0`, SAMPLE3 `[F8]`, `ﾍﾟﾝ4`
+             * and `8.0`, TEST7 `[F6]`, `ﾍﾟﾝ3` and `6.0`, all measured. */
+            if (s->command == 13 && s->char_type) {
+                double n[2];
+                int k = 0;
+
+                if (p->row == 1 && p->col == 8) {
+                    n[k++] = s->char_type;
+                } else if (p->row == 2 && p->col == 1) {
+                    n[k++] = s->char_pen;
+                } else if (p->row == 3 && p->col == 1) {
+                    n[k++] = s->char_w / 10.0;
+                    n[k++] = s->char_h / 10.0;
+                }
+                if (k) {
+                    put_numbers(out, sizeof out, p->text, n, k, p->row == 3);
+                    text = out;
+                }
+            }
             jw_ui_text(v, p->col, p->row, (unsigned)p->fg, (unsigned)p->bg,
-                       p->text);
+                       text);
         }
         /* Then what the command has written since, stage by stage, because a
          * later stage only writes over part of what an earlier one left -- and
@@ -793,7 +866,18 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * (columns 1 to 15) is painted separately just below. */
             fill(v, 122, 17, 638, 31, 0);
             top_clear();
-            if (own) {
+            if (s->command == 13 && i == 1) {
+                /* 文字's field takes the screen over: the whole band under the
+                 * top line goes black -- the counts and their label with it --
+                 * and so does the strip along the very bottom.  Measured on
+                 * SAMPLE0: after the press rows 16 to 47 are empty across all
+                 * 640 columns except the string being typed at column 1, and
+                 * rows 464 to 479 are empty too, where every other command
+                 * leaves the zoom bar alone. */
+                fill(v, 24, 16, 638, 47, 0);
+                fill(v, 0, 17, 23, 47, 0);
+                fill(v, 0, 464, 639, 479, 0);
+            } else if (own) {
                 fill(v, 1, 17, 120, 47, 4);
             } else {
                 counts(v, s);
@@ -821,6 +905,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * middle away (the ring alone) and pressing it again puts it back.
              * The port has no 基点変, so it draws the one the command starts
              * with -- the middle, which is the centre of the circle. */
+            /* 文字's field: the string as it has been typed so far, at
+             * column 1 of row 2.  The original writes the whole of it again
+             * after every key (`A`, `AB`, `ABC`), so this does the same. */
+            if (s->command == 13 && i == 1 && s->typing_text) {
+                jw_ui_text(v, 1, 2, 7, 0, s->typed);
+                /* and the block where the next character will go, colour 4,
+                 * nine rows of the cell -- the same one 複線's field has */
+                fill(v, s->typed_n * 8, 23, s->typed_n * 8 + 7, 31, 4);
+            }
             /* 線変更 says `線` or `円` there, whichever it took. */
             if (s->command == 24 && i == 1 && s->hit_kind) {
                 jw_ui_text(v, 20, 2, 7, 0xffff,
@@ -884,10 +977,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         if (s->snap && s->command == 5 && s->stage == 5) {
             jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[3][1]);
         }
-        if (s->snap && JW_SNAP[s->command - 1][0]) {
+        /* None of them while 文字 is taking a string: the band is black. */
+        if (s->snap && !s->typing_text && JW_SNAP[s->command - 1][0]) {
             jw_ui_text(v, 17, 2, 7, 0, JW_SNAP[s->command - 1][0]);
         }
-        if (s->snap && JW_SNAP[s->command - 1][1]) {
+        if (s->snap && !s->typing_text && JW_SNAP[s->command - 1][1]) {
             jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[s->command - 1][1]);
         }
         /* 「読取可能データ無」 -- what a command that looks for an entity
@@ -918,6 +1012,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                    "1991-1999 ||");
     }
     jw_line(v, 0, 16, 639, 16, 7, ROP_REPLACE, JW_STYLE_SOLID);
+    /* 文字's field takes the line under the top line away as well -- but only
+     * from column 4 across, which is where the string it is taking starts.
+     * Measured: with `ABC` typed, rows 16 to 47 are black from x 24 to 638 and
+     * the white line is still there at x 0 to 23 and at 639. */
+    if (s->command == 13 && s->typing_text) {
+        fill(v, 24, 16, 638, 16, 0);
+    }
     if (s->guide) {
         jw_ui_text(v, 17, 3, 7, 0, s->guide);
     }
