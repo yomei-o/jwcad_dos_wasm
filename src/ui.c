@@ -1111,8 +1111,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * points: 円周1/4点 at column 22 and nothing at 17.  Not while the
          * range is being taken -- the two presses that make the box are over
          * the drawing and the original writes neither word then. */
+        /* 複写 and 移動 say what the right button would take from the moment
+         * the range is fixed and they are asking how to do it -- stage 4 on --
+         * and not while the range is being taken.  Measured: with the pointer
+         * over the drawing, the two presses that make the box leave the band
+         * empty, ①同形別処理 (which goes back to stage 4) puts 円周1/4点 back,
+         * and it is gone again once it is asking for the distance (stage 7)
+         * or the copy is made (stage 8). */
         if (s->snap && (s->command == 1 || s->command == 16)
-            && (s->stage == 5 || s->stage == 6)) {
+            && s->stage >= 4 && s->stage <= 6) {
             jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[3][1]);
         }
         /* None of them while 文字 is taking a string: the band is black. */

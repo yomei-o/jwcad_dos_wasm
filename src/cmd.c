@@ -1090,6 +1090,27 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
             c->stage = 5;
             return 1;
         }
+        if (c->stage == 8 && item == 1) {
+            /* ①同形別処理 -- the same selection again, by another method: the
+             * line goes back to `|①ﾏｳｽ位置(L,R)|②数値位置|…|` with 変更無し
+             * in the band. */
+            c->stage = 4;
+            return 1;
+        }
+        if (c->stage == 8 && item == 2) {
+            /* ②他図形処理 -- another figure: back to the line the item came
+             * up with, and nothing picked. */
+            c->pressed = 0;
+            c->stage = 0;
+            c->n_flip = 0;
+            c->cleared = 0;
+            c->copies = 0;
+            free(c->sel_line);
+            free(c->sel_arc);
+            free(c->sel_text);
+            c->sel_line = c->sel_arc = c->sel_text = 0;
+            return 1;
+        }
         if (c->stage == 8 && item == 3) {
             /* ③連続 -- another copy, one step further on.  The line stays as
              * it is and the counts go up again (32|14 to 34|15 on SAMPLE0). */

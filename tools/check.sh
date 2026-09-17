@@ -130,6 +130,8 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     SAME=1 sh tools/copynum.sh
     AGAIN=1 sh tools/copynum.sh 20,30
     AGAIN=2 sh tools/copynum.sh 20,30
+    THEN=120 sh tools/copynum.sh 20,30
+    THEN=220 sh tools/copynum.sh 20,30
     echo "=== 移動 (16), which takes its range the same way and shifts what"
     echo "    it picked instead of copying it (the 2 left over are the"
     echo "    original's own erase clipping a neighbour)"
