@@ -92,6 +92,10 @@ typedef struct {
      * in the second.  See src/span.h. */
     int span;
     int with_text;
+    /* 複写's base point -- 原図形の基準点位置.  Kept apart from x0,y0, which
+     * are the range's first corner and are still needed to work out what the
+     * range holds. */
+    double base_x, base_y;
     /* Where the last press was, on the screen, and whether the pointer has
      * moved off it since.  **The counts box does not change the moment a point
      * is taken**: the original writes the two counts back and only puts the
@@ -113,6 +117,11 @@ typedef struct {
      * beside the counts is `線` or `円` accordingly. */
     int hit_kind;
 } JwCmd;
+
+/* Which commands take a range with two presses the way ③指定範囲 does: 消去
+ * itself, and 複写, whose own line offers the same `(L)線･円  (R)線･円･文字`
+ * and whose first stage is spelt exactly the same (src/copy.h). */
+#define JW_RANGE_CMD(n) ((n) == 25 || (n) == 1)
 
 /* Start a command, or leave it (0). */
 void jw_cmd_pick(JwCmd *c, int command);

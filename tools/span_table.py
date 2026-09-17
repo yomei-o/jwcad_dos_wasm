@@ -43,7 +43,11 @@ WAIT = bytes([0x81, 0x96, 0x82, 0xa8, 0x91, 0xd2, 0x82, 0xbf,
 
 
 def strings(log, lo, hi):
-    """The last write to each cell in the window, in the order they came."""
+    """The last write to each cell in the window, in the order they came.
+
+    The top line, and what a command puts in the band beside the counts --
+    columns past 22, so that the counts themselves and the two words about the
+    right button (columns 17 and 22) stay out of it."""
     out = []
     for line in open(log, encoding='latin-1'):
         f = line.split()
@@ -58,7 +62,7 @@ def strings(log, lo, hi):
         k = (int(f[8], 16), int(f[9], 16), int(f[10], 16), int(f[11], 16), s)
         if k not in out:
             out.append(k)
-    return [k for k in out if k[1] == 1]         # the top line only
+    return [k for k in out if k[1] in (1, 2) and not (k[1] == 2 and k[0] <= 22)]
 
 
 def escape(s):
@@ -81,10 +85,10 @@ def escape(s):
     return ' '.join(out) if out else '""'
 
 
-def rows(items, stage):
+def rows(items, stage, command=25):
     for col, row, fg, bg, s in items:
-        yield ('    { 25, %d, %2d, %d, %d, 0x%04x, 0, 0, { 0, 0 }, 0, %s },'
-               % (stage, col, row, fg, bg, escape(s)))
+        yield ('    { %d, %d, %2d, %d, %d, 0x%04x, 0, 0, { 0, 0 }, 0, %s },'
+               % (command, stage, col, row, fg, bg, escape(s)))
 
 
 def main():

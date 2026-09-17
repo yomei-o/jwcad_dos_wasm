@@ -151,7 +151,7 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
      * that was pressed.  Measured with ③指定範囲 on SAMPLE0 --
      * `STOP=1 sh tools/span.sh 150 130 245 170` leaves the pointer where the
      * second press landed and the original has 264 green pixels there. */
-    if (c->command == 25 && c->pressed == 2 && c->stage == 3) {
+    if (JW_RANGE_CMD(c->command) && c->pressed == 2 && c->stage == 3) {
         int qx, qy;
 
         /* Exclusive-or, and each side drawn corner to corner, is what the
@@ -191,7 +191,7 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
     if (!c->pressed) {
         return;
     }
-    if (c->command == 25 && c->pressed == 2) {
+    if (JW_RANGE_CMD(c->command) && c->pressed == 2) {
         /* 追加･除外 keeps the range on the screen; the right button's
          * 範囲確定 does not -- its screen has no green at all, and that one
          * has 264 pixels of it (SAMPLE0, (150,130)-(245,170)).  The drawing of
@@ -227,11 +227,11 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
         jw_line(v, x1 + 3, py - 1, x1 + 3, py, 4, 0x18, JW_STYLE_SOLID);
         return;
     }
-    if (c->command == 25 && c->pressed != 1) {
+    if (JW_RANGE_CMD(c->command) && c->pressed != 1) {
         return;                 /* the box is only dragged while it is open */
     }
     at_screen(w, c->x0, c->y0, &px, &py);
-    if (c->command == 4 || c->command == 25) {
+    if (c->command == 4 || JW_RANGE_CMD(c->command)) {
         jw_line(v, px, py, px, sy, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, px, sy, sx, sy, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, sx, py, sx, sy, 2, 0x18, JW_STYLE_SOLID);
@@ -637,7 +637,9 @@ static int wholly_outside(const JwCmd *c, double ax, double ay,
  * the left one 89, which is the two lines without text 0. */
 static int takes_text(const JwCmd *c)
 {
-    return !c->span || c->with_text;
+    /* ①範囲内消去 and ②範囲外消去 never ask; ③指定範囲 and 複写 do, and the
+     * answer is which button took the first point. */
+    return !(c->span || c->command == 1) || c->with_text;
 }
 
 static int flipped(const JwCmd *c, int kind, long at)
@@ -685,8 +687,14 @@ static int arc_in_range(const JwCmd *c, const JwcArc *a)
 void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 {
     long k;
+    /* Colour 2 throughout.  It looks like colour 6 on some shots of 複写's
+     * last stage, but that is the preview: the original draws the copy over
+     * the top in exclusive-or while the pointer moves, and 2 xor 4 is 6.  With
+     * the texts in the range the same shot has red, magenta, blue, green and
+     * cyan all at once, which only an exclusive-or half way through can be. */
+    const unsigned mark = 2u;
 
-    if (!d || c->command != 25 || c->pressed != 2) {
+    if (!d || !JW_RANGE_CMD(c->command) || c->pressed != 2) {
         return;
     }
     for (k = 0; k < d->n_lines; k++) {
@@ -730,7 +738,7 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
              * 000000 in the original's screen, not ffffff. */
             jw_line(v, x0, y0, x1, y1, 0, ROP_REPLACE, JW_STYLE_SOLID);
         }
-        jw_line(v, x0, y0, x1, y1, 2, ROP_REPLACE, style);
+        jw_line(v, x0, y0, x1, y1, mark, ROP_REPLACE, style);
     }
     for (k = 0; k < d->n_arcs; k++) {
         const JwcArc *a = &d->arcs[k];
@@ -740,7 +748,7 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
             && (c->outside
                 ? wholly_outside(c, a->cx - m, a->cy - m, a->cx + m, a->cy + m)
                 : arc_in_range(c, a)) != flipped(c, JW_FLIP_ARC, k)) {
-            jw_view_arc(v, d, a, w, 2);
+            jw_view_arc(v, d, a, w, mark);
         }
     }
     for (k = 0; k < d->n_texts; k++) {
@@ -753,7 +761,7 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
             && (c->outside ? wholly_outside(c, t->x0, t->y0, t->x1, t->y1)
                            : jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1))
                != flipped(c, JW_FLIP_TEXT, k)) {
-            jw_view_text(v, d, t, w, 2);
+            jw_view_text(v, d, t, w, mark);
         }
     }
     for (k = 0; k < d->n_points; k++) {
@@ -839,12 +847,26 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
         }
         return 0;
     }
-    if (c->command != 25 || c->pressed != 2) {
+    if (!JW_RANGE_CMD(c->command) || c->pressed != 2) {
         return 0;
     }
     if (c->stage == 3) {        /* 追加･除外's 「①範囲 確定」 */
         if (item == 1) {
-            c->stage = 2;
+            /* 消去 goes on to `復活出来ません |①実行|②中止|`; 複写 asks how
+             * to copy -- `|①ﾏｳｽ位置(L,R)|②数値位置|…|⑦属性変更|`, with
+             * 変更無し in the band (src/copy.h stage 4). */
+            c->stage = c->command == 1 ? 4 : 2;
+        }
+        return 0;
+    }
+    if (c->command == 1) {
+        /* 複写, once the range is fixed.  Nothing in the line is picked yet --
+         * none of the seven has 【】 round it -- so ①ﾏｳｽ位置 has to be chosen
+         * before the presses mean anything.  Measured: click it and the line
+         * becomes `複写  原図形の基準点位置 マウス指示 (L)free (R)Read`. */
+        if (c->stage == 4 && item == 1) {
+            c->stage = 5;
+            return 1;
         }
         return 0;
     }
@@ -1081,7 +1103,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         return 1;               /* the field has the keyboard until [Enter] */
     }
-    if (key == JW_KEY_F2 && c->command == 25 && c->stage == 3) {
+    if (key == JW_KEY_F2 && JW_RANGE_CMD(c->command) && c->stage == 3) {
         c->cleared = 1;
         c->n_flip = 0;
         return 1;
@@ -1329,12 +1351,29 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->stage = 1;
         return 1;
     }
-    if (c->command == 25) {
+    if (JW_RANGE_CMD(c->command)) {
         /* 消去: the first press takes a corner of the range and the second,
          * with the right button, fixes it -- 範囲確定, as the line it puts up
          * says.  What the box holds whole is then painted in colour 2 and the
-         * top line asks for ①実行.  See RESUME.md 4.9. */
+         * top line asks for ①実行.  See RESUME.md 4.9.
+         *
+         * 複写 takes its range exactly the same way, and its lines are spelt
+         * the same but for the word in front (src/copy.h).  Where it differs
+         * is after 範囲確定: 消去 asks ①実行, 複写 asks **how** to copy. */
         jw_cmd_at(w, sx, sy, &x, &y);
+        if (c->command == 1 && c->stage >= 4) {
+            /* 複写's own stages: ①ﾏｳｽ位置 has been picked and the presses now
+             * take the base point and the place to put the copy.  RESUME.md
+             * 4.9e -- the second of those is not understood yet, so this takes
+             * the base point and stops there. */
+            if (c->stage == 5) {
+                c->base_x = x;
+                c->base_y = y;
+                c->stage = 6;
+                return 1;
+            }
+            return 0;
+        }
         if (!c->pressed) {
             c->x0 = x;
             c->y0 = y;
@@ -1353,7 +1392,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
              * taken out of it and put back one at a time.  Measured: both
              * leave the same 224 red pixels on SAMPLE0's (150,130)-(245,170),
              * and only the top line differs. */
-            c->stage = right ? 2 : 3;
+            /* 複写 has no ①実行, so the right button fixes the range into
+             * the same 追加･除外 stage the left one does. */
+            c->stage = (right && c->command == 25) ? 2 : 3;
             return 1;
         }
         if (c->stage == 3) {

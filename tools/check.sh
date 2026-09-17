@@ -103,6 +103,14 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     STOP=1 sh tools/span.sh 150 130 245 170 197 157
     sh tools/span.sh 150 130 245 170
     R1=1 sh tools/span.sh 150 130 245 170
+    echo "=== 複写 (1) taking its range -- the same two presses as ③指定範囲,"
+    echo "    then ①範囲 確定 and ①ﾏｳｽ位置 on the top line"
+    STEP=2 sh tools/copy.sh 150 130 245 170
+    STEP=2 R1=1 sh tools/copy.sh 150 130 245 170
+    STEP=3 sh tools/copy.sh 150 130 245 170
+    STEP=3 R1=1 sh tools/copy.sh 150 130 245 170
+    STEP=4 sh tools/copy.sh 150 130 245 170
+    STEP=4 R1=1 sh tools/copy.sh 150 130 245 170
     echo "=== 追加･除外 on SAMPLE6, which only its pen-4 entities answer"
     DRAWING=SAMPLE6 WAIT=150000000 STOP=1 sh tools/erase2.sh 170 235 215 260 209 242
     echo "=== 点 dropping a 仮点"

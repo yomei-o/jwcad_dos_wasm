@@ -10,6 +10,7 @@
 #include "stage.h"
 #include "typed.h"
 #include "span.h"
+#include "copy.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -894,6 +895,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     own = 1;
                 }
             }
+            for (q = JW_COPY; q->command; q++) {
+                if (q->command == s->command && q->stage == i
+                    && q->row != 1 && q->col <= 15) {
+                    own = 1;
+                }
+            }
             fill(v, 0, 0, 639, 15, 0);
             /* The band right of the counts box goes too.  複線 leaves
              * `[F1]`..`[F5]` and the interval there while it asks, and the
@@ -947,6 +954,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 const int st = (i == 1 && !s->with_text) ? 11 : i;
 
                 for (r = JW_SPAN; r->command; r++) {
+                    stage_text(v, r, s, st);
+                }
+            }
+            /* 複写's table, kept apart the same way (src/copy.h). */
+            if (s->command == 1) {
+                const JwStage *r;
+                const int st = (i == 1 && !s->with_text) ? 11 : i;
+
+                for (r = JW_COPY; r->command; r++) {
                     stage_text(v, r, s, st);
                 }
             }
@@ -1035,6 +1051,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * Column 22 only -- the original writes 円周1/4点 there, the same
          * as □ and ○ do, and leaves column 17 alone. */
         if (s->snap && s->command == 5 && s->stage == 5) {
+            jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[3][1]);
+        }
+        /* 複写 the same, once ①ﾏｳｽ位置 has been picked and it is asking for
+         * points: 円周1/4点 at column 22 and nothing at 17.  Not while the
+         * range is being taken -- the two presses that make the box are over
+         * the drawing and the original writes neither word then. */
+        if (s->snap && s->command == 1 && s->stage >= 5) {
             jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[3][1]);
         }
         /* None of them while 文字 is taking a string: the band is black. */
