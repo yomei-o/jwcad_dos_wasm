@@ -37,6 +37,7 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/pressfull.sh 11 300 200 400 200      # ○  a circle
     echo "=== and the moment after a point is taken, before the pointer moves:"
     echo "    the counts box keeps the two counts and nothing is dragged yet"
+    echo "    (＋ and ／ leave the original's own (0,16) pixel -- 4.11)"
     sh tools/pressfull.sh 2 300 200
     sh tools/pressfull.sh 3 300 200
     sh tools/pressfull.sh 4 250 150
@@ -132,6 +133,12 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     AGAIN=2 sh tools/copynum.sh 20,30
     THEN=120 sh tools/copynum.sh 20,30
     THEN=220 sh tools/copynum.sh 20,30
+    echo "=== 複写's ①ﾏｳｽ位置: the base point, then where it goes -- and it"
+    echo "    does not end there, every press after puts another one down"
+    sh tools/copypos.sh
+    MORE="300 300" sh tools/copypos.sh
+    AGAIN=1 sh tools/copypos.sh
+    THEN=350 sh tools/copypos.sh
     echo "=== 移動 (16), which takes its range the same way and shifts what"
     echo "    it picked instead of copying it (the 2 left over are the"
     echo "    original's own erase clipping a neighbour)"
@@ -141,7 +148,12 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     CMD=16 sh tools/copynum.sh 20,30
     CMD=16 SAME=1 sh tools/copynum.sh
     CMD=16 AGAIN=1 sh tools/copynum.sh 20,30
-    echo "=== 追加･除外 on SAMPLE6, which only its pen-4 entities answer"
+    echo "    (移動's are the original's own erase clipping a neighbour)"
+    CMD=16 sh tools/copypos.sh
+    CMD=16 MORE="300 300" sh tools/copypos.sh
+    CMD=16 AGAIN=1 sh tools/copypos.sh
+    echo "=== 追加･除外 on SAMPLE6, a busy drawing (the 2 left over are the"
+    echo "    original marking a neighbour one pixel shorter than it drew it)"
     DRAWING=SAMPLE6 WAIT=150000000 STOP=1 sh tools/erase2.sh 170 235 215 260 209 242
     echo "=== 点 dropping a 仮点"
     sh tools/pressfull.sh 22 300 250

@@ -116,6 +116,11 @@ typedef struct {
      * are the range's first corner and are still needed to work out what the
      * range holds. */
     double base_x, base_y;
+    /* One step, in drawing units: what ③連続 repeats.  ②数値位置 puts the
+     * typed millimetres here and ①ﾏｳｽ位置 the distance from the base point to
+     * the press, so 連続 does not have to know which of the two made the
+     * first copy. */
+    double step_x, step_y;
     /* Where the last press was, on the screen, and whether the pointer has
      * moved off it since.  **The counts box does not change the moment a point
      * is taken**: the original writes the two counts back and only puts the
@@ -169,8 +174,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right);
 long jw_cmd_line_at(const Jwc *d, const JwView *w, int sx, int sy);
 
 /* The same, but taking only what is drawn with the pen and line type that
- * are selected for writing when `only_writing` is set.  That is what 消去's
- * 追加･除外 does and 線消 does not -- see src/cmd.c. */
+ * are selected for writing when `only_writing` is set.  That is what a press
+ * with a **modifier key held** does; a plain press takes anything, whichever
+ * command is asking -- see writing_kind in src/cmd.c. */
 long jw_cmd_line_at_kind(const Jwc *d, const JwView *w, int sx, int sy,
                          int only_writing);
 

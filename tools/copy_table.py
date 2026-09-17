@@ -17,6 +17,8 @@ The stages, as src/ui.c replays them:
      6  after the base point: 位置
      7  after ②数値位置: .距離 X,Y =
      8  after [Enter]: it is done
+     9  after ①ﾏｳｽ位置's second press: 再複写 位置指示 -- it does not end
+        there, every press after it puts another one down
 
 Stage 0 is the line the menu item puts up and is already in src/prompt.h.
 The two commands differ in only a word or two, but they are captured apart
@@ -45,7 +47,8 @@ def capture(command, menu_x, menu_y, out, name):
     os.makedirs(d, exist_ok=True)
     st.run(head + first_r, d + '/right')
     st.run(head + first_l, d + '/left')
-    st.run(head + first_r + second + fix + way + base, d + '/on')
+    place = st.PRESS % (383, 401, 'left', 'left')
+    st.run(head + first_r + second + fix + way + base + place, d + '/on')
     # the numeric branch: ②数値位置, then a distance typed one key at a time
     # (the whole string at once outruns the program and only the first key
     # lands), then [Enter]
@@ -60,7 +63,8 @@ def capture(command, menu_x, menu_y, out, name):
     add_items = st.strings(on, 102_000_000, 138_000_000)
     ways_items = st.strings(on, 138_000_000, 174_000_000)
     from_items = st.strings(on, 174_000_000, 210_000_000)
-    to_items = st.strings(on, 210_000_000, 1 << 62)
+    to_items = st.strings(on, 210_000_000, 246_000_000)
+    again_items = st.strings(on, 246_000_000, 1 << 62)
     nm = d + '/num.log'
     dist_items = st.strings(nm, 174_000_000, 210_000_000)
     done_items = st.strings(nm, 240_000_000, 1 << 62)
@@ -85,6 +89,8 @@ def capture(command, menu_x, menu_y, out, name):
     text += list(st.rows(dist_items, 7, command))
     text += ['    /* stage 8: it is done */']
     text += list(st.rows(done_items, 8, command))
+    text += ['    /* stage 9: 再複写 -- put another one down */']
+    text += list(st.rows(again_items, 9, command))
     text += ['    { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0, 0 },', '};', '',
              '#endif', '']
     open(out, 'w', encoding='utf-8', newline='').write('\n'.join(text))

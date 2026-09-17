@@ -36,8 +36,8 @@ int main(int argc, char **argv)
         const int sx = atoi(argv[i]), sy = atoi(argv[i + 1]);
         /* The filtered pick, because that is 追加･除外's: only what is drawn
          * with the pen and line type selected for writing. */
-        long k = jw_cmd_line_at_kind(d, &w, sx, sy, 1);
-        long j = k < 0 ? jw_cmd_arc_at_kind(d, &w, sx, sy, 1) : -1;
+        long k = jw_cmd_line_at_kind(d, &w, sx, sy, 0);
+        long j = k < 0 ? jw_cmd_arc_at_kind(d, &w, sx, sy, 0) : -1;
         double x, y;
 
         jw_cmd_at(&w, sx, sy, &x, &y);

@@ -1095,16 +1095,17 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         if (s->command == 4 && s->stage == 1 && !s->escaped) {
             box(v, 580, 3, 590, 13, 7);
         }
-        /* What the right button would take, which is there whenever the
-         * pointer is over the drawing -- see src/snap.h.  Last, because a
-         * stage writes spaces at column 17 on a black background and those
-         * reach across column 22. */
+        /* What a *modified* read would take, which is there while [CTRL] is
+         * held and the pointer is over the drawing -- see src/snap.h.  Last,
+         * because a stage writes spaces at column 17 on a black background and
+         * those reach across column 22.  With no modifier held the original
+         * writes those spaces and nothing else. */
         /* 複線's 間隔取得 asks for a point, and while it is asking, the word
          * for what the right button would take is on the screen even though
          * the command has none of its own (src/snap.h has nothing for 5).
          * Column 22 only -- the original writes 円周1/4点 there, the same
          * as □ and ○ do, and leaves column 17 alone. */
-        if (s->snap && s->command == 5 && s->stage == 5) {
+        if (s->ctrl && s->snap && s->command == 5 && s->stage == 5) {
             jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[3][1]);
         }
         /* 複写 the same, once ①ﾏｳｽ位置 has been picked and it is asking for
@@ -1118,16 +1119,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * empty, ①同形別処理 (which goes back to stage 4) puts 円周1/4点 back,
          * and it is gone again once it is asking for the distance (stage 7)
          * or the copy is made (stage 8). */
-        if (s->snap && (s->command == 1 || s->command == 16)
+        if (s->ctrl && s->snap && (s->command == 1 || s->command == 16)
             && s->stage >= 4 && s->stage <= 6) {
             jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[3][1]);
         }
         /* None of them while 文字 is taking a string: the band is black. */
-        if (s->snap && !s->typing_text && !s->escaped
+        if (s->ctrl && s->snap && !s->typing_text && !s->escaped
             && JW_SNAP[s->command - 1][0]) {
             jw_ui_text(v, 17, 2, 7, 0, JW_SNAP[s->command - 1][0]);
         }
-        if (s->snap && !s->typing_text && !s->escaped
+        if (s->ctrl && s->snap && !s->typing_text && !s->escaped
             && JW_SNAP[s->command - 1][1]) {
             jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[s->command - 1][1]);
         }

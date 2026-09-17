@@ -265,24 +265,28 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
 
 /* Does this entity pass the writing pen and line type?
  *
- * 消去's 追加･除外 takes **only entities drawn with the pen and the line type
- * that are selected for writing**; 線消 takes anything.  That is the whole of
- * the difference between the two, and it was read out of the original rather
- * than guessed: tools/mkpick.py's `bytes` drawing puts twelve lines ten pixels
- * apart that differ only in the bytes behind the coordinates, and
- * tools/pickat.sh presses on each and reads the number the original's search
- * answers.  Ten are taken; the two refused are the one with line type 2 and
- * the one with pen 5, SAMPLE0 writing with type 1 and pen 2.  The trailing
- * four bytes make no difference at all, nor does the layer once every layer
- * table is on.
+ * **This is what [CTRL] does, not what a plain press does.**  With a modifier
+ * key held the search takes only entities drawn with the pen and the line type
+ * that are selected for writing; with nothing held it takes anything.  Read
+ * out of the original rather than guessed: tools/mkpick.py's `bytes` drawing
+ * puts twelve lines ten pixels apart that differ only in the bytes behind the
+ * coordinates, and tools/pickat.sh presses on each and reads the number the
+ * original's search answers.  All twelve are taken; with `mods ctrl` in the
+ * script the two refused are the one with line type 2 and the one with pen 5,
+ * SAMPLE0 writing with type 1 and pen 2.  The trailing four bytes make no
+ * difference either way, nor does the layer once every layer table is on.
  *
- * It is why SAMPLE6 looked unexplainable: it writes with pen 4, so its walls
- * (pen 1, 2 and 5) cannot be taken out of a range however exactly they are
- * pointed at, and the little pen-4 fittings beside them can.
+ * It read the other way round until 2026-09-18, when dosv_emu_cpp learnt to
+ * answer INT 16h AH=12h: before that JW_CAD was handed a shift state with the
+ * Ctrl bit set on every press, so every measurement was a Ctrl measurement.
+ * SAMPLE6's walls (pen 1, 2 and 5) can be taken out of a range after all --
+ * it was the phantom Ctrl that refused them, not the pen.
  *
- * The same test is in the original at 11f2:5993 -- `pen != DGROUP 0xa6a ||
- * type != DGROUP 0xa6c` skips the record -- and jwc.h has those two addresses
- * as the panel's pen and line type. */
+ * The test is in the original at 11f2:5993 -- `pen != DGROUP 0xa6a ||
+ * type != DGROUP 0xa6c` skips the record -- guarded by the modifier state that
+ * 11f2:5967 reads through 1885:5307.  jwc.h has those two addresses as the
+ * panel's pen and line type.  Nothing in the port sets `only_writing` yet,
+ * because the port takes no modifier keys. */
 static int writing_kind(const Jwc *d, int type, int pen)
 {
     return type == d->line_type && pen == d->pen;
@@ -829,18 +833,50 @@ static void freeze(JwCmd *c, const Jwc *d)
     }
 }
 
-static void copy_by_mm(JwCmd *c, Jwc *d)
+/* Put the selection down one step away: 複写 leaves a copy of what the range
+ * picked and 移動 shifts it.  The step is remembered so ③連続 can repeat it. */
+static void place_by(JwCmd *c, Jwc *d, double dx, double dy)
 {
-    const double per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
-    const double dx = d->copy_x_mm * per, dy = d->copy_y_mm * per;
-
-    freeze(c, d);
+    /* Work out what the range holds only the first time.  移動 takes the
+     * entities with it, so asking the box again after the first press finds
+     * nothing left inside it and the next press would move nothing. */
+    if (!c->sel_line) {
+        freeze(c, d);
+    }
     if (c->command == 16) {
         move_range(c, d, dx, dy);
     } else {
         copy_range(c, d, dx, dy);
     }
+    c->step_x = dx;
+    c->step_y = dy;
     c->copies = 1;
+}
+
+static void copy_by_mm(JwCmd *c, Jwc *d)
+{
+    const double per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
+
+    place_by(c, d, d->copy_x_mm * per, d->copy_y_mm * per);
+}
+
+/* ①ﾏｳｽ位置's second press: the base point goes where the press is.
+ *
+ * 複写 copies the originals, so the offset is measured from the base point
+ * every time and the base stays where it was -- press again and another copy
+ * lands at the new distance.  移動 has already taken the originals with it, so
+ * the base travels along: the next press moves them on from where they are.
+ *
+ * The distance the original remembers for ②数値位置 is **not** touched:
+ * measured on SAMPLE0 -- copy with the mouse, then ①同形別処理 and ②数値位置,
+ * and the line still offers `[  1000.000,  1000.000 mm]`. */
+static void place_at(JwCmd *c, Jwc *d, double px, double py)
+{
+    place_by(c, d, px - c->base_x, py - c->base_y);
+    if (c->command == 16) {
+        c->base_x = px;
+        c->base_y = py;
+    }
 }
 
 /* ③連続: another step.  複写 makes another copy, one step further on than the
@@ -850,13 +886,12 @@ static void copy_by_mm(JwCmd *c, Jwc *d)
  * one set at 70/104. */
 static void copy_again(JwCmd *c, Jwc *d)
 {
-    const double per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
     const double n = c->copies + 1.0;
 
     if (c->command == 16) {
-        move_range(c, d, d->copy_x_mm * per, d->copy_y_mm * per);
+        move_range(c, d, c->step_x, c->step_y);
     } else {
-        copy_range(c, d, d->copy_x_mm * per * n, d->copy_y_mm * per * n);
+        copy_range(c, d, c->step_x * n, c->step_y * n);
     }
     c->copies++;
 }
@@ -1090,14 +1125,14 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
             c->stage = 5;
             return 1;
         }
-        if (c->stage == 8 && item == 1) {
+        if ((c->stage == 8 || c->stage == 9) && item == 1) {
             /* ①同形別処理 -- the same selection again, by another method: the
              * line goes back to `|①ﾏｳｽ位置(L,R)|②数値位置|…|` with 変更無し
              * in the band. */
             c->stage = 4;
             return 1;
         }
-        if (c->stage == 8 && item == 2) {
+        if ((c->stage == 8 || c->stage == 9) && item == 2) {
             /* ②他図形処理 -- another figure: back to the line the item came
              * up with, and nothing picked. */
             c->pressed = 0;
@@ -1111,9 +1146,11 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
             c->sel_line = c->sel_arc = c->sel_text = 0;
             return 1;
         }
-        if (c->stage == 8 && item == 3) {
+        if ((c->stage == 8 || c->stage == 9) && item == 3) {
             /* ③連続 -- another copy, one step further on.  The line stays as
-             * it is and the counts go up again (32|14 to 34|15 on SAMPLE0). */
+             * it is and the counts go up again (32|14 to 34|15 on SAMPLE0).
+             * ①ﾏｳｽ位置's own line (段 9) offers the same three items and its
+             * ③連続 behaves the same way -- measured, 32|14 to 34|15. */
             copy_again(c, d);
             return 1;
         }
@@ -1702,17 +1739,28 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             return 1;
         }
         if (JW_MOVE_CMD(c->command) && c->stage >= 4) {
-            /* 複写's own stages: ①ﾏｳｽ位置 has been picked and the presses now
-             * take the base point and the place to put the copy.  RESUME.md
-             * 4.9e -- the second of those is not understood yet, so this takes
-             * the base point and stops there. */
+            /* ①ﾏｳｽ位置: the first press takes the base point of the original
+             * (段 5) and the second says where it goes (段 6).  It does not
+             * end there -- the line becomes `再複写 位置指示` (段 9) and every
+             * press after that puts another one down.  Both presses are
+             * (L)free (R)Read, like every other point. */
+            double px, py;
+
+            if (c->stage != 5 && c->stage != 6 && c->stage != 9) {
+                return 0;
+            }
+            if (!take(c, d, w, sx, sy, right, &px, &py)) {
+                return 1;
+            }
             if (c->stage == 5) {
-                c->base_x = x;
-                c->base_y = y;
+                c->base_x = px;
+                c->base_y = py;
                 c->stage = 6;
                 return 1;
             }
-            return 0;
+            place_at(c, d, px, py);
+            c->stage = 9;
+            return 1;
         }
         if (!c->pressed) {
             c->x0 = x;
@@ -1756,8 +1804,10 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 flip(c, JW_FLIP_TEXT, k);
                 return 1;
             }
-            k = jw_cmd_line_at_kind(d, w, sx, sy, 1);
-            j = k < 0 ? jw_cmd_arc_at_kind(d, w, sx, sy, 1) : -1;
+            /* 0, not 1: the pen and line type only narrow the search while
+             * a modifier key is held -- see writing_kind above. */
+            k = jw_cmd_line_at_kind(d, w, sx, sy, 0);
+            j = k < 0 ? jw_cmd_arc_at_kind(d, w, sx, sy, 0) : -1;
             if (k < 0 && j < 0) {
                 c->missed = 1;
                 return 0;
