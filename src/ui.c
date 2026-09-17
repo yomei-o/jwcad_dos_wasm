@@ -9,6 +9,7 @@
 #include "snap.h"
 #include "stage.h"
 #include "typed.h"
+#include "span.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -815,6 +816,17 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 break;
             }
         }
+        /* ③指定範囲 replaces the line 消去 came up with: the original writes
+         * `指定範囲  始点マウス指示  (L)線･円  (R)線･円･文字 …` over the top
+         * of it.  src/span.h holds that whole line as stage 0. */
+        if (s->span && s->command == 25) {
+            const JwStage *r;
+
+            for (r = JW_SPAN; r->command; r++) {
+                stage_text(v, r, s, 0);
+            }
+            p = q;              /* q is the terminator: skip the prompt */
+        }
         for (; p->col; p++) {
             char out[160];
             const char *text = p->text;
@@ -864,6 +876,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             int own = 0;
 
             for (q = JW_STAGE; q->command; q++) {
+                if (s->span && q->command == 25 && q->stage != 2) {
+                    continue;   /* 指定範囲 has its own table -- but not for
+                                 * stage 2, 復活出来ません, which is the same
+                                 * line whichever of the three was picked */
+                }
                 if (q->command == s->command && q->stage == i
                     && q->row != 1 && q->col <= 15
                     && !(q->moved && !s->moved)) {
@@ -909,12 +926,29 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 counts(v, s);
             }
             for (q = JW_STAGE; q->command; q++) {
+                if (s->span && q->command == 25 && q->stage != 2) {
+                    continue;
+                }
                 stage_text(v, q, s, i);
             }
             /* The stages you can only reach by typing -- src/typed.h -- are
              * replayed the same way, out of their own table. */
             for (q = JW_TYPED; q->command; q++) {
+                if (s->span && q->command == 25 && q->stage != 2) {
+                    continue;
+                }
                 stage_text(v, q, s, i);
+            }
+            /* ③指定範囲's own table.  Its first stage has two spellings, one
+             * per button, and src/span.h keeps the left-button one as stage
+             * 11 so that both can live in the one table. */
+            if (s->span) {
+                const JwStage *r;
+                const int st = (i == 1 && !s->with_text) ? 11 : i;
+
+                for (r = JW_SPAN; r->command; r++) {
+                    stage_text(v, r, s, st);
+                }
             }
             /* ○'s line has a little ◎ in it that is **not text**: after
              * `②基点変` the original draws it with its own circle routine.

@@ -177,6 +177,8 @@ int main(int argc, char **argv)
                 t.snap = 0;
                 t.missed = c.missed;
                 t.outside = c.outside;
+                t.span = c.span;
+                t.with_text = c.with_text;
                 t.moved = c.moved;
                 t.hit_kind = c.hit_kind;
                 t.typing_text = c.typing_text;
@@ -239,6 +241,8 @@ int main(int argc, char **argv)
         s.snap = mx >= 122 && mx <= 638 && my >= 17 && my <= 462;
         s.missed = c.missed;
         s.outside = c.outside;
+        s.span = c.span;
+        s.with_text = c.with_text;
         s.moved = c.moved;
         s.hit_kind = c.hit_kind;
         s.typing_text = c.typing_text;

@@ -96,6 +96,13 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     OUT=1 DUMMY="600 450" STOP=1 sh tools/erase2.sh 150 130 245 170 500 250
     OUT=1 DUMMY="600 450" sh tools/erase2.sh 150 130 245 170 600 460
     OUT=1 DUMMY="600 450" sh tools/erase2.sh 150 130 245 170 197 157
+    echo "=== ③指定範囲, the data selection 複写 and 移動 use.  The first"
+    echo "    button says whether the texts come in with the lines"
+    STOP=1 sh tools/span.sh 150 130 245 170
+    STOP=1 R1=1 sh tools/span.sh 150 130 245 170
+    STOP=1 sh tools/span.sh 150 130 245 170 197 157
+    sh tools/span.sh 150 130 245 170
+    R1=1 sh tools/span.sh 150 130 245 170
     echo "=== 追加･除外 on SAMPLE6, which only its pen-4 entities answer"
     DRAWING=SAMPLE6 WAIT=150000000 STOP=1 sh tools/erase2.sh 170 235 215 260 209 242
     echo "=== 点 dropping a 仮点"

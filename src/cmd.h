@@ -80,6 +80,18 @@ typedef struct {
     /* 消去's ②範囲外消去: the range picks what it does *not* hold.  Its own
      * line offers it before the first press. */
     int outside;
+    /* 消去's ③指定範囲: the data selection 複写 and 移動 use.  The range is
+     * taken with two presses the way 追加･除外 takes it, and the **first**
+     * button says what goes in the net -- `(L)線･円` leaves the texts out,
+     * `(R)線･円･文字` takes them.  Measured on SAMPLE0 with
+     * (150,130)-(245,170): the right button reddens 224 pixels (lines 5 and 6
+     * and text 0), the left one 89 (the two lines alone).
+     *
+     * `with_text` is which of the two the first press was.  The top line says
+     * so too -- `<線･円>` against `線･円･文字`, with a third item ③文字種 only
+     * in the second.  See src/span.h. */
+    int span;
+    int with_text;
     /* Where the last press was, on the screen, and whether the pointer has
      * moved off it since.  **The counts box does not change the moment a point
      * is taken**: the original writes the two counts back and only puts the

@@ -145,6 +145,28 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
      * 文字 is the exception: its box does not follow the pointer at all -- it
      * sits at the point that was pressed and grows with the string -- and it
      * is there from the moment the point is taken. */
+    /* 消去's fixed range is **not** one of the things that wait for the
+     * pointer to move: the second press puts the four green lines up there and
+     * then, and they are on the screen with the pointer still on the point
+     * that was pressed.  Measured with ③指定範囲 on SAMPLE0 --
+     * `STOP=1 sh tools/span.sh 150 130 245 170` leaves the pointer where the
+     * second press landed and the original has 264 green pixels there. */
+    if (c->command == 25 && c->pressed == 2 && c->stage == 3) {
+        int qx, qy;
+
+        /* Exclusive-or, and each side drawn corner to corner, is what the
+         * screen says: the **four corners come out black**, because each of
+         * them is drawn twice and the second turns it back, and where the box
+         * crosses a white pixel it goes magenta (7 xor 4 = 3) instead of
+         * green.  Both would be impossible if it were painted flat. */
+        at_screen(w, c->x0, c->y0, &px, &py);
+        at_screen(w, c->x1, c->y1, &qx, &qy);
+        jw_line(v, px, py, qx, py, 4, 0x18, JW_STYLE_SOLID);
+        jw_line(v, qx, py, qx, qy, 4, 0x18, JW_STYLE_SOLID);
+        jw_line(v, qx, qy, px, qy, 4, 0x18, JW_STYLE_SOLID);
+        jw_line(v, px, qy, px, py, 4, 0x18, JW_STYLE_SOLID);
+        return;
+    }
     if (!c->moved && !(c->command == 13 && c->typing_text)) {
         return;
     }
@@ -170,26 +192,10 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
         return;
     }
     if (c->command == 25 && c->pressed == 2) {
-        /* 追加･除外 keeps the range on the screen: four lines in colour 4,
-         * exclusive-or.  The right button's 範囲確定 does not -- its screen
-         * has no green at all, and this one has 264 pixels of it (SAMPLE0,
-         * (150,130)-(245,170)).
-         *
-         * Exclusive-or, and each side drawn corner to corner, is what the
-         * screen says: the **four corners come out black**, because each of
-         * them is drawn twice and the second turns it back, and where the box
-         * crosses a blue pixel it goes magenta (1 xor 4 = 5) instead of
-         * green.  Both would be impossible if it were painted flat. */
-        if (c->stage == 3) {
-            int qx, qy;
-
-            at_screen(w, c->x0, c->y0, &px, &py);
-            at_screen(w, c->x1, c->y1, &qx, &qy);
-            jw_line(v, px, py, qx, py, 4, 0x18, JW_STYLE_SOLID);
-            jw_line(v, qx, py, qx, qy, 4, 0x18, JW_STYLE_SOLID);
-            jw_line(v, qx, qy, px, qy, 4, 0x18, JW_STYLE_SOLID);
-            jw_line(v, px, qy, px, py, 4, 0x18, JW_STYLE_SOLID);
-        }
+        /* 追加･除外 keeps the range on the screen; the right button's
+         * 範囲確定 does not -- its screen has no green at all, and that one
+         * has 264 pixels of it (SAMPLE0, (150,130)-(245,170)).  The drawing of
+         * it is above, before the test for the pointer having moved. */
         return;
     }
     if (c->command == 13 && c->typing_text) {
@@ -624,6 +630,16 @@ static int wholly_outside(const JwCmd *c, double ax, double ay,
 
 /* Is this entity in 消去's selection?  Everything wholly inside the range is,
  * and 追加･除外 turns single ones the other way. */
+/* Does the range take texts in?  ①範囲内消去 and ②範囲外消去 always do;
+ * ③指定範囲 asks, and the answer is which button took the first point --
+ * `(L)線･円` against `(R)線･円･文字`, as its own line says.  Measured on
+ * SAMPLE0 with (150,130)-(245,170): the right button reddens 224 pixels and
+ * the left one 89, which is the two lines without text 0. */
+static int takes_text(const JwCmd *c)
+{
+    return !c->span || c->with_text;
+}
+
 static int flipped(const JwCmd *c, int kind, long at)
 {
     int i;
@@ -730,6 +746,9 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     for (k = 0; k < d->n_texts; k++) {
         const JwcText *t = &d->texts[k];
 
+        if (!takes_text(c)) {
+            break;
+        }
         if (in_reach_layer(d, t->layer)
             && (c->outside ? wholly_outside(c, t->x0, t->y0, t->x1, t->y1)
                            : jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1))
@@ -810,7 +829,13 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
     if (c->command == 25 && c->pressed == 0 && c->stage == 0) {
         if (item == 1 || item == 2) {
             c->outside = item == 2;
+            c->span = 0;
             return 0;
+        }
+        if (item == 3) {        /* ③指定範囲 */
+            c->span = 1;
+            c->outside = 0;
+            return 1;           /* its own line goes up at once */
         }
         return 0;
     }
@@ -874,7 +899,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
             changed = 1;
         }
     }
-    for (k = d->n_texts - 1; k >= 0; k--) {
+    for (k = d->n_texts - 1; k >= 0 && takes_text(c); k--) {
         const JwcText *t = &d->texts[k];
 
         if (in_reach_layer(d, t->layer)
@@ -887,6 +912,18 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
     }
     c->pressed = 0;
     c->stage = 0;
+    /* The hand-picked list goes with the range it belonged to.  Not measured
+     * -- it cannot be: after the erase the entities it names are gone and the
+     * ones behind them have moved down, so keeping it would point at the wrong
+     * things.  It is the one line here that is reasoning rather than reading. */
+    c->n_flip = 0;
+    /* ③指定範囲 is not a setting that sticks: once ①実行 has run the original
+     * writes its ordinary line back -- `◇消去範囲 始点指示 |①範囲内消去|…` --
+     * so the next range is an ①範囲内消去 again.  Measured on SAMPLE0 with
+     * `sh tools/span.sh 150 130 245 170`: the last thing the original puts on
+     * the top line is that line and not 指定範囲's. */
+    c->span = 0;
+    c->with_text = 0;
     /* `読取可能データ無` goes when ①実行 runs: the original writes
      * `消去 再度(L)` over it.  Measured -- press somewhere with nothing there
      * and then ①実行, and the band beside the counts says 消去 再度(L), not
@@ -1303,6 +1340,8 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->y0 = y;
             c->pressed = 1;
             c->stage = 1;
+            /* ③指定範囲 asks with which button, and says so along the top. */
+            c->with_text = right;
             return 0;
         }
         if (c->pressed == 1) {

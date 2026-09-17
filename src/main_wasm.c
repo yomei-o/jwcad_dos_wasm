@@ -68,6 +68,8 @@ static void sync_ui(void)
     ui.dec[1] = cmd.dec[1];
     ui.missed = cmd.missed;
     ui.outside = cmd.outside;
+    ui.span = cmd.span;
+    ui.with_text = cmd.with_text;
     ui.moved = cmd.moved;
     ui.hit_kind = cmd.hit_kind;
     ui.typing_text = cmd.typing_text;
