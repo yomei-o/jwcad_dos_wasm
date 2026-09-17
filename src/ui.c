@@ -801,6 +801,27 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             for (q = JW_TYPED; q->command; q++) {
                 stage_text(v, q, s, i);
             }
+            /* ○'s line has a little ◎ in it that is **not text**: after
+             * `②基点変` the original draws it with its own circle routine.
+             * Found by watching the pixel (DOSEMU_WATCH=A012A-A012A), which
+             * says 10a9:0ccd wrote it -- inside FUN_20a9_0c8f, the four-way
+             * step of the circle plotter at 20a9:0e18, which is jw_arc here.
+             *
+             * Three rings and the middle pixel, at (470,8): radius 5, 2 and 1
+             * plus the point.  That is exactly the eleven rows the original
+             * leaves, and it is how a program with no fill primitive fills a
+             * disc.
+             *
+             * It says where the base point is: pressing `②基点変` takes the
+             * middle away (the ring alone) and pressing it again puts it back.
+             * The port has no 基点変, so it draws the one the command starts
+             * with -- the middle, which is the centre of the circle. */
+            if (s->command == 11 && i == 1) {
+                jw_arc(v, 470, 8, 5, 0, 0, 7, ROP_REPLACE, JW_STYLE_SOLID);
+                jw_arc(v, 470, 8, 2, 0, 0, 7, ROP_REPLACE, JW_STYLE_SOLID);
+                jw_arc(v, 470, 8, 1, 0, 0, 7, ROP_REPLACE, JW_STYLE_SOLID);
+                jw_point(v, 470, 8, 7, ROP_REPLACE);
+            }
             /* And the field itself: what has been typed, one character to a
              * cell from column 22, each of them clearing the two cells after
              * it the way the original writes them. */
