@@ -237,9 +237,6 @@ int main(int argc, char **argv)
      * way the original does when it opens a file.  The frame goes on after and
      * the pointer, which is exclusive-or, last of all. */
     jw_view_draw(&v, d, &w);
-    /* what 消去 has picked, painted over the drawing the way the original
-     * does it */
-    jw_cmd_marked(&c, &v, d, &w);
     if (ui) {
         JwUi s;
 
@@ -269,7 +266,10 @@ int main(int argc, char **argv)
             s.guide = 0;
         }
         jw_ui_draw(&v, &s);
-        /* and what 複写 has made since, over the top of it (see jw_cmd_after) */
+        /* what the range picked, and what 複写 has made since -- both over the
+         * finished screen, which is the order the original draws them in (see
+         * jw_cmd_after) */
+        jw_cmd_marked(&c, &v, d, &w);
         jw_cmd_after(&c, &v, d, &w);
         /* the line a half-finished command drags, then the pointer -- both
          * exclusive-or, and both after everything else */

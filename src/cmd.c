@@ -843,13 +843,21 @@ static void copy_by_mm(JwCmd *c, Jwc *d)
     c->copies = 1;
 }
 
-/* ③連続: another copy of the same selection, one step further on. */
+/* ③連続: another step.  複写 makes another copy, one step further on than the
+ * last; 移動 shifts what it picked by the distance again -- the counts stay
+ * where they are and the entities end up at twice the distance.  Measured on
+ * SAMPLE0 with 20,30: 複写 leaves copies at 35/52 and 70/104 and 移動 puts the
+ * one set at 70/104. */
 static void copy_again(JwCmd *c, Jwc *d)
 {
     const double per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
     const double n = c->copies + 1.0;
 
-    copy_range(c, d, d->copy_x_mm * per * n, d->copy_y_mm * per * n);
+    if (c->command == 16) {
+        move_range(c, d, d->copy_x_mm * per, d->copy_y_mm * per);
+    } else {
+        copy_range(c, d, d->copy_x_mm * per * n, d->copy_y_mm * per * n);
+    }
     c->copies++;
 }
 
@@ -866,6 +874,13 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     if (!d || !JW_RANGE_CMD(c->command) || c->pressed != 2) {
         return;
     }
+    /* The chrome leaves the clip open to the whole screen; the marking is part
+     * of the drawing, so it goes back to the drawing window. */
+    v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+    v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+    v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+    v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+
     for (k = 0; k < c->n0_lines; k++) {
         const JwcLine *l = &d->lines[k];
         int x0, y0, x1, y1;
@@ -1075,7 +1090,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
             c->stage = 5;
             return 1;
         }
-        if (c->stage == 8 && item == 3 && c->command == 1) {
+        if (c->stage == 8 && item == 3) {
             /* ③連続 -- another copy, one step further on.  The line stays as
              * it is and the counts go up again (32|14 to 34|15 on SAMPLE0). */
             copy_again(c, d);

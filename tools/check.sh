@@ -138,6 +138,7 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     CMD=16 STOP=1 sh tools/copynum.sh 20,30
     CMD=16 sh tools/copynum.sh 20,30
     CMD=16 SAME=1 sh tools/copynum.sh
+    CMD=16 AGAIN=1 sh tools/copynum.sh 20,30
     echo "=== 追加･除外 on SAMPLE6, which only its pen-4 entities answer"
     DRAWING=SAMPLE6 WAIT=150000000 STOP=1 sh tools/erase2.sh 170 235 215 260 209 242
     echo "=== 点 dropping a 仮点"
