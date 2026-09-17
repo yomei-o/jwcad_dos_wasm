@@ -71,6 +71,9 @@ typedef struct {
      * -- the top line has its own spelling for each.  See src/span.h. */
     int span;
     int with_text;
+    /* [ESC] has thrown the point away: the line that was up stays and three
+     * pieces go over it (src/esc.h). */
+    int escaped;
     int group;                  /* the layer group the buttons show */
     unsigned char layer_on[16]; /* which of its sixteen layers are shown */
     /* The two little bars over each button.  The left one is on when the layer

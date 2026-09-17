@@ -1299,6 +1299,19 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         return 1;               /* the field has the keyboard until [Enter] */
     }
+    if (key == 27) {
+        /* [ESC]: the point in hand goes and the command asks for it again.
+         * With nothing in hand it writes nothing at all, and a second one
+         * after the first writes nothing either -- both measured, so both are
+         * "return 0, nothing changed" here. */
+        if (!c->pressed || c->escaped) {
+            return 0;
+        }
+        c->pressed = 0;
+        c->escaped = 1;
+        c->moved = 0;
+        return 1;
+    }
     if (key == JW_KEY_F2 && JW_RANGE_CMD(c->command) && c->stage == 3) {
         c->cleared = 1;
         c->n_flip = 0;
@@ -1395,6 +1408,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     c->press_x = sx;
     c->press_y = sy;
     c->moved = 0;
+    c->escaped = 0;
     if (c->command == 5) {
         /* 複線: point at a line, type how far away the copy goes, and press
          * the side it goes to.  RESUME.md 4.12 has the whole sequence as the

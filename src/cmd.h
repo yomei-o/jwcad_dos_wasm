@@ -103,6 +103,10 @@ typedef struct {
      * original still shows them picked -- so what was picked is written down
      * at that moment.  NULL until then; jw_cmd_pick frees them. */
     unsigned char *sel_line, *sel_arc, *sel_text;
+    /* [ESC] has thrown the point away and the command is asking for it again.
+     * The line it wrote over is still there, so the chrome replays the stage
+     * that was up and then puts src/esc.h's three pieces on top. */
+    int escaped;
     /* 複写's base point -- 原図形の基準点位置.  Kept apart from x0,y0, which
      * are the range's first corner and are still needed to work out what the
      * range holds. */

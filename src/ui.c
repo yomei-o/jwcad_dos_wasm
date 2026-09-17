@@ -12,6 +12,7 @@
 #include "span.h"
 #include "copy.h"
 #include "move.h"
+#include "esc.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -908,6 +909,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     own = 1;
                 }
             }
+            /* [ESC] puts the two counts back: □ and ○ write their sides and
+             * radius into that box while they run, and after [ESC] the box
+             * says `30| 13` again (measured -- 748 pixels of it). */
+            if (s->escaped && i == s->stage) {
+                own = 0;
+            }
             fill(v, 0, 0, 639, 15, 0);
             /* The band right of the counts box goes too.  複線 leaves
              * `[F1]`..`[F5]` and the interval there while it asks, and the
@@ -939,7 +946,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             } else {
                 counts(v, s);
             }
-            for (q = JW_STAGE; q->command; q++) {
+            /* [ESC] replaces the stage it came from: the line is blacked
+             * and the band's numbers go back to the two counts, so none of
+             * what that stage wrote is put up again. */
+            for (q = JW_STAGE; !(s->escaped && i == s->stage) && q->command;
+                 q++) {
                 if (s->span && q->command == 25 && q->stage != 2) {
                     continue;
                 }
@@ -947,7 +958,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             }
             /* The stages you can only reach by typing -- src/typed.h -- are
              * replayed the same way, out of their own table. */
-            for (q = JW_TYPED; q->command; q++) {
+            for (q = JW_TYPED; !(s->escaped && i == s->stage) && q->command;
+                 q++) {
                 if (s->span && q->command == 25 && q->stage != 2) {
                     continue;
                 }
@@ -962,6 +974,20 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
                 for (r = JW_SPAN; r->command; r++) {
                     stage_text(v, r, s, st);
+                }
+            }
+            /* And [ESC].  It blacks the top line and writes three pieces:
+             * a `・` at column 6, the command's own "ask again" text at
+             * column 8 and `[BS]前項` at column 73 (src/esc.h).  The fill is
+             * not in the string log -- what settled it is the screen, where
+             * 「|①  ＋  |②寸 法 |…」 from the line before is gone. */
+            if (s->escaped && i == s->stage) {
+                const JwStage *r;
+
+                fill(v, 0, 0, 639, 15, 0);
+                top_clear();
+                for (r = JW_ESC; r->command; r++) {
+                    stage_text(v, r, s, 1);
                 }
             }
             /* 複写 and 移動, kept apart the same way (src/copy.h,
@@ -1003,7 +1029,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 20, 2, 7, 0xffff,
                            s->hit_kind == 2 ? "\x89" "~" : "\x90" "\xfc");
             }
-            if (s->command == 11 && i == 1) {
+            if (s->command == 11 && i == 1 && !s->escaped) {
                 jw_arc(v, 470, 8, 5, 0, 0, 7, ROP_REPLACE, JW_STYLE_SOLID);
                 jw_arc(v, 470, 8, 2, 0, 0, 7, ROP_REPLACE, JW_STYLE_SOLID);
                 jw_arc(v, 470, 8, 1, 0, 0, 7, ROP_REPLACE, JW_STYLE_SOLID);
@@ -1066,7 +1092,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * its own words over that corner.  All thirty items were picked in
          * turn and pressed once (SAMPLE0 at (250,150)); item 4 is the only one
          * that draws it. */
-        if (s->command == 4 && s->stage == 1) {
+        if (s->command == 4 && s->stage == 1 && !s->escaped) {
             box(v, 580, 3, 590, 13, 7);
         }
         /* What the right button would take, which is there whenever the
@@ -1090,10 +1116,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[3][1]);
         }
         /* None of them while 文字 is taking a string: the band is black. */
-        if (s->snap && !s->typing_text && JW_SNAP[s->command - 1][0]) {
+        if (s->snap && !s->typing_text && !s->escaped
+            && JW_SNAP[s->command - 1][0]) {
             jw_ui_text(v, 17, 2, 7, 0, JW_SNAP[s->command - 1][0]);
         }
-        if (s->snap && !s->typing_text && JW_SNAP[s->command - 1][1]) {
+        if (s->snap && !s->typing_text && !s->escaped
+            && JW_SNAP[s->command - 1][1]) {
             jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[s->command - 1][1]);
         }
         /* 「読取可能データ無」 -- what a command that looks for an entity

@@ -95,6 +95,15 @@ int main(int argc, char **argv)
             press[n_press][2] = 0;
             n_press++;
             a += 2;
+        } else if (strcmp(argv[a], "-x") == 0 && n_press < 8) {
+            /* [ESC], at this point in the sequence: it throws away the point
+             * the command has in hand.  Its own option because the key is not
+             * something a shell can pass in a string. */
+            press[n_press][0] = -5;
+            press[n_press][1] = 0;
+            press[n_press][2] = 0;
+            n_press++;
+            a += 1;
         } else if (strcmp(argv[a], "-t") == 0 && a + 1 < argc && n_press < 8) {
             /* a press on the top line, which is a menu of its own.  It takes
              * its turn in the sequence like the others, because a command can
@@ -180,6 +189,7 @@ int main(int argc, char **argv)
                 t.snap = 0;
                 t.missed = c.missed;
                 t.outside = c.outside;
+                t.escaped = c.escaped;
                 t.span = c.span;
                 t.with_text = c.with_text;
                 t.moved = c.moved;
@@ -187,6 +197,10 @@ int main(int argc, char **argv)
                 t.typing_text = c.typing_text;
                 jw_ui_draw(&v, &t);
                 jw_cmd_top(&c, d, jw_ui_top_item(press[i][1], 8));
+                continue;
+            }
+            if (press[i][0] == -5) {            /* -x: [ESC] */
+                jw_cmd_key(&c, d, 27);
                 continue;
             }
             if (press[i][0] == -3) {            /* -f: a function key */
@@ -244,6 +258,7 @@ int main(int argc, char **argv)
         s.snap = mx >= 122 && mx <= 638 && my >= 17 && my <= 462;
         s.missed = c.missed;
         s.outside = c.outside;
+        s.escaped = c.escaped;
         s.span = c.span;
         s.with_text = c.with_text;
         s.moved = c.moved;
