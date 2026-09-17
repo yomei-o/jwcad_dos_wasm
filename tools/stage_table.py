@@ -31,6 +31,7 @@ COMMANDS = [
     (3, (300, 200, 400, 200)),      # ／  a line
     (4, (250, 150, 450, 350)),      # □  a box
     (11, (300, 200, 400, 200)),     # ○  a circle
+    (12, (300, 250, 400, 250, 350, 180)),   # （  任意の弧: centre, start, end
     (10, ('r', 380, 140)),          # 線消  the right button takes a line away
     (22, (300, 250)),               # 点  the left button drops a 仮点
     # 消去: the first press takes a corner of the range, the second (right)
@@ -59,17 +60,30 @@ NUM = re.compile(r'( *-?\d+\.\d+)')
 # under the pointer, and it is gone by the time the screen settles (the shot
 # taken well after the press has nothing there).  What takes it away is not a
 # string, so this capture cannot see it happen.
-PANEL = {(1, 2), (1, 3), (17, 2), (22, 2), (18, 2)}
+PANEL = {(1, 2), (1, 3)}
+# These three never belong to a stage: 17 and 22 say what the right button
+# would snap to and follow the *pointer* (src/snap.h), and 18 is 線消's
+# transient サーチ.
+ALWAYS = {(17, 2), (22, 2), (18, 2)}
 WAIT = '\x81\x96\x82\xa8\x91\xd2\x82\xbf\x89\xba\x82\xb3\x82\xa2\x81\x96'
 
 
 def keep(items):
+    # A label in the counts box is kept when the same row carries a number
+    # somewhere: 「（」writes `半径` at column 1 and `=    57.336` at column 5
+    # as two separate calls, and dropping the label alone would leave the row
+    # saying `=` with nothing in front of it.  ○ writes `半径=%f` in one go and
+    # is unaffected either way.
+    numbered = set(row for col, row, fg, bg, s in items
+                   if col <= 16 and NUM.search(s))
     out = []
     for k in items:
         col, row, fg, bg, s = k
         if s == WAIT:
             continue
-        if (col, row) in PANEL and not NUM.search(s):
+        if (col, row) in ALWAYS:
+            continue
+        if (col, row) in PANEL and not NUM.search(s) and row not in numbered:
             continue
         # Rows 25 and 30 are the panel and the strip along the bottom, which
         # src/ui.c draws from the program's state every time the screen is
@@ -107,6 +121,17 @@ def capture(n, pts):
             stages[k].append(cell)
         lasts[k][cell] = (cell[0], cell[1], int(f[10], 16), int(f[11], 16), s)
     return [keep([lasts[k][c] for c in stages[k]]) for k in range(len(stages))]
+
+
+# The cells the original prints with `%g` and not with a fixed field.
+#
+# 「（」writes the radius it has just used at the end of its line, and that one
+# is six significant digits with no padding: the same run drawn twice, once
+# with a radius of 100 units and once with 200, says `半径=57.3359` and
+# `半径=114.672`.  `%.4f` would have given 114.6718 and `%7.3f` an aligned
+# 57.336, so it is `%g`.  Measured, not assumed -- two radii is what it takes
+# to tell them apart.
+LOOSE = {(12, 3, 8, 1)}
 
 
 def with_formats(s):
@@ -165,7 +190,9 @@ typedef struct {
     int command;                /* the menu item, or 0 to end the table */
     int stage;                  /* 1 = a point taken, 2 = the thing is drawn */
     int col, row, fg, bg;
-    int numbers;                /* how many %*.*f the text has */
+    int numbers;                /* how many %*.*f the text has -- and 3 for the
+                                 * one cell that is a bare `%g` instead
+                                 * (tools/stage_table.py's LOOSE) */
     int first;                  /* which of the command's numbers the first one
                                  * is: the row under the counts carries the
                                  * second (角度, 縦, 直径), every other row the
@@ -179,10 +206,14 @@ static const JwStage JW_STAGE[] = {
     for n in sorted(rows):
         for stage, items in enumerate(rows[n], 1):
             for col, row, fg, bg, s in items:
-                t, w = with_formats(s)
-                w = (w + [0, 0])[:2]
+                if (n, stage, col, row) in LOOSE:
+                    t, w, kind = NUM.sub('%g', s), [0, 0], 3
+                else:
+                    t, w = with_formats(s)
+                    w = (w + [0, 0])[:2]
+                    kind = len([x for x in w if x])
                 f.write('    { %2d, %d, %2d, %d, %d, 0x%04x, %d, %d, { %d, %d }, %s },\n'
-                        % (n, stage, col, row, fg, bg, len([x for x in w if x]),
+                        % (n, stage, col, row, fg, bg, kind,
                            1 if row == 3 else 0, w[0], w[1], escape(t)))
     f.write('    { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0 },\n};\n\n#endif\n')
     f.close()

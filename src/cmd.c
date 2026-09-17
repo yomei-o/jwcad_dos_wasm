@@ -73,7 +73,42 @@ static void measure(JwCmd *c, const Jwc *d, double x, double y)
          * it: always three decimals. */
         c->num[1] = atan2(dy, dx) * 180.0 / 3.14159265358979323846;
         c->dec[1] = 3;
+        /* 「（」holds the radius still once the start point is in: the panel
+         * kept saying 57.336 while the pointer went round to the end point and
+         * only the angle followed it (RESUME 4.13). */
+        if (c->command == 12 && c->pressed == 2) {
+            const double rx = c->x1 - c->x0, ry = c->y1 - c->y0;
+
+            c->num[0] = sqrt(rx * rx + ry * ry) * mm;
+        }
     }
+}
+
+/* The angle of a vector in degrees, brought into [0,360) the way the record
+ * keeps it -- SAMPLE0's own arcs run from 0 up, and the one the original drew
+ * for RESUME 4.13 came out 0 and 54.4623. */
+static double angle_at(double dx, double dy)
+{
+    double a = atan2(dy, dx) * 180.0 / 3.14159265358979323846;
+
+    while (a < 0.0) {
+        a += 360.0;
+    }
+    while (a >= 360.0) {
+        a -= 360.0;
+    }
+    return a;
+}
+
+static double hypot_of(double dx, double dy)
+{
+    return sqrt(dx * dx + dy * dy);
+}
+
+/* Degrees to the record's 16.16 fixed point (src/jwc.h). */
+static long fixed16(double deg)
+{
+    return (long)(deg * 65536.0 + 0.5);
 }
 
 void jw_cmd_track(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy)
@@ -1144,6 +1179,72 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
          * item alone does not put [ESC] up; the first press does. */
         c->stage = 1;
         return 1;
+    }
+    if (c->command == 12) {
+        /* 「（」任意の弧: three presses -- the centre, a point the arc starts
+         * at (which fixes the radius) and a point it ends at.  Measured by
+         * having the original draw one and save it: (300,250) → (400,250) →
+         * (350,180) on SAMPLE0 writes centre (179,213), radius 100, start 0,
+         * end 54.4623, tilt 0, with the writing pen and line type.  The two
+         * angles are the ones from the centre to the second and third press;
+         * the radius is the distance to the second.  RESUME 4.13. */
+        double a0, a1;
+
+        if (!take(c, d, w, sx, sy, right, &x, &y)) {
+            return 0;
+        }
+        if (!c->pressed) {
+            c->x0 = x;
+            c->y0 = y;
+            c->pressed = 1;
+            c->stage = 1;
+            c->num[0] = c->num[1] = 0.0;
+            c->dec[0] = c->dec[1] = d->decimals;
+            return 0;
+        }
+        if (c->pressed == 1) {
+            c->x1 = x;
+            c->y1 = y;
+            c->pressed = 2;
+            c->stage = 2;
+            measure(c, d, x, y);
+            return 0;
+        }
+        a0 = angle_at(c->x1 - c->x0, c->y1 - c->y0);
+        a1 = angle_at(x - c->x0, y - c->y0);
+        /* Measured while `pressed` still says 2, so the radius stays the one
+         * the second press fixed: the line the original leaves says
+         * `半径=57.3359`, the radius it drew with, not the distance to the
+         * third press. */
+        measure(c, d, x, y);
+        c->pressed = 0;
+        c->stage = 3;
+        /* **The record always holds the shorter way round.**  The two angles
+         * are not kept in the order they were pressed: the original writes
+         * whichever pair makes the anticlockwise sweep the smaller one.
+         * Measured with four arcs on SAMPLE0 --
+         *
+         *     pressed 0.0000 then 54.4623   -> start 0.0000   end 54.4623
+         *     pressed 54.4623 then 0.0000   -> start 0.0000   end 54.4623
+         *     pressed 9.8411 then 299.8865  -> start 299.8865 end 9.8411
+         *     pressed 9.8411 then 199.8852  -> start 199.8852 end 9.8411
+         *
+         * -- the last two being 69.96 and 169.96 of sweep, where the other
+         * order would have been 290 and 190.  What it does at exactly 180 is
+         * not measured. */
+        if (a1 - a0 < 0.0 ? a1 - a0 + 360.0 > 180.0 : a1 - a0 > 180.0) {
+            const double t = a0;
+
+            a0 = a1;
+            a1 = t;
+        }
+        return jwc_add_arc_at(d, (float)c->x0, (float)c->y0,
+                              (float)hypot_of(c->x1 - c->x0, c->y1 - c->y0),
+                              fixed16(a0), fixed16(a1),
+                              (unsigned char)d->line_type,
+                              (unsigned char)d->pen,
+                              (unsigned char)((0 << 4) | (d->write_layer & 15)),
+                              0x12);
     }
     if (c->command != 2 && c->command != 3 && c->command != 4
         && c->command != 11) {

@@ -932,6 +932,13 @@ void jwc_remove_text(Jwc *d, long k)
 int jwc_add_arc(Jwc *d, float cx, float cy, float r,
                 unsigned char type, unsigned char pen, unsigned char layer)
 {
+    return jwc_add_arc_at(d, cx, cy, r, 0, 0, type, pen, layer, 0x52);
+}
+
+int jwc_add_arc_at(Jwc *d, float cx, float cy, float r, long start, long end,
+                   unsigned char type, unsigned char pen, unsigned char layer,
+                   unsigned char mark)
+{
     JwcArc *a;
     static const long BLOCK = 64;
 
@@ -951,18 +958,19 @@ int jwc_add_arc(Jwc *d, float cx, float cy, float r,
     a->cy = cy;
     a->r = r;
     a->flatten = 10000;         /* a circle, not an ellipse */
-    a->start = 0;
-    a->end = 0;                 /* start == end is the whole way round */
+    a->start = start;
+    a->end = end;               /* start == end is the whole way round */
     a->tilt = 0;
     a->type = type;
     a->pen = pen;
     a->layer = layer;
-    /* And an arc's three: 00 00 52.  Four circles drawn in the original --
-     * two in SAMPLE0 and one in SAMPLE6, on different layers and with
-     * different pens -- all come back from its own save with 0x52 in the last
-     * byte.  The arcs that ship carry 0x3b and 0x52 there, so it is something
-     * the drawing already distinguishes; it is written back, not invented. */
-    a->rest[3] = 0x52;
+    /* And an arc's three: 00 00 `mark`.  Four circles drawn with ○ in the
+     * original -- two in SAMPLE0 and one in SAMPLE6, on different layers and
+     * with different pens -- all come back from its own save with 0x52 in the
+     * last byte, and an arc drawn with 「（」 with 0x12.  The arcs that ship
+     * carry 0x3b and 0x52 there, so it is something the drawing already
+     * distinguishes; it is written back, not invented. */
+    a->rest[3] = mark;
     d->n_arcs++;
     return 1;
 }

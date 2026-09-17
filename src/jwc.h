@@ -234,6 +234,17 @@ void jwc_remove_text(Jwc *d, long k);
 int jwc_add_arc(Jwc *d, float cx, float cy, float r,
                 unsigned char type, unsigned char pen, unsigned char layer);
 
+/* An arc of one: `start` and `end` are 16.16 fixed degrees, anticlockwise from
+ * the x axis, and `start == end` is the whole way round.
+ *
+ * `mark` is the last of the four bytes behind the coordinates.  It is not the
+ * same for every command: a circle drawn with ○ comes back from the original's
+ * own save with 0x52 and an arc drawn with 「（」 with 0x12 (RESUME 4.13).
+ * What it means is not known, so what the original writes is written. */
+int jwc_add_arc_at(Jwc *d, float cx, float cy, float r, long start, long end,
+                   unsigned char type, unsigned char pen, unsigned char layer,
+                   unsigned char mark);
+
 /* The bounding box of everything shown. */
 void jwc_extent(const Jwc *d, float *x0, float *y0, float *x1, float *y1);
 

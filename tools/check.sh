@@ -35,6 +35,13 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/pressfull.sh 3 200 100 500 400       # ／  a line
     sh tools/pressfull.sh 4 250 150 450 350       # □  a box
     sh tools/pressfull.sh 11 300 200 400 200      # ○  a circle
+    echo "=== （ 任意の弧: centre, start, end -- the record keeps the shorter"
+    echo "    way round, whichever order the two were pressed in (4.13)"
+    sh tools/pressfull.sh 12 300 250 400 250 350 180
+    sh tools/pressfull.sh 12 300 250 350 180 400 250
+    sh tools/pressfull.sh 12 300 250 200 250 300 350
+    sh tools/pressfull.sh 12 300 250 398 233 350 337
+    sh tools/pressfull.sh 12 300 250 398 233 206 284
     echo "=== the right button reading a point, against the original's answer"
     sh tools/readcheck.sh 170 150 214 152 383 401 388 401 386 404 380 393         165 143 380 249 324 249 233 190
     DRAWING=SAMPLE1 sh tools/readcheck.sh 500 57 503 60

@@ -443,7 +443,11 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
     if (s->outside && q->command == 25 && q->stage == 3 && q->col == 6) {
         return;
     }
-    if (q->numbers == 2) {
+    if (q->numbers == 3) {
+        /* The one cell the original prints with a bare `%g` -- 「（」's radius
+         * at the end of its line.  See tools/stage_table.py's LOOSE. */
+        sprintf(out, q->text, s->num[q->first]);
+    } else if (q->numbers == 2) {
         const int k = q->first + 1 > 1 ? 1 : q->first + 1;
 
         sprintf(out, q->text, q->width[0], s->dec[q->first], s->num[q->first],
