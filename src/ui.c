@@ -11,6 +11,7 @@
 #include "typed.h"
 #include "span.h"
 #include "copy.h"
+#include "move.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -901,6 +902,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     own = 1;
                 }
             }
+            for (q = JW_MOVE; q->command; q++) {
+                if (q->command == s->command && q->stage == i
+                    && q->row != 1 && q->col <= 15) {
+                    own = 1;
+                }
+            }
             fill(v, 0, 0, 639, 15, 0);
             /* The band right of the counts box goes too.  複線 leaves
              * `[F1]`..`[F5]` and the interval there while it asks, and the
@@ -957,12 +964,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     stage_text(v, r, s, st);
                 }
             }
-            /* 複写's table, kept apart the same way (src/copy.h). */
-            if (s->command == 1) {
+            /* 複写 and 移動, kept apart the same way (src/copy.h,
+             * src/move.h). */
+            if (s->command == 1 || s->command == 16) {
                 const JwStage *r;
                 const int st = (i == 1 && !s->with_text) ? 11 : i;
 
-                for (r = JW_COPY; r->command; r++) {
+                for (r = s->command == 1 ? JW_COPY : JW_MOVE; r->command; r++) {
                     stage_text(v, r, s, st);
                 }
             }
@@ -1004,7 +1012,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             /* 複写's distance field, the same shape but from column 18:
              * `[ESC].距離 X,Y =` fills columns 1 to 16 and the characters go in
              * one to a cell after it. */
-            if (s->command == 1 && i == 7) {
+            if ((s->command == 1 || s->command == 16) && i == 7) {
                 int n;
 
                 for (n = 0; n < s->typed_n && n < 8; n++) {
@@ -1077,7 +1085,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * points: 円周1/4点 at column 22 and nothing at 17.  Not while the
          * range is being taken -- the two presses that make the box are over
          * the drawing and the original writes neither word then. */
-        if (s->snap && s->command == 1 && (s->stage == 5 || s->stage == 6)) {
+        if (s->snap && (s->command == 1 || s->command == 16)
+            && (s->stage == 5 || s->stage == 6)) {
             jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[3][1]);
         }
         /* None of them while 文字 is taking a string: the band is black. */

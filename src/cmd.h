@@ -98,6 +98,11 @@ typedef struct {
      * original leaves the copies white while the originals stay red.  Measured
      * with a five-millimetre distance, where the copy overlaps the box. */
     long n0_lines, n0_arcs, n0_texts;
+    /* And the set itself, once 複写 or 移動 has acted on it.  The box test is
+     * no use afterwards -- 移動 takes the entities out of the box and the
+     * original still shows them picked -- so what was picked is written down
+     * at that moment.  NULL until then; jw_cmd_pick frees them. */
+    unsigned char *sel_line, *sel_arc, *sel_text;
     /* 複写's base point -- 原図形の基準点位置.  Kept apart from x0,y0, which
      * are the range's first corner and are still needed to work out what the
      * range holds. */
@@ -127,9 +132,17 @@ typedef struct {
 /* Which commands take a range with two presses the way ③指定範囲 does: 消去
  * itself, and 複写, whose own line offers the same `(L)線･円  (R)線･円･文字`
  * and whose first stage is spelt exactly the same (src/copy.h). */
-#define JW_RANGE_CMD(n) ((n) == 25 || (n) == 1)
+#define JW_RANGE_CMD(n) ((n) == 25 || (n) == 1 || (n) == 16)
 
-/* Start a command, or leave it (0). */
+/* And which of those put what the range holds somewhere else: 複写 leaves the
+ * originals and 移動 does not, but everything up to the distance is the same
+ * (src/copy.h and src/move.h differ in a word or two). */
+#define JW_MOVE_CMD(n) ((n) == 1 || (n) == 16)
+
+/* Start a command, or leave it (0).
+ *
+ * The struct must be zeroed before the first call: it owns a little memory --
+ * what 複写 and 移動 picked out of a range -- and this frees what was there. */
 void jw_cmd_pick(JwCmd *c, int command);
 
 /* A press inside the drawing area, at a screen pixel.  `right` is the other

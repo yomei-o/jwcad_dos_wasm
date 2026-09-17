@@ -16,6 +16,9 @@ mkdir -p tmp/cpc
 EMU=../dosv_emu_cpp/dosemu.exe
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 DRAWING="${DRAWING:-SAMPLE0}"
+# CMD=16 で 移動 に（メニューは左の列の 1 行目）
+CMD="${CMD:-1}"
+if [ "$CMD" = 16 ]; then MX=30; else MX=90; fi
 WAIT="${WAIT:-40000000}"
 STEP="${STEP:-5}"
 ax="${1:-150}"; ay="${2:-130}"; bx="${3:-245}"; by="${4:-170}"
@@ -24,7 +27,7 @@ if [ -n "$R1" ]; then b1=right; else b1=left; fi
 
 P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 30000000\n'
 {
-    printf 'wait %s\nmouse 90 72\nwait 2000000\nclick left\nwait 24000000\n' "$WAIT"
+    printf 'wait %s\nmouse %s 72\nwait 2000000\nclick left\nwait 24000000\n' "$WAIT" "$MX"
     printf "$P" "$ax" "$ay" "$b1" "$b1"
     printf "$P" "$bx" "$by" left left
     [ "$STEP" -ge 3 ] && printf "$P" 580 8 left left
@@ -35,7 +38,7 @@ P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 30000000\n'
 } > tmp/cpc/check.txt
 "$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
        --script tmp/cpc/check.txt orig/JW_CADV.EXE "$DRAWING.JWC" > /dev/null 2>&1
-set -- -c 1
+set -- -c "$CMD"
 if [ -n "$R1" ]; then set -- "$@" -r "$ax" "$ay"; else set -- "$@" -p "$ax" "$ay"; fi
 set -- "$@" -p "$bx" "$by"
 mx="$bx"; my="$by"
@@ -45,5 +48,6 @@ if [ "$STEP" -ge 5 ]; then set -- "$@" -p "$px" "$py"; mx="$px"; my="$py"; fi
 [ -n "$MOVE" ] && { mx=${MOVE% *}; my=${MOVE#* }; }
 set -- "$@" -m "$mx" "$my"
 ./tests/drawing.exe -u "$@" "orig/$DRAWING.JWC" tmp/cpc/port.raw > /dev/null
-printf '複写%s 段%s (%s,%s)-(%s,%s)  ' "${R1:+ 線･円･文字}" "$STEP" "$ax" "$ay" "$bx" "$by"
+[ "$CMD" = 16 ] && NAME=移動 || NAME=複写
+printf '%s%s 段%s (%s,%s)-(%s,%s)  ' "$NAME" "${R1:+ 線･円･文字}" "$STEP" "$ax" "$ay" "$bx" "$by"
 python tools/fulldiff.py tmp/cpc/orig.raw tmp/cpc/port.raw

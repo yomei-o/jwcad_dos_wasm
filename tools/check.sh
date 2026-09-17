@@ -116,6 +116,14 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/copynum.sh 20,30
     sh tools/copynum.sh 5
     SAME=1 sh tools/copynum.sh
+    echo "=== 移動 (16), which takes its range the same way and shifts what"
+    echo "    it picked instead of copying it (the 2 left over are the"
+    echo "    original's own erase clipping a neighbour)"
+    CMD=16 STEP=3 sh tools/copy.sh 150 130 245 170
+    CMD=16 STEP=4 sh tools/copy.sh 150 130 245 170
+    CMD=16 STOP=1 sh tools/copynum.sh 20,30
+    CMD=16 sh tools/copynum.sh 20,30
+    CMD=16 SAME=1 sh tools/copynum.sh
     echo "=== 追加･除外 on SAMPLE6, which only its pen-4 entities answer"
     DRAWING=SAMPLE6 WAIT=150000000 STOP=1 sh tools/erase2.sh 170 235 215 260 209 242
     echo "=== 点 dropping a 仮点"

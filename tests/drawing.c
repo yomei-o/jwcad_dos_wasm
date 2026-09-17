@@ -36,7 +36,10 @@ int main(int argc, char **argv)
     int press[8][3], n_press = 0, stage = 0;
     double num[2] = { 0.0, 0.0 };
     int dec[2] = { 3, 3 };
-    JwCmd c;
+    /* Zeroed before the first jw_cmd_pick: the command state owns a little
+     * memory now (what 複写 and 移動 pick out of a range) and pick() frees
+     * what was there. */
+    JwCmd c = { 0 };
     const char *in, *out;
     const char *why;
     unsigned char rgb[16][3];

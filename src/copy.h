@@ -1,24 +1,26 @@
-/* src/copy.h -- what 複写 (command 1) writes along the top, stage by stage.
+/* src/copy.h and src/move.h -- what 複写 (1) and 移動 (16) write along the top.
 
 Captured the way src/span.h was (tools/span_table.py, whose helpers this uses):
 drive the original, keep every string it wrote into the top line in the window
 for each step, and print them in src/stage.h's shape.
 
-    python tools/copy_table.py            # writes src/copy.h
+    python tools/copy_table.py            # writes both
 
 The stages, as src/ui.c replays them:
 
      1  after the first point, taken with the **right** button (線･円･文字)
     11  the same with the left button (<線･円>), kept apart so that both fit
         in the one table
-     3  after the second point: 複写範囲 追加･除外データ指示
-     4  after the top line's ①範囲 確定: the seven ways to copy
+     3  after the second point: 複写範囲 / 移動範囲 追加･除外データ指示
+     4  after the top line's ①範囲 確定: the seven ways to do it
      5  after ①ﾏｳｽ位置: 原図形の基準点位置
-     6  after the base point: 複写 位置
+     6  after the base point: 位置
      7  after ②数値位置: .距離 X,Y =
-     8  after [Enter]: the copy is made
+     8  after [Enter]: it is done
 
 Stage 0 is the line the menu item puts up and is already in src/prompt.h.
+The two commands differ in only a word or two, but they are captured apart
+rather than assumed the same.
  */
 #ifndef JW_COPY_H
 #define JW_COPY_H
@@ -65,14 +67,14 @@ static const JwStage JW_COPY[] = {
     { 1, 3, 50, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x95" "\xb6" "\x8e" "\x9a" "(R)" },
     { 1, 3, 57, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, " [F1" "\x81" "`F10] " },
     { 1, 3, 68, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "|" "\x87" "@" "\x94" "\xcd" "\x88" "\xcd" " " "\x8a" "m" "\x92" "\xe8" "|" },
-    /* stage 4: the seven ways to copy */
+    /* stage 4: the seven ways */
     { 1, 4, 72, 2, 7, 0xffff, 0, 0, { 0, 0 }, 0, "\x95" "\xcf" "\x8d" "X" "\x96" "\xb3" "\x82" "\xb5" },
     { 1, 4,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
     { 1, 4,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "|" "\x87" "@" "\xcf" "\xb3" "\xbd" "\x88" "\xca" "\x92" "u(L,R)|" "\x87" "A" "\x90" "\x94" "\x92" "l" "\x88" "\xca" "\x92" "u|" "\x87" "B" "\x90" "\x94" "\x92" "l" "\x94" "{" "\x97" "\xa6" "|" "\x87" "C" "\xcf" "\xb3" "\xbd" "\x94" "{" "\x97" "\xa6" "|" "\x87" "D" "\x94" "\xbd" "\x93" "]|" "\x87" "E" "\x89" "\xf1" "\x93" "]|" "\x87" "F" "\x91" "\xae" "\x90" "\xab" "\x95" "\xcf" "\x8d" "X|" },
     /* stage 5: 原図形の基準点位置 */
     { 1, 5,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
     { 1, 5,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x95" "\xa1" "\x8e" "\xca" "  " "\x8c" "\xb4" "\x90" "}" "\x8c" "`" "\x82" "\xcc" "\x8a" "\xee" "\x8f" "\x80" "\x93" "_" "\x88" "\xca" "\x92" "u " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " (L)free (R)Read  |" "\x87" "@" "\x81" "y" "\x94" "C" "\x88" "\xd3" "\x81" "z" "\x95" "\xfb" "\x8c" "\xfc" "|" },
-    /* stage 6: 複写 位置 */
+    /* stage 6: 位置 */
     { 1, 6,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]  " "\x95" "\xa1" "\x8e" "\xca" " " "\x88" "\xca" "\x92" "u " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " (L)free (R)Read  |" "\x87" "@" "\x81" "y" "\x94" "C" "\x88" "\xd3" "\x81" "z" "\x95" "\xfb" "\x8c" "\xfc" "|" "\x87" "A" "\x89" "\xbc" "\x95" "\x5c" "\x8e" "\xa6" "|" "\x87" "B" "\x89" "\xf1" "\x93" "]" "\x8a" "p|" },
     /* stage 7: ②数値位置 -- the distance in millimetres */
     { 1, 7,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]." "\x8b" "\x97" "\x97" "\xa3" " X,Y =" },
@@ -81,7 +83,7 @@ static const JwStage JW_COPY[] = {
     { 1, 7, 67, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, ",  1000.000" },
     { 1, 7, 78, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "mm" },
     { 1, 7, 80, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "]" },
-    /* stage 8: the copy is made */
+    /* stage 8: it is done */
     { 1, 8,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
     { 1, 8,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
     { 1, 8,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "|" "\x87" "@" "\x93" "\xaf" "\x8c" "`" "\x95" "\xca" "\x8f" "\x88" "\x97" "\x9d" "|" "\x87" "A" "\x91" "\xbc" "\x90" "}" "\x8c" "`" "\x8f" "\x88" "\x97" "\x9d" "|" "\x87" "B" "\x98" "A" "\x91" "\xb1" "|" },

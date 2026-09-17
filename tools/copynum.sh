@@ -14,11 +14,14 @@ mkdir -p tmp/cn
 EMU=../dosv_emu_cpp/dosemu.exe
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 DRAWING="${DRAWING:-SAMPLE0}"
+# CMD=16 で 移動 に（メニューは左の列の 1 行目）
+CMD="${CMD:-1}"
+if [ "$CMD" = 16 ]; then MX=30; else MX=90; fi
 WAIT="${WAIT:-40000000}"
 num="${1:-20,30}"
 P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 30000000\n'
 {
-    printf 'wait %s\nmouse 90 72\nwait 2000000\nclick left\nwait 24000000\n' "$WAIT"
+    printf 'wait %s\nmouse %s 72\nwait 2000000\nclick left\nwait 24000000\n' "$WAIT" "$MX"
     printf "$P" 150 130 right right
     printf "$P" 245 170 left left
     printf "$P" 580 8 left left          # ①範囲 確定
@@ -34,12 +37,13 @@ P='mouse %d %d\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 30000000\n'
 } > tmp/cn/check.txt
 "$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
        --script tmp/cn/check.txt orig/JW_CADV.EXE "$DRAWING.JWC" > /dev/null 2>&1
-set -- -c 1 -r 150 130 -p 245 170 -t 580 -t 220
+set -- -c "$CMD" -r 150 130 -p 245 170 -t 580 -t 220
 if [ -n "$SAME" ]; then
     set -- "$@" -r 400 300
 else
     if [ -n "$STOP" ]; then set -- "$@" -K "$num"; else set -- "$@" -k "$num"; fi
 fi
 ./tests/drawing.exe -u "$@" -m 600 450 "orig/$DRAWING.JWC" tmp/cn/port.raw > /dev/null
-printf '複写 数値位置%s %s  ' "${SAME:+（前回と同じ）}${STOP:+（打っただけ）}" "${SAME:+-}${SAME:--$num}"
+[ "$CMD" = 16 ] && NAME=移動 || NAME=複写
+printf '%s 数値位置%s %s  ' "$NAME" "${SAME:+（前回と同じ）}${STOP:+（打っただけ）}" "${SAME:+-}${SAME:--$num}"
 python tools/fulldiff.py tmp/cn/orig.raw tmp/cn/port.raw

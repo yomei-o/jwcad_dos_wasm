@@ -12,6 +12,9 @@
 
 void jw_cmd_pick(JwCmd *c, int command)
 {
+    free(c->sel_line);
+    free(c->sel_arc);
+    free(c->sel_text);
     memset(c, 0, sizeof(*c));
     c->command = command;
     /* 複線 remembers the interval between runs, and its line says so before
@@ -639,7 +642,7 @@ static int takes_text(const JwCmd *c)
 {
     /* ①範囲内消去 and ②範囲外消去 never ask; ③指定範囲 and 複写 do, and the
      * answer is which button took the first point. */
-    return !(c->span || c->command == 1) || c->with_text;
+    return !(c->span || JW_MOVE_CMD(c->command)) || c->with_text;
 }
 
 static int flipped(const JwCmd *c, int kind, long at)
@@ -687,6 +690,39 @@ static int arc_in_range(const JwCmd *c, const JwcArc *a)
 /* Copy everything the range picked, moved by (dx,dy) drawing units.  Walks the
  * arrays backwards from the count it started with, so that the copies it makes
  * are not themselves copied.  Returns how many entities it made. */
+/* Is entity `k` of this kind picked?  The frozen set once there is one, and
+ * the box test until then. */
+static int picked_line(const JwCmd *c, const Jwc *d, long k)
+{
+    if (c->sel_line) {
+        return k < c->n0_lines && c->sel_line[k];
+    }
+    return in_reach_layer(d, d->lines[k].layer)
+           && jw_cmd_in_range(c, d->lines[k].x0, d->lines[k].y0,
+                              d->lines[k].x1, d->lines[k].y1)
+              != flipped(c, JW_FLIP_LINE, k);
+}
+
+static int picked_arc(const JwCmd *c, const Jwc *d, long k)
+{
+    if (c->sel_arc) {
+        return k < c->n0_arcs && c->sel_arc[k];
+    }
+    return in_reach_layer(d, d->arcs[k].layer)
+           && arc_in_range(c, &d->arcs[k]) != flipped(c, JW_FLIP_ARC, k);
+}
+
+static int picked_text(const JwCmd *c, const Jwc *d, long k)
+{
+    if (c->sel_text) {
+        return k < c->n0_texts && c->sel_text[k];
+    }
+    return takes_text(c) && in_reach_layer(d, d->texts[k].layer)
+           && jw_cmd_in_range(c, d->texts[k].x0, d->texts[k].y0,
+                              d->texts[k].x1, d->texts[k].y1)
+              != flipped(c, JW_FLIP_TEXT, k);
+}
+
 static int copy_range(const JwCmd *c, Jwc *d, double dx, double dy)
 {
     const long lines = c->n0_lines, arcs = c->n0_arcs, texts = c->n0_texts;
@@ -694,43 +730,116 @@ static int copy_range(const JwCmd *c, Jwc *d, double dx, double dy)
     long k;
 
     for (k = 0; k < lines; k++) {
-        const JwcLine *l = &d->lines[k];
-
-        if (in_reach_layer(d, l->layer)
-            && jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)
-               != flipped(c, JW_FLIP_LINE, k)) {
+        if (picked_line(c, d, k)) {
             n += jwc_dup_line(d, k, (float)dx, (float)dy);
         }
     }
     for (k = 0; k < arcs; k++) {
-        const JwcArc *a = &d->arcs[k];
-
-        if (in_reach_layer(d, a->layer) && arc_in_range(c, a)
-            != flipped(c, JW_FLIP_ARC, k)) {
+        if (picked_arc(c, d, k)) {
             n += jwc_dup_arc(d, k, (float)dx, (float)dy);
         }
     }
     for (k = 0; k < texts && takes_text(c); k++) {
-        const JwcText *t = &d->texts[k];
-
-        if (in_reach_layer(d, t->layer)
-            && jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1)
-               != flipped(c, JW_FLIP_TEXT, k)) {
+        if (picked_text(c, d, k)) {
             n += jwc_dup_text(d, k, (float)dx, (float)dy);
         }
     }
     return n;
 }
 
+/* 移動 shifts what the range picked instead of copying it.  The records keep
+ * every byte but the coordinates, and the counts do not change -- SAMPLE0
+ * stays at 30|13 through a move. */
+static void move_range(const JwCmd *c, Jwc *d, double dx, double dy)
+{
+    long k;
+
+    for (k = 0; k < c->n0_lines; k++) {
+        JwcLine *l = &d->lines[k];
+
+        if (picked_line(c, d, k)) {
+            l->x0 += (float)dx;
+            l->y0 += (float)dy;
+            l->x1 += (float)dx;
+            l->y1 += (float)dy;
+        }
+    }
+    for (k = 0; k < c->n0_arcs; k++) {
+        JwcArc *a = &d->arcs[k];
+
+        if (picked_arc(c, d, k)) {
+            a->cx += (float)dx;
+            a->cy += (float)dy;
+        }
+    }
+    for (k = 0; k < c->n0_texts && takes_text(c); k++) {
+        JwcText *t = &d->texts[k];
+
+        if (picked_text(c, d, k)) {
+            t->x0 += (float)dx;
+            t->y0 += (float)dy;
+            t->x1 += (float)dx;
+            t->y1 += (float)dy;
+        }
+    }
+}
+
 /* 複写's ②数値位置 asks for the distance in millimetres of paper; the drawing
  * keeps them the same way 複線 keeps its interval -- `mm * unit_mm / denom`.
  * Measured on SAMPLE0 (S=1/1, unit_mm 1.744108): 20,30 moves the copy 35
  * pixels across and 52 up, which is 20*1.744 and 30*1.744 truncated. */
-static void copy_by_mm(const JwCmd *c, Jwc *d)
+/* Write down what the range holds, so that it stays picked after the entities
+ * have been moved.  One byte an entity, up to the counts the range was fixed
+ * at; a `1` means the original showed it in colour 2. */
+static void freeze(JwCmd *c, const Jwc *d)
+{
+    long k;
+
+    free(c->sel_line);
+    free(c->sel_arc);
+    free(c->sel_text);
+    c->sel_line = (unsigned char *)calloc((size_t)(c->n0_lines + 1), 1);
+    c->sel_arc = (unsigned char *)calloc((size_t)(c->n0_arcs + 1), 1);
+    c->sel_text = (unsigned char *)calloc((size_t)(c->n0_texts + 1), 1);
+    if (!c->sel_line || !c->sel_arc || !c->sel_text) {
+        return;
+    }
+    for (k = 0; k < c->n0_lines; k++) {
+        const JwcLine *l = &d->lines[k];
+
+        c->sel_line[k] = (unsigned char)
+            (in_reach_layer(d, l->layer)
+             && jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)
+                != flipped(c, JW_FLIP_LINE, k));
+    }
+    for (k = 0; k < c->n0_arcs; k++) {
+        const JwcArc *a = &d->arcs[k];
+
+        c->sel_arc[k] = (unsigned char)
+            (in_reach_layer(d, a->layer)
+             && arc_in_range(c, a) != flipped(c, JW_FLIP_ARC, k));
+    }
+    for (k = 0; k < c->n0_texts; k++) {
+        const JwcText *t = &d->texts[k];
+
+        c->sel_text[k] = (unsigned char)
+            (takes_text(c) && in_reach_layer(d, t->layer)
+             && jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1)
+                != flipped(c, JW_FLIP_TEXT, k));
+    }
+}
+
+static void copy_by_mm(JwCmd *c, Jwc *d)
 {
     const double per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
+    const double dx = d->copy_x_mm * per, dy = d->copy_y_mm * per;
 
-    copy_range(c, d, d->copy_x_mm * per, d->copy_y_mm * per);
+    freeze(c, d);
+    if (c->command == 16) {
+        move_range(c, d, dx, dy);
+    } else {
+        copy_range(c, d, dx, dy);
+    }
 }
 
 void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
@@ -774,8 +883,7 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
                  * of SAMPLE0's line 5). */
                 continue;
             }
-        } else if (jw_cmd_in_range(c, l->x0, l->y0, l->x1, l->y1)
-                   == flipped(c, JW_FLIP_LINE, k)) {
+        } else if (!picked_line(c, d, k)) {
             continue;
         }
         at_screen(w, l->x0, l->y0, &x0, &y0);
@@ -793,10 +901,11 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         const JwcArc *a = &d->arcs[k];
         const double m = a->r;
 
-        if (in_reach_layer(d, a->layer)
-            && (c->outside
-                ? wholly_outside(c, a->cx - m, a->cy - m, a->cx + m, a->cy + m)
-                : arc_in_range(c, a)) != flipped(c, JW_FLIP_ARC, k)) {
+        if (c->outside
+            ? (in_reach_layer(d, a->layer)
+               && wholly_outside(c, a->cx - m, a->cy - m, a->cx + m, a->cy + m)
+                  != flipped(c, JW_FLIP_ARC, k))
+            : picked_arc(c, d, k)) {
             jw_view_arc(v, d, a, w, mark);
         }
     }
@@ -806,10 +915,11 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         if (!takes_text(c)) {
             break;
         }
-        if (in_reach_layer(d, t->layer)
-            && (c->outside ? wholly_outside(c, t->x0, t->y0, t->x1, t->y1)
-                           : jw_cmd_in_range(c, t->x0, t->y0, t->x1, t->y1))
-               != flipped(c, JW_FLIP_TEXT, k)) {
+        if (c->outside
+            ? (in_reach_layer(d, t->layer)
+               && wholly_outside(c, t->x0, t->y0, t->x1, t->y1)
+                  != flipped(c, JW_FLIP_TEXT, k))
+            : picked_text(c, d, k)) {
             jw_view_text(v, d, t, w, mark);
         }
     }
@@ -932,12 +1042,12 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
             /* 消去 goes on to `復活出来ません |①実行|②中止|`; 複写 asks how
              * to copy -- `|①ﾏｳｽ位置(L,R)|②数値位置|…|⑦属性変更|`, with
              * 変更無し in the band (src/copy.h stage 4). */
-            c->stage = c->command == 1 ? 4 : 2;
+            c->stage = JW_MOVE_CMD(c->command) ? 4 : 2;
         }
         return 0;
     }
-    if (c->command == 1) {
-        /* 複写, once the range is fixed.  Nothing in the line is picked yet --
+    if (JW_MOVE_CMD(c->command)) {
+        /* 複写 and 移動, once the range is fixed.  Nothing in the line is picked yet --
          * none of the seven has 【】 round it -- so ①ﾏｳｽ位置 has to be chosen
          * before the presses mean anything.  Measured: click it and the line
          * becomes `複写  原図形の基準点位置 マウス指示 (L)free (R)Read`. */
@@ -1205,8 +1315,8 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->typed_n = (int)strlen(c->typed);
         key = 13;
     }
-    if (c->command == 1 && c->stage == 7) {
-        /* 複写's distance: `X,Y` in millimetres of paper, and one number on
+    if (JW_MOVE_CMD(c->command) && c->stage == 7) {
+        /* 複写 and 移動's distance: `X,Y` in millimetres of paper, and one number on
          * its own means both.  Measured -- typing `2` alone moves the copy
          * two millimetres each way. */
         if (key == 13 || key == 10) {
@@ -1481,7 +1591,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
          * the same but for the word in front (src/copy.h).  Where it differs
          * is after 範囲確定: 消去 asks ①実行, 複写 asks **how** to copy. */
         jw_cmd_at(w, sx, sy, &x, &y);
-        if (c->command == 1 && c->stage == 7) {
+        if (JW_MOVE_CMD(c->command) && c->stage == 7) {
             /* 前回と同じ ﾏｳｽ(R): copy at the distance it remembers. */
             if (!right) {
                 return 0;
@@ -1491,7 +1601,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             copy_by_mm(c, d);
             return 1;
         }
-        if (c->command == 1 && c->stage >= 4) {
+        if (JW_MOVE_CMD(c->command) && c->stage >= 4) {
             /* 複写's own stages: ①ﾏｳｽ位置 has been picked and the presses now
              * take the base point and the place to put the copy.  RESUME.md
              * 4.9e -- the second of those is not understood yet, so this takes
