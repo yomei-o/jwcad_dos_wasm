@@ -18,6 +18,7 @@ like it worked: dosv_emu_cpp did not answer INT 16h AH=12h until 2026-09-18 and
 JW_CAD read the caller's own buffer as the shift state, with the Ctrl bit set.
 Every row of it was a [CTRL] row (RESUME.md 4.19).
 """
+import json
 import os
 import re
 import subprocess
@@ -107,14 +108,38 @@ static const char *const JW_SNAP[3][30][2] = {
 '''
 
 
+# Thirty runs of the original take a few minutes, so the three keys can be
+# taken one at a time and are kept in tmp/snap_rows.json between calls:
+#
+#     python tools/snap_table.py shift
+#     python tools/snap_table.py ctrl
+#     python tools/snap_table.py alt        # this one writes src/snap.h
+#
+# With no argument it does all three in one go.
+KEPT = 'tmp/snap_rows.json'
+
+
 def main():
     if not os.path.exists(EMU):
         sys.exit('build dosv_emu_cpp first')
+    want = sys.argv[1:] or list(KEYS)
     rows = {}
-    for mod in KEYS:
+    if os.path.exists(KEPT):
+        for k, v in json.load(open(KEPT)).items():
+            mod, n = k.split(',')
+            rows[mod, int(n)] = {int(c): s for c, s in v.items()}
+    for mod in want:
         for n in range(1, 31):
             rows[mod, n] = capture(n, mod)
-            print('%-5s %2d %s' % (mod, n, rows[mod, n]), flush=True)
+            # ascii(): the strings are Shift-JIS read back as latin-1, and a
+            # Windows console cannot print those.
+            print('%-5s %2d %s' % (mod, n, ascii(rows[mod, n])),
+                  flush=True)
+    json.dump({'%s,%d' % k: v for k, v in rows.items()}, open(KEPT, 'w'))
+    missing = [m for m in KEYS if (m, 1) not in rows]
+    if missing:
+        print('kept in %s; still to take: %s' % (KEPT, ' '.join(missing)))
+        return
     f = open('src/snap.h', 'w', encoding='utf-8', newline='\n')
     f.write(HEAD)
     for mod in KEYS:

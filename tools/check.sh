@@ -74,6 +74,11 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "=== the read with a modifier key held: [SHIFT] a point on a line"
     echo "    or a circle, [GRPH] a centre or the middle of two points (4.19)"
     sh tools/snapcheck.sh
+    echo "=== and the words it puts in the band while a key is held,"
+    echo "    which are per key and per command (src/snap.h)"
+    for n in 2 3 4 10 11 12 13 15 20 22 25; do
+        for m in shift ctrl alt; do sh tools/modscreen.sh $m $n; done
+    done
     echo "=== a command started from a read point"
     sh tools/pressfull.sh 3 r 170 150 l 400 300
     DRAWING=SAMPLE6 sh tools/pressfull.sh 3 r 470 305 l 400 300

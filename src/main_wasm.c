@@ -74,6 +74,7 @@ static void sync_ui(void)
     ui.moved = cmd.moved;
     ui.hit_kind = cmd.hit_kind;
     ui.typing_text = cmd.typing_text;
+    ui.mods = cmd.mods;
 }
 
 /* Redraw at the current view and unpack the planes for the canvas.  The order
@@ -207,6 +208,21 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
     /* a command with a point in hand keeps its reading up to date as the
      * pointer moves, the way the original does */
     jw_cmd_track(&cmd, drawing, &view, x, y);
+    sync_ui();
+    present();
+}
+
+/* Which modifier keys are held.  The page calls this from its own key
+ * and mouse handlers, because two different things want it: the words
+ * in the band follow the key while the pointer moves, and a press reads
+ * the keys as it happens (src/read.h).  One field does both, the way the
+ * original has one keyboard. */
+EMSCRIPTEN_KEEPALIVE void jw_mods(int m)
+{
+    if (cmd.mods == m) {
+        return;
+    }
+    cmd.mods = m;
     sync_ui();
     present();
 }

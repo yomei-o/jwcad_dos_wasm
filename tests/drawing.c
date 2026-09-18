@@ -12,6 +12,7 @@
 #include "jwc.h"
 #include "png.h"
 #include "cmd.h"
+#include "read.h"
 #include "ui.h"
 #include "view.h"
 
@@ -32,6 +33,7 @@ int main(int argc, char **argv)
      * -c N: and with menu item N picked, the way a click leaves it. */
     int ui = 0, original = 0, command = 0, a = 1;
     const char *write_to = NULL;        /* -w: save the drawing when it is done */
+    int mods = 0;                       /* -M: which modifier keys are held */
     int mx = 200, my = 200;     /* where the original leaves the pointer */
     int press[8][3], n_press = 0, stage = 0;
     double num[2] = { 0.0, 0.0 };
@@ -113,6 +115,16 @@ int main(int argc, char **argv)
             press[n_press][1] = atoi(argv[a + 1]);
             press[n_press][2] = 0;
             n_press++;
+            a += 2;
+        } else if (strcmp(argv[a], "-M") == 0 && a + 1 < argc) {
+            /* Which modifier keys are held, as a word: `shift`,
+             * `ctrl`, `alt`.  Held for the whole run -- the words in
+             * the band follow the key and the pointer, and a press
+             * reads the keys as it happens (src/read.h). */
+            mods = (strstr(argv[a + 1], "shift") ? JW_MOD_SHIFT : 0)
+                 | (strstr(argv[a + 1], "ctrl") ? JW_MOD_CTRL : 0)
+                 | ((strstr(argv[a + 1], "alt")
+                     || strstr(argv[a + 1], "grph")) ? JW_MOD_GRPH : 0);
             a += 2;
         } else if (strcmp(argv[a], "-w") == 0 && a + 1 < argc) {
             /* Write the drawing out when the presses are done, the way the
@@ -218,6 +230,7 @@ int main(int argc, char **argv)
                 }
                 continue;
             }
+            c.mods = mods;
             jw_cmd_press(&c, d, &w, press[i][0], press[i][1], press[i][2]);
         }
     }
@@ -253,6 +266,7 @@ int main(int argc, char **argv)
         /* the two words about the right button are there while the pointer is
          * over the drawing */
         s.snap = mx >= 122 && mx <= 638 && my >= 17 && my <= 462;
+        s.mods = mods;
         s.missed = c.missed;
         s.outside = c.outside;
         s.escaped = c.escaped;

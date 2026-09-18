@@ -180,10 +180,21 @@ canvas.addEventListener('wheel', e => {
   blit();
 }, { passive: false });
 
+/* Which modifier keys are held.  [SHIFT] makes the right button snap to a
+   point on a line or a circle, [GRPH] -- the Alt key here -- to a centre,
+   and the words in the band follow the key even before anything is pressed
+   (RESUME.md 4.19).  The bits are src/read.h's JW_MOD_*. */
+const mods = e => (e.shiftKey ? 1 : 0) | (e.ctrlKey ? 2 : 0)
+                | (e.altKey ? 4 : 0);
+for (const ev of ['keydown', 'keyup']) {
+  window.addEventListener(ev, e => { if (Module) Module._jw_mods(mods(e)); });
+}
+
 let drag = null;
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('pointerdown', e => {
   const p = at(e);
+  if (Module) Module._jw_mods(mods(e));
   /* The menu answers a click the way the original does, and so does a command
      that is running -- ／ takes two presses and leaves a line. Anywhere else is
      a drag, which is this viewer's own convenience. */
@@ -195,6 +206,7 @@ canvas.addEventListener('pointerdown', e => {
 canvas.addEventListener('pointermove', e => {
   if (!Module) return;
   const p = at(e);
+  Module._jw_mods(mods(e));
   if (drag) {
     Module._jw_pan(p[0] - drag[0], p[1] - drag[1]);
     drag = p;

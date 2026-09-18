@@ -44,17 +44,24 @@ typedef struct {
                                  * angle is always three */
     int snap;                   /* the pointer is over the drawing, so the two
                                  * words saying what the right button would
-                                 * take *may* be on the screen -- see `ctrl` */
-    /* [CTRL] is held down.  The two words in the band (src/snap.h) are the
-     * hint for the *modified* read, and the original puts them up only while a
-     * modifier key is down: with no key held the band beside the counts stays
-     * black.  They looked unconditional for a long time because the emulator
-     * did not answer INT 16h AH=12h and handed JW_CAD a word with the Ctrl bit
-     * set, so every run behaved as though Ctrl were held (dosv_emu_cpp
-     * RESUME 「刺された罠」).  Nothing feeds this yet -- the port takes no
-     * modifier keys -- so it is 0 and the words stay off, which is what the
-     * original does for a user who is not holding anything. */
-    int ctrl;
+                                 * take *may* be on the screen -- see `mods` */
+    /* Which modifier keys are held -- JW_MOD_* from src/read.h.  The words in
+     * the band (src/snap.h) are the hint for the *modified* read, and the
+     * original puts them up only while one is down: with nothing held the band
+     * beside the counts stays black.  Which words they are depends on the key
+     * -- 線・円上点 for [SHIFT], 鉛直･/円周点 for [CTRL], 中心点・Ａ点 for
+     * [GRPH] -- so this says which, not merely whether.
+     *
+     * They looked unconditional for a long time because the emulator did not
+     * answer INT 16h AH=12h and handed JW_CAD a word with the Ctrl bit set, so
+     * every run behaved as though Ctrl were held (dosv_emu_cpp RESUME
+     * 「刺された罠」, and RESUME.md 4.19 here).
+     *
+     * Two keys at once is **not measured**: the help says [CTRL] and [SHIFT]
+     * together mean something of their own (書込用線種線色と同種同色のデータ
+     * のみ), but not what the band then says, so jw_ui_draw picks one of the
+     * three in a fixed order rather than inventing a fourth answer. */
+    int mods;
     /* A press that searched for something and found nothing.  The original
      * says so in the band beside the counts and leaves it there until the next
      * press finds something or another item is picked; see jw_ui_draw. */

@@ -3,6 +3,7 @@
 
 #include "draw.h"
 #include "fontx.h"
+#include "read.h"
 #include "view.h"
 
 #include "prompt.h"
@@ -16,6 +17,27 @@
 
 #include <stdio.h>
 #include <string.h>
+
+/* Which row of src/snap.h a held key asks for, or -1 for none.
+ *
+ * One key at a time is what was measured.  Two at once is a real thing -- the
+ * help gives [CTRL] and [SHIFT] together a meaning of their own -- but what
+ * the band says then has not been read out of the original, so this picks in a
+ * fixed order rather than inventing a fourth answer.  [CTRL] comes first
+ * because it is the one whose words fill both cells. */
+static int snap_row(int mods)
+{
+    if (mods & JW_MOD_CTRL) {
+        return JW_SNAP_CTRL;
+    }
+    if (mods & JW_MOD_SHIFT) {
+        return JW_SNAP_SHIFT;
+    }
+    if (mods & JW_MOD_GRPH) {
+        return JW_SNAP_GRPH;
+    }
+    return -1;
+}
 
 /* The original's menu, byte for byte out of its DGROUP at 0x7cd7: thirty
  * labels of six bytes each, the right column first.  The command numbers are
@@ -1095,42 +1117,46 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         if (s->command == 4 && s->stage == 1 && !s->escaped) {
             box(v, 580, 3, 590, 13, 7);
         }
-        /* What a *modified* read would take, which is there while [CTRL] is
-         * held and the pointer is over the drawing -- see src/snap.h.  Last,
-         * because a stage writes spaces at column 17 on a black background and
-         * those reach across column 22.  With no modifier held the original
-         * writes those spaces and nothing else. */
+        /* What a *modified* read would take, which is there while a modifier
+         * key is held and the pointer is over the drawing -- see src/snap.h.
+         * Last, because a stage writes spaces at column 17 on a black
+         * background and those reach across column 22.  With no modifier held
+         * the original writes those spaces and nothing else. */
+        const int row = snap_row(s->mods);
+
         /* 複線's 間隔取得 asks for a point, and while it is asking, the word
          * for what the right button would take is on the screen even though
          * the command has none of its own (src/snap.h has nothing for 5).
          * Column 22 only -- the original writes 円周1/4点 there, the same
-         * as □ and ○ do, and leaves column 17 alone. */
-        if (s->ctrl && s->snap && s->command == 5 && s->stage == 5) {
-            jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[3][1]);
+         * as □ and ○ do, and leaves column 17 alone.
+         *
+         * [CTRL] only: this was measured when every run behaved as though Ctrl
+         * were held, so it is a [CTRL] measurement.  What [SHIFT] and [GRPH]
+         * write here has not been measured. */
+        if (row == JW_SNAP_CTRL && s->snap && s->command == 5
+            && s->stage == 5) {
+            jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[JW_SNAP_CTRL][3][1]);
         }
-        /* 複写 the same, once ①ﾏｳｽ位置 has been picked and it is asking for
-         * points: 円周1/4点 at column 22 and nothing at 17.  Not while the
-         * range is being taken -- the two presses that make the box are over
-         * the drawing and the original writes neither word then. */
         /* 複写 and 移動 say what the right button would take from the moment
          * the range is fixed and they are asking how to do it -- stage 4 on --
          * and not while the range is being taken.  Measured: with the pointer
          * over the drawing, the two presses that make the box leave the band
          * empty, ①同形別処理 (which goes back to stage 4) puts 円周1/4点 back,
          * and it is gone again once it is asking for the distance (stage 7)
-         * or the copy is made (stage 8). */
-        if (s->ctrl && s->snap && (s->command == 1 || s->command == 16)
+         * or the copy is made (stage 8).  A [CTRL] measurement, as above. */
+        if (row == JW_SNAP_CTRL && s->snap
+            && (s->command == 1 || s->command == 16)
             && s->stage >= 4 && s->stage <= 6) {
-            jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[3][1]);
+            jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[JW_SNAP_CTRL][3][1]);
         }
         /* None of them while 文字 is taking a string: the band is black. */
-        if (s->ctrl && s->snap && !s->typing_text && !s->escaped
-            && JW_SNAP[s->command - 1][0]) {
-            jw_ui_text(v, 17, 2, 7, 0, JW_SNAP[s->command - 1][0]);
+        if (row >= 0 && s->snap && !s->typing_text && !s->escaped
+            && JW_SNAP[row][s->command - 1][0]) {
+            jw_ui_text(v, 17, 2, 7, 0, JW_SNAP[row][s->command - 1][0]);
         }
-        if (s->ctrl && s->snap && !s->typing_text && !s->escaped
-            && JW_SNAP[s->command - 1][1]) {
-            jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[s->command - 1][1]);
+        if (row >= 0 && s->snap && !s->typing_text && !s->escaped
+            && JW_SNAP[row][s->command - 1][1]) {
+            jw_ui_text(v, 22, 2, 7, 0, JW_SNAP[row][s->command - 1][1]);
         }
         /* 「読取可能データ無」 -- what a command that looks for an entity
          * says when the press found none.  Read off the original with 線消 on
