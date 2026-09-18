@@ -115,4 +115,19 @@ void jw_read_on_arc(const JwcArc *a, double px, double py,
 void jw_read_mid_line(const JwcLine *l, double *x, double *y);
 void jw_read_mid_arc(const JwcArc *a, double *x, double *y);
 
+/* 円周1/4点 -- the nearest of the four quarter points of an arc's circle, which
+ * is what [CTRL] takes in a command that is neither ＋ nor ／.
+ *
+ * The **whole** circle again, not the part that is drawn.  Measured: 「（」
+ * draws an arc about (300,250) with radius 50 running 100 to 170 degrees, so
+ * no quarter point is on it at all, and a [CTRL] press at (275,207) inside □
+ * takes (300,200) -- the 90 degree one.  An arc counts as much as a closed
+ * circle does, and the press is answered at once, with no second press.
+ *
+ * A line is not taken: the same press on SAMPLE0's line 4, drawn with the pen
+ * and line type being written, says 読取可能データ無.  The help agrees --
+ * 「他のコマンドの場合、円を指示すると円周1/4点が選べます」. */
+void jw_read_quarter(const JwcArc *a, double px, double py,
+                     double *x, double *y);
+
 #endif

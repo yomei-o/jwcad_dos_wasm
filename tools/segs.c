@@ -101,9 +101,9 @@ int main(int argc, char **argv)
          * the tilt and the rim comes out somewhere the original draws
          * nothing.  Printed for the start, the middle and the end, because a
          * modifier read has to be pressed **on** the curve. */
-        printf("arc  %5ld layer %2u pen %u  centre (%7.2f,%7.2f) r %7.2f "
+        printf("arc  %5ld layer %2u pen %u type %u  centre (%7.2f,%7.2f) r %7.2f "
                "start %8.3f end %8.3f tilt %8.3f flat %u",
-               k, a->layer, a->pen, cx, cy, a->r * w.scale,
+               k, a->layer, a->pen, a->type, cx, cy, a->r * w.scale,
                a->start / 65536.0, a->end / 65536.0, a->tilt / 65536.0,
                a->flatten);
         {

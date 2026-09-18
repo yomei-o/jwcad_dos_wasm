@@ -284,3 +284,16 @@ void jw_read_mid_arc(const JwcArc *a, double *x, double *y)
     *x = a->cx;
     *y = a->cy;
 }
+
+void jw_read_quarter(const JwcArc *a, double px, double py,
+                     double *x, double *y)
+{
+    const double d2r = 3.14159265358979323846 / 180.0;
+    const double tilt = a->tilt / 65536.0;
+    double ang = atan2(py - a->cy, px - a->cx) / d2r - tilt;
+
+    /* To the nearest quarter turn of the shape's own frame, and back. */
+    ang = floor(ang / 90.0 + 0.5) * 90.0 + tilt;
+    *x = a->cx + a->r * cos(ang * d2r);
+    *y = a->cy + a->r * sin(ang * d2r);
+}

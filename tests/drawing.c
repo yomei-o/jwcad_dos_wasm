@@ -116,15 +116,33 @@ int main(int argc, char **argv)
             press[n_press][2] = 0;
             n_press++;
             a += 2;
-        } else if (strcmp(argv[a], "-M") == 0 && a + 1 < argc) {
-            /* Which modifier keys are held, as a word: `shift`,
-             * `ctrl`, `alt`.  Held for the whole run -- the words in
-             * the band follow the key and the pointer, and a press
-             * reads the keys as it happens (src/read.h). */
-            mods = (strstr(argv[a + 1], "shift") ? JW_MOD_SHIFT : 0)
-                 | (strstr(argv[a + 1], "ctrl") ? JW_MOD_CTRL : 0)
-                 | ((strstr(argv[a + 1], "alt")
-                     || strstr(argv[a + 1], "grph")) ? JW_MOD_GRPH : 0);
+        } else if (strcmp(argv[a], "-C") == 0 && a + 1 < argc && n_press < 8) {
+            /* Pick another item **at this point** in the sequence, the way a
+             * hand does: 円周1/4点 has to be measured on a circle drawn with
+             * the pen and line type being written, and no drawing that ships
+             * has one, so the circle is drawn with ○ first and then the item
+             * that reads it is picked.  -c says which item to start in; this
+             * says when to change. */
+            press[n_press][0] = -6;
+            press[n_press][1] = atoi(argv[a + 1]);
+            press[n_press][2] = 0;
+            n_press++;
+            a += 2;
+        } else if (strcmp(argv[a], "-M") == 0 && a + 1 < argc && n_press < 8) {
+            /* Which modifier keys are held from this point in the sequence
+             * on, as a word: `shift`, `ctrl`, `alt`, or `none` to let them go.
+             * It takes its turn like a press, because a key goes down and up
+             * around one: the original reads them at the press itself, and the
+             * words in the band follow them while the pointer moves
+             * (src/read.h). */
+            press[n_press][0] = -7;
+            press[n_press][1] =
+                  (strstr(argv[a + 1], "shift") ? JW_MOD_SHIFT : 0)
+                | (strstr(argv[a + 1], "ctrl") ? JW_MOD_CTRL : 0)
+                | ((strstr(argv[a + 1], "alt")
+                    || strstr(argv[a + 1], "grph")) ? JW_MOD_GRPH : 0);
+            press[n_press][2] = 0;
+            n_press++;
             a += 2;
         } else if (strcmp(argv[a], "-w") == 0 && a + 1 < argc) {
             /* Write the drawing out when the presses are done, the way the
@@ -209,6 +227,15 @@ int main(int argc, char **argv)
                 t.typing_text = c.typing_text;
                 jw_ui_draw(&v, &t);
                 jw_cmd_top(&c, d, jw_ui_top_item(press[i][1], 8));
+                continue;
+            }
+            if (press[i][0] == -7) {            /* -M: the keys */
+                mods = press[i][1];
+                continue;
+            }
+            if (press[i][0] == -6) {            /* -C: another item */
+                command = press[i][1];
+                jw_cmd_pick(&c, command);
                 continue;
             }
             if (press[i][0] == -5) {            /* -x: [ESC] */

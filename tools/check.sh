@@ -92,6 +92,19 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     CMDN=22 sh tools/snapscreen.sh shift 300 402
     DRAWING=SAMPLE6 sh tools/snapscreen.sh shift 415 158
     DRAWING=SAMPLE6 sh tools/snapscreen.sh alt 415 158
+    echo "=== [CTRL] in a command that is neither ＋ nor ／: 円周1/4点."
+    echo "    Its search takes only the writing pen and line type, and no"
+    echo "    drawing that ships has a circle of its own, so one is drawn first"
+    sh tools/quartercheck.sh 309 202
+    sh tools/quartercheck.sh 349 257
+    sh tools/quartercheck.sh 251 243
+    sh tools/quartercheck.sh 293 299
+    sh tools/quartercheck.sh 600 100
+    CMDN=11 sh tools/quartercheck.sh 309 202
+    CMDN=12 sh tools/quartercheck.sh 309 202
+    CMDN=22 sh tools/quartercheck.sh 309 202
+    ARC="291 201 251 241" sh tools/quartercheck.sh 275 207
+    ARC="291 201 251 241" CMDN=11 sh tools/quartercheck.sh 275 207
     echo "=== a command started from a read point"
     sh tools/pressfull.sh 3 r 170 150 l 400 300
     DRAWING=SAMPLE6 sh tools/pressfull.sh 3 r 470 305 l 400 300
@@ -223,6 +236,9 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "=== the line a half-finished command drags"
     sh tools/bandcheck.sh 3 300 200 450 320
     sh tools/bandcheck.sh 4 250 150 450 350
+    echo "    ...and a circle wider than the drawing area, which the original"
+    echo "    cuts at its edge (4.19)"
+    sh tools/bandcheck.sh 11 300 200 450 400
     if [ -f tmp/menus/c01.raw ]; then
         echo "=== the screen after each menu item is picked"
         sh tools/menucheck.sh | tail -3

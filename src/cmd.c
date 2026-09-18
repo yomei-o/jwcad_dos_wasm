@@ -233,6 +233,17 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
     if (JW_RANGE_CMD(c->command) && c->pressed != 1) {
         return;                 /* the box is only dragged while it is open */
     }
+    /* The chrome leaves the clip open to the whole screen; what is dragged is
+     * part of the drawing, so it goes back to the drawing window.  ○ is the
+     * one that shows it: its rubber circle is as wide as the pointer is far
+     * from the centre, and a centre at (300,200) with the pointer at (450,400)
+     * reaches x=50, well inside the menu.  The original cuts it at the
+     * window's edge and the port was painting over the panel -- 385 pixels of
+     * it, which `sh tools/bandcheck.sh 11 300 200 450 400` counts. */
+    v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+    v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+    v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+    v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
     at_screen(w, c->x0, c->y0, &px, &py);
     if (c->command == 4 || JW_RANGE_CMD(c->command)) {
         jw_line(v, px, py, px, sy, 2, 0x18, JW_STYLE_SOLID);
@@ -240,9 +251,20 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
         jw_line(v, sx, py, sx, sy, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, px, py, sx, py, 2, 0x18, JW_STYLE_SOLID);
     } else if (c->command == 11) {
-        const double dx = sx - px, dy = sy - py;
+        /* The centre **unrounded**.  A point taken by a read is rarely on a
+         * whole pixel, and the circle is as wide as the pointer is far from
+         * it, so half a pixel at the centre moves the rim by half a pixel all
+         * the way round.  Measured: 「（」 draws an arc about (300,250) whose
+         * radius is 49.82, so its 90 degree quarter point is (300,200.18); a
+         * [CTRL] press takes it, and with the pointer at (450,400) the
+         * original's rubber circle passes through (549,200) where a centre
+         * rounded to (300,200) puts it at (550,200).  The whole rim is a
+         * pixel out -- 1264 of them. */
+        const double fx = (c->x0 - w->ox) * w->scale + w->ax;
+        const double fy = w->ay - (c->y0 - w->oy) * w->scale;
+        const double dx = sx - fx, dy = sy - fy;
 
-        jw_arc_poly(v, px, py, sqrt(dx * dx + dy * dy), 10000, 0, 0, 0,
+        jw_arc_poly(v, fx, fy, sqrt(dx * dx + dy * dy), 10000, 0, 0, 0,
                     2, 0x18, JW_STYLE_SOLID);
     } else if (c->command == 2 || c->command == 3) {
         int qx = sx, qy = sy;
@@ -521,6 +543,38 @@ static int search(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy)
 static int modified(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
                     double *x, double *y)
 {
+    if (c->mods & JW_MOD_CTRL) {
+        /* 円周1/4点.  [CTRL] is the one key whose search is **filtered**: it
+         * takes only what is drawn with the pen and the line type selected for
+         * writing (writing_kind above, measured with tools/pickat.sh).
+         * [SHIFT] and [GRPH] are not -- both take SAMPLE6's arc 23, which is
+         * pen 1 where the drawing writes with pen 4.
+         *
+         * ＋ and ／ do something else again with [CTRL]: they take the point
+         * **and** hold the direction, 鉛直 to the line or radial to the
+         * circle, so what the command draws is constrained and not merely
+         * started somewhere.  That is not done yet, so the press is left
+         * alone rather than being answered with the wrong thing.
+         *
+         * A line is not taken here at all: measured, a [CTRL] press on
+         * SAMPLE0's line 4 inside □ says 読取可能データ無 even though the line
+         * is drawn with the writing pen and line type. */
+        double px, py;
+        long k;
+
+        if (c->command == 2 || c->command == 3) {
+            return 0;
+        }
+        k = jw_cmd_arc_at_kind(d, w, sx, sy, 1);
+        if (k < 0) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        jw_cmd_at(w, sx, sy, &px, &py);
+        jw_read_quarter(&d->arcs[k], px, py, x, y);
+        return 1;
+    }
     if (c->mods & JW_MOD_GRPH) {
         /* 中心点・Ａ点: a read point first.  It wins over the line it is an
          * end of -- SAMPLE0's (232,157) is 0.26 from line 5's right end and
@@ -574,7 +628,7 @@ static int take_point(JwCmd *c, const Jwc *d, const JwView *w,
         c->snap = 0;
         return 1;
     }
-    if (right && (c->mods & (JW_MOD_SHIFT | JW_MOD_GRPH))) {
+    if (right && (c->mods & (JW_MOD_SHIFT | JW_MOD_CTRL | JW_MOD_GRPH))) {
         return modified(c, d, w, sx, sy, x, y);
     }
     return indicate(c, d, w, sx, sy, right, x, y);
