@@ -551,8 +551,8 @@ static int modified(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
 }
 
 /* Where a press puts its point, snap and all. */
-static int take(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
-                int right, double *x, double *y)
+static int take_point(JwCmd *c, const Jwc *d, const JwView *w,
+                      int sx, int sy, int right, double *x, double *y)
 {
     double px, py;
 
@@ -578,6 +578,26 @@ static int take(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
         return modified(c, d, w, sx, sy, x, y);
     }
     return indicate(c, d, w, sx, sy, right, x, y);
+}
+
+/* And where that point **is on the screen**, which is what says whether the
+ * pointer has moved off it.
+ *
+ * Not the pixel that was pressed: a read snaps to something already drawn, and
+ * then the reading is up straight away.  Measured with a plain right press at
+ * SAMPLE0 (383,401), which takes the end at (379.99,401.56) three dots away --
+ * with the pointer never moving, the original puts up 長= 1.757 and
+ * 角度= 10.507, which is exactly that distance and direction.  A press with the
+ * left button takes the pointer itself, so the two are the same pixel and the
+ * counts stay, which is what RESUME.md 4.14 measured. */
+static int take(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
+                int right, double *x, double *y)
+{
+    if (!take_point(c, d, w, sx, sy, right, x, y)) {
+        return 0;
+    }
+    at_screen(w, *x, *y, &c->press_x, &c->press_y);
+    return 1;
 }
 
 int jw_cmd_in_range(const JwCmd *c, double ax, double ay, double bx, double by)

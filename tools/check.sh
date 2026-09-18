@@ -45,6 +45,10 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/pressfull.sh 12 300 250
     sh tools/pressfull.sh 12 300 250 400 250
     sh tools/pressfull.sh 25 150 130
+    echo "    ...and after a **read** press, where the point taken is not the"
+    echo "    pixel pressed, so the reading is up straight away (4.14)"
+    sh tools/pressfull.sh 3 r 383 401
+    DRAWING=SAMPLE6 sh tools/pressfull.sh 3 r 470 305
     echo "=== 文字: a point, then the keys, then [Enter] writes the text"
     sh tools/textcheck.sh 250 200 ABC
     sh tools/textcheck.sh 250 200 A
@@ -79,6 +83,15 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     for n in 2 3 4 10 11 12 13 15 20 22 25; do
         for m in shift ctrl alt; do sh tools/modscreen.sh $m $n; done
     done
+    echo "=== and the line it writes while it waits for the second press"
+    sh tools/snapscreen.sh shift 300 402
+    sh tools/snapscreen.sh shift 300 300
+    sh tools/snapscreen.sh alt 232 157
+    sh tools/snapscreen.sh alt 300 398
+    CMDN=2 sh tools/snapscreen.sh shift 300 402
+    CMDN=22 sh tools/snapscreen.sh shift 300 402
+    DRAWING=SAMPLE6 sh tools/snapscreen.sh shift 415 158
+    DRAWING=SAMPLE6 sh tools/snapscreen.sh alt 415 158
     echo "=== a command started from a read point"
     sh tools/pressfull.sh 3 r 170 150 l 400 300
     DRAWING=SAMPLE6 sh tools/pressfull.sh 3 r 470 305 l 400 300

@@ -81,6 +81,15 @@ int jw_read(const Jwc *d, const JwView *w, int sx, int sy, double *x, double *y)
 #define JW_MOD_CTRL  2
 #define JW_MOD_GRPH  4
 
+/* What a modified read picked, for JwCmd.snap_kind. */
+#define JW_ON_LINE 1
+#define JW_ON_ARC  2
+
+/* And which of the two modified reads is part-way through, for JwCmd.snap. */
+#define JW_SNAP_ON  1           /* [SHIFT] 線･円上点スナップ */
+#define JW_SNAP_MID 2           /* [GRPH] ２点間中心、Ｂ点待ち */
+
+
 /* The point of a line nearest a given point: the foot of the perpendicular, on
  * the line **extended**, because the original does not stop at the ends.
  * Measured -- [SHIFT] picks SAMPLE0's line 5, which runs x 161.97 to 231.74 at

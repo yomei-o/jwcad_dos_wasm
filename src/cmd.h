@@ -11,6 +11,7 @@
 #define JW_CMD_H
 
 #include "jwc.h"
+#include "read.h"
 #include "view.h"
 
 /* How many entities 消去 can have picked out of its range by hand.  See the
@@ -21,14 +22,6 @@
 #define JW_FLIP_LINE 0
 #define JW_FLIP_ARC  1
 #define JW_FLIP_TEXT 2
-
-/* What a modified read picked, for JwCmd.snap_kind. */
-#define JW_ON_LINE 1
-#define JW_ON_ARC  2
-
-/* And which of the two modified reads is part-way through, for JwCmd.snap. */
-#define JW_SNAP_ON  1           /* [SHIFT] 線･円上点スナップ */
-#define JW_SNAP_MID 2           /* [GRPH] ２点間中心、Ｂ点待ち */
 
 typedef struct {
     int command;                /* the menu item in force, 1 to 30, or 0 */

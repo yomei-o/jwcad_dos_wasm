@@ -62,6 +62,10 @@ typedef struct {
      * のみ), but not what the band then says, so jw_ui_draw picks one of the
      * three in a fixed order rather than inventing a fourth answer. */
     int mods;
+    /* A modified read has picked what it works from and is waiting for the
+     * second press.  JwCmd.snap, and while it is set the original writes a
+     * line of its own over the top line (src/snapmsg.h). */
+    int snapping;
     /* A press that searched for something and found nothing.  The original
      * says so in the band beside the counts and leaves it there until the next
      * press finds something or another item is picked; see jw_ui_draw. */

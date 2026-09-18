@@ -267,6 +267,7 @@ int main(int argc, char **argv)
          * over the drawing */
         s.snap = mx >= 122 && mx <= 638 && my >= 17 && my <= 462;
         s.mods = mods;
+        s.snapping = c.snap;
         s.missed = c.missed;
         s.outside = c.outside;
         s.escaped = c.escaped;

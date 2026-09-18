@@ -8,6 +8,7 @@
 
 #include "prompt.h"
 #include "snap.h"
+#include "snapmsg.h"
 #include "stage.h"
 #include "typed.h"
 #include "span.h"
@@ -1122,7 +1123,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * Last, because a stage writes spaces at column 17 on a black
          * background and those reach across column 22.  With no modifier held
          * the original writes those spaces and nothing else. */
-        const int row = snap_row(s->mods);
+        /* ...and only once the pointer has moved since the last press.
+         * The original writes them as the pointer moves, and a press
+         * repaints the band over them: [GRPH] on a line takes its
+         * middle at once, and with the key still held and the pointer
+         * still on the press the band is back to the two counts with
+         * no words at all.  JwUi.moved already says exactly that. */
+        const int row = s->moved ? snap_row(s->mods) : -1;
 
         /* 複線's 間隔取得 asks for a point, and while it is asking, the word
          * for what the right button would take is on the screen even though
@@ -1179,6 +1186,31 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                        "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
+        /* A modified read that is waiting for its second press writes a line
+         * of its own.  Last of all, because it goes over everything: the top
+         * line is blacked and takes [ESC] and the mode's own text, and the
+         * band beside the counts has the words the key put there **wiped**
+         * (fourteen spaces at column 17) and サーチ left in their place.  All
+         * of it is src/snapmsg.h, straight out of the original; the fill is
+         * not in the string log and the screen is what says it happens, the
+         * same way [ESC]'s fill was settled. */
+        if (s->snapping) {
+            const JwSnapMsg *m;
+
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
+            /* And the band beside the counts, which goes black from
+             * the drawing area's left edge to its right.  Measured on
+             * the screen rather than in the string log: with the mode
+             * up, every pixel of y17..31 from x122 to x638 is black,
+             * the words the key had put there included. */
+            fill(v, 122, 17, 638, 31, 0);
+            for (m = JW_SNAPMSG; m->text; m++) {
+                if (m->mode == s->snapping) {
+                    jw_ui_text(v, m->col, m->row, 7, 0, m->text);
+                }
+            }
         }
     } else {
         jw_ui_text(v, 8, 1, 7, 0,
