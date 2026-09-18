@@ -71,6 +71,9 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     DRAWING=SAMPLE1 sh tools/readcheck.sh 500 57 503 60
     DRAWING=SAMPLE6 sh tools/readcheck.sh 470 305 468 183 448 191
     DRAWING=TEST1 sh tools/readcheck.sh 245 341 201 341 450 290
+    echo "=== the read with a modifier key held: [SHIFT] a point on a line"
+    echo "    or a circle, [GRPH] a centre or the middle of two points (4.19)"
+    sh tools/snapcheck.sh
     echo "=== a command started from a read point"
     sh tools/pressfull.sh 3 r 170 150 l 400 300
     DRAWING=SAMPLE6 sh tools/pressfull.sh 3 r 470 305 l 400 300

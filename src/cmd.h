@@ -22,6 +22,14 @@
 #define JW_FLIP_ARC  1
 #define JW_FLIP_TEXT 2
 
+/* What a modified read picked, for JwCmd.snap_kind. */
+#define JW_ON_LINE 1
+#define JW_ON_ARC  2
+
+/* And which of the two modified reads is part-way through, for JwCmd.snap. */
+#define JW_SNAP_ON  1           /* [SHIFT] 線･円上点スナップ */
+#define JW_SNAP_MID 2           /* [GRPH] ２点間中心、Ｂ点待ち */
+
 typedef struct {
     int command;                /* the menu item in force, 1 to 30, or 0 */
     int pressed;                /* how many points have been taken */
@@ -141,6 +149,27 @@ typedef struct {
     /* What 線変更 took: 1 a line, 2 an arc, 0 nothing yet.  The word it writes
      * beside the counts is `線` or `円` accordingly. */
     int hit_kind;
+    /* Which modifier keys were held when the press happened -- JW_MOD_* from
+     * src/read.h.  The front end puts them here before jw_cmd_press, because
+     * that is when the original looks: it asks the BIOS at the press itself
+     * and not while the pointer is moving. */
+    int mods;
+    /* A modified read that is waiting for its second press.  Both [SHIFT] and
+     * [GRPH] take two: the first says what to work from and the second says
+     * where.  See src/read.h for what was measured.
+     *
+     *   JW_SNAP_ON   [SHIFT]: `snap_kind`/`snap_at` name the line or arc that
+     *                was picked, and the next press is put on it.
+     *   JW_SNAP_MID  [GRPH]: `snap_x`,`snap_y` are Ａ点 and the next press is
+     *                Ｂ点; the answer is the middle of the two.
+     *
+     * The second press indicates its point the ordinary way -- free with the
+     * left button, read with the right -- so a right press that reads nothing
+     * leaves the mode up and takes nothing, which is what the original does. */
+    int snap;
+    int snap_kind;              /* JW_ON_LINE or JW_ON_ARC */
+    long snap_at;
+    double snap_x, snap_y;
 } JwCmd;
 
 /* Which commands take a range with two presses the way ③指定範囲 does: 消去

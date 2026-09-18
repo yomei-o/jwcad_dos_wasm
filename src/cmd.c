@@ -475,12 +475,12 @@ long jw_cmd_text_at(const Jwc *d, const JwView *w, int sx, int sy)
     return -1;
 }
 
-/* Where a press puts its point: the left button takes the pointer, the right
- * one snaps to what is already drawn.  Returns 0 when the right button found
- * nothing, which is when the original says 読取可能データ無 and does nothing
- * else -- no point is taken, so the command stays where it was. */
-static int take(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
-                int right, double *x, double *y)
+/* Where a press says its point is, before any snap: the left button takes the
+ * pointer and the right one reads what is already drawn.  Returns 0 when the
+ * right button found nothing, which is when the original says 読取可能データ無
+ * and does nothing else -- no point is taken, so the command stays put. */
+static int indicate(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
+                    int right, double *x, double *y)
 {
     if (!right) {
         jw_cmd_at(w, sx, sy, x, y);
@@ -492,6 +492,92 @@ static int take(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
     }
     c->missed = 0;
     return 1;
+}
+
+/* Which line or arc a modified read works from.  The same search a command's
+ * own press does -- lines first, and an arc only when no line is within reach,
+ * which is the order tests/pick.c already answers the original in. */
+static int search(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy)
+{
+    long k = jw_cmd_line_at(d, w, sx, sy);
+
+    if (k >= 0) {
+        c->snap_kind = JW_ON_LINE;
+        c->snap_at = k;
+        return 1;
+    }
+    k = jw_cmd_arc_at(d, w, sx, sy);
+    if (k >= 0) {
+        c->snap_kind = JW_ON_ARC;
+        c->snap_at = k;
+        return 1;
+    }
+    return 0;
+}
+
+/* The first press of a modified read.  Returns 1 only when a point comes out
+ * of it there and then, which is [GRPH] on a line or a circle; the other ways
+ * through put the command into a snap mode and wait, or find nothing. */
+static int modified(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
+                    double *x, double *y)
+{
+    if (c->mods & JW_MOD_GRPH) {
+        /* 中心点・Ａ点: a read point first.  It wins over the line it is an
+         * end of -- SAMPLE0's (232,157) is 0.26 from line 5's right end and
+         * 0.65 from line 5 itself, and the original goes to 《２点間中心》 */
+        if (jw_read(d, w, sx, sy, x, y)) {
+            c->missed = 0;
+            c->snap = JW_SNAP_MID;
+            c->snap_x = *x;
+            c->snap_y = *y;
+            return 0;
+        }
+    }
+    if (!search(c, d, w, sx, sy)) {
+        c->missed = 1;
+        return 0;
+    }
+    c->missed = 0;
+    if (c->mods & JW_MOD_GRPH) {
+        if (c->snap_kind == JW_ON_ARC) {
+            jw_read_mid_arc(&d->arcs[c->snap_at], x, y);
+        } else {
+            jw_read_mid_line(&d->lines[c->snap_at], x, y);
+        }
+        return 1;
+    }
+    c->snap = JW_SNAP_ON;       /* [SHIFT]: wait for the point to put on it */
+    return 0;
+}
+
+/* Where a press puts its point, snap and all. */
+static int take(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
+                int right, double *x, double *y)
+{
+    double px, py;
+
+    if (c->snap) {
+        /* The second press of a modified read.  It indicates its point the
+         * ordinary way and the snap turns that into the answer, so a right
+         * press reads first and is then put on the line all the same. */
+        if (!indicate(c, d, w, sx, sy, right, &px, &py)) {
+            return 0;           /* read nothing; the mode is still up */
+        }
+        if (c->snap == JW_SNAP_MID) {
+            *x = (c->snap_x + px) / 2.0;
+            *y = (c->snap_y + py) / 2.0;
+        } else if (c->snap_kind == JW_ON_ARC) {
+            jw_read_on_arc(&d->arcs[c->snap_at], px, py, x, y);
+        } else {
+            jw_read_on_line(&d->lines[c->snap_at], px, py, x, y);
+        }
+        c->snap = 0;
+        return 1;
+    }
+    if (right && (c->mods & (JW_MOD_SHIFT | JW_MOD_GRPH))) {
+        return modified(c, d, w, sx, sy, x, y);
+    }
+    return indicate(c, d, w, sx, sy, right, x, y);
 }
 
 int jw_cmd_in_range(const JwCmd *c, double ax, double ay, double bx, double by)

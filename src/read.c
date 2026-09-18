@@ -232,3 +232,55 @@ int jw_read(const Jwc *d, const JwView *w, int sx, int sy, double *x, double *y)
     *y = b.y;
     return 1;
 }
+
+/* 線上の点 -- see read.h for what was measured.  The line is treated as
+ * endless, so this is the plain projection and there is nothing to clamp.  A
+ * line with no length is just its own point. */
+void jw_read_on_line(const JwcLine *l, double px, double py,
+                     double *x, double *y)
+{
+    const double ax = l->x0, ay = l->y0;
+    const double dx = l->x1 - ax, dy = l->y1 - ay;
+    const double len2 = dx * dx + dy * dy;
+    double t;
+
+    if (len2 <= 0.0) {
+        *x = ax;
+        *y = ay;
+        return;
+    }
+    t = ((px - ax) * dx + (py - ay) * dy) / len2;
+    *x = ax + t * dx;
+    *y = ay + t * dy;
+}
+
+/* 円上の点.  The whole circle, and the point directly under the centre has no
+ * direction to go in -- the original cannot be asked what it does there, since
+ * the press that picks the circle has to be on its rim and a second press dead
+ * on the centre is a point of measure zero, so the start of the sweep is taken
+ * rather than a division by nothing. */
+void jw_read_on_arc(const JwcArc *a, double px, double py,
+                    double *x, double *y)
+{
+    const double dx = px - a->cx, dy = py - a->cy;
+    const double len = sqrt(dx * dx + dy * dy);
+
+    if (len <= 0.0) {
+        arc_end(a, 0, x, y);
+        return;
+    }
+    *x = a->cx + dx / len * a->r;
+    *y = a->cy + dy / len * a->r;
+}
+
+void jw_read_mid_line(const JwcLine *l, double *x, double *y)
+{
+    *x = (l->x0 + l->x1) / 2.0;
+    *y = (l->y0 + l->y1) / 2.0;
+}
+
+void jw_read_mid_arc(const JwcArc *a, double *x, double *y)
+{
+    *x = a->cx;
+    *y = a->cy;
+}

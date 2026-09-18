@@ -19,5 +19,6 @@ sh tools/cc.sh -O2 -Wall -Wextra -Isrc -Itests -o tests/drawing.exe tests/drawin
 sh tools/cc.sh -O2 -Wall -Wextra -Isrc -Itests -o tests/compare.exe tests/compare.c tests/png.c
 sh tools/cc.sh -O2 -Wall -Wextra -Isrc -Itests -o tests/zoom.exe tests/zoom.c tests/png.c src/vga.c src/draw.c src/jwc.c src/view.c src/fontx.c -lm
 sh tools/cc.sh -O2 -Wall -Wextra -Isrc -Itests -o tests/ui.exe tests/ui.c src/vga.c src/draw.c src/jwc.c src/view.c src/fontx.c src/ui.c -lm
+sh tools/cc.sh -O2 -Wall -Wextra -Isrc -Itests -o tests/snap.exe tests/snap.c src/vga.c src/draw.c src/jwc.c src/view.c src/fontx.c src/cmd.c src/ui.c src/read.c -lm
 sh tools/cc.sh -O2 -Wall -Wextra -Isrc -Itests -o tests/readpt.exe tests/readpt.c src/vga.c src/draw.c src/jwc.c src/view.c src/fontx.c src/read.c -lm
-echo "built tests/vga_test.exe tests/draw_test.exe tests/jwc_test.exe tests/roundtrip.exe tests/pick.exe tests/screen.exe tests/drawing.exe tests/compare.exe tests/zoom.exe tests/ui.exe tests/readpt.exe"
+echo "built tests/vga_test.exe tests/draw_test.exe tests/jwc_test.exe tests/roundtrip.exe tests/pick.exe tests/screen.exe tests/drawing.exe tests/compare.exe tests/zoom.exe tests/ui.exe tests/readpt.exe tests/snap.exe"

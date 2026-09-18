@@ -4,6 +4,11 @@
 #
 #   sh tools/read.sh 170 150
 #   DRAWING=SAMPLE6 sh tools/read.sh 300 200
+#   MODS=shift sh tools/read.sh 170 150     # 読取を修飾キーつきで
+#
+# MODS= は押している間だけ立てて、離します（本物は押しごとに
+# `INT 16h AH=12h` を読むので、押しの前に立っていれば足ります）。
+# [SHIFT] は線上の点、[GRPH] は中心点、[CTRL] は鉛直・円周1/4点。
 #
 # It picks ／ (command 3), presses the right button at the point, and reads the
 # answer back out of the band: with one point taken the original writes the
@@ -24,9 +29,11 @@ x=$1; y=$2
     echo "wait 24000000"
     echo "mouse $x $y"
     echo "wait 3000000"
+    [ -n "$MODS" ] && echo "mods $MODS"
     echo "down right"
     echo "wait 3000000"
     echo "up right"
+    [ -n "$MODS" ] && echo "mods none"
     echo "wait 14000000"
 } > tmp/read/script.txt
 DOSEMU_BP=+0DEF:23C5 DOSEMU_BPSTR=2 DOSEMU_BPN=20000 \
