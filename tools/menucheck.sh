@@ -12,6 +12,16 @@
 set -e
 cd "$(dirname "$0")/.."
 if [ $# -gt 0 ]; then cmds="$*"; else cmds=$(seq 1 30); fi
+# The captures are only as good as the emulator that made them.  On 2026-09-18
+# dosv_emu_cpp learnt to answer INT 16h AH=12h, and every screen taken before
+# that had been drawn with a phantom Ctrl held; 入出力 came out 13047 pixels
+# different against a capture two days old, and 0 once it was taken again.  So
+# say so rather than let a stale reference read as a regression.
+EMU=../dosv_emu_cpp/dosemu.exe
+if [ -f "$EMU" ] && [ -f tmp/menus/c01.raw ] && [ "$EMU" -nt tmp/menus/c01.raw ]
+then
+    echo "tmp/menus/*.raw is older than $EMU -- run sh tools/menus.sh again" >&2
+fi
 total=0
 for n in $cmds; do
     f=$(printf 'tmp/menus/c%02d.raw' "$n")

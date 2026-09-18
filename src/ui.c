@@ -1123,13 +1123,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * Last, because a stage writes spaces at column 17 on a black
          * background and those reach across column 22.  With no modifier held
          * the original writes those spaces and nothing else. */
-        /* ...and only once the pointer has moved since the last press.
-         * The original writes them as the pointer moves, and a press
-         * repaints the band over them: [GRPH] on a line takes its
-         * middle at once, and with the key still held and the pointer
-         * still on the press the band is back to the two counts with
-         * no words at all.  JwUi.moved already says exactly that. */
-        const int row = s->moved ? snap_row(s->mods) : -1;
+        const int row = snap_row(s->mods);
 
         /* 複線's 間隔取得 asks for a point, and while it is asking, the word
          * for what the right button would take is on the screen even though
