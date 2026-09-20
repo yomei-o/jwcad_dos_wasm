@@ -242,6 +242,9 @@ int main(int argc, char **argv)
                 t.typed_at = c.typed_at;
                 t.edit_type = edit_type(&c, d);
                 t.poly_deg = c.poly_deg;
+                t.hatch_n = c.hatch_n;
+                t.hatch_angle = c.hatch_angle;
+                t.hatch_pitch = c.hatch_pitch;
                 t.num[0] = c.num[0];
                 t.num[1] = c.num[1];
                 t.dec[0] = c.dec[0];
@@ -347,6 +350,9 @@ int main(int argc, char **argv)
         s.typed_at = c.typed_at;
         s.edit_type = edit_type(&c, d);
         s.poly_deg = c.poly_deg;
+        s.hatch_n = c.hatch_n;
+        s.hatch_angle = c.hatch_angle;
+        s.hatch_pitch = c.hatch_pitch;
         s.num[0] = num[0];
         s.num[1] = num[1];
         s.dec[0] = dec[0];

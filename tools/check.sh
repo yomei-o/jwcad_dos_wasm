@@ -301,6 +301,12 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full ENTER=1 sh tools/editcheck.sh 190 152 ''
     full BS=1 sh tools/editcheck.sh 190 152 AB
     full DRAWING=SAMPLE6 BOOT=150000000 sh tools/editcheck.sh 459 70 ''
+    echo "=== ハッチ: a frame of lines, filled in at 45 degrees (RESUME 4.24)"
+    sh tools/hatchcheck.sh 300 402 380 410 300 419 197 410
+    RUN=1 sh tools/hatchcheck.sh 300 402 380 410 300 419 197 410
+    full sh tools/hatchcheck.sh 300 402 432 410 300 419 380 410
+    full CLOSE=1 sh tools/hatchcheck.sh 300 402 380 410 300 419 197 410
+    full RUN=1 sh tools/hatchcheck.sh 300 402 432 410 300 419 380 410
     echo "=== 曲線 ⑦連線: angles rounded, corners rounded off (RESUME 4.23)"
     sh tools/chaincheck.sh 200 200 400 200 400 350
     END=1 sh tools/chaincheck.sh 200 200 400 200 400 350 250 350

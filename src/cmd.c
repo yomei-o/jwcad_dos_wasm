@@ -37,6 +37,9 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->edit_text = -1;
     /* 連線's `③丸 面   辺寸法 ` as the original comes up with it. */
     c->edge_mm = 3.0;
+    /* ハッチ's `[  45.00]` and `[  10.0]`, likewise. */
+    c->hatch_angle = 45.0;
+    c->hatch_pitch = 10.0;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -135,6 +138,11 @@ static void two_lines(JwCmd *c, Jwc *d);
 static void poly_dir(const JwCmd *c, double dx, double dy,
                      double *ux, double *uy);
 static void poly_mark(const JwCmd *c, VGA *v, const JwView *w);
+static void hatch_run(JwCmd *c, Jwc *d);
+static int hatch_meet(const JwcLine *a, const JwcLine *b,
+                      double *x, double *y);
+static void hatch_free(const JwcLine *l, double cx, double cy, int have,
+                       double *x, double *y);
 
 void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
 {
@@ -1347,6 +1355,114 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 {
     long k;
 
+    /* ハッチ marks the lines it has taken in colour 2, each one **cut to the
+     * ones beside it** -- the frame is a 連続線, so a side that runs the whole
+     * width of the paper shows red only between its two corners.  The line
+     * the frame started on is dotted (style 0x5555) and the rest are solid,
+     * and the ends of the chain keep their own second endpoint until the
+     * frame closes.
+     *
+     * Measured on SAMPLE0 with (300,402)(432,410)(300,419)(380,410): the
+     * first line is red and dotted from x=162 to x=432, the second solid down
+     * the whole of x=432, the third solid from 379 to 432 and the fourth
+     * solid down the whole of x=379. */
+    if (d && c->command == 18 && c->hatch_n > 0) {
+        int i;
+
+        v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+        v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+        v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+        v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+        for (i = 0; i < c->hatch_n; i++) {
+            const JwcLine *l = &d->lines[c->hatch_line[i]];
+            double ax = 0.0, ay = 0.0, bx = 0.0, by = 0.0;
+            int px, py, qx, qy, cut_a = 0, cut_b = 0;
+
+            if (i > 0) {
+                cut_a = hatch_meet(&d->lines[c->hatch_line[i - 1]], l,
+                                   &ax, &ay);
+            } else if (c->hatch_closed && c->hatch_n > 1) {
+                cut_a = hatch_meet(&d->lines[c->hatch_line[c->hatch_n - 1]], l,
+                                   &ax, &ay);
+            }
+            if (i + 1 < c->hatch_n) {
+                cut_b = hatch_meet(l, &d->lines[c->hatch_line[i + 1]],
+                                   &bx, &by);
+            } else if (c->hatch_closed && c->hatch_n > 1) {
+                cut_b = hatch_meet(l, &d->lines[c->hatch_line[0]], &bx, &by);
+            }
+            /* A free end is the line's own end **farther from the corner**:
+             * the fourth line of the frame above is cut at its own bottom, so
+             * what shows is all of it up to the top. */
+            if (!cut_a) {
+                hatch_free(l, bx, by, cut_b, &ax, &ay);
+            }
+            if (!cut_b) {
+                hatch_free(l, ax, ay, cut_a, &bx, &by);
+            }
+            at_screen(w, ax, ay, &px, &py);
+            at_screen(w, bx, by, &qx, &qy);
+            if (i > 0 || c->hatch_closed) {
+                /* Solid.  The 開始線 is dotted only while the frame is
+                 * open -- it is the one to press to close it -- and goes
+                 * solid like the rest once it has been. */
+                jw_line(v, px, py, qx, qy, 0, ROP_REPLACE, JW_STYLE_SOLID);
+                jw_line(v, px, py, qx, qy, 2, ROP_REPLACE, JW_STYLE_SOLID);
+                continue;
+            }
+            /* The 開始線 is dotted, and **the dots sit where they would on
+             * the whole line**: closing the frame moves its near end from
+             * x=162 to x=197 and the dots stay on the even columns.  So the
+             * whole line is marked and the parts outside the corners are put
+             * back as they were. */
+            {
+                int e0x, e0y, e1x, e1y;
+                double ta, tb, lo, hi;
+                const double dx = l->x1 - l->x0, dy = l->y1 - l->y0;
+                const double len = dx * dx + dy * dy;
+
+                at_screen(w, l->x0, l->y0, &e0x, &e0y);
+                at_screen(w, l->x1, l->y1, &e1x, &e1y);
+                jw_line(v, e0x, e0y, e1x, e1y, 0, ROP_REPLACE, JW_STYLE_SOLID);
+                jw_line(v, e0x, e0y, e1x, e1y, 2, ROP_REPLACE,
+                        jw_view_line_style(0));
+                if (len < 1e-12) {
+                    continue;
+                }
+                ta = ((ax - l->x0) * dx + (ay - l->y0) * dy) / len;
+                tb = ((bx - l->x0) * dx + (by - l->y0) * dy) / len;
+                lo = ta < tb ? ta : tb;
+                hi = ta < tb ? tb : ta;
+                if (lo > 0.0) {
+                    int cx, cy;
+
+                    at_screen(w, l->x0 + lo * dx, l->y0 + lo * dy, &cx, &cy);
+                    jw_line(v, e0x, e0y, cx, cy,
+                            jw_view_pen_colour(l->pen), ROP_REPLACE,
+                            jw_view_line_style(l->type));
+                }
+                if (hi < 1.0) {
+                    int cx, cy;
+
+                    at_screen(w, l->x0 + hi * dx, l->y0 + hi * dy, &cx, &cy);
+                    jw_line(v, cx, cy, e1x, e1y,
+                            jw_view_pen_colour(l->pen), ROP_REPLACE,
+                            jw_view_line_style(l->type));
+                }
+            }
+        }
+        /* The hatch itself goes **over** the marked frame: where a hatch line
+         * ends on one of the sides the original reads white, not red. */
+        for (i = 0; c->stage >= 6 && i < d->n_lines - c->hatch_first; i++) {
+            const long m = c->hatch_first + i;
+
+            if (m >= 0 && m < d->n_lines && jwc_visible(d, d->lines[m].layer)) {
+                jw_view_line(v, d, &d->lines[m], w,
+                             jw_view_pen_colour(d->lines[m].pen));
+            }
+        }
+        return;
+    }
     /* 文編集 while its field is open: the text it was pointed at **goes off
      * the screen** and a box is drawn where it was.  Measured on a
      * texts-only SAMPLE0 -- selecting text 0 blacks all 42x6 pixels the
@@ -1477,6 +1593,24 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
      * ①範囲内消去 reddens 224 in the box.
      *
      * ③指定範囲 is the data selection 複写 and 移動 use; it is not done. */
+    if (c->command == 18) {
+        /* ①【指示終了】 once the frame is closed, and then ① 実 行.  The
+         * line the second one comes up with is
+         * `|① 実 行(L)|②基点変更|③ 角 度 |④ﾋﾟｯﾁ|⑤ (1)本線 |` with
+         * `[  45.00]` and `[  10.0]` in the band; ② to ⑤ are not done. */
+        if (c->stage == 4 && item == 1) {
+            c->stage = 5;
+            return 1;
+        }
+        if (c->stage == 5 && item == 1) {
+            /* The frame stays marked afterwards -- the line offers
+             * `① 同図形ハッチ追加` and `② 他図形ハッチ`, so it still has it. */
+            hatch_run(c, d);
+            c->stage = 6;
+            return 1;
+        }
+        return 0;
+    }
     if (c->command == 23) {
         /* 曲線's own line, `|①ｻｲﾝ曲線|②２次曲線|③ｽﾌﾟﾗｲﾝ|④ﾍﾞｼﾞｪ|⑤手書線|
          * ⑥連続弧|⑦連線|⑧解除|`.  Only ⑦連線 is done. */
@@ -2500,6 +2634,167 @@ static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
     jwc_relink_line(d, second, bx, by, (float)cx, (float)cy);
 }
 
+/* ----------------------------------------------------------- ハッチ */
+
+/* Where a hatch line crosses one side of the frame.
+ *
+ * A hatch line is inside the frame between the first crossing and the second,
+ * the third and the fourth, and so on -- the even-odd rule, which needs no
+ * winding order.  A crossing on a corner comes out twice, once for each side
+ * that meets there, so they are thinned out afterwards. */
+static int hatch_cross(const double *a, const double *b,
+                       double nx, double ny, double d,
+                       double ux, double uy, double *at)
+{
+    const double da = nx * a[0] + ny * a[1] - d;
+    const double db = nx * b[0] + ny * b[1] - d;
+    double t;
+
+    if ((da > 0.0 && db > 0.0) || (da < 0.0 && db < 0.0)) {
+        return 0;               /* both ends the same side */
+    }
+    if (da == db) {
+        return 0;               /* along the hatch line: no single crossing */
+    }
+    t = da / (da - db);
+    *at = ux * (a[0] + t * (b[0] - a[0])) + uy * (a[1] + t * (b[1] - a[1]));
+    return 1;
+}
+
+/* The end of a line that is farther from the corner it was cut at.  With
+ * nothing to measure against, or with the two ends the same distance away, it
+ * is the second one -- which is what SAMPLE0's symmetric cell shows. */
+static void hatch_free(const JwcLine *l, double cx, double cy, int have,
+                       double *x, double *y)
+{
+    const double d0 = (l->x0 - cx) * (l->x0 - cx) + (l->y0 - cy) * (l->y0 - cy);
+    const double d1 = (l->x1 - cx) * (l->x1 - cx) + (l->y1 - cy) * (l->y1 - cy);
+
+    if (have && d0 > d1) {
+        *x = l->x0;
+        *y = l->y0;
+        return;
+    }
+    *x = l->x1;
+    *y = l->y1;
+}
+
+static int hatch_cmp(const void *a, const void *b)
+{
+    const double x = *(const double *)a, y = *(const double *)b;
+
+    return x < y ? -1 : x > y ? 1 : 0;
+}
+
+/* Where two of the frame's lines cross.  The frame is a 連続線 -- the lines are
+ * cut to one another, the way 連線's corners are -- so the cell whose sides
+ * run the whole width of the paper still hatches only the cell.  Measured:
+ * SAMPLE0's (197,402)-(380,419) cell is bounded by two lines that run from
+ * x=162 to x=598, and the original fills only the cell. */
+static int hatch_meet(const JwcLine *a, const JwcLine *b, double *x, double *y)
+{
+    const double ax = a->x1 - a->x0, ay = a->y1 - a->y0;
+    const double bx = b->x1 - b->x0, by = b->y1 - b->y0;
+    const double cross = ax * by - ay * bx;
+    double t;
+
+    if (fabs(cross) < 1e-9) {
+        return 0;
+    }
+    t = ((b->x0 - a->x0) * by - (b->y0 - a->y0) * bx) / cross;
+    *x = a->x0 + t * ax;
+    *y = a->y0 + t * ay;
+    return 1;
+}
+
+/* ① 実 行: fill the frame in.
+ *
+ * The family is every line whose distance from the **origin** along the
+ * normal is a whole number of pitches -- measured on SAMPLE0, where a 45
+ * degree hatch at 10.0mm in the cell (75.855,44)-(258.764,61.441) comes out
+ * as eight lines whose (y - x) are exactly -8 to -1 times 24.665, and 24.665
+ * is 10.0 x unit_mm / sin 45.  They are written from the far side back, which
+ * is the order the original's records come out in.
+ *
+ * The record's A byte is 0x42 and its B byte 0x20; the line type, pen and
+ * layer are the ones being written.
+ */
+static void hatch_run(JwCmd *c, Jwc *d)
+{
+    const double rad = c->hatch_angle * 3.14159265358979323846 / 180.0;
+    const double ux = cos(rad), uy = sin(rad);
+    const double nx = -uy, ny = ux;
+    const double pitch = c->hatch_pitch * d->unit_mm;
+    double corner[JW_HATCH_MAX][2];
+    double lo = 0.0, hi = 0.0;
+    long k, first, last;
+    int i, n = 0;
+
+    if (pitch <= 0.0 || c->hatch_n < 3) {
+        return;
+    }
+    c->hatch_first = d->n_lines;
+    for (i = 0; i < c->hatch_n; i++) {
+        const long a = c->hatch_line[i];
+        const long b = c->hatch_line[(i + 1) % c->hatch_n];
+
+        if (!hatch_meet(&d->lines[a], &d->lines[b],
+                        &corner[n][0], &corner[n][1])) {
+            return;             /* two of them are parallel: not a frame */
+        }
+        n++;
+    }
+    for (i = 0; i < n; i++) {
+        const double e = nx * corner[i][0] + ny * corner[i][1];
+
+        if (i == 0 || e < lo) {
+            lo = e;
+        }
+        if (i == 0 || e > hi) {
+            hi = e;
+        }
+    }
+    first = (long)ceil(lo / pitch - 1e-9);
+    last = (long)floor(hi / pitch + 1e-9);
+    for (k = first; k <= last; k++) {
+        double at[JW_HATCH_MAX];
+        int got = 0, m = 0;
+
+        for (i = 0; i < n && got < JW_HATCH_MAX; i++) {
+            if (hatch_cross(corner[i], corner[(i + 1) % n], nx, ny,
+                            (double)k * pitch, ux, uy, &at[got])) {
+                got++;
+            }
+        }
+        if (got < 2) {
+            continue;
+        }
+        qsort(at, (size_t)got, sizeof at[0], hatch_cmp);
+        for (i = 1; i < got; i++) {  /* a corner gives the same crossing twice */
+            if (at[i] - at[m] > 1e-6) {
+                at[++m] = at[i];
+            }
+        }
+        got = m + 1;
+        for (i = 0; i + 1 < got; i += 2) {
+            const double d0 = (double)k * pitch;
+
+            if (!jwc_add_line(d,
+                              (float)(at[i] * ux + d0 * nx),
+                              (float)(at[i] * uy + d0 * ny),
+                              (float)(at[i + 1] * ux + d0 * nx),
+                              (float)(at[i + 1] * uy + d0 * ny),
+                              (unsigned char)d->line_type,
+                              (unsigned char)d->pen,
+                              (unsigned char)d->write_layer)) {
+                return;
+            }
+            d->lines[d->n_lines - 1].rest[1] = 0x42;
+            d->lines[d->n_lines - 1].rest[2] = 0x20;
+        }
+    }
+}
+
 /* ---------------------------------------------------- 曲線 ⑦連線 */
 
 /* The direction of a segment, rounded the way `①角 度` says: every 45
@@ -2798,6 +3093,46 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typed_n = 0;
         c->typed_at = 0;
         text_box(c, d);
+        return 1;
+    }
+    if (c->command == 18) {
+        /* ハッチ: the frame is built out of lines that are pressed one after
+         * another, and pressing the first one again closes it.
+         *
+         * Measured on SAMPLE0's cell (197,402)-(380,419): pressing its four
+         * sides and then the first one again leaves 残数 at 96 -- one off for
+         * each of the four, and nothing for the closing press -- and the line
+         * goes `◇ ハッチ枠 図形の連続線(弧)マウス指示 [中間線]`, then the same
+         * with `[開始線で終了]` after it, then
+         * `|①【指示終了】|別図形をマウス指示 (L)開始線 (R)単独円`. */
+        const long k = jw_cmd_line_at(d, w, sx, sy);
+        int i;
+
+        if (k < 0) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        c->pressed = 1;
+        if (c->hatch_closed) {
+            return 0;           /* 別図形 is not done */
+        }
+        if (c->hatch_n > 0 && k == c->hatch_line[0] && c->hatch_n >= 2) {
+            c->hatch_closed = 1;
+            c->stage = 4;
+            return 1;
+        }
+        for (i = 0; i < c->hatch_n; i++) {
+            if (c->hatch_line[i] == k) {
+                return 0;       /* already in the frame */
+            }
+        }
+        if (c->hatch_n >= JW_HATCH_MAX) {
+            return 0;
+        }
+        c->hatch = 1;
+        c->hatch_line[c->hatch_n++] = k;
+        c->stage = c->hatch_n < 3 ? c->hatch_n : 3;
         return 1;
     }
     if (c->command == 23 && c->poly) {

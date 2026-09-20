@@ -42,6 +42,10 @@ typedef struct {
      * `typed_n` there; 文編集 starts the field with the text it was pointed
      * at and the cursor in front of it. */
     int typed_at;
+    /* ハッチ: how many lines the frame has taken (the band counts down from
+     * 100), and the angle and pitch it will fill with. */
+    int hatch_n;
+    double hatch_angle, hatch_pitch;
     /* 連線: how its directions are being rounded -- 45, 90 or 0 for free.
      * The band says so at columns 37 and 46 of row 2. */
     int poly_deg;

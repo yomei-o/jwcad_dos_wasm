@@ -27,6 +27,9 @@
  * is not known; this is enough for any run a check makes. */
 #define JW_MEAS_MAX 64
 
+/* 残数 100 -- how many lines a hatch frame can hold. */
+#define JW_HATCH_MAX 100
+
 typedef struct {
     int command;                /* the menu item in force, 1 to 30, or 0 */
     int pressed;                /* how many points have been taken */
@@ -164,6 +167,18 @@ typedef struct {
     double poly_sx, poly_sy;    /* where the segment being drawn starts */
     double edge_mm;             /* ③辺寸法, millimetres of paper */
     double poly_t;              /* and the same in drawing units */
+    /* ハッチ（18 番）—— 枠にした線と、その角度とピッチ。
+     *
+     * 枠は押した線そのもので持ちます（頂点ではなく辺）。ハッチ線は
+     * 「原点からの法線距離がピッチの整数倍」の族で、枠の辺との交点を
+     * 並べて内側だけを引きます。src/cmd.c の hatch_run を見てください。 */
+    long hatch_line[JW_HATCH_MAX];
+    int hatch_n;                /* how many are in the frame */
+    int hatch;                  /* the frame is being taken */
+    int hatch_closed;           /* the start line has come round again */
+    long hatch_first;           /* the first line ① 実 行 made */
+    double hatch_angle;         /* ③角 度, degrees -- 45.00 to start with */
+    double hatch_pitch;         /* ④ﾋﾟｯﾁ, millimetres of paper -- 10.0 */
     /* How wide and how tall the string being typed comes out, in drawing
      * units -- the box 文字 shows while it is being typed.  Worked out again
      * after every key, because the width follows from the string. */

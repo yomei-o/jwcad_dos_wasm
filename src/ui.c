@@ -593,6 +593,27 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
         jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
         return;
     }
+    /* ハッチ's 残数 counts down from 100 as lines go into the frame, and its
+     * angle and pitch are the command's own. */
+    if (q->command == 18 && q->row == 2) {
+        char one[160];
+        double n;
+
+        if (q->col == 70) {
+            n = 100 - s->hatch_n;
+        } else if (q->col == 32) {
+            n = s->hatch_angle;
+        } else if (q->col == 42) {
+            n = s->hatch_pitch;
+        } else {
+            n = 0.0;
+        }
+        if (q->col == 70 || q->col == 32 || q->col == 42) {
+            put_numbers(one, sizeof one, q->text, &n, 1, q->col != 70);
+            jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+            return;
+        }
+    }
     /* 連線's two band words: `45度毎`/`90度毎`/`free` and `マウス`/`----`.
      * ①角 度 goes round the three and the table holds the first. */
     if (q->command == 23 && q->row == 2 && (q->col == 37 || q->col == 46)) {
