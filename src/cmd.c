@@ -116,12 +116,24 @@ static long fixed16(double deg)
     return (long)(deg * 65536.0 + 0.5);
 }
 
-void jw_cmd_track(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy)
+void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
 {
     double x, y;
 
     if (sx != c->press_x || sy != c->press_y) {
         c->moved = 1;           /* one pixel is enough -- see JwCmd.moved */
+        /* 線切断 waits for exactly this.  The cut is **at the press**, not
+         * where the pointer went -- pressing at drawing x=99 and moving to
+         * x=179 leaves 40.973..99 and 99..110.737 -- but it is not made until
+         * the pointer leaves, and until then the counts box still says 30.
+         * That is what the line above means by `□ 線切断はマウス移動`. */
+        if (c->cutting) {
+            c->cutting = 0;
+            if (d && c->pick_a >= 0 && c->pick_a < d->n_lines) {
+                jwc_split_line(d, c->pick_a, (float)c->cut_x, (float)c->cut_y);
+            }
+            c->pick_a = -1;
+        }
     }
     if (!d || !c->pressed) {
         return;
@@ -2003,6 +2015,27 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 return 0;
             }
             c->missed = 0;
+            if (right) {
+                /* 線切断: the line is cut where it was pressed, but only once
+                 * the pointer moves away -- see jw_cmd_track. */
+                double px, py, t, dx, dy, n;
+                const JwcLine *l = &d->lines[k];
+
+                jw_cmd_at(w, sx, sy, &px, &py);
+                dx = l->x1 - l->x0;
+                dy = l->y1 - l->y0;
+                n = dx * dx + dy * dy;
+                if (n <= 0.0) {
+                    return 0;
+                }
+                t = ((px - l->x0) * dx + (py - l->y0) * dy) / n;
+                c->pick_a = k;
+                c->cut_x = l->x0 + t * dx;
+                c->cut_y = l->y0 + t * dy;
+                c->stage = 2;
+                c->cutting = 1;
+                return 1;
+            }
             c->pick_a = k;
             c->pick_x = sx;
             c->pick_y = sy;

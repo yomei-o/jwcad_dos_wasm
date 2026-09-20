@@ -977,7 +977,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (s->span && q->command == 25 && q->stage != 2) {
                     continue;
                 }
-                stage_text(v, q, s, i);
+                /* 線切断 is the right button of the same item as 線伸縮, and
+                 * its line is kept at stage 11 so that both fit in the one
+                 * table.  It is there only until the pointer moves off the
+                 * cut, which is what JwUi.cutting says. */
+                stage_text(v, q, s,
+                           (s->cutting && i == 2 && s->command == 6) ? 11 : i);
             }
             /* The stages you can only reach by typing -- src/typed.h -- are
              * replayed the same way, out of their own table. */

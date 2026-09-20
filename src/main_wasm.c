@@ -73,6 +73,7 @@ static void sync_ui(void)
     ui.with_text = cmd.with_text;
     ui.moved = cmd.moved;
     ui.hit_kind = cmd.hit_kind;
+    ui.cutting = cmd.cutting;
     ui.typing_text = cmd.typing_text;
     ui.mods = cmd.mods;
     ui.snapping = cmd.snap;

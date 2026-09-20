@@ -70,6 +70,10 @@ typedef struct {
      * says so in the band beside the counts and leaves it there until the next
      * press finds something or another item is picked; see jw_ui_draw. */
     int missed;
+    /* 線切断 has just cut a line and the pointer has not moved: the top line
+     * says `□ 線切断はマウス移動` (src/stage.h stage 11) instead of the
+     * command's own line. */
+    int cutting;
     /* 文字 is taking a string: the port draws it at column 1 of row 2. */
     int typing_text;
     /* 文字's own numbers: the character type selected for writing and that

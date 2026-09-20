@@ -240,6 +240,12 @@ int jwc_dup_line(Jwc *d, long k, float dx, float dy);
 int jwc_dup_arc(Jwc *d, long k, float dx, float dy);
 int jwc_dup_text(Jwc *d, long k, float dx, float dy);
 
+/* Cut a line in two at a point on it, the way 線切断 does.  The original
+ * record goes and the two halves are appended in order -- the piece holding
+ * (x0,y0) first.  Every other byte is kept.  Returns 0 if there was no memory
+ * for it. */
+int jwc_split_line(Jwc *d, long k, float x, float y);
+
 /* Give a line new ends and move its record to the back of the list -- what
  * コーナー連結 does to both of the lines it joins.  Every other byte is kept,
  * the way 複写's copy keeps them.  Measured: SAMPLE0's lines 2 and 5 come back

@@ -33,6 +33,10 @@ COMMANDS = [
     (11, (300, 200, 400, 200)),     # ○  a circle
     (12, (300, 250, 400, 250, 350, 180)),   # （  任意の弧: centre, start, end
     (6, (220, 157, 300, 157)),      # 線伸縮  a line is stretched to a point
+    # 線切断: the same item with the **right** button.  Its stages are kept at
+    # 11 and up so that both buttons fit in the one table, the way 複写's two
+    # spellings of its first point do.
+    (6, ('r', 220, 157), 11),
     (7, (220, 157, 596, 300)),      # コーナー連結  two lines meet at a corner
     (24, (197, 157)),               # 線変更  one press takes a line or an arc
     (10, ('r', 380, 140)),          # 線消  the right button takes a line away
@@ -227,7 +231,14 @@ def escape(s):
 def main():
     if not os.path.exists('tools/press.sh'):
         sys.exit('run this from the top of the repository')
-    rows = {n: capture(n, pts) for n, pts in COMMANDS}
+    rows = {}
+    for entry in COMMANDS:
+        n, pts = entry[0], entry[1]
+        base = entry[2] if len(entry) > 2 else 1
+        got = capture(n, pts)
+        rows.setdefault(n, {})
+        for i, items in enumerate(got):
+            rows[n][base + i] = items
     f = open('src/stage.h', 'w', encoding='utf-8', newline='\n')
     f.write('''/* What a drawing command writes while it runs.
  *
@@ -268,7 +279,8 @@ typedef struct {
 static const JwStage JW_STAGE[] = {
 ''')
     for n in sorted(rows):
-        for stage, items in enumerate(rows[n], 1):
+        for stage in sorted(rows[n]):
+            items = rows[n][stage]
             for col, row, fg, bg, s, moved in items:
                 if (n, stage, col, row) in LOOSE:
                     t, w, kind = NUM.sub('%g', s), [0, 0], 3

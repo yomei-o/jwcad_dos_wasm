@@ -927,6 +927,30 @@ int jwc_dup_line(Jwc *d, long k, float dx, float dy)
     return 1;
 }
 
+int jwc_split_line(Jwc *d, long k, float x, float y)
+{
+    JwcLine was;
+
+    if (k < 0 || k >= d->n_lines) {
+        return 0;
+    }
+    was = d->lines[k];
+    if (!jwc_add_line(d, 0, 0, 0, 0, 0, 0, 0)) {
+        return 0;
+    }
+    d->lines[d->n_lines - 1] = was;
+    d->lines[d->n_lines - 1].x1 = x;
+    d->lines[d->n_lines - 1].y1 = y;
+    if (!jwc_add_line(d, 0, 0, 0, 0, 0, 0, 0)) {
+        return 0;
+    }
+    d->lines[d->n_lines - 1] = was;
+    d->lines[d->n_lines - 1].x0 = x;
+    d->lines[d->n_lines - 1].y0 = y;
+    jwc_remove_line(d, k);
+    return 1;
+}
+
 int jwc_relink_line(Jwc *d, long k, float x0, float y0, float x1, float y1)
 {
     JwcLine *l;

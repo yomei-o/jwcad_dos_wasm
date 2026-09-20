@@ -242,6 +242,7 @@ int main(int argc, char **argv)
                 t.with_text = c.with_text;
                 t.moved = c.moved;
                 t.hit_kind = c.hit_kind;
+                t.cutting = c.cutting;
                 t.typing_text = c.typing_text;
                 jw_ui_draw(&v, &t);
                 jw_cmd_top(&c, d, jw_ui_top_item(press[i][1], 8));
@@ -302,13 +303,13 @@ int main(int argc, char **argv)
             jw_cmd_press(&c, d, &w, press[i][0], press[i][1], press[i][2]);
         }
     }
+    /* the pointer is where it is, and a command in hand keeps its reading up
+     * to date as it moves */
+    jw_cmd_track(&c, d, &w, mx, my);
     if (write_to && !jwc_save(d, write_to, &why)) {
         fprintf(stderr, "%s: %s\n", write_to, why);
         return 1;
     }
-    /* the pointer is where it is, and a command in hand keeps its reading up
-     * to date as it moves */
-    jw_cmd_track(&c, d, &w, mx, my);
     stage = c.stage;
     num[0] = c.num[0];
     num[1] = c.num[1];
@@ -343,6 +344,7 @@ int main(int argc, char **argv)
         s.with_text = c.with_text;
         s.moved = c.moved;
         s.hit_kind = c.hit_kind;
+        s.cutting = c.cutting;
         s.typing_text = c.typing_text;
         if (command) {
             /* the line of guidance goes the moment anything is picked */

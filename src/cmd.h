@@ -148,6 +148,13 @@ typedef struct {
      * the line the *first* press was on, and by the time the second arrives
      * press_x is already the second one. */
     int pick_x, pick_y;
+    /* 線切断 has cut a line and the pointer has not moved off it yet.  The
+     * original says `□ 線切断はマウス移動` until it does and then puts its
+     * own line back, so this is what picks src/stage.h's stage 11 over
+     * stage 2. */
+    int cutting;
+    /* Where 線切断 will cut, in drawing units, while it waits for the move. */
+    double cut_x, cut_y;
     /* What 線変更 took: 1 a line, 2 an arc, 0 nothing yet.  The word it writes
      * beside the counts is `線` or `円` accordingly. */
     int hit_kind;
@@ -269,7 +276,10 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key);
 /* Move the pointer without pressing.  While a command has a point in hand the
  * original keeps the reading under the counts up to date -- the length and the
  * angle to wherever the pointer is -- so this works them out again. */
-void jw_cmd_track(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy);
+/* The drawing is not const here: 線切断 cuts the line it was given **when the
+ * pointer moves off it**, not at the press (`□ 線切断はマウス移動`), and this
+ * is where that lands. */
+void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy);
 
 /* The line the original drags from the point already taken to wherever the
  * pointer is: colour 2, exclusive-or (0x18), solid.  □ drags a rectangle of

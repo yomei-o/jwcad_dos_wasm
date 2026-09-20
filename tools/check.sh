@@ -206,6 +206,10 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/pressfull.sh 6 220 157 300 200
     sh tools/pressfull.sh 6 220 157 140 250
     sh tools/savecheck.sh -c 6 -p 220 157 -p 300 157
+    echo "=== 線切断 (6, the right button): the line is cut where it was"
+    echo "    pressed, but only once the pointer leaves it"
+    sh tools/pressfull.sh 6 r 220 157
+    sh tools/savecheck.sh -c 6 -r 220 157 -m 400 300
     echo "=== コーナー連結 (7): two lines cut back to meet at a corner"
     echo "    (the 1-2 left over are the original's own erase clipping a neighbour)"
     sh tools/pressfull.sh 7 220 157
