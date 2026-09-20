@@ -27,6 +27,8 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->pick_b = -1;
     /* 面取's `③寸法= 30.000`, which is where the original starts. */
     c->gap_chamfer = 30.0;
+    /* ２線's `①基準線からの間隔＝ 75.000 , 75.000 (mm)`, likewise. */
+    c->gap_two[0] = c->gap_two[1] = 75.0;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -119,6 +121,8 @@ static long fixed16(double deg)
     return (long)(deg * 65536.0 + 0.5);
 }
 
+static void two_lines(JwCmd *c, Jwc *d);
+
 void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
 {
     double x, y;
@@ -136,6 +140,13 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
                 jwc_split_line(d, c->pick_a, (float)c->cut_x, (float)c->cut_y);
             }
             c->pick_a = -1;
+        }
+        /* ２線 puts its pair down here for the same reason: `□ 終点 指示は
+         * マウス移動`.  The base line stays chosen and it asks for another
+         * start. */
+        if (c->pending) {
+            c->pending = 0;
+            two_lines(c, d);
         }
     }
     if (!d || !c->pressed) {
@@ -1096,6 +1107,25 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * while they wait for Ｂ.  線伸縮 does **not** -- its first press leaves
      * the line white and only changes the line above (measured: one press on
      * SAMPLE0's line 5 leaves all 71 of its pixels as they were). */
+    /* ２線 shows the pair it is about to put down in the same colour 2, while
+     * the pointer is still on the end point (measured: 402 pixels of it). */
+    if (c->command == 9) {
+        int i;
+
+        for (i = 0; c->pending && i < 2; i++) {
+            double e[4];
+            int x0, y0, x1, y1;
+
+            if (!jw_cmd_two_line(c, d, i, e)) {
+                break;
+            }
+            at_screen(w, e[0], e[1], &x0, &y0);
+            at_screen(w, e[2], e[3], &x1, &y1);
+            jw_line(v, x0, y0, x1, y1, mark, ROP_REPLACE,
+                    jw_view_line_style(d->line_type));
+        }
+        return;
+    }
     if (c->command == 7 || c->command == 8) {
         if (c->pick_a >= 0 && c->pick_a < d->n_lines) {
             const JwcLine *l = &d->lines[c->pick_a];
@@ -1197,7 +1227,15 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 {
     long k;
 
-    if (!d || !JW_RANGE_CMD(c->command) || c->pressed != 2) {
+    /* The commands that make an entity **while a menu item is still running**
+     * all need this: the chrome blacks (122,17)-(638,47) when the item is
+     * picked, and anything drawn up there would go with it.  The original
+     * draws a new entity over the finished screen instead of redrawing, so
+     * this puts them back afterwards.  ２線's pair reaches y=26 on SAMPLE0
+     * and lost 201 pixels to that fill. */
+    if (!d || !(JW_RANGE_CMD(c->command) || c->command == 8
+                || c->command == 9 || c->command == 20)
+        || (JW_RANGE_CMD(c->command) && c->pressed != 2)) {
         return;
     }
     /* The drawing window again: the chrome leaves the clip open to the
@@ -1879,6 +1917,74 @@ static void keep_far(Jwc *d, long k, double cx, double cy, float px, float py)
     }
 }
 
+/* ２線: a pair of lines either side of the base, between the two points.
+ *
+ * **Which of the two comes first** is not the base line's own direction: a
+ * vertical base gives +x first whichever way it is stored, a horizontal one
+ * gives +y, and a diagonal gives the side whose normal points up.  So the
+ * first is the one offset along the normal with the **positive y** (and, when
+ * that is zero, the positive x) -- four cases measured, two of them the same
+ * vertical line stored both ways round. */
+/* Where the i-th of the pair runs.  Returns 0 when there is no pair to draw.
+ * Both the preview (colour 2, while the pointer is still on the end) and the
+ * lines themselves come out of this, so the two cannot drift apart. */
+int jw_cmd_two_line(const JwCmd *c, const Jwc *d, int i, double *e)
+{
+    const JwcLine *l;
+    double dx, dy, n, nx, ny, t0, t1, ox, oy, g;
+    double per;
+
+    if (!d || c->command != 9 || c->pick_a < 0 || c->pick_a >= d->n_lines) {
+        return 0;
+    }
+    per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
+    l = &d->lines[c->pick_a];
+    dx = l->x1 - l->x0;
+    dy = l->y1 - l->y0;
+    n = sqrt(dx * dx + dy * dy);
+    if (n <= 0.0) {
+        return 0;
+    }
+    dx /= n;
+    dy /= n;
+    nx = -dy;
+    ny = dx;
+    if (ny < 0.0 || (ny == 0.0 && nx < 0.0)) {
+        nx = -nx;
+        ny = -ny;
+    }
+    /* How far along the base each point is; both offsets use the same pair. */
+    t0 = (c->x0 - l->x0) * dx + (c->y0 - l->y0) * dy;
+    t1 = (c->x1 - l->x0) * dx + (c->y1 - l->y0) * dy;
+    g = (i ? -1.0 : 1.0) * c->gap_two[i] * per;
+    ox = l->x0 + g * nx;
+    oy = l->y0 + g * ny;
+    e[0] = ox + t0 * dx;
+    e[1] = oy + t0 * dy;
+    e[2] = ox + t1 * dx;
+    e[3] = oy + t1 * dy;
+    return 1;
+}
+
+static void two_lines(JwCmd *c, Jwc *d)
+{
+    int i;
+
+    for (i = 0; i < 2; i++) {
+        double e[4];
+
+        if (!jw_cmd_two_line(c, d, i, e)) {
+            return;
+        }
+        if (jwc_add_line(d, (float)e[0], (float)e[1], (float)e[2], (float)e[3],
+                         (unsigned char)d->line_type, (unsigned char)d->pen,
+                         (unsigned char)((0 << 4) | (d->write_layer & 15)))) {
+            /* 0 in the byte a drawn line carries 3 in, like 面取's. */
+            d->lines[d->n_lines - 1].rest[1] = 0;
+        }
+    }
+}
+
 /* 面取【角面】: cut the corner off two lines and join the ends.
  *
  * Each line keeps the side it was pressed on and stops `back` short of the
@@ -2056,6 +2162,12 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     if (!d) {
         return 0;
     }
+    /* A press somewhere else means the pointer went there first, and 線切断
+     * and ２線 both put their work down when it leaves.  So the move happens
+     * before the press, not after it. */
+    if (sx != c->press_x || sy != c->press_y) {
+        jw_cmd_track(c, d, w, sx, sy);
+    }
     /* Any press puts the two counts back in the box beside them; the length
      * and the angle come back when the pointer moves off (JwCmd.moved). */
     c->press_x = sx;
@@ -2191,6 +2303,55 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typed_n = 0;
         text_box(c, d);
         return 1;
+    }
+    if (c->command == 9) {
+        /* ２線 —— a pair of lines either side of one already there.
+         *
+         * Three presses: the base line, then the start and the end.  The pair
+         * is put down when the pointer **leaves the second point**, the way
+         * 線切断 makes its cut, and the command then asks for another start
+         * with the same base line still chosen.
+         *
+         * The two are parallel to the base at the two gaps the line offers
+         * (75mm each side to begin with), and they run between the two points
+         * **projected onto the base** -- so the points only say how far along
+         * the pair goes.  Measured on SAMPLE0 (unit_mm 1.744108): base line 5
+         * at y=305.616 with the points at drawing x=129 and x=329 gives
+         * (129,436.424)-(329,436.424) and (129,174.808)-(329,174.808), which
+         * is 130.808 either side = 75mm. */
+        if (c->pick_a < 0) {
+            const long k = jw_cmd_line_at(d, w, sx, sy);
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->pick_a = k;
+            /* What was there before this run: jw_cmd_after puts anything past
+             * it back over the chrome. */
+            c->n0_lines = d->n_lines;
+            c->stage = 1;
+            return 1;
+        }
+        {
+            double px, py;
+
+            if (!take(c, d, w, sx, sy, right, &px, &py)) {
+                return 1;
+            }
+            if (c->stage != 2) {
+                c->x0 = px;
+                c->y0 = py;
+                c->stage = 2;
+                return 1;
+            }
+            c->x1 = px;
+            c->y1 = py;
+            c->pending = 1;
+            c->stage = 3;
+            return 1;
+        }
     }
     if (c->command == 8) {
         /* 面取【角面】 —— the corner between two lines is cut off and the cut

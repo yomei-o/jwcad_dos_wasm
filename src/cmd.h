@@ -160,6 +160,13 @@ typedef struct {
      * bisectors is decided by the side each line was pressed on. */
     long pick_b;
     int pick_bx, pick_by;
+    /* ２線's two gaps, in paper millimetres -- `①基準線からの間隔＝
+     * 75.000 , 75.000 (mm)`.  The first is the side the new lines are written
+     * in first (see two_lines). */
+    double gap_two[2];
+    /* ２線 has both ends and is waiting for the pointer to leave, the way
+     * 線切断 does. */
+    int pending;
     /* 面取's chamfer length, in paper millimetres.  The top line offers it as
      * `③寸法= 30.000` and starts there. */
     double gap_chamfer;
@@ -243,6 +250,10 @@ int jw_cmd_in_range(const JwCmd *c, double ax, double ay, double bx, double by);
 /* Paint what 消去 has picked, the way the original does: the entities inside
  * the range again, in colour 2, on top of the drawing.  Nothing else moves --
  * 224 white pixels turn red and not one other pixel changes. */
+/* Where ２線's pair runs -- `e` is filled with x0,y0,x1,y1 of the i-th of the
+ * two.  Returns 0 when there is nothing to draw. */
+int jw_cmd_two_line(const JwCmd *c, const Jwc *d, int i, double *e);
+
 void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
 
 /* And what the command has **made** since the range was fixed -- 複写's

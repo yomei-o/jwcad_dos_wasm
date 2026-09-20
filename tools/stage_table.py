@@ -34,6 +34,10 @@ COMMANDS = [
     (12, (300, 250, 400, 250, 350, 180)),   # （  任意の弧: centre, start, end
     (6, (220, 157, 300, 157)),      # 線伸縮  a line is stretched to a point
     (8, (220, 157, 163, 300)),      # 面取  the corner between two lines is cut
+    # ２線: the base line, then the two ends.  The pair is drawn when the
+    # pointer moves off the second, so a fourth press catches the line it
+    # leaves behind.
+    (9, (220, 157, 250, 200, 450, 200, 500, 250)),
     # 中心線: two lines, then the two ends of the piece to draw
     (20, (220, 157, 300, 401, 200, 279, 500, 279)),
     # 線切断: the same item with the **right** button.  Its stages are kept at
