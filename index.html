@@ -17,7 +17,10 @@
   .screen {
     background: #000; border: 1px solid #2a2e34; border-radius: 4px;
     display: block; width: 100%; max-width: 640px; height: auto;
-    image-rendering: pixelated; touch-action: none; cursor: grab;
+    image-rendering: pixelated; touch-action: none;
+    /* The program draws its own arrow, so the one the browser would put
+       on top is turned off -- two pointers at once are hard to read. */
+    cursor: none;
   }
 /* The field the OS composes Japanese into.  It has to be on the page and
    focusable for an input method to attach to it, so it is put under the
@@ -25,7 +28,7 @@
    no keys at all. */
 #ime { position: absolute; left: -9999px; width: 1px; height: 1px;
        opacity: 0; padding: 0; border: 0; }
-  .screen.drag { cursor: grabbing; }
+  .screen.drag { cursor: none; }
   .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
   select, button {
     font: inherit; background: #22262c; color: #d8dbe0;

@@ -1548,13 +1548,23 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
         v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
         v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
-        at_screen(w, c->dim_bx, c->dim_by, &gx, &gy);
-        jw_line(v, v->clip_x0, gy, v->clip_x1, gy, 2, 0x18,
-                jw_view_line_style(9));
-        if (c->stage >= 3) {
-            at_screen(w, c->dim_bx, c->dim_y, &gx, &gy);
+        at_screen(w, c->dim_by, c->dim_by, &gx, &gy);
+        if (c->dim_vert) {
+            jw_line(v, gx, v->clip_y0, gx, v->clip_y1, 2, 0x18,
+                    jw_view_line_style(9));
+        } else {
             jw_line(v, v->clip_x0, gy, v->clip_x1, gy, 2, 0x18,
-                    jw_view_line_style(0));
+                    jw_view_line_style(9));
+        }
+        if (c->stage >= 3) {
+            at_screen(w, c->dim_y, c->dim_y, &gx, &gy);
+            if (c->dim_vert) {
+                jw_line(v, gx, v->clip_y0, gx, v->clip_y1, 2, 0x18,
+                        jw_view_line_style(0));
+            } else {
+                jw_line(v, v->clip_x0, gy, v->clip_x1, gy, 2, 0x18,
+                        jw_view_line_style(0));
+            }
         }
     }
 }
@@ -1617,6 +1627,15 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
      * ①範囲内消去 reddens 224 in the box.
      *
      * ③指定範囲 is the data selection 複写 and 移動 use; it is not done. */
+    if (c->command == 14 && c->stage == 0 && (item == 1 || item == 2)) {
+        /* `|①横方向|②縦方向|③任意方向|④円･角|…` -- ① is also what a
+         * press in the drawing picks, and ② turns the whole thing on its
+         * side.  ③ and the rest are not done. */
+        c->dim_vert = item == 2;
+        c->pressed = 1;
+        c->stage = 1;
+        return 1;
+    }
     if (c->command == 26) {
         /* `接線 |①円～円間 |②円周点 |③指定点 |④角度指定 |` -- only ③. */
         if (c->tan_on && c->stage == 1 && item == 3) {
@@ -2706,21 +2725,39 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
     const unsigned char layer =
         (unsigned char)((0 << 4) | (d->write_layer & 15));
     const unsigned char type = (unsigned char)d->line_type;
-    const double x0 = c->dim_x0, y = c->dim_y;
+    const int up = c->dim_vert;
+    const double x0 = c->dim_x0, y = c->dim_y, b = c->dim_by;
+    const double mid = (x0 + x1) / 2.0;
+    const double off = 0.5 * d->unit_mm;
     char buf[32];
     double len;
 
-    if (jwc_add_line(d, (float)x0, (float)y, (float)x1, (float)y,
+    /* ②縦方向 is the same drawing turned on its side: the dimension line is
+     * vertical at `y` (which is then an x), the two extension lines run from
+     * the 引出し線の始点's x, and the value is written **going up** half a
+     * millimetre to the left of the line.  Measured on SAMPLE0's left edge:
+     *
+     *     line (9.000,323.057)-(9.000,44.000)   01 01 00 00 00 20
+     *     line (41.000,323.057)-(9.000,323.057) 01 01 00 59 00 20
+     *     line (41.000,44.000)-(9.000,44.000)   01 01 00 59 00 20
+     *     text (8.128,180.258)-(8.128,186.799)  02 00 10 40  `160`
+     *
+     * The dimension line's A byte is **0x00** where the horizontal one's is
+     * 0x80; everything else is the same. */
+    if (jwc_add_line(d, (float)(up ? y : x0), (float)(up ? x0 : y),
+                     (float)(up ? y : x1), (float)(up ? x1 : y),
                      type, JW_DIM_PEN, layer)) {
-        d->lines[d->n_lines - 1].rest[1] = 0x80;
+        d->lines[d->n_lines - 1].rest[1] = up ? 0x00 : 0x80;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
-    if (jwc_add_line(d, (float)x0, (float)c->dim_by, (float)x0, (float)y,
+    if (jwc_add_line(d, (float)(up ? b : x0), (float)(up ? x0 : b),
+                     (float)(up ? y : x0), (float)(up ? x0 : y),
                      type, JW_DIM_PEN, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
-    if (jwc_add_line(d, (float)x1, (float)c->dim_by, (float)x1, (float)y,
+    if (jwc_add_line(d, (float)(up ? b : x1), (float)(up ? x1 : b),
+                     (float)(up ? y : x1), (float)(up ? x1 : y),
                      type, JW_DIM_PEN, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
@@ -2728,10 +2765,11 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
     c->dim_value = (x1 > x0 ? x1 - x0 : x0 - x1) / d->unit_mm;
     dim_text(buf, sizeof buf, c->dim_value);
     len = jwc_text_length(d, buf, JW_DIM_SIZE);
-    if (jwc_add_text(d, (float)((x0 + x1) / 2.0 - len / 2.0),
-                     (float)(y + 0.5 * d->unit_mm),
-                     (float)((x0 + x1) / 2.0 + len / 2.0),
-                     (float)(y + 0.5 * d->unit_mm),
+    if (jwc_add_text(d,
+                     (float)(up ? y - off : mid - len / 2.0),
+                     (float)(up ? mid - len / 2.0 : y + off),
+                     (float)(up ? y - off : mid + len / 2.0),
+                     (float)(up ? mid + len / 2.0 : y + off),
                      buf, JW_DIM_SIZE, layer)) {
         d->texts[d->n_texts - 1].rest[2] = 0x10;
         d->texts[d->n_texts - 1].rest[3] = 0x40;
@@ -3270,7 +3308,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             }
             c->missed = 0;
             c->dim_bx = x;
-            c->dim_by = y;
+            c->dim_by = c->dim_vert ? x : y;
             c->stage = 2;
             return 1;
         }
@@ -3280,7 +3318,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 return 0;
             }
             c->missed = 0;
-            c->dim_y = y;
+            c->dim_y = c->dim_vert ? x : y;
             c->dim_texts = d->n_texts;
             c->stage = 3;
             return 1;
@@ -3291,7 +3329,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 return 0;
             }
             c->missed = 0;
-            c->dim_x0 = x;
+            c->dim_x0 = c->dim_vert ? y : x;
             c->stage = 4;
             return 1;
         }
@@ -3304,7 +3342,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->n0_lines = d->n_lines;
             c->n0_arcs = d->n_arcs;
             c->n0_texts = d->n_texts;
-            dimension(c, d, x);
+            dimension(c, d, c->dim_vert ? y : x);
             c->dim_texts = d->n_texts;      /* the band counts the new one */
             c->stage = 5;
             return 1;

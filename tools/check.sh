@@ -307,6 +307,10 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full sh tools/dimcheck.sh 162 140 300 90 162 140 598 140
     full sh tools/dimcheck.sh 162 140 300 110
     full sh tools/dimcheck.sh 162 140
+    VERT=1 sh tools/dimcheck.sh 162 140 300 250 162 140 162 419
+    full VERT=1 sh tools/dimcheck.sh 162 140 130 250
+    echo "    ...and 7 left over where the guide runs under the band's value (4.26)"
+    full VERT=1 sh tools/dimcheck.sh 162 140 130 250 162 140 162 419
     echo "=== 円線接 ①接線 ③指定点: the tangent from a point (RESUME 4.25)"
     DRAWING=TEST1 sh tools/tancheck.sh 500 350 255 239
     full DRAWING=TEST1 sh tools/tancheck.sh 500 350

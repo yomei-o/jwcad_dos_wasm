@@ -184,6 +184,7 @@ typedef struct {
     double dim_x0;              /* 寸法値の始点（の x） */
     double dim_value;           /* さっき書いた寸法値、帯に出るもの */
     long dim_texts;             /* 寸法値を聞きはじめたときの文字数 */
+    int dim_vert;               /* ②縦方向。横と縦が入れ替わるだけ */
     int tan_on;                 /* ①接線 is running */
     double tan_x, tan_y;        /* the 指定点 it has in hand */
     int hatch_closed;           /* the start line has come round again */
