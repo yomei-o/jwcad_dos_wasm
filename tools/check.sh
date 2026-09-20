@@ -199,6 +199,13 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "=== 点 dropping a 仮点"
     sh tools/pressfull.sh 22 300 250
     sh tools/pressfull.sh 22 300 250 400 300
+    echo "=== 線伸縮 (6): a line is stretched to a point"
+    sh tools/pressfull.sh 6 220 157
+    sh tools/pressfull.sh 6 220 157 300 157
+    sh tools/pressfull.sh 6 170 157 300 157
+    sh tools/pressfull.sh 6 220 157 300 200
+    sh tools/pressfull.sh 6 220 157 140 250
+    sh tools/savecheck.sh -c 6 -p 220 157 -p 300 157
     echo "=== コーナー連結 (7): two lines cut back to meet at a corner"
     echo "    (the 1-2 left over are the original's own erase clipping a neighbour)"
     sh tools/pressfull.sh 7 220 157

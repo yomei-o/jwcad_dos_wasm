@@ -1077,9 +1077,10 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
     v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
     v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
-    /* コーナー連結 paints the line it has taken as Ａ in the same colour 2
-     * while it waits for Ｂ, and leaves it there when a press finds nothing
-     * (measured: one press on SAMPLE0's line 5 turns its 71 pixels red). */
+    /* コーナー連結 paints the line it has taken as Ａ in colour 2 while it
+     * waits for Ｂ.  線伸縮 does **not** -- its first press leaves the line
+     * white and only changes the line above (measured: one press on SAMPLE0's
+     * line 5 leaves all 71 of its pixels as they were). */
     if (c->command == 7) {
         if (c->pick_a >= 0 && c->pick_a < d->n_lines) {
             const JwcLine *l = &d->lines[c->pick_a];
@@ -1771,6 +1772,42 @@ static void corner_cut(const JwcLine *l, double cx, double cy,
     (void)t1;
 }
 
+/* 線伸縮's second press: the end of the line nearer the first press moves to
+ * the foot of the perpendicular from the point given. */
+static void stretch_to(JwCmd *c, Jwc *d, const JwView *w, long k,
+                       int sx, int sy, int right)
+{
+    double px, py, ax, ay, t, fx, fy, dx, dy, n;
+    const JwcLine *l;
+    int near0;
+
+    if (!d || k < 0 || k >= d->n_lines) {
+        return;
+    }
+    if (!take(c, d, w, sx, sy, right, &px, &py)) {
+        return;                 /* 読取可能データ無: nothing taken, nothing moves */
+    }
+    l = &d->lines[k];
+    dx = l->x1 - l->x0;
+    dy = l->y1 - l->y0;
+    n = dx * dx + dy * dy;
+    if (n <= 0.0) {
+        return;
+    }
+    t = ((px - l->x0) * dx + (py - l->y0) * dy) / n;
+    fx = l->x0 + t * dx;
+    fy = l->y0 + t * dy;
+    jw_cmd_at(w, c->pick_x, c->pick_y, &ax, &ay);
+    /* Which end the press was nearer, measured along the line so that a press
+     * off to one side still answers the same way. */
+    near0 = ((ax - l->x0) * dx + (ay - l->y0) * dy) / n < 0.5;
+    if (near0) {
+        jwc_relink_line(d, k, (float)fx, (float)fy, l->x1, l->y1);
+    } else {
+        jwc_relink_line(d, k, l->x0, l->y0, (float)fx, (float)fy);
+    }
+}
+
 /* コーナー連結's second press: cut both lines back to their crossing and move
  * the two records to the end of the list, Ａ first. */
 static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
@@ -1786,7 +1823,7 @@ static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
     if (!cross_at(&d->lines[a], &d->lines[b], &cx, &cy)) {
         return;                 /* parallel: nothing to meet at */
     }
-    jw_cmd_at(w, c->press_x, c->press_y, &pax, &pay);
+    jw_cmd_at(w, c->pick_x, c->pick_y, &pax, &pay);
     jw_cmd_at(w, sx, sy, &pbx, &pby);
     corner_cut(&d->lines[a], cx, cy, pax, pay, &ax, &ay);
     corner_cut(&d->lines[b], cx, cy, pbx, pby, &bx, &by);
@@ -1941,6 +1978,42 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         text_box(c, d);
         return 1;
     }
+    if (c->command == 6) {
+        /* 線伸縮 —— a line is stretched (or shortened) to a point.
+         *
+         * The first press takes the line, and the line above changes to
+         * `○ 線伸縮の 指定点 をマウス指示 (L)free (R)Read`; the second gives
+         * the point.  **The end that moves is the one nearer the press on the
+         * line**, and it goes to the foot of the perpendicular from the point
+         * -- the line keeps its direction.  Measured on SAMPLE0's line 5
+         * (y=305.616, x 40.973..110.737):
+         *
+         *   pressed at x=99, point (179,263)  ->  40.973..179.000
+         *   pressed at x=49, point (179,306)  ->  179.000..110.737
+         *   pressed at x=99, point (19,213)   ->  40.973..19.000
+         *
+         * The third one crosses the other end and the record simply keeps the
+         * new pair, back to front.  The record moves to the end of the list,
+         * like コーナー連結's, and the counts do not change. */
+        if (c->pick_a < 0) {
+            const long k = jw_cmd_line_at(d, w, sx, sy);
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->pick_a = k;
+            c->pick_x = sx;
+            c->pick_y = sy;
+            c->stage = 1;
+            return 1;
+        }
+        stretch_to(c, d, w, c->pick_a, sx, sy, right);
+        c->pick_a = -1;
+        c->stage = 2;
+        return 1;
+    }
     if (c->command == 7) {
         /* コーナー連結 —— two lines are made to meet at a corner.
          *
@@ -1969,8 +2042,8 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->missed = 0;
         if (c->pick_a < 0) {
             c->pick_a = k;
-            c->press_x = sx;
-            c->press_y = sy;
+            c->pick_x = sx;
+            c->pick_y = sy;
             c->stage = 1;
             return 1;
         }

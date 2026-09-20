@@ -142,6 +142,12 @@ typedef struct {
     /* コーナー連結's first line -- the one it calls 「Ａ」 -- while it waits
      * for the second.  -1 when it has none. */
     long pick_a;
+    /* And where that first press was, on the screen.  Kept apart from
+     * press_x/press_y, which jw_cmd_press overwrites at the top of **every**
+     * press: both 線伸縮 and コーナー連結 have to remember which side of
+     * the line the *first* press was on, and by the time the second arrives
+     * press_x is already the second one. */
+    int pick_x, pick_y;
     /* What 線変更 took: 1 a line, 2 an arc, 0 nothing yet.  The word it writes
      * beside the counts is `線` or `円` accordingly. */
     int hit_kind;
