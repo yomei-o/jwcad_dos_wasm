@@ -2469,6 +2469,10 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->num[0] = c->gap_chamfer;
         c->dec[0] = d->decimals;
         if (c->pick_a < 0) {
+            /* What was there before this run -- jw_cmd_after puts anything
+             * past it back over the chrome, and anything *before* it must be
+             * left alone or the red mark goes under a fresh white line. */
+            c->n0_lines = d->n_lines;
             c->pick_a = k;
             c->pick_x = sx;
             c->pick_y = sy;
@@ -2502,6 +2506,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             }
             c->missed = 0;
             if (c->pick_a < 0) {
+                c->n0_lines = d->n_lines;
                 c->pick_a = k;
                 c->pick_x = sx;
                 c->pick_y = sy;
