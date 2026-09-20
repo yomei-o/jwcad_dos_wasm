@@ -160,6 +160,9 @@ typedef struct {
      * bisectors is decided by the side each line was pressed on. */
     long pick_b;
     int pick_bx, pick_by;
+    /* 分割's count -- `分割 数 = ` with `[2]` offered as 前回と同じ.  The
+     * original starts at 2 and remembers what was last typed. */
+    int divisions;
     /* ２線's two gaps, in paper millimetres -- `①基準線からの間隔＝
      * 75.000 , 75.000 (mm)`.  The first is the side the new lines are written
      * in first (see two_lines). */

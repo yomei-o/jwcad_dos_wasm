@@ -29,6 +29,8 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->gap_chamfer = 30.0;
     /* ２線's `①基準線からの間隔＝ 75.000 , 75.000 (mm)`, likewise. */
     c->gap_two[0] = c->gap_two[1] = 75.0;
+    /* 分割's `[2]`, the count it offers as 前回と同じ. */
+    c->divisions = 2;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -1588,6 +1590,8 @@ static int last_char_bytes(const char *s, int n)
     return n - last;
 }
 
+static void divide_points(JwCmd *c, Jwc *d);
+
 int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
@@ -1715,6 +1719,34 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         sprintf(c->typed, "%g", F[key - JW_KEY_F1]);
         c->typed_n = (int)strlen(c->typed);
         key = 13;
+    }
+    if (c->command == 21) {
+        /* 分割's count.  N divisions leave N-1 仮点 between the two points --
+         * measured on SAMPLE0, where typing 4 takes `残 100` down to `残 97`. */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                c->divisions = atoi(c->typed);
+            }
+            c->typing = 0;
+            divide_points(c, d);
+            c->stage = 1;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (key >= '0' && key <= '9') {
+            if (c->typed_n < 8) {
+                c->typed[c->typed_n++] = (char)key;
+                c->typed[c->typed_n] = 0;
+            }
+            return 1;
+        }
+        return 1;
     }
     if (JW_MOVE_CMD(c->command) && c->stage == 7) {
         /* 複写 and 移動's distance: `X,Y` in millimetres of paper, and one number on
@@ -1914,6 +1946,26 @@ static void keep_far(Jwc *d, long k, double cx, double cy, float px, float py)
         jwc_relink_line(d, k, px, py, l->x0, l->y0);
     } else {
         jwc_relink_line(d, k, px, py, l->x1, l->y1);
+    }
+}
+
+/* 分割【仮点】: N-1 仮点 spread evenly between the two points. */
+static void divide_points(JwCmd *c, Jwc *d)
+{
+    int i;
+
+    if (!d || c->divisions < 2) {
+        return;
+    }
+    for (i = 1; i < c->divisions; i++) {
+        const double t = (double)i / c->divisions;
+
+        if (d->n_temp >= JWC_TEMP_MAX) {
+            return;
+        }
+        d->temp_x[d->n_temp] = (float)(c->x0 + t * (c->x1 - c->x0));
+        d->temp_y[d->n_temp] = (float)(c->y0 + t * (c->y1 - c->y0));
+        d->n_temp++;
     }
 }
 
@@ -2302,6 +2354,36 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typed[0] = 0;
         c->typed_n = 0;
         text_box(c, d);
+        return 1;
+    }
+    if (c->command == 21) {
+        /* 分割【仮点】 —— 仮点 spread evenly between two points.
+         *
+         * Two presses take the ends, and then the line asks `分割 数 = ` with
+         * the last count offered as 前回と同じ ﾏｳｽ(R).  **N divisions leave
+         * N-1 points**: typing 4 on SAMPLE0 takes the count of 仮点 still
+         * available from 100 down to 97, and the band beside the counts says
+         * `4 分割`.
+         *
+         * Nothing is added to the drawing itself -- 仮点 are the same
+         * temporary points 点 drops, and they are not saved. */
+        double px, py;
+
+        if (!take(c, d, w, sx, sy, right, &px, &py)) {
+            return 1;
+        }
+        if (c->stage != 1) {
+            c->x0 = px;
+            c->y0 = py;
+            c->stage = 1;
+            return 1;
+        }
+        c->x1 = px;
+        c->y1 = py;
+        c->stage = 2;
+        c->typing = 1;
+        c->typed_n = 0;
+        c->typed[0] = 0;
         return 1;
     }
     if (c->command == 9) {
