@@ -210,6 +210,17 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "    pressed, but only once the pointer leaves it"
     sh tools/pressfull.sh 6 r 220 157
     sh tools/savecheck.sh -c 6 -r 220 157 -m 400 300
+    echo "=== 面取 (8): the corner between two lines is cut off"
+    sh tools/pressfull.sh 8 220 157
+    sh tools/pressfull.sh 8 220 157 163 300
+    sh tools/savecheck.sh -c 8 -p 220 157 -p 163 300
+    DRAWING=SAMPLE6 BOOT=150000000 sh tools/savecheck.sh -c 8 -p 499 270 -p 490 240
+    echo "=== 中心線 (20): the bisector of two lines, between two points"
+    sh tools/pressfull.sh 20 220 157
+    sh tools/pressfull.sh 20 220 157 300 401
+    sh tools/pressfull.sh 20 220 157 300 401 200 279
+    sh tools/pressfull.sh 20 220 157 300 401 200 279 500 279
+    sh tools/savecheck.sh -c 20 -p 220 157 -p 300 401 -p 200 279 -p 500 279
     echo "=== コーナー連結 (7): two lines cut back to meet at a corner"
     echo "    (the 1-2 left over are the original's own erase clipping a neighbour)"
     sh tools/pressfull.sh 7 220 157

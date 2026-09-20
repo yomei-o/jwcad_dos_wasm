@@ -155,6 +155,14 @@ typedef struct {
     int cutting;
     /* Where 線切断 will cut, in drawing units, while it waits for the move. */
     double cut_x, cut_y;
+    /* 中心線's second line, and the two presses that chose the pair.  The
+     * centre line is the bisector of the two, and **which** of the two
+     * bisectors is decided by the side each line was pressed on. */
+    long pick_b;
+    int pick_bx, pick_by;
+    /* 面取's chamfer length, in paper millimetres.  The top line offers it as
+     * `③寸法= 30.000` and starts there. */
+    double gap_chamfer;
     /* What 線変更 took: 1 a line, 2 an arc, 0 nothing yet.  The word it writes
      * beside the counts is `線` or `円` accordingly. */
     int hit_kind;

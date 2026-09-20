@@ -24,6 +24,9 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->gap = 1000.0;
     /* コーナー連結 has no line in hand yet. */
     c->pick_a = -1;
+    c->pick_b = -1;
+    /* 面取's `③寸法= 30.000`, which is where the original starts. */
+    c->gap_chamfer = 30.0;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -1089,11 +1092,11 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
     v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
     v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
-    /* コーナー連結 paints the line it has taken as Ａ in colour 2 while it
-     * waits for Ｂ.  線伸縮 does **not** -- its first press leaves the line
-     * white and only changes the line above (measured: one press on SAMPLE0's
-     * line 5 leaves all 71 of its pixels as they were). */
-    if (c->command == 7) {
+    /* コーナー連結 and 面取 paint the line they have taken as Ａ in colour 2
+     * while they wait for Ｂ.  線伸縮 does **not** -- its first press leaves
+     * the line white and only changes the line above (measured: one press on
+     * SAMPLE0's line 5 leaves all 71 of its pixels as they were). */
+    if (c->command == 7 || c->command == 8) {
         if (c->pick_a >= 0 && c->pick_a < d->n_lines) {
             const JwcLine *l = &d->lines[c->pick_a];
             int x0, y0, x1, y1;
@@ -1784,6 +1787,205 @@ static void corner_cut(const JwcLine *l, double cx, double cy,
     (void)t1;
 }
 
+/* 中心線's line: the bisector of two lines, as a point on it and a direction.
+ *
+ * Two lines that cross have two bisectors, and the one taken is the one
+ * between the sides that were pressed -- walk from the crossing toward each
+ * press and add the two directions.  Measured on SAMPLE0: line 5 (horizontal,
+ * y=305.616) pressed at x=99 and line 0 (vertical, x=40.973) pressed at
+ * y=163 give a line through (40.973,305.616) in the direction (1,-1), and the
+ * two points given afterwards land on it at (131.295,215.295) and
+ * (181.295,165.295) -- their perpendicular feet exactly.
+ *
+ * Parallel lines have no crossing, and then it is the line half way between
+ * them: line 5 (y=305.616) with line 4 (y=61.441) gives y=183.529. */
+static int bisector(const JwcLine *a, const JwcLine *b,
+                    double pax, double pay, double pbx, double pby,
+                    double *ox, double *oy, double *dx, double *dy)
+{
+    const double ax = a->x1 - a->x0, ay = a->y1 - a->y0;
+    const double bx = b->x1 - b->x0, by = b->y1 - b->y0;
+    const double la = sqrt(ax * ax + ay * ay), lb = sqrt(bx * bx + by * by);
+    double cx, cy, ua, ub, sx, sy;
+    JwcLine ta = *a, tb = *b;
+
+    if (la <= 0.0 || lb <= 0.0) {
+        return 0;
+    }
+    if (!cross_at(&ta, &tb, &cx, &cy)) {
+        /* Parallel: half way between, running the way the first one does. */
+        const double t = ((b->x0 - a->x0) * ax + (b->y0 - a->y0) * ay) / (la * la);
+        const double fx = a->x0 + t * ax, fy = a->y0 + t * ay;
+
+        *ox = (fx + b->x0) / 2.0;
+        *oy = (fy + b->y0) / 2.0;
+        *dx = ax / la;
+        *dy = ay / la;
+        return 1;
+    }
+    /* Which way along each line the press was. */
+    ua = ((pax - cx) * ax + (pay - cy) * ay) < 0.0 ? -1.0 : 1.0;
+    ub = ((pbx - cx) * bx + (pby - cy) * by) < 0.0 ? -1.0 : 1.0;
+    sx = ua * ax / la + ub * bx / lb;
+    sy = ua * ay / la + ub * by / lb;
+    if (sx == 0.0 && sy == 0.0) {
+        return 0;               /* the two presses face each other exactly */
+    }
+    *ox = cx;
+    *oy = cy;
+    *dx = sx;
+    *dy = sy;
+    return 1;
+}
+
+/* Point a unit direction along a line rather than at a press: the two are
+ * within a few dots of each other, and the line is the one that counts. */
+static void project_dir(const JwcLine *l, double *dx, double *dy)
+{
+    const double ax = l->x1 - l->x0, ay = l->y1 - l->y0;
+    const double n = sqrt(ax * ax + ay * ay);
+
+    if (n <= 0.0) {
+        return;
+    }
+    if (*dx * ax + *dy * ay < 0.0) {
+        *dx = -ax / n;
+        *dy = -ay / n;
+    } else {
+        *dx = ax / n;
+        *dy = ay / n;
+    }
+}
+
+/* A line keeps the end furthest from the corner and stops at the point given.
+ * **The new point goes first** whichever end it replaced: SAMPLE0's line 0
+ * runs (40.973,44)-(40.973,323.057) and comes back as
+ * (40.973,268.618)-(40.973,44), which is the far end second. */
+static void keep_far(Jwc *d, long k, double cx, double cy, float px, float py)
+{
+    const JwcLine *l;
+    double d0, d1;
+
+    if (k < 0 || k >= d->n_lines) {
+        return;
+    }
+    l = &d->lines[k];
+    d0 = (l->x0 - cx) * (l->x0 - cx) + (l->y0 - cy) * (l->y0 - cy);
+    d1 = (l->x1 - cx) * (l->x1 - cx) + (l->y1 - cy) * (l->y1 - cy);
+    if (d0 > d1) {
+        jwc_relink_line(d, k, px, py, l->x0, l->y0);
+    } else {
+        jwc_relink_line(d, k, px, py, l->x1, l->y1);
+    }
+}
+
+/* 面取【角面】: cut the corner off two lines and join the ends.
+ *
+ * Each line keeps the side it was pressed on and stops `back` short of the
+ * corner, where `back` is half the chamfer over the sine of half the angle
+ * between the two kept directions -- the cut is isoceles, so that is what
+ * makes it the length the top line says. */
+static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
+                    int sx, int sy)
+{
+    double cx, cy, pax, pay, pbx, pby;
+    double adx, ady, bdx, bdy, la, lb, half, back, sn;
+    float akx, aky, bkx, bky;
+    long first, second;
+    const double per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
+    const double want = c->gap_chamfer * per;
+
+    if (!d || a < 0 || b < 0 || a >= d->n_lines || b >= d->n_lines) {
+        return;
+    }
+    if (!cross_at(&d->lines[a], &d->lines[b], &cx, &cy)) {
+        return;                 /* 「データが不適当」 -- they never meet */
+    }
+    jw_cmd_at(w, c->pick_x, c->pick_y, &pax, &pay);
+    jw_cmd_at(w, sx, sy, &pbx, &pby);
+    /* The direction from the corner toward each press: that is the side that
+     * survives, and the angle between the two is the corner's. */
+    adx = pax - cx; ady = pay - cy;
+    bdx = pbx - cx; bdy = pby - cy;
+    la = sqrt(adx * adx + ady * ady);
+    lb = sqrt(bdx * bdx + bdy * bdy);
+    if (la <= 0.0 || lb <= 0.0) {
+        return;
+    }
+    adx /= la; ady /= la;
+    bdx /= lb; bdy /= lb;
+    /* Along the lines themselves, not toward the press, so that a press a
+     * little off the line does not tilt the answer. */
+    project_dir(&d->lines[a], &adx, &ady);
+    project_dir(&d->lines[b], &bdx, &bdy);
+    half = acos(adx * bdx + ady * bdy) / 2.0;
+    sn = sin(half);
+    if (sn <= 0.0) {
+        return;
+    }
+    back = want / 2.0 / sn;
+    akx = (float)(cx + back * adx);
+    aky = (float)(cy + back * ady);
+    bkx = (float)(cx + back * bdx);
+    bky = (float)(cy + back * bdy);
+    /* The two lines keep their far ends and stop at those points; the chamfer
+     * goes on the end.  Ａ first, the way the original's records come out. */
+    first = a;
+    second = b > a ? b - 1 : b;
+    keep_far(d, first, cx, cy, akx, aky);
+    keep_far(d, second, cx, cy, bkx, bky);
+    /* 面取 **clears the last of the three bytes** on the two lines it re-cut.
+     * Measured on SAMPLE6, whose lines carry 08 there: the two come back with
+     * 00.  線伸縮 and コーナー連結 do not -- the same line through 線伸縮 keeps
+     * its 08 -- so this belongs to 面取 and is not a property of rewriting a
+     * record. */
+    d->lines[d->n_lines - 2].rest[3] = 0;
+    d->lines[d->n_lines - 1].rest[3] = 0;
+    if (jwc_add_line(d, akx, aky, bkx, bky,
+                     (unsigned char)d->line_type, (unsigned char)d->pen,
+                     (unsigned char)((0 << 4) | (d->write_layer & 15)))) {
+        /* A chamfer carries **0** in the byte a drawn line carries 3 in.
+         * Measured, like 中心線's 2. */
+        d->lines[d->n_lines - 1].rest[1] = 0;
+    }
+}
+
+/* 中心線's last press: put the line down between the start already taken
+ * and the point just given, both dropped onto the bisector. */
+static void centre_line(JwCmd *c, Jwc *d, const JwView *w, double px, double py)
+{
+    double ox, oy, dx, dy, pax, pay, pbx, pby, n, t0, t1;
+
+    if (!d || c->pick_a < 0 || c->pick_b < 0
+        || c->pick_a >= d->n_lines || c->pick_b >= d->n_lines) {
+        return;
+    }
+    jw_cmd_at(w, c->pick_x, c->pick_y, &pax, &pay);
+    jw_cmd_at(w, c->pick_bx, c->pick_by, &pbx, &pby);
+    if (!bisector(&d->lines[c->pick_a], &d->lines[c->pick_b],
+                  pax, pay, pbx, pby, &ox, &oy, &dx, &dy)) {
+        return;
+    }
+    n = dx * dx + dy * dy;
+    if (n <= 0.0) {
+        return;
+    }
+    t0 = ((c->x0 - ox) * dx + (c->y0 - oy) * dy) / n;
+    t1 = ((px - ox) * dx + (py - oy) * dy) / n;
+    if (!jwc_add_line(d, (float)(ox + t0 * dx), (float)(oy + t0 * dy),
+                      (float)(ox + t1 * dx), (float)(oy + t1 * dy),
+                      (unsigned char)d->line_type, (unsigned char)d->pen,
+                      (unsigned char)((0 << 4) | (d->write_layer & 15)))) {
+        return;
+    }
+    /* 中心線 writes **2** in the byte behind the layer where ／ and the other
+     * drawing commands write 3.  Measured: the same drawing, the same pen and
+     * the same layer, and the original saves `01 02 00 02 00 00` for a centre
+     * line against `01 02 00 03 00 00` for a line.  What the byte means is
+     * still not known, so it is copied and not reasoned about. */
+    d->lines[d->n_lines - 1].rest[1] = 2;
+}
+
 /* 線伸縮's second press: the end of the line nearer the first press moves to
  * the foot of the perpendicular from the point given. */
 static void stretch_to(JwCmd *c, Jwc *d, const JwView *w, long k,
@@ -1989,6 +2191,106 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typed_n = 0;
         text_box(c, d);
         return 1;
+    }
+    if (c->command == 8) {
+        /* 面取【角面】 —— the corner between two lines is cut off and the cut
+         * is joined by a third.
+         *
+         * Two presses, Ａ then Ｂ.  Each line keeps **the side that was
+         * pressed**, ending a little short of the corner, and the chamfer runs
+         * between the two new ends.  The `寸法` on the top line is the length
+         * of that chamfer in paper millimetres (30 to start with), so the two
+         * ends are the same distance back from the corner and the cut is
+         * isoceles.
+         *
+         * Measured on SAMPLE0 (unit_mm 1.744108) with line 5 (horizontal,
+         * y=305.616) pressed at x=99 and line 0 (vertical, x=40.973) pressed
+         * at y=163, which meet at (40.973,305.616):
+         *
+         *   line 5  ->  (77.971,305.616)-(110.737,305.616)
+         *   line 0  ->  (40.973,268.618)-(40.973,44.000)
+         *   new     ->  (77.971,305.616)-(40.973,268.618)
+         *
+         * 36.998 back along each, and the new line is 52.32 long -- which is
+         * 30mm at that scale.  Two lines that do not meet answer
+         * `データが不適当` and nothing happens. */
+        const long k = jw_cmd_line_at(d, w, sx, sy);
+
+        if (k < 0) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        /* The line above carries the chamfer length, so it has to be in the
+         * numbers the chrome fills in (src/stage.h's `③寸法=%*.*f`). */
+        c->num[0] = c->gap_chamfer;
+        c->dec[0] = d->decimals;
+        if (c->pick_a < 0) {
+            c->pick_a = k;
+            c->pick_x = sx;
+            c->pick_y = sy;
+            c->stage = 1;
+            return 1;
+        }
+        if (k != c->pick_a) {
+            chamfer(c, d, w, c->pick_a, k, sx, sy);
+        }
+        c->pick_a = -1;
+        c->stage = 2;
+        return 1;
+    }
+    if (c->command == 20) {
+        /* 中心線 —— the line half way between two others.
+         *
+         * Four presses: the two lines (Ａ then Ｂ), then the start and the end
+         * of the piece to draw.  The two points are **projected onto the
+         * bisector**, so they only say how far along it the new line runs.
+         * Measured on SAMPLE0 -- see bisector() above.
+         *
+         * The new line is drawn with the writing pen and line type, and the
+         * command goes straight back to its own first line (no `[ESC]` and no
+         * `・` in front of it). */
+        if (c->pick_a < 0 || c->pick_b < 0) {
+            const long k = jw_cmd_line_at(d, w, sx, sy);
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            if (c->pick_a < 0) {
+                c->pick_a = k;
+                c->pick_x = sx;
+                c->pick_y = sy;
+                c->stage = 1;
+            } else {
+                c->pick_b = k;
+                c->pick_bx = sx;
+                c->pick_by = sy;
+                c->stage = 2;
+            }
+            return 1;
+        }
+        {
+            double px, py;
+
+            if (!take(c, d, w, sx, sy, right, &px, &py)) {
+                return 1;
+            }
+            if (c->stage == 2) {
+                c->x0 = px;
+                c->y0 = py;
+                c->stage = 3;
+                return 1;
+            }
+            centre_line(c, d, w, px, py);
+            c->pick_a = -1;
+            c->pick_b = -1;
+            /* Back to its own line, with an `[ESC]` in front -- src/stage.h
+             * keeps that as stage 4. */
+            c->stage = 4;
+            return 1;
+        }
     }
     if (c->command == 6) {
         /* 線伸縮 —— a line is stretched (or shortened) to a point.
