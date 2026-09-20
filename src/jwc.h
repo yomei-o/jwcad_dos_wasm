@@ -240,6 +240,13 @@ int jwc_dup_line(Jwc *d, long k, float dx, float dy);
 int jwc_dup_arc(Jwc *d, long k, float dx, float dy);
 int jwc_dup_text(Jwc *d, long k, float dx, float dy);
 
+/* Give a line new ends and move its record to the back of the list -- what
+ * コーナー連結 does to both of the lines it joins.  Every other byte is kept,
+ * the way 複写's copy keeps them.  Measured: SAMPLE0's lines 2 and 5 come back
+ * as lines 28 and 29, in the order they were pressed, and the twenty-eight
+ * others shuffle down by two.  Returns 0 if there was no memory for it. */
+int jwc_relink_line(Jwc *d, long k, float x0, float y0, float x1, float y1);
+
 /* Take a line out, the way 線消 does.  The ones after it move down, which is
  * what the original's count shows: thirty lines become twenty-nine. */
 void jwc_remove_line(Jwc *d, long k);

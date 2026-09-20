@@ -22,6 +22,8 @@ void jw_cmd_pick(JwCmd *c, int command)
      * what the original had when src/prompt.h was captured -- the program's
      * state, like the five numbers [F1] to [F5] stand for. */
     c->gap = 1000.0;
+    /* コーナー連結 has no line in hand yet. */
+    c->pick_a = -1;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -1066,7 +1068,7 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * cyan all at once, which only an exclusive-or half way through can be. */
     const unsigned mark = 2u;
 
-    if (!d || !JW_RANGE_CMD(c->command) || c->pressed != 2) {
+    if (!d) {
         return;
     }
     /* The chrome leaves the clip open to the whole screen; the marking is part
@@ -1075,6 +1077,24 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
     v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
     v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+    /* コーナー連結 paints the line it has taken as Ａ in the same colour 2
+     * while it waits for Ｂ, and leaves it there when a press finds nothing
+     * (measured: one press on SAMPLE0's line 5 turns its 71 pixels red). */
+    if (c->command == 7) {
+        if (c->pick_a >= 0 && c->pick_a < d->n_lines) {
+            const JwcLine *l = &d->lines[c->pick_a];
+            int x0, y0, x1, y1;
+
+            at_screen(w, l->x0, l->y0, &x0, &y0);
+            at_screen(w, l->x1, l->y1, &x1, &y1);
+            jw_line(v, x0, y0, x1, y1, mark, ROP_REPLACE,
+                    jw_view_line_style(l->type));
+        }
+        return;
+    }
+    if (!JW_RANGE_CMD(c->command) || c->pressed != 2) {
+        return;
+    }
 
     for (k = 0; k < c->n0_lines; k++) {
         const JwcLine *l = &d->lines[k];
@@ -1710,6 +1730,74 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     return 1;                   /* while it is asking, the keys are its own */
 }
 
+/* Where two infinite lines cross.  Returns 0 when they are parallel -- the
+ * cross product of the two directions is the denominator and it is zero. */
+static int cross_at(const JwcLine *a, const JwcLine *b, double *x, double *y)
+{
+    const double ax = a->x1 - a->x0, ay = a->y1 - a->y0;
+    const double bx = b->x1 - b->x0, by = b->y1 - b->y0;
+    const double den = ax * by - ay * bx;
+    double t;
+
+    if (den == 0.0) {
+        return 0;
+    }
+    t = ((b->x0 - a->x0) * by - (b->y0 - a->y0) * bx) / den;
+    *x = a->x0 + t * ax;
+    *y = a->y0 + t * ay;
+    return 1;
+}
+
+/* One line of a corner join: the end that is **not** on the pressed point's
+ * side of the corner moves to the corner.  Measured -- see the comment in
+ * jw_cmd_press. */
+static void corner_cut(const JwcLine *l, double cx, double cy,
+                       double px, double py, float *kx, float *ky)
+{
+    const double dx = l->x1 - l->x0, dy = l->y1 - l->y0;
+    const double n = dx * dx + dy * dy;
+    /* Everything along the line as one parameter, so that "between" is a
+     * comparison of two numbers whichever way the line runs. */
+    const double t0 = 0.0, t1 = 1.0;
+    const double tc = n > 0.0 ? ((cx - l->x0) * dx + (cy - l->y0) * dy) / n : 0.0;
+    const double tp = n > 0.0 ? ((px - l->x0) * dx + (py - l->y0) * dy) / n : 0.0;
+    /* Keep the end that leaves the pressed point inside what is left.  With
+     * the corner beyond both ends neither piece holds it, and the far end is
+     * the one that does not move. */
+    const int keep0 = (tp <= tc) == (t0 <= tc);
+
+    *kx = keep0 ? l->x0 : l->x1;
+    *ky = keep0 ? l->y0 : l->y1;
+    (void)t1;
+}
+
+/* コーナー連結's second press: cut both lines back to their crossing and move
+ * the two records to the end of the list, Ａ first. */
+static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
+                        int sx, int sy)
+{
+    double cx, cy, pax, pay, pbx, pby;
+    float ax, ay, bx, by;
+    long first, second;
+
+    if (!d || a < 0 || b < 0 || a >= d->n_lines || b >= d->n_lines) {
+        return;
+    }
+    if (!cross_at(&d->lines[a], &d->lines[b], &cx, &cy)) {
+        return;                 /* parallel: nothing to meet at */
+    }
+    jw_cmd_at(w, c->press_x, c->press_y, &pax, &pay);
+    jw_cmd_at(w, sx, sy, &pbx, &pby);
+    corner_cut(&d->lines[a], cx, cy, pax, pay, &ax, &ay);
+    corner_cut(&d->lines[b], cx, cy, pbx, pby, &bx, &by);
+    /* Ａ goes to the back first, which shifts Ｂ down by one if it was after
+     * it.  Both then sit at the end in the order they were pressed. */
+    first = a;
+    second = b > a ? b - 1 : b;
+    jwc_relink_line(d, first, ax, ay, (float)cx, (float)cy);
+    jwc_relink_line(d, second, bx, by, (float)cx, (float)cy);
+}
+
 int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
 {
     double x, y;
@@ -1851,6 +1939,46 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typed[0] = 0;
         c->typed_n = 0;
         text_box(c, d);
+        return 1;
+    }
+    if (c->command == 7) {
+        /* コーナー連結 —— two lines are made to meet at a corner.
+         *
+         * The first press takes 「Ａ」 and the line asks for 「Ｂ」; the second
+         * takes Ｂ and both lines are re-cut so that they end at the crossing
+         * of the two **infinite** lines.  Measured on SAMPLE0 with line 5
+         * (a short horizontal at y=305.616, x 40.973..110.737) and line 2
+         * (a vertical at x=477): they come back as (40.973,305.616)-(477,305.616)
+         * and (477,323.057)-(477,305.616) -- one extended well past its old
+         * end, the other shortened.
+         *
+         * **The side that is kept is the side that was pressed.**  Pressing
+         * line 2 low down (drawing y=163) keeps 44..305.616; pressing it above
+         * the corner (y=315) keeps 323.057..305.616.  So the piece that
+         * survives is the one the pressed point lies on -- which is the rule
+         * whether the corner is inside the segment or beyond its end.
+         *
+         * Both records go to the **back of the list**, in the order they were
+         * pressed, and the counts do not change: 30|13 before and after. */
+        const long k = jw_cmd_line_at(d, w, sx, sy);
+
+        if (k < 0) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        if (c->pick_a < 0) {
+            c->pick_a = k;
+            c->press_x = sx;
+            c->press_y = sy;
+            c->stage = 1;
+            return 1;
+        }
+        if (k != c->pick_a) {
+            corner_join(c, d, w, c->pick_a, k, sx, sy);
+        }
+        c->pick_a = -1;
+        c->stage = 2;
         return 1;
     }
     if (c->command == 24) {

@@ -139,6 +139,9 @@ typedef struct {
      * units -- the box 文字 shows while it is being typed.  Worked out again
      * after every key, because the width follows from the string. */
     double text_wide, text_tall;
+    /* コーナー連結's first line -- the one it calls 「Ａ」 -- while it waits
+     * for the second.  -1 when it has none. */
+    long pick_a;
     /* What 線変更 took: 1 a line, 2 an arc, 0 nothing yet.  The word it writes
      * beside the counts is `線` or `円` accordingly. */
     int hit_kind;

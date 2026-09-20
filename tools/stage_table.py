@@ -32,6 +32,7 @@ COMMANDS = [
     (4, (250, 150, 450, 350)),      # □  a box
     (11, (300, 200, 400, 200)),     # ○  a circle
     (12, (300, 250, 400, 250, 350, 180)),   # （  任意の弧: centre, start, end
+    (7, (220, 157, 596, 300)),      # コーナー連結  two lines meet at a corner
     (24, (197, 157)),               # 線変更  one press takes a line or an arc
     (10, ('r', 380, 140)),          # 線消  the right button takes a line away
     (22, (300, 250)),               # 点  the left button drops a 仮点

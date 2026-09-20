@@ -927,6 +927,26 @@ int jwc_dup_line(Jwc *d, long k, float dx, float dy)
     return 1;
 }
 
+int jwc_relink_line(Jwc *d, long k, float x0, float y0, float x1, float y1)
+{
+    JwcLine *l;
+
+    if (k < 0 || k >= d->n_lines) {
+        return 0;
+    }
+    if (!jwc_add_line(d, 0, 0, 0, 0, 0, 0, 0)) {
+        return 0;
+    }
+    l = &d->lines[d->n_lines - 1];
+    *l = d->lines[k];
+    l->x0 = x0;
+    l->y0 = y0;
+    l->x1 = x1;
+    l->y1 = y1;
+    jwc_remove_line(d, k);
+    return 1;
+}
+
 int jwc_dup_arc(Jwc *d, long k, float dx, float dy)
 {
     JwcArc *a;
