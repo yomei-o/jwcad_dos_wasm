@@ -301,6 +301,11 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full ENTER=1 sh tools/editcheck.sh 190 152 ''
     full BS=1 sh tools/editcheck.sh 190 152 AB
     full DRAWING=SAMPLE6 BOOT=150000000 sh tools/editcheck.sh 459 70 ''
+    echo "=== ズームバーの ■拡大■ と 用紙枠 (RESUME 4.27)"
+    sh tools/zoomcheck.sh 200 100 300 400
+    full sh tools/zoomcheck.sh 150 200 600 260
+    full sh tools/zoomcheck.sh 300 17 400 60
+    full sh tools/zoomcheck.sh 620 200 638 220
     echo "=== 寸法 ①横方向: the dimension line, its extensions and the value (4.26)"
     sh tools/dimcheck.sh 162 140 300 110 162 140 598 140
     sh tools/dimcheck.sh 162 140 300 110 162 140 214 152

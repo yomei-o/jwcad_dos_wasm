@@ -358,7 +358,8 @@ int main(int argc, char **argv)
         JwUi s;
 
         jw_ui_from(&s, d);
-        s.guide = jw_ui_guide();
+        s.guide = zoomed ? 0 : jw_ui_guide();   /* a zoom repaints, and the
+                                              * opening message goes */
         s.command = command;
         s.stage = stage;
         memcpy(s.typed, c.typed, sizeof s.typed);

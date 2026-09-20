@@ -945,6 +945,53 @@ void jw_view_line(VGA *v, const Jwc *d, const JwcLine *l, const JwView *w,
         jw_view_pen_colour(l->pen), ROP_REPLACE, jw_view_line_style(l->type));
     }
 
+/* 用紙枠: the paper's edge, in red and dashed.
+ *
+ * It is the rectangle **(0,0)-(518,447)** in drawing units, which at scale
+ * one is the drawing window's own border -- screen x 121 and 639, y 463 and
+ * 16 -- so it never shows until the view moves.  That is why it took a zoom
+ * to find: with the view (200,100)-(300,400) the original draws a dashed red
+ * column where x=0 lands (column 187), with (150,50)-(450,450) at column 179,
+ * with (300,17)-(400,60) a dashed red row where y=447 lands (row 122), and
+ * with (620,200)-(638,220) a column where x=518 lands (column 603).  All four
+ * agree with 0, 518 and 447 to the pixel.
+ *
+ * The dashes are every fourth pixel -- line type 9, 0x2222 -- and their phase
+ * is the screen's, not the line's: the column at 187 lights rows 19, 23, 27 …
+ * and so does the one at 603.
+ */
+static void paper_frame(VGA *v, const JwView *w)
+{
+    const int style = jw_view_line_style(9);
+    /* In doubles, because a corner can be a long way off at a big zoom and
+     * `(int)` of a float that does not fit is undefined -- TEST7 at 2x drew
+     * two pixels outside the window until this was clamped. */
+    const double fx0 = (0.0 - w->ox) * w->scale + w->ax;
+    const double fx1 = (518.0 - w->ox) * w->scale + w->ax;
+    const double fy0 = w->ay - (0.0 - w->oy) * w->scale;
+    const double fy1 = w->ay - (447.0 - w->oy) * w->scale;
+    /* The dashes go by the **screen**, not by where the line starts: the
+     * column at x=0 lights rows 19, 23, 27 … whether the view is
+     * (200,100)-(300,400) or (620,200)-(638,220), and the row at y=447 lights
+     * columns 124, 128, 132 …  So each edge is drawn right across the window
+     * from a start that keeps that phase. */
+    const int vs = v->clip_y0 + (((1 - v->clip_y0) % 4) + 4) % 4;
+    const int hs = v->clip_x0 - (((v->clip_x0 - 2) % 4) + 4) % 4;
+
+    if (fx0 >= v->clip_x0 && fx0 <= v->clip_x1) {
+        jw_line(v, (int)fx0, vs, (int)fx0, v->clip_y1, 2, ROP_REPLACE, style);
+    }
+    if (fx1 >= v->clip_x0 && fx1 <= v->clip_x1) {
+        jw_line(v, (int)fx1, vs, (int)fx1, v->clip_y1, 2, ROP_REPLACE, style);
+    }
+    if (fy0 >= v->clip_y0 && fy0 <= v->clip_y1) {
+        jw_line(v, hs, (int)fy0, v->clip_x1, (int)fy0, 2, ROP_REPLACE, style);
+    }
+    if (fy1 >= v->clip_y0 && fy1 <= v->clip_y1) {
+        jw_line(v, hs, (int)fy1, v->clip_x1, (int)fy1, 2, ROP_REPLACE, style);
+    }
+}
+
 void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
 {
     long k;
@@ -955,6 +1002,7 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
     v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
     v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
     v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+    paper_frame(v, w);
     for (k = 0; k < d->n_lines; k++) {
         jw_view_line(v, d, &d->lines[k], w,
                      jw_view_pen_colour(d->lines[k].pen));
