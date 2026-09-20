@@ -177,6 +177,13 @@ typedef struct {
     int hatch;                  /* the frame is being taken */
     /* 円線接（26 番）の ①接線 ③指定点 —— 指した点と、そこから円に引いた
      * 接線。②接円 と ①円～円間・②円周点・④角度指定 は入れていません。 */
+    /* 寸法（14 番の ①横方向）—— 引出し線の始点、寸法線の高さ、
+     * 寸法値の始点。終点を読むと線 3 本と文字が 1 つ入ります。 */
+    double dim_bx, dim_by;      /* 引出し線の始点 */
+    double dim_y;               /* 寸法線を書く位置（の y） */
+    double dim_x0;              /* 寸法値の始点（の x） */
+    double dim_value;           /* さっき書いた寸法値、帯に出るもの */
+    long dim_texts;             /* 寸法値を聞きはじめたときの文字数 */
     int tan_on;                 /* ①接線 is running */
     double tan_x, tan_y;        /* the 指定点 it has in hand */
     int hatch_closed;           /* the start line has come round again */

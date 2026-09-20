@@ -242,6 +242,10 @@ int main(int argc, char **argv)
                 t.typed_at = c.typed_at;
                 t.edit_type = edit_type(&c, d);
                 t.poly_deg = c.poly_deg;
+                t.dim_value = c.dim_value;
+                t.dim_texts = c.dim_texts;
+                t.dim_w = d ? d->text_w[JW_DIM_SIZE] / 10.0 : 0.0;
+                t.dim_h = d ? d->text_h[JW_DIM_SIZE] / 10.0 : 0.0;
                 t.hatch_n = c.hatch_n;
                 t.hatch_angle = c.hatch_angle;
                 t.hatch_pitch = c.hatch_pitch;
@@ -350,6 +354,10 @@ int main(int argc, char **argv)
         s.typed_at = c.typed_at;
         s.edit_type = edit_type(&c, d);
         s.poly_deg = c.poly_deg;
+        s.dim_value = c.dim_value;
+        s.dim_texts = c.dim_texts;
+        s.dim_w = d ? d->text_w[JW_DIM_SIZE] / 10.0 : 0.0;
+        s.dim_h = d ? d->text_h[JW_DIM_SIZE] / 10.0 : 0.0;
         s.hatch_n = c.hatch_n;
         s.hatch_angle = c.hatch_angle;
         s.hatch_pitch = c.hatch_pitch;

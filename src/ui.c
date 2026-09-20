@@ -593,6 +593,49 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
         jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
         return;
     }
+    /* 寸法 has its own two rows in the counts box: the pen it writes with
+     * and how many texts the drawing had, then the character size.  The count
+     * is the one from when the command asked for the 寸法値の始点 -- the
+     * original does not write it again after the text goes in. */
+    if (q->command == 14 && q->col == 1 && (q->row == 2 || q->row == 3)) {
+        char one[160];
+        double n[2];
+
+        if (q->row == 2) {
+            n[0] = JW_DIM_PEN;
+            n[1] = (double)s->dim_texts;
+            put_numbers(one, sizeof one, q->text, n, 2, 0);
+        } else {
+            n[0] = s->dim_w;
+            put_numbers(one, sizeof one, q->text, n, 1, 1);
+        }
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+        return;
+    }
+    if (q->command == 14 && q->col == 9 && q->row == 3) {
+        char one[160];
+        double n = s->dim_h;
+
+        put_numbers(one, sizeof one, q->text, &n, 1, 1);
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+        return;
+    }
+    /* 寸法 puts the value it has just written in the band, one decimal with
+     * the trailing zero and point taken off -- `250`, not `250.0`. */
+    if (q->command == 14 && q->row == 2 && q->col == 17) {
+        char num[32];
+        size_t n = (size_t)sprintf(num, "%.1f", s->dim_value);
+
+        while (n > 0 && num[n - 1] == '0') {
+            n--;
+        }
+        if (n > 0 && num[n - 1] == '.') {
+            n--;
+        }
+        num[n] = 0;
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, num);
+        return;
+    }
     /* ハッチ's 残数 counts down from 100 as lines go into the frame, and its
      * angle and pitch are the command's own. */
     if (q->command == 18 && q->row == 2) {

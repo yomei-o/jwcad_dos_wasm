@@ -1502,7 +1502,8 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * and lost 201 pixels to that fill. */
     if (!d || !(JW_RANGE_CMD(c->command) || c->command == 8
                 || c->command == 9 || c->command == 19 || c->command == 20
-                || c->command == 23 || c->command == 26)
+                || c->command == 23 || c->command == 26
+                || c->command == 14)
         || (JW_RANGE_CMD(c->command) && c->pressed != 2)) {
         return;
     }
@@ -1534,7 +1535,30 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
             jw_view_text(v, d, &d->texts[k], w, jw_view_text_colour(d, d->texts[k].size));
         }
     }
+    /* 寸法 leaves two guides right across the drawing: a red one every four
+     * pixels at the 引出し線の始点's height and a white one every two at the
+     * 寸法線's.  Measured on SAMPLE0 -- row 140 is red at x = 124, 128, 132 …
+     * and row 110 white at the odd columns, both from the window's left edge
+     * to its right, and the white one is **over** the dimension line, which
+     * shows through cyan in between. */
+    if (c->command == 14 && c->stage >= 2) {
+        int gx, gy;
+
+        v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+        v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+        v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+        v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+        at_screen(w, c->dim_bx, c->dim_by, &gx, &gy);
+        jw_line(v, v->clip_x0, gy, v->clip_x1, gy, 2, 0x18,
+                jw_view_line_style(9));
+        if (c->stage >= 3) {
+            at_screen(w, c->dim_bx, c->dim_y, &gx, &gy);
+            jw_line(v, v->clip_x0, gy, v->clip_x1, gy, 2, 0x18,
+                    jw_view_line_style(0));
+        }
+    }
 }
+
 
 int jw_cmd_top(JwCmd *c, Jwc *d, int item)
 {
@@ -2642,6 +2666,78 @@ static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
     jwc_relink_line(d, second, bx, by, (float)cx, (float)cy);
 }
 
+/* ------------------------------------------------------------- 寸法 ①横方向 */
+
+/* A dimension value, the way the original writes it: one decimal, then the
+ * trailing zero and the point taken off.  Measured -- 250mm comes out `250`
+ * and 29.8473mm comes out `29.8`. */
+static void dim_text(char *out, size_t cap, double mm)
+{
+    size_t n = (size_t)sprintf(out, "%.1f", mm);
+
+    (void)cap;
+    while (n > 0 && out[n - 1] == '0') {
+        n--;
+    }
+    if (n > 0 && out[n - 1] == '.') {
+        n--;
+    }
+    out[n] = 0;
+}
+
+/* ①横方向: the dimension line, its two extension lines and the value.
+ *
+ * Measured on SAMPLE0 with the 引出し線の始点 free at (162,140), the 寸法線
+ * at (300,110) and the two ends read off the top edge's corners:
+ *
+ *     line (40.973,353.000)-(477.000,353.000)  01 01 00 80 00 20
+ *     line (40.973,323.000)-( 40.973,353.000)  01 01 00 59 00 20
+ *     line (477.000,323.000)-(477.000,353.000) 01 01 00 59 00 20
+ *     text (255.716,353.872)-(262.257,353.872) 02 00 10 40  `250`
+ *
+ * So the extension lines run from the 引出し線の始点's **y** (323 -- the free
+ * press, not the read) up to the dimension line, at the two read x's; the
+ * value is the distance in millimetres of paper; and the text is centred on
+ * the dimension line, half a millimetre above it, in character type 2 with
+ * pen 1 -- the 寸法設定 the band shows as `ﾍﾟﾝ1` and `横 2.5 縦 2.5`.
+ */
+static void dimension(JwCmd *c, Jwc *d, double x1)
+{
+    const unsigned char layer =
+        (unsigned char)((0 << 4) | (d->write_layer & 15));
+    const unsigned char type = (unsigned char)d->line_type;
+    const double x0 = c->dim_x0, y = c->dim_y;
+    char buf[32];
+    double len;
+
+    if (jwc_add_line(d, (float)x0, (float)y, (float)x1, (float)y,
+                     type, JW_DIM_PEN, layer)) {
+        d->lines[d->n_lines - 1].rest[1] = 0x80;
+        d->lines[d->n_lines - 1].rest[3] = 0x20;
+    }
+    if (jwc_add_line(d, (float)x0, (float)c->dim_by, (float)x0, (float)y,
+                     type, JW_DIM_PEN, layer)) {
+        d->lines[d->n_lines - 1].rest[1] = 0x59;
+        d->lines[d->n_lines - 1].rest[3] = 0x20;
+    }
+    if (jwc_add_line(d, (float)x1, (float)c->dim_by, (float)x1, (float)y,
+                     type, JW_DIM_PEN, layer)) {
+        d->lines[d->n_lines - 1].rest[1] = 0x59;
+        d->lines[d->n_lines - 1].rest[3] = 0x20;
+    }
+    c->dim_value = (x1 > x0 ? x1 - x0 : x0 - x1) / d->unit_mm;
+    dim_text(buf, sizeof buf, c->dim_value);
+    len = jwc_text_length(d, buf, JW_DIM_SIZE);
+    if (jwc_add_text(d, (float)((x0 + x1) / 2.0 - len / 2.0),
+                     (float)(y + 0.5 * d->unit_mm),
+                     (float)((x0 + x1) / 2.0 + len / 2.0),
+                     (float)(y + 0.5 * d->unit_mm),
+                     buf, JW_DIM_SIZE, layer)) {
+        d->texts[d->n_texts - 1].rest[2] = 0x10;
+        d->texts[d->n_texts - 1].rest[3] = 0x40;
+    }
+}
+
 /* ------------------------------------------------------- 円線接 ①接線 */
 
 /* ③指定点: the tangent from the point in hand to the circle that was
@@ -3153,6 +3249,67 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typed_at = 0;
         text_box(c, d);
         return 1;
+    }
+    if (c->command == 14) {
+        /* 寸法: the item's own line is the three directions and the first
+         * press in the drawing picks ①横方向, the left button's one.  Then
+         * 引出し線の始点, 寸法線の位置, 寸法値の始点, 寸法値の終点.
+         *
+         * **The last two are reads**: the line has no `(L)free` on it and a
+         * press on empty paper leaves the original saying サーチ and
+         * 読取可能データ無.  JW_MNU.DOC has the whole tree. */
+        if (c->stage == 0) {
+            c->pressed = 1;
+            c->stage = 1;
+            return 1;
+        }
+        if (c->stage == 1) {
+            if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->dim_bx = x;
+            c->dim_by = y;
+            c->stage = 2;
+            return 1;
+        }
+        if (c->stage == 2) {
+            if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->dim_y = y;
+            c->dim_texts = d->n_texts;
+            c->stage = 3;
+            return 1;
+        }
+        if (c->stage == 3 || c->stage == 5) {
+            if (!take_point(c, d, w, sx, sy, 1, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->dim_x0 = x;
+            c->stage = 4;
+            return 1;
+        }
+        if (c->stage == 4) {
+            if (!take_point(c, d, w, sx, sy, 1, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
+            dimension(c, d, x);
+            c->dim_texts = d->n_texts;      /* the band counts the new one */
+            c->stage = 5;
+            return 1;
+        }
+        return 0;
     }
     if (c->command == 26) {
         /* 円線接: the item's own line offers ①接 線 with the left button and

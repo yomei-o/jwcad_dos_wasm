@@ -266,6 +266,13 @@ void jwc_remove_text(Jwc *d, long k);
 /* Put one in, the way 文字 does: the record **and** the string, which is
  * appended to the pool the way the original appends it.  Returns 0 if there
  * was no memory for it. */
+/* 寸法 writes with pen 1 and character type 2 -- the 寸法設定 the band shows
+ * as `ﾍﾟﾝ1` and `横 2.5 縦 2.5`.  Where the drawing keeps them is not found
+ * yet, so SAMPLE0's are here; another drawing with different ones will show
+ * this up. */
+#define JW_DIM_PEN   1
+#define JW_DIM_SIZE  2
+
 /* 文編集: a new string on the text at `k`.  The record goes to the back and
  * its baseline gets a new far end; see jwc.c. */
 int jwc_edit_text(Jwc *d, long k, const char *str);

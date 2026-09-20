@@ -42,6 +42,12 @@ typedef struct {
      * `typed_n` there; 文編集 starts the field with the text it was pointed
      * at and the cursor in front of it. */
     int typed_at;
+    /* 寸法: the value it has just written, which the band shows. */
+    double dim_value;
+    /* and the three numbers in its box: how many texts there were when it
+     * started, and the dimension character type's width and height. */
+    long dim_texts;
+    double dim_w, dim_h;
     /* ハッチ: how many lines the frame has taken (the band counts down from
      * 100), and the angle and pitch it will fill with. */
     int hatch_n;

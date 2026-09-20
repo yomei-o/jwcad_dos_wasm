@@ -301,6 +301,12 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full ENTER=1 sh tools/editcheck.sh 190 152 ''
     full BS=1 sh tools/editcheck.sh 190 152 AB
     full DRAWING=SAMPLE6 BOOT=150000000 sh tools/editcheck.sh 459 70 ''
+    echo "=== 寸法 ①横方向: the dimension line, its extensions and the value (4.26)"
+    sh tools/dimcheck.sh 162 140 300 110 162 140 598 140
+    sh tools/dimcheck.sh 162 140 300 110 162 140 214 152
+    full sh tools/dimcheck.sh 162 140 300 90 162 140 598 140
+    full sh tools/dimcheck.sh 162 140 300 110
+    full sh tools/dimcheck.sh 162 140
     echo "=== 円線接 ①接線 ③指定点: the tangent from a point (RESUME 4.25)"
     DRAWING=TEST1 sh tools/tancheck.sh 500 350 255 239
     full DRAWING=TEST1 sh tools/tancheck.sh 500 350
