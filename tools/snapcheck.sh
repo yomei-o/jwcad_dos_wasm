@@ -19,11 +19,17 @@ EMU=../dosv_emu_cpp/dosemu.exe
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 [ -x tests/snap.exe ] || { echo "sh tools/build_tests.sh first" >&2; exit 2; }
 
+# With a number given, only that many cases run -- tools/check.sh's short run
+# takes three, which is enough to catch a change that broke the snap.
+want=${1:-0}
+done_n=0
 bad=0
 # drawing | modifier | first press | second press and button | where to leave
 # the pointer.  A second press of `-` means there is none: [GRPH] on a line or
 # a circle answers with one press.
 run() {
+    if [ "$want" -gt 0 ] && [ "$done_n" -ge "$want" ]; then return 0; fi
+    done_n=$((done_n + 1))
     drawing=$1; mod=$2; x=$3; y=$4; bx=$5; by=$6; btn=$7; ex=$8; ey=$9
     if [ "$btn" = - ]; then
         orig=$(DRAWING="$drawing" sh tools/readmod.sh "$mod" "$x" "$y" "$ex" "$ey")
