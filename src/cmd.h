@@ -146,6 +146,24 @@ typedef struct {
     int typed_at;
     /* 文編集: the text being changed, or -1. */
     long edit_text;
+    /* 曲線 ⑦連線 —— the polyline with rounded corners.
+     *
+     * Each press gives a point.  The **direction** of a segment is the one
+     * from the press before it, rounded to `poly_deg` degrees (45 to start
+     * with, 90 after ①角 度, free after a second press of it), and the line
+     * it lies on goes **through the newest press** -- not through the vertex
+     * the segment before it left.  The first one is the odd one: it is
+     * anchored at the 始点.  Two lines meet at their intersection, and the
+     * corner is rounded there.  See jw_cmd_press and RESUME 4.20b. */
+    int poly;                   /* ⑦連線 is running */
+    int poly_deg;               /* 45, 90 or 0 for free */
+    int poly_n;                 /* how many points have been pressed */
+    double poly_px, poly_py;    /* the press before this one */
+    double poly_ax, poly_ay;    /* the line in hand: a point on it ... */
+    double poly_dx, poly_dy;    /* ... and its direction, already rounded */
+    double poly_sx, poly_sy;    /* where the segment being drawn starts */
+    double edge_mm;             /* ③辺寸法, millimetres of paper */
+    double poly_t;              /* and the same in drawing units */
     /* How wide and how tall the string being typed comes out, in drawing
      * units -- the box 文字 shows while it is being typed.  Worked out again
      * after every key, because the width follows from the string. */

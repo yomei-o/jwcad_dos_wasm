@@ -164,6 +164,26 @@ static const JwStage JW_TYPED[] = {
     { 28, 2,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
     { 28, 2,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "y\x95" "\xcf" "\x8d" "X\x81" "z\x95" "\xb6" "\x8e" "\x9a" "\x91" "I\x91" "\xf0" " |\x87" "@\x8a" "\xee" "\x93" "_\x81" "i\x8d" "\xb6" "\x89" "\xba" "\x81" "j|\x87" "A\x95" "\xb6" "\x98" "A\x8c" "\x8b" "\xa5" "\x90" "\xd8" "\x92" "f |\x87" "B\x8b" "^\x8e" "\x97" "\x90" "\xfc" "\x95" "\xb6" "\x8e" "\x9a" "|" },
     { 28, 2, 73, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[BS]\x91" "O\x8d" "\x80" },
+    /* 23 曲線 ⑦連線, read off
+     * `python tools/steps_table.py 23 540 8 200 200 400 200 400 350 250 350 600 8`.
+     * Stage 1 is ⑦連線 picked off the item's own line, stage 2 the 始点,
+     * stage 3 every press after it (the capture's stages 3, 4 and 5 are the
+     * same line) and stage 4 is ④ 終了, which puts the 始点指示 line back.
+     * The band words at columns 37 and 46 say how the direction is being
+     * rounded; src/ui.c writes them from the command's own state. */
+    { 23, 1, 37, 2, 5, 0xffff, 0, 0, { 0, 0 }, 0, "45\x93" "x\x96" "\x88" },
+    { 23, 1,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "\x9e" "\x8e" "n\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read |\x87" "@\x8a" "p \x93" "x |" },
+    { 23, 1, 73, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[BS]\x91" "O\x8d" "\x80" },
+    { 23, 2, 37, 2, 5, 0xffff, 0, 0, { 0, 0 }, 0, "45\x93" "x\x96" "\x88" },
+    { 23, 2,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]  \x81" "\x9f" "\x8f" "I\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read |\x87" "@\x8a" "p \x93" "x |" },
+    { 23, 3, 37, 2, 5, 0xffff, 0, 0, { 0, 0 }, 0, "45\x93" "x\x96" "\x88" },
+    { 23, 3, 46, 2, 5, 0xffff, 0, 0, { 0, 0 }, 0, "\x83" "}\x83" "E\x83" "X" },
+    { 23, 3, 56, 2, 7, 0xffff, 0, 0, { 0, 0 }, 0, "\x90" "}\x90" "\xa1" "      3.00 " },
+    { 23, 3,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]  \x81" "\x9f" "\x8f" "I\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read |\x87" "@\x8a" "p \x93" "x |\x87" "A\x8a" "\xee" "\x8f" "\x80" "\x93" "_|\x87" "B\x8a" "\xdb" " \x96" "\xca" "   \x95" "\xd3" "\x90" "\xa1" "\x96" "@ |\x87" "C \x8f" "I\x97" "\xb9" "|" },
+    { 23, 4, 37, 2, 5, 0xffff, 0, 0, { 0, 0 }, 0, "45\x93" "x\x96" "\x88" },
+    { 23, 4,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 23, 4,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "\x9e" "\x8e" "n\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read |\x87" "@\x8a" "p \x93" "x |" },
+    { 23, 4, 73, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[BS]\x91" "O\x8d" "\x80" },
     { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0, 0 },
 };
 

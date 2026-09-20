@@ -42,6 +42,9 @@ typedef struct {
      * `typed_n` there; 文編集 starts the field with the text it was pointed
      * at and the cursor in front of it. */
     int typed_at;
+    /* 連線: how its directions are being rounded -- 45, 90 or 0 for free.
+     * The band says so at columns 37 and 46 of row 2. */
+    int poly_deg;
     /* 文編集: the character type of the text being changed -- the `3` of
      * `|種 3|Paste` at row 4, which is the text's own, not the drawing's. */
     int edit_type;

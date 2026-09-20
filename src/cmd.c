@@ -35,6 +35,8 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->sides = 5;
     /* 文編集 has no text in hand. */
     c->edit_text = -1;
+    /* 連線's `③丸 面   辺寸法 ` as the original comes up with it. */
+    c->edge_mm = 3.0;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -129,6 +131,11 @@ static long fixed16(double deg)
 
 static void two_lines(JwCmd *c, Jwc *d);
 
+/* 連線's direction rounding; the command itself is further down. */
+static void poly_dir(const JwCmd *c, double dx, double dy,
+                     double *ux, double *uy);
+static void poly_mark(const JwCmd *c, VGA *v, const JwView *w);
+
 void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
 {
     double x, y;
@@ -204,7 +211,8 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
         jw_line(v, px, qy, px, py, 4, 0x18, JW_STYLE_SOLID);
         return;
     }
-    if (!c->moved && !(c->command == 13 && c->typing_text)) {
+    if (!c->moved && !(c->command == 13 && c->typing_text)
+        && !(c->command == 23 && c->poly && c->poly_n >= 1)) {
         return;
     }
 
@@ -233,6 +241,93 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
          * 範囲確定 does not -- its screen has no green at all, and that one
          * has 264 pixels of it (SAMPLE0, (150,130)-(245,170)).  The drawing of
          * it is above, before the test for the pointer having moved. */
+        return;
+    }
+    if (c->command == 23 && c->poly && c->poly_n == 1) {
+        /* Only the 始点 is down: the cross is on it and the line follows the
+         * pointer, rounded the same way.  The direction the next press will
+         * fix is the one from the 始点, so that is what is shown. */
+        double qx, qy, vx, vy, along;
+        int ex, ey;
+
+        jw_cmd_at(w, sx, sy, &qx, &qy);
+        poly_dir(c, qx - c->poly_sx, qy - c->poly_sy, &vx, &vy);
+        along = (qx - c->poly_sx) * vx + (qy - c->poly_sy) * vy;
+        at_screen(w, c->poly_sx, c->poly_sy, &px, &py);
+        at_screen(w, c->poly_sx + along * vx, c->poly_sy + along * vy, &ex, &ey);
+        jw_line(v, px, py, ex, ey, 2, 0x18, JW_STYLE_SOLID);
+        poly_mark(c, v, w);
+        return;
+    }
+    if (c->command == 23 && c->poly && c->poly_n >= 2) {
+        /* 連線 shows **what the next press would make**: the segment it has in
+         * hand, run on to where it would meet the line through the pointer,
+         * and then that line as far as the pointer.  Both in colour 2, solid,
+         * and the corner is not rounded until the press.
+         *
+         * Measured on SAMPLE0 after (200,200)(400,200)(400,350): with the
+         * pointer left on the last press a single red line runs (400,206) to
+         * (400,350); with it at (520,260) the red goes on down to (400,380)
+         * and a second one comes back up at 45 degrees to the pointer, which
+         * is where the 45度毎 line through (520,260) crosses x=400. */
+        double qx, qy, vx, vy, cross, along;
+        int ex, ey, vsx, vsy;
+
+        jw_cmd_at(w, sx, sy, &qx, &qy);
+        at_screen(w, c->poly_sx, c->poly_sy, &px, &py);
+        if (fabs(qx - c->poly_px) < 1e-9 && fabs(qy - c->poly_py) < 1e-9) {
+            /* The pointer has not left the press: there is no next line yet,
+             * so the segment in hand runs the whole way to it and the corner
+             * is not rounded off.  Measured -- the red reaches (400,350),
+             * which is the press. */
+            at_screen(w, c->poly_ax, c->poly_ay, &ex, &ey);
+            jw_line(v, px, py, ex, ey, 2, 0x18, JW_STYLE_SOLID);
+            poly_mark(c, v, w);
+            return;
+        }
+        poly_dir(c, qx - c->poly_px, qy - c->poly_py, &vx, &vy);
+        cross = c->poly_dx * vy - c->poly_dy * vx;
+        if (fabs(cross) < 1e-9) {
+            /* The two are parallel: there is no vertex, so the line in hand
+             * just reaches as far along as the pointer does. */
+            along = (qx - c->poly_sx) * c->poly_dx
+                    + (qy - c->poly_sy) * c->poly_dy;
+            at_screen(w, c->poly_sx + along * c->poly_dx,
+                      c->poly_sy + along * c->poly_dy, &ex, &ey);
+            jw_line(v, px, py, ex, ey, 2, 0x18, JW_STYLE_SOLID);
+            poly_mark(c, v, w);
+            return;
+        }
+        along = ((qx - c->poly_ax) * vy - (qy - c->poly_ay) * vx) / cross;
+        {
+            /* The corner is already rounded in the preview: the two lines
+             * stop 辺寸法 short of the vertex, which is where the arc will
+             * touch them.  Measured with the pointer at (520,260), where the
+             * vertex is (400,380) and the red stops at (400,374). */
+            const double t = c->poly_t;
+            const double vex = c->poly_ax + along * c->poly_dx;
+            const double vey = c->poly_ay + along * c->poly_dy;
+
+            at_screen(w, vex - t * c->poly_dx, vey - t * c->poly_dy,
+                      &vsx, &vsy);
+            at_screen(w, vex + t * vx, vey + t * vy, &ex, &ey);
+            jw_line(v, px, py, vsx, vsy, 2, 0x18, JW_STYLE_SOLID);
+            at_screen(w, qx, qy, &vsx, &vsy);
+            jw_line(v, ex, ey, vsx, vsy, 2, 0x18, JW_STYLE_SOLID);
+            poly_mark(c, v, w);
+            return;
+        }
+        at_screen(w, c->poly_ax + along * c->poly_dx,
+                  c->poly_ay + along * c->poly_dy, &vsx, &vsy);
+        at_screen(w, qx, qy, &ex, &ey);
+        jw_line(v, px, py, vsx, vsy, 2, 0x18, JW_STYLE_SOLID);
+        if (ex != vsx || ey != vsy) {
+            /* Not when the pointer is still on the press: the two lines share
+             * that pixel and a second exclusive-or would rub it out, where
+             * the original leaves it red. */
+            jw_line(v, vsx, vsy, ex, ey, 2, 0x18, JW_STYLE_SOLID);
+        }
+        poly_mark(c, v, w);
         return;
     }
     if (c->command == 13 && c->typing_text) {
@@ -1290,7 +1385,8 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * this puts them back afterwards.  ２線's pair reaches y=26 on SAMPLE0
      * and lost 201 pixels to that fill. */
     if (!d || !(JW_RANGE_CMD(c->command) || c->command == 8
-                || c->command == 9 || c->command == 19 || c->command == 20)
+                || c->command == 9 || c->command == 19 || c->command == 20
+                || c->command == 23)
         || (JW_RANGE_CMD(c->command) && c->pressed != 2)) {
         return;
     }
@@ -1381,6 +1477,42 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
      * ①範囲内消去 reddens 224 in the box.
      *
      * ③指定範囲 is the data selection 複写 and 移動 use; it is not done. */
+    if (c->command == 23) {
+        /* 曲線's own line, `|①ｻｲﾝ曲線|②２次曲線|③ｽﾌﾟﾗｲﾝ|④ﾍﾞｼﾞｪ|⑤手書線|
+         * ⑥連続弧|⑦連線|⑧解除|`.  Only ⑦連線 is done. */
+        if (!c->poly && item == 7) {
+            c->poly = 1;
+            c->poly_deg = 45;   /* the band comes up saying `45度毎` */
+            c->poly_n = 0;
+            c->stage = 1;
+            return 1;
+        }
+        if (c->poly && item == 1) {
+            /* ①角 度 goes round: 45度毎, 90度毎, free.  Measured by
+             * pressing it once and twice and reading the band. */
+            c->poly_deg = c->poly_deg == 45 ? 90 : c->poly_deg == 90 ? 0 : 45;
+            return 1;
+        }
+        if (c->poly && item == 4 && c->poly_n >= 2) {
+            /* ④ 終了: the last segment goes down, from where the corner
+             * before it left off to the last press.  Measured -- the fourth
+             * press of (200,200)(400,200)(400,350)(250,350) leaves
+             * (273.768,113)-(129,113), which is the press itself at the far
+             * end. */
+            if (d && jwc_add_line(d, (float)c->poly_sx, (float)c->poly_sy,
+                                  (float)c->poly_px, (float)c->poly_py,
+                                  (unsigned char)d->line_type,
+                                  (unsigned char)d->pen,
+                                  (unsigned char)d->write_layer)) {
+                d->lines[d->n_lines - 1].rest[1] = 0xf0;
+            }
+            c->poly_n = 0;
+            c->pressed = 0;
+            c->stage = 4;
+            return 1;
+        }
+        return 0;
+    }
     if (c->command == 19) {
         /* 多角形's two menus: `②正多角形` on the item's own line, then
          * `①任意寸法の正多角形`, and then it asks for the number of sides. */
@@ -2368,6 +2500,156 @@ static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
     jwc_relink_line(d, second, bx, by, (float)cx, (float)cy);
 }
 
+/* ---------------------------------------------------- 曲線 ⑦連線 */
+
+/* The direction of a segment, rounded the way `①角 度` says: every 45
+ * degrees to start with, every 90 after one press of it, and free after a
+ * second (the band says `45度毎`, `90度毎`, `free`). */
+static void poly_dir(const JwCmd *c, double dx, double dy,
+                     double *ux, double *uy)
+{
+    const double len = sqrt(dx * dx + dy * dy);
+
+    if (c->poly_deg) {
+        const double step = c->poly_deg * 3.14159265358979323846 / 180.0;
+        const double a = floor(atan2(dy, dx) / step + 0.5) * step;
+
+        *ux = cos(a);
+        *uy = sin(a);
+        return;
+    }
+    if (len < 1e-9) {
+        *ux = 1.0;
+        *uy = 0.0;
+        return;
+    }
+    *ux = dx / len;
+    *uy = dy / len;
+}
+
+/* The cross 連線 leaves on the point it has just taken: five pixels in each
+ * quarter and one in the middle, colour 4, exclusive-or.  It is there only
+ * while the pointer is still on the press -- moving off redraws without it,
+ * which is what `moved` means everywhere else.
+ *
+ * Measured on SAMPLE0 after (200,200)(400,200)(400,350) with the pointer left
+ * where it was: twenty pixels of 00ff00 round (400,350), and none at all once
+ * the pointer is moved to (520,260).  **The middle is not one of them** -- the
+ * pixel the point itself is on is the preview line's, and what makes it read
+ * 00ff00 is the pointer, which is drawn over everything as colour 6
+ * exclusive-or (2 xor 6 = 4). */
+static void poly_mark(const JwCmd *c, VGA *v, const JwView *w)
+{
+    static const int ARM[5][2] = { { 1, 2 }, { 1, 3 }, { 2, 1 }, { 2, 2 },
+                                   { 3, 1 } };
+    int px, py, i, sx, sy;
+
+    if (c->moved) {
+        return;
+    }
+    at_screen(w, c->poly_px, c->poly_py, &px, &py);
+    for (i = 0; i < 5; i++) {
+        for (sx = -1; sx <= 1; sx += 2) {
+            for (sy = -1; sy <= 1; sy += 2) {
+                jw_point(v, px + sx * ARM[i][0], py + sy * ARM[i][1], 4,
+                         0x18);
+            }
+        }
+    }
+}
+
+/* An angle about a centre, in the 16.16 degrees an arc record keeps. */
+static long poly_angle(double cx, double cy, double x, double y)
+{
+    double deg = atan2(y - cy, x - cx) * 180.0 / 3.14159265358979323846;
+
+    while (deg < 0.0) {
+        deg += 360.0;
+    }
+    while (deg >= 360.0) {
+        deg -= 360.0;
+    }
+    return (long)(deg * 65536.0 + 0.5);
+}
+
+/* The corner where the line in hand meets the new one: the segment before it
+ * goes down, rounded off, and the new line becomes the one in hand.
+ *
+ * `③丸 面   辺寸法 ` is **not** a radius: 3.00 is how far the tangent
+ * points sit from the vertex (t = 3.0mm x unit_mm = 5.232 on SAMPLE0), and the
+ * radius follows from the corner, r = t tan(a/2).  Measured -- a right angle
+ * gives r = 5.232, an inside angle of 135 degrees gives 12.632 and one of
+ * 149.0 degrees gives 18.890.  The arc is the way round that sweeps 180 - a;
+ * a left turn starts at the incoming tangent point, a right turn at the
+ * outgoing one.  RESUME 4.20b. */
+static void poly_corner(JwCmd *c, Jwc *d, double bx, double by,
+                        double vx, double vy)
+{
+    const double ux = c->poly_dx, uy = c->poly_dy;
+    const double cross = ux * vy - uy * vx;
+    const double t = c->poly_t;
+    double px, py, ax, ay, tx, ty, r, wx, wy, wl, cx, cy, cosa;
+    long start, end;
+
+    if (!d) {
+        return;
+    }
+    if (fabs(cross) < 1e-9) {
+        /* Straight on, or back the way it came: no vertex to round.  Not
+         * measured -- the original is not known to make a corner here -- so
+         * the line in hand simply keeps going. */
+        c->poly_ax = bx;
+        c->poly_ay = by;
+        c->poly_dx = vx;
+        c->poly_dy = vy;
+        return;
+    }
+    px = ((bx - c->poly_ax) * vy - (by - c->poly_ay) * vx) / cross;
+    py = c->poly_ay + px * uy;
+    px = c->poly_ax + px * ux;
+    ax = px - t * ux;                   /* the incoming tangent point */
+    ay = py - t * uy;
+    tx = px + t * vx;                   /* and the outgoing one */
+    ty = py + t * vy;
+    cosa = -(ux * vx + uy * vy);
+    if (cosa > 1.0) {
+        cosa = 1.0;
+    }
+    if (cosa < -1.0) {
+        cosa = -1.0;
+    }
+    r = t * tan(acos(cosa) / 2.0);
+    wx = vx - ux;                       /* the bisector from the vertex */
+    wy = vy - uy;
+    wl = sqrt(wx * wx + wy * wy);
+    if (wl < 1e-9) {
+        return;
+    }
+    cx = px + wx / wl * sqrt(t * t + r * r);
+    cy = py + wy / wl * sqrt(t * t + r * r);
+    if (jwc_add_line(d, (float)c->poly_sx, (float)c->poly_sy,
+                     (float)ax, (float)ay, (unsigned char)d->line_type,
+                     (unsigned char)d->pen, (unsigned char)d->write_layer)) {
+        d->lines[d->n_lines - 1].rest[1] = 0xf0;
+    }
+    if (cross > 0.0) {                  /* a left turn */
+        start = poly_angle(cx, cy, ax, ay);
+        end = poly_angle(cx, cy, tx, ty);
+    } else {
+        start = poly_angle(cx, cy, tx, ty);
+        end = poly_angle(cx, cy, ax, ay);
+    }
+    jwc_add_arc_at(d, (float)cx, (float)cy, (float)r, start, end,
+                   (unsigned char)d->line_type, (unsigned char)d->pen,
+                   (unsigned char)d->write_layer, 0);
+    c->poly_sx = tx;
+    c->poly_sy = ty;
+    c->poly_ax = bx;
+    c->poly_ay = by;
+    c->poly_dx = vx;
+    c->poly_dy = vy;
+}
+
 int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
 {
     double x, y;
@@ -2516,6 +2798,48 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typed_n = 0;
         c->typed_at = 0;
         text_box(c, d);
+        return 1;
+    }
+    if (c->command == 23 && c->poly) {
+        /* 曲線 ⑦連線: press after press and the line follows, with every
+         * corner rounded off.  **The drawing comes one press late** -- the
+         * third press puts down the first segment and the first corner, and
+         * ④ 終了 puts down the last one.
+         *
+         * The line a segment lies on goes through the **newest** press with
+         * the direction from the press before it (rounded -- see poly_dir);
+         * only the first is anchored at the 始点.  Measured on SAMPLE0 with
+         * 45度毎: pressing (200,300)(400,300)(500,150) and (200,300)
+         * (400,250)(500,150) leave **the same** first segment
+         * (79,163)-(223.768,163) and the same corner, because both times the
+         * second line is the 45 degree one through (379,313). */
+        double vx, vy;
+
+        if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        c->pressed = 1;
+        c->poly_t = c->edge_mm * d->unit_mm;
+        if (c->poly_n == 0) {
+            c->poly_sx = c->poly_ax = c->poly_px = x;
+            c->poly_sy = c->poly_ay = c->poly_py = y;
+            c->poly_n = 1;
+            c->stage = 2;
+            return 1;
+        }
+        poly_dir(c, x - c->poly_px, y - c->poly_py, &vx, &vy);
+        if (c->poly_n == 1) {
+            c->poly_dx = vx;        /* the 始点 keeps the anchor */
+            c->poly_dy = vy;
+        } else {
+            poly_corner(c, d, x, y, vx, vy);
+        }
+        c->poly_px = x;
+        c->poly_py = y;
+        c->poly_n++;
+        c->stage = 3;
         return 1;
     }
     if (c->command == 28) {

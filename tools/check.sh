@@ -301,6 +301,13 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full ENTER=1 sh tools/editcheck.sh 190 152 ''
     full BS=1 sh tools/editcheck.sh 190 152 AB
     full DRAWING=SAMPLE6 BOOT=150000000 sh tools/editcheck.sh 459 70 ''
+    echo "=== 曲線 ⑦連線: angles rounded, corners rounded off (RESUME 4.23)"
+    sh tools/chaincheck.sh 200 200 400 200 400 350
+    END=1 sh tools/chaincheck.sh 200 200 400 200 400 350 250 350
+    full ANGLE=1 sh tools/chaincheck.sh 200 300 400 300 500 150
+    full ANGLE=2 sh tools/chaincheck.sh 200 300 400 250 500 150
+    echo "    ...and 12 left over with the pointer off the press (4.23)"
+    full MOVE="520 260" sh tools/chaincheck.sh 200 200 400 200 400 350
     echo "=== 複線 with a number typed in (src/cmd.c, RESUME 4.12)"
     sh tools/multicheck.sh 20 197 120
     full sh tools/multicheck.sh 40 197 300

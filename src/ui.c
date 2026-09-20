@@ -593,6 +593,17 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
         jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
         return;
     }
+    /* 連線's two band words: `45度毎`/`90度毎`/`free` and `マウス`/`----`.
+     * ①角 度 goes round the three and the table holds the first. */
+    if (q->command == 23 && q->row == 2 && (q->col == 37 || q->col == 46)) {
+        const char *one = q->col == 37
+            ? (s->poly_deg == 90 ? "90" "\x93" "x" "\x96" "\x88"
+               : s->poly_deg == 45 ? "45" "\x93" "x" "\x96" "\x88" : " free ")
+            : (s->poly_deg ? "\x83" "}" "\x83" "E" "\x83" "X" : " ---- ");
+
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+        return;
+    }
     /* 測定's two lengths and the scale in its own line. */
     if (q->command == 15) {
         char one[160];
