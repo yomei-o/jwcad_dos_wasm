@@ -312,6 +312,20 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     return pick;
 }
 
+/* Is a command taking a string?  文字 is, between the press that says where
+ * the text goes and the [Enter] that writes it.
+ *
+ * The page needs to know because **Japanese comes in through the browser's own
+ * input method**, not through a DOS front-end processor: while this is true
+ * the page keeps a hidden field focused so the OS composes into it, and hands
+ * over the committed characters as Shift-JIS bytes.  That is exactly what a
+ * DOS/V FEP delivers -- two ordinary keys for a double-byte character -- so
+ * jw_cmd_key needs nothing special (RESUME.md 4.17). */
+EMSCRIPTEN_KEEPALIVE int jw_typing(void)
+{
+    return cmd.typing_text;
+}
+
 /* Which menu command a point picks, or 0.  The page uses it to show the name
  * of what is under the pointer. */
 EMSCRIPTEN_KEEPALIVE int jw_menu_at(int x, int y)

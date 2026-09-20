@@ -80,6 +80,23 @@ int main(int argc, char **argv)
             press[n_press][2] = 0;
             n_press++;
             a += 2;
+        } else if (strcmp(argv[a], "-H") == 0 && a + 1 < argc && n_press < 8) {
+            /* The same as -K, but the bytes given as hex.  Japanese text is
+             * Shift-JIS, which is not valid UTF-8, and a Windows argv does not
+             * carry those bytes through -- `82 A0` comes out as a question
+             * mark.  So `-H 82A082A2` is 「あい」 with nothing in between to
+             * mangle it. */
+            press[n_press][0] = -8;
+            press[n_press][1] = a + 1;
+            press[n_press][2] = 0;
+            n_press++;
+            a += 2;
+        } else if (strcmp(argv[a], "-h") == 0 && a + 1 < argc && n_press < 8) {
+            press[n_press][0] = -9;     /* ... and with the [Enter] */
+            press[n_press][1] = a + 1;
+            press[n_press][2] = 0;
+            n_press++;
+            a += 2;
         } else if (strcmp(argv[a], "-K") == 0 && a + 1 < argc && n_press < 8) {
             /* the same, but without the [Enter] -- the field still open */
             press[n_press][0] = -2;
@@ -156,7 +173,8 @@ int main(int argc, char **argv)
             a += 2;
         } else {
             fprintf(stderr, "usage: drawing [-o|-u] [-c N] [-m X Y] [-p|-r X Y]"
-                            " [-k|-K KEYS] [-f N] [-t X] [-w OUT.JWC]"
+                            " [-k|-K KEYS] [-h|-H HEX] [-f N] [-t X]"
+                            " [-w OUT.JWC]"
                             " IN.JWC OUT\n");
             return 2;
         }
@@ -244,6 +262,29 @@ int main(int argc, char **argv)
             }
             if (press[i][0] == -3) {            /* -f: a function key */
                 jw_cmd_key(&c, d, JW_KEY_F1 + press[i][1] - 1);
+                continue;
+            }
+            if (press[i][0] == -8 || press[i][0] == -9) {   /* -H / -h: hex */
+                const char *k = argv[press[i][1]];
+                int hi = -1;
+
+                for (; *k; k++) {
+                    const char *d16 = strchr("0123456789abcdef", *k | 0x20);
+
+                    if (!d16 || !*k) {
+                        continue;
+                    }
+                    if (hi < 0) {
+                        hi = (int)(d16 - "0123456789abcdef");
+                    } else {
+                        jw_cmd_key(&c, d,
+                                   hi * 16 + (int)(d16 - "0123456789abcdef"));
+                        hi = -1;
+                    }
+                }
+                if (press[i][0] == -9) {
+                    jw_cmd_key(&c, d, 13);
+                }
                 continue;
             }
             if (press[i][0] < 0) {              /* -k / -K: keys */

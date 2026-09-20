@@ -1495,6 +1495,25 @@ static void text_box(JwCmd *c, const Jwc *d)
     c->text_tall = d ? d->text_h[t] / 10.0 * d->unit_mm : 0.0;
 }
 
+/* How many bytes the last character of a Shift-JIS string takes.  Shift-JIS
+ * cannot be walked backwards -- a trail byte can look like a lead byte -- so
+ * this walks forward from the start, which is what the original's own field
+ * must do too: [BS] after 「あい」 leaves 「あ」, not a lone 0x82. */
+static int last_char_bytes(const char *s, int n)
+{
+    int i = 0, last = 0;
+
+    while (i < n) {
+        const unsigned char b = (unsigned char)s[i];
+        const int two = ((b >= 0x81 && b <= 0x9f) || (b >= 0xe0 && b <= 0xfc))
+                        && i + 1 < n;
+
+        last = i;
+        i += two ? 2 : 1;
+    }
+    return n - last;
+}
+
 int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
@@ -1543,13 +1562,25 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (key == 8) {
+            /* [BS] takes a whole character, not a byte: 「あいA」 goes to
+             * 「あい」 then 「あ」 then empty.  Measured by sending the
+             * Shift-JIS bytes straight at the original and reading the echo
+             * it puts at column 1 of row 2. */
             if (c->typed_n > 0) {
-                c->typed[--c->typed_n] = 0;
+                c->typed_n -= last_char_bytes(c->typed, c->typed_n);
+                c->typed[c->typed_n] = 0;
             }
             text_box(c, d);
             return 1;
         }
-        if (key >= 0x20 && key < 0x7f
+        /* Anything a keyboard or a Japanese front-end can send.  The original
+         * takes the two bytes of a double-byte character as two ordinary keys
+         * -- that is all a DOS/V FEP does, and the port's browser front end
+         * sends the same bytes out of the OS's own input method.  **The two
+         * have to arrive together**: with six million instructions between
+         * them the original throws the second away and keeps a lone lead byte
+         * (that is how 「あ」 first came out as one byte 0x82). */
+        if (key >= 0x20 && key != 0x7f && key <= 0xff
             && c->typed_n < (int)sizeof c->typed - 1) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;

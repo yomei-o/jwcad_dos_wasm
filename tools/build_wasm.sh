@@ -12,6 +12,7 @@ EMCC="$EMSDK/upstream/emscripten/emcc.exe"
 
 EXPORTS=_main,_jw_init,_jw_open,_jw_zoom,_jw_pan,_jw_fit,_jw_home
 EXPORTS=$EXPORTS,_jw_mouse,_jw_click,_jw_key,_jw_menu_at,_jw_menu_label,_jw_mods
+EXPORTS=$EXPORTS,_jw_typing
 EXPORTS=$EXPORTS,_jw_width,_jw_height,_jw_framebuffer,_jw_status
 EXPORTS=$EXPORTS,_jw_save,_jw_saved,_jw_saved_size
 EXPORTS=$EXPORTS,_malloc,_free

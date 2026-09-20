@@ -19,6 +19,12 @@
     display: block; width: 100%; max-width: 640px; height: auto;
     image-rendering: pixelated; touch-action: none; cursor: grab;
   }
+/* The field the OS composes Japanese into.  It has to be on the page and
+   focusable for an input method to attach to it, so it is put under the
+   canvas rather than hidden with display:none -- a display:none field takes
+   no keys at all. */
+#ime { position: absolute; left: -9999px; width: 1px; height: 1px;
+       opacity: 0; padding: 0; border: 0; }
   .screen.drag { cursor: grabbing; }
   .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
   select, button {
@@ -53,6 +59,12 @@
   </div>
 
   <canvas id="screen" class="screen" width="640" height="480"></canvas>
+  <!-- 文字 takes its string through the OS's own input method, not through a
+       DOS front-end processor.  This field is where the composition happens:
+       it is focused only while the command is asking, and what it commits is
+       handed over as Shift-JIS bytes, which is what a DOS/V FEP delivers. -->
+  <input id="ime" autocomplete="off" autocapitalize="off" spellcheck="false"
+         aria-hidden="true" tabindex="-1">
 
   <footer>
     ドラッグで移動、ホイールで拡大縮小。矢印は本物と同じく排他的論理和で描いています。<br>
@@ -199,7 +211,7 @@ canvas.addEventListener('pointerdown', e => {
      that is running -- ／ takes two presses and leaves a line. Anywhere else is
      a drag, which is this viewer's own convenience. */
   if (Module && Module._jw_click(p[0], p[1], e.button === 2 ? 1 : 0)) {
-    blit(); say(); return;
+    blit(); say(); imeFollow(); return;
   }
   drag = p; canvas.classList.add('drag'); canvas.setPointerCapture(e.pointerId);
 });
@@ -220,6 +232,96 @@ canvas.addEventListener('pointermove', e => {
    while a command is asking for a number, the digits, [BS], [Enter] and the
    five function keys it offers (複線's [F1] to [F5]).  [ESC] throws away the
    point a command has in hand (RESUME.md 4.18). */
+/* Unicode to Shift-JIS, built out of the browser's own table rather than a
+   table of our own: every valid Shift-JIS code is decoded once at startup and
+   the answer remembered the other way round.  There is a TextDecoder for
+   shift-jis but no TextEncoder -- encoders are UTF-8 only -- and inverting the
+   decoder is exact, while a hand-written table would be a second source of
+   truth to get wrong. */
+const TO_SJIS = (() => {
+  const m = new Map();
+  const one = new Uint8Array(1), two = new Uint8Array(2);
+  for (let b = 0x20; b < 0x80; b++) {
+    one[0] = b;
+    m.set(SJIS.decode(one), [b]);
+  }
+  for (let b = 0xa1; b <= 0xdf; b++) {          /* half-width katakana */
+    one[0] = b;
+    m.set(SJIS.decode(one), [b]);
+  }
+  for (let hi = 0x81; hi <= 0xfc; hi++) {
+    if (hi > 0x9f && hi < 0xe0) continue;
+    for (let lo = 0x40; lo <= 0xfc; lo++) {
+      if (lo === 0x7f) continue;
+      two[0] = hi; two[1] = lo;
+      const c = SJIS.decode(two);
+      /* A pair with no character decodes to U+FFFD; and where two pairs give
+         the same character (the NEC/IBM duplicates) the first one wins, which
+         is the one JW_CAD's own strings use. */
+      if (c.length === 1 && c !== '�' && !m.has(c)) m.set(c, [hi, lo]);
+    }
+  }
+  return m;
+})();
+
+/* Hand a string to the command that is asking for one, as the bytes a DOS/V
+   FEP would have delivered.  Anything with no Shift-JIS code is dropped
+   rather than guessed at -- the original could not have received it. */
+function typeString(str) {
+  for (const ch of str) {
+    const b = TO_SJIS.get(ch);
+    if (!b) continue;
+    for (const byte of b) Module._jw_key(byte);
+  }
+  blit(); say();
+}
+
+/* The hidden field only has the keyboard while 文字 is taking a string.  It
+   is focused then and blurred after, so every other key still reaches the
+   window handler below (the one-letter menu keys, the digits, [ESC]). */
+const imeEl = document.getElementById('ime');
+let composing = false;
+function imeFollow() {
+  if (!Module) return;
+  const want = !!Module._jw_typing();
+  if (want && document.activeElement !== imeEl) {
+    imeEl.value = '';
+    imeEl.focus({ preventScroll: true });
+  } else if (!want && document.activeElement === imeEl) {
+    imeEl.blur();
+  }
+}
+imeEl.addEventListener('compositionstart', () => { composing = true; });
+imeEl.addEventListener('compositionend', e => {
+  composing = false;
+  imeEl.value = '';
+  typeString(e.data || '');
+  imeFollow();
+});
+imeEl.addEventListener('input', e => {
+  /* While an input method is composing, the field holds the half-finished
+     reading and nothing is sent; the commit arrives as compositionend. */
+  if (composing || e.isComposing) return;
+  const v = imeEl.value;
+  imeEl.value = '';
+  typeString(v);
+  imeFollow();
+});
+/* [Enter], [BS] and [ESC] are the command's, not the field's. */
+imeEl.addEventListener('keydown', e => {
+  if (composing || e.isComposing) return;
+  let code = 0;
+  if (e.key === 'Enter') code = 13;
+  else if (e.key === 'Backspace') code = 8;
+  else if (e.key === 'Escape') code = 27;
+  if (!code) return;
+  e.preventDefault();
+  imeEl.value = '';
+  Module._jw_key(code);
+  blit(); say();
+  imeFollow();
+});
+
 window.addEventListener('keydown', e => {
   if (!Module || e.ctrlKey || e.metaKey || e.altKey) return;
   let code = 0;
@@ -230,7 +332,11 @@ window.addEventListener('keydown', e => {
   else if (/^F[1-5]$/.test(e.key)) code = 0x101 + (+e.key[1] - 1);
   if (!code) return;
   const cmd = Module._jw_key(code);
-  if (cmd) { e.preventDefault(); blit(); say(cmd > 0 ? sjis(Module._jw_menu_label(cmd)) : null); }
+  if (cmd) {
+    e.preventDefault(); blit();
+    say(cmd > 0 ? sjis(Module._jw_menu_label(cmd)) : null);
+    imeFollow();
+  }
 });
 
 for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {

@@ -55,6 +55,13 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/textcheck.sh 200 157 ABC
     ENTER=1 sh tools/textcheck.sh 250 200 ABC
     ENTER=1 sh tools/textcheck.sh 300 300 Hello
+    echo "=== 文字 in Japanese: the Shift-JIS bytes an input method gives"
+    sh tools/jptext.sh 250 200 あいう
+    BS=1 sh tools/jptext.sh 250 200 あいう
+    ENTER=1 sh tools/jptext.sh 250 200 あいう
+    ENTER=1 sh tools/jptext.sh 200 150 日本語のテスト
+    ENTER=1 sh tools/jptext.sh 300 300 図面A1
+    sh tools/jptext.sh 250 200 ｱｲｳ
     echo "=== 線変更: one press gives a line or an arc the writing pen, line"
     echo "    type and layer; the word beside the counts says which it took"
     sh tools/pressfull.sh 24 197 157
