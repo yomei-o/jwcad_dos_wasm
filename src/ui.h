@@ -38,6 +38,13 @@ typedef struct {
      * with the rest. */
     char typed[48];
     int typed_n;
+    /* Where the next character goes in that field.  文字 appends, so it is
+     * `typed_n` there; 文編集 starts the field with the text it was pointed
+     * at and the cursor in front of it. */
+    int typed_at;
+    /* 文編集: the character type of the text being changed -- the `3` of
+     * `|種 3|Paste` at row 4, which is the text's own, not the drawing's. */
+    int edit_type;
     double num[2];
     int dec[2];                 /* how many decimals each of them is shown to:
                                  * a length follows the drawing's scale, an

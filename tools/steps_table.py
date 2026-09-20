@@ -146,6 +146,15 @@ def main():
             if cell not in order:
                 order.append(cell)
             last[cell] = (fg, bg, s, t)
+        # **In the order the original wrote them**, not the order the cells
+        # were first touched.  A full-width string is twice as wide as its
+        # column count suggests, so two writes that look far apart can still
+        # cover each other: 文編集 writes its ruler at column 11 and then
+        # 「変更文字列入力」 at column 1, which is seven double-width
+        # characters and reaches column 14 -- the first four cells of the
+        # ruler are gone.  Replaying them the other way round left 83 pixels
+        # of bars where the original has 「入力」.
+        order.sort(key=lambda cell: last[cell][3])
         print('    /* stage %d -- %s (%d..%d) */' % (k, what, lo, hi))
         for cell in order:
             fg, bg, s, t = last[cell]

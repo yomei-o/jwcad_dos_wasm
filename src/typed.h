@@ -143,6 +143,27 @@ static const JwStage JW_TYPED[] = {
     { 15, 1,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
     { 15, 1,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
     { 15, 1,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x8b" "\x97" "\x97" "\xa3" " \x81" "\x9f" "\x8e" "\x9f" "\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read \x81" "i\x82" "r\x81" "\x81" "1/1\x81" "j|\x87" "@\x95" "\\ \x8e" "\xa6" "|\x87" "A\xb8" "\xd8" "\xb1" "\xb0" "|\x87" "B\x89" "~ \x8e" "\xfc" "|" },
+
+    /* 28 文編集【変更】, read off `python tools/steps_table.py 28 d 190 152 e`
+     * on SAMPLE0.  Stage 1 is the press that picks a text: the top line turns
+     * into a field with a ruler over it and the panel's ` Get type[tab]`
+     * becomes `左下 |種 3|Paste`.  The string itself goes at column 1 of row
+     * 2 and is the drawing's, so src/ui.c writes it; the `3` is the text's own
+     * character type and is put back the same way 文字's is.  Stage 2 is
+     * [Enter]: the counts come back and the item's own line goes up again. */
+    { 28, 1, 11, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "|\x81" "|\x81" "|\x81" "|" },
+    { 28, 1, 19, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "10\x81" "|\x81" "|\x81" "|\x81" "|\x81" "{\x81" "|\x81" "|\x81" "|\x81" "|20\x81" "|\x81" "|\x81" "|\x81" "|\x81" "{\x81" "|\x81" "|\x81" "|\x81" "|30\x81" "|\x81" "|\x81" "|\x81" "|\x81" "{\x81" "|\x81" "|\x81" "|\x81" "|40" },
+    { 28, 1,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x95" "\xcf" "\x8d" "X\x95" "\xb6" "\x8e" "\x9a" "\x97" "\xf1" "\x93" "\xfc" "\x97" "\xcd" },
+    { 28, 1,  1, 4, 7, 0xffff, 0, 0, { 0, 0 }, 0, "\x8d" "\xb6" "\x89" "\xba" },
+    { 28, 1,  5, 4, 7, 0xffff, 0, 0, { 0, 0 }, 0, "|\x8e" "\xed" " 3|Paste" },
+    /* Stage 2 also rewrites ` Get type[tab]` at row 4 and the menu item
+     * at row 17, and those are **not** here: the chrome draws both, and
+     * replaying them with a black background takes the panel's own white
+     * rules at y=48, 49 and 63 with them (312 pixels of them). */
+    { 28, 2,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 28, 2,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
+    { 28, 2,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "y\x95" "\xcf" "\x8d" "X\x81" "z\x95" "\xb6" "\x8e" "\x9a" "\x91" "I\x91" "\xf0" " |\x87" "@\x8a" "\xee" "\x93" "_\x81" "i\x8d" "\xb6" "\x89" "\xba" "\x81" "j|\x87" "A\x95" "\xb6" "\x98" "A\x8c" "\x8b" "\xa5" "\x90" "\xd8" "\x92" "f |\x87" "B\x8b" "^\x8e" "\x97" "\x90" "\xfc" "\x95" "\xb6" "\x8e" "\x9a" "|" },
+    { 28, 2, 73, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[BS]\x91" "O\x8d" "\x80" },
     { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0, 0 },
 };
 

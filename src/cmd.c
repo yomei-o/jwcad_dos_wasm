@@ -33,6 +33,8 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->divisions = 2;
     /* 正多角形's `[5]`, likewise. */
     c->sides = 5;
+    /* 文編集 has no text in hand. */
+    c->edit_text = -1;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -1250,6 +1252,37 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 {
     long k;
 
+    /* 文編集 while its field is open: the text it was pointed at **goes off
+     * the screen** and a box is drawn where it was.  Measured on a
+     * texts-only SAMPLE0 -- selecting text 0 blacks all 42x6 pixels the
+     * string was drawn in and leaves a box from the base point up by the
+     * character height and along by the string's length, in colour 2
+     * exclusive-or, the same one 文字 draws round the string it is taking.
+     * The box follows the typing: with `ABC` in front the right edge moves
+     * from x=214 to x=223, which is jwc_text_length of the longer string.
+     *
+     * What is **not** done: the original also puts about eighteen pixels of
+     * colour 4 round the base point and the box's top left corner, and the
+     * shape of them is not settled -- it is not the same on two texts of the
+     * same character type (RESUME 4.22). */
+    if (d && c->command == 28 && c->typing_text
+        && c->edit_text >= 0 && c->edit_text < d->n_texts) {
+        int px, py, qx, qy;
+
+        v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+        v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+        v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+        v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+        jw_view_text(v, d, &d->texts[c->edit_text], w, 0);
+        at_screen(w, c->x0, c->y0, &px, &py);
+        at_screen(w, c->x0 + c->text_wide, c->y0 + c->text_tall, &qx, &qy);
+        jw_line(v, px, py, px, qy, 2, 0x18, JW_STYLE_SOLID);
+        jw_line(v, px, qy, qx, qy, 2, 0x18, JW_STYLE_SOLID);
+        jw_line(v, qx, qy, qx, py, 2, 0x18, JW_STYLE_SOLID);
+        jw_line(v, qx, py, px, py, 2, 0x18, JW_STYLE_SOLID);
+        return;
+    }
+
     /* The commands that make an entity **while a menu item is still running**
      * all need this: the chrome blacks (122,17)-(638,47) when the item is
      * picked, and anything drawn up there would go with it.  The original
@@ -1602,7 +1635,17 @@ static int offset_line(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
 /* How big the box 文字 draws round the string it is taking comes out. */
 static void text_box(JwCmd *c, const Jwc *d)
 {
-    const int t = d ? d->char_type : 1;
+    /* 文字 writes with the drawing's own character type; 文編集 keeps the
+     * one the text it is changing already has -- that is the `3` its line
+     * shows as `|種 3|Paste`. */
+    int t = c->command == 28 && d && c->edit_text >= 0
+            && c->edit_text < d->n_texts
+            ? d->texts[c->edit_text].size
+            : (d ? d->char_type : 1);
+
+    if (t < 0 || t > 10) {
+        t = 0;
+    }
 
     c->text_wide = d ? jwc_text_length(d, c->typed, (unsigned char)t) : 0.0;
     c->text_tall = d ? d->text_h[t] / 10.0 * d->unit_mm : 0.0;
@@ -1649,6 +1692,23 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
      * the command starts again -- the original puts the counts back and
      * rewrites its own line, which is stage 0. */
     if (c->typing_text) {
+        if ((key == 13 || key == 10) && c->command == 28) {
+            /* 文編集: the text it was pointed at is rewritten, which moves
+             * it to the back whether or not anything was typed.  The line
+             * goes back to the one the item came up with, `[ESC]` in front --
+             * src/typed.h, stage 2. */
+            if (d && c->edit_text >= 0 && c->edit_text < d->n_texts) {
+                jwc_edit_text(d, c->edit_text, c->typed);
+            }
+            c->typing_text = 0;
+            c->pressed = 0;
+            c->edit_text = -1;
+            c->stage = 2;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->typed_at = 0;
+            return 1;
+        }
         if (key == 13 || key == 10) {
             const unsigned char size = (unsigned char)(d ? d->char_type : 1);
             const unsigned char layer =
@@ -1674,6 +1734,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             c->typed[0] = 0;
             c->typed_n = 0;
+            c->typed_at = 0;
             return 1;
         }
         if (key == 8) {
@@ -1681,9 +1742,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
              * 「あい」 then 「あ」 then empty.  Measured by sending the
              * Shift-JIS bytes straight at the original and reading the echo
              * it puts at column 1 of row 2. */
-            if (c->typed_n > 0) {
-                c->typed_n -= last_char_bytes(c->typed, c->typed_n);
-                c->typed[c->typed_n] = 0;
+            if (c->typed_at > 0) {
+                const int w = last_char_bytes(c->typed, c->typed_at);
+
+                memmove(c->typed + c->typed_at - w, c->typed + c->typed_at,
+                        (size_t)(c->typed_n - c->typed_at + 1));
+                c->typed_at -= w;
+                c->typed_n -= w;
             }
             text_box(c, d);
             return 1;
@@ -1697,8 +1762,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
          * (that is how 「あ」 first came out as one byte 0x82). */
         if (key >= 0x20 && key != 0x7f && key <= 0xff
             && c->typed_n < (int)sizeof c->typed - 1) {
-            c->typed[c->typed_n++] = (char)key;
-            c->typed[c->typed_n] = 0;
+            /* At the cursor, not at the end: 文字 starts with an empty field
+             * so the two are the same there, and 文編集 starts with the text
+             * it was pointed at and the cursor in front of it. */
+            memmove(c->typed + c->typed_at + 1, c->typed + c->typed_at,
+                    (size_t)(c->typed_n - c->typed_at + 1));
+            c->typed[c->typed_at++] = (char)key;
+            c->typed_n++;
             text_box(c, d);
             return 1;
         }
@@ -2444,6 +2514,50 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typing_text = 1;
         c->typed[0] = 0;
         c->typed_n = 0;
+        c->typed_at = 0;
+        text_box(c, d);
+        return 1;
+    }
+    if (c->command == 28) {
+        /* 文編集【変更】: press a text and its string comes up in a field on
+         * the second row, with a ruler above it (`10----+----20...40`) and
+         * `左下 |種 3|Paste` where the menu's ` Get type[tab]` was.  Typing
+         * changes it and [Enter] puts it back -- see jwc_edit_text.
+         *
+         * The cursor starts at the **front**: on SAMPLE0, pressing (190,152)
+         * and typing `ABC` echoes 「ABCＨ７－Ａ００１」, and [BS] after `AB`
+         * leaves `A` -- so [BS] takes a character off in front of the cursor
+         * the way 文字's field does.
+         *
+         * A press that finds no text does nothing at all: (170,150) on
+         * SAMPLE0, which is inside the drawing but off every string, left the
+         * top line exactly as the item came up with. */
+        const long k = jw_cmd_text_at(d, w, sx, sy);
+        const char *str;
+
+        /* A press that finds nothing **visible** does nothing: SAMPLE6's
+         * `40` is on group 1, which that drawing has turned off, and pressing
+         * it leaves the original saying 読取可能データ無 with the item's own
+         * line still up.  Whether a text that is visible but not *editable*
+         * can be picked is not measured -- none of the fourteen drawings has
+         * a layer where the two flags differ. */
+        if (k < 0) {
+            return 0;
+        }
+        str = d->texts[k].text ? d->texts[k].text : "";
+        c->edit_text = k;
+        c->typed_n = (int)strlen(str);
+        if (c->typed_n > (int)sizeof c->typed - 1) {
+            c->typed_n = (int)sizeof c->typed - 1;
+        }
+        memcpy(c->typed, str, (size_t)c->typed_n);
+        c->typed[c->typed_n] = 0;
+        c->typed_at = 0;
+        c->typing_text = 1;
+        c->pressed = 1;
+        c->stage = 1;
+        c->x0 = d->texts[k].x0;
+        c->y0 = d->texts[k].y0;
         text_box(c, d);
         return 1;
     }

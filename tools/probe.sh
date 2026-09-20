@@ -24,6 +24,7 @@
 #        starts with this
 #     t  the next word is typed, one character at a time
 #     e  [Enter]
+#     b  [BS]
 #
 # Everything lands in tmp/probe.
 set -e
@@ -56,6 +57,7 @@ my=$((64 + 16 * row + 8))
             done
             shift; continue;;
         e)  printf 'key enter\nwait 30000000\n'; shift; continue;;
+        b)  printf 'key backspace\nwait 8000000\n'; shift; continue;;
         esac
         [ $# -ge 2 ] || break
         printf 'mouse %s %s\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 20000000\n' \

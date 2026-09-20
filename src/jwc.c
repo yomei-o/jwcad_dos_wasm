@@ -1121,6 +1121,54 @@ int jwc_add_text(Jwc *d, float x0, float y0, float x1, float y1,
     return 1;
 }
 
+/* 文編集【変更】: put a different string on a text that is already there.
+ *
+ * The record **goes to the back**, and so does its string.  Measured: pressing
+ * SAMPLE0's text 0, typing `ABC` in front of it and pressing [Enter] leaves
+ * the drawing with thirteen texts still, the edited one at index 12 and the others each one index earlier; the pool keeps
+ * the same length because the old copy of the string is taken out of it and
+ * the new one appended.  [Enter] with **nothing** typed moves it just the
+ * same, so the move is what the command does, not what an edit does.
+ *
+ * The baseline keeps its start and gets a new far end from the new string:
+ * (51.172,310.957)-(93.030,310.957) became (51.172,310.957)-(102.187,310.957),
+ * which is jwc_text_length of the longer string to a thousandth.
+ */
+int jwc_edit_text(Jwc *d, long k, const char *str)
+{
+    JwcText was;
+    long off, gone, m;
+    JwcText *t;
+
+    if (k < 0 || k >= d->n_texts || !str) {
+        return 0;
+    }
+    was = d->texts[k];
+    off = was.text ? (long)(was.text - d->text) : 0;
+    gone = (long)strlen(d->text + off) + 1;
+    jwc_remove_text(d, k);
+    /* The pool is one run of strings in record order, so taking the record
+     * out takes its string out too and everything after it slides back.  The
+     * records hold pointers, not offsets, so they are moved by hand. */
+    memmove(d->text + off, d->text + off + gone,
+            (size_t)(d->text_len - off - gone));
+    d->text_len -= gone;
+    for (m = 0; m < d->n_texts; m++) {
+        if (d->texts[m].text && (long)(d->texts[m].text - d->text) > off) {
+            d->texts[m].text -= gone;
+        }
+    }
+    if (!jwc_add_text(d, was.x0, was.y0,
+                      (float)(was.x0 + jwc_text_length(d, str, was.size)),
+                      was.y0, str, was.size, was.layer)) {
+        return 0;
+    }
+    t = &d->texts[d->n_texts - 1];
+    t->rest[2] = was.rest[2];
+    t->rest[3] = was.rest[3];
+    return 1;
+}
+
 /* How long a text's baseline is, in drawing units.
  *
  * It follows from the string and the character size, not from anything stored:

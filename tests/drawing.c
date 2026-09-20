@@ -26,6 +26,15 @@ static unsigned char pixels[VGA_MAX_STRIDE * 8 * VGA_MAX_HEIGHT];
 static unsigned char rgba[640 * 480 * 4];
 static unsigned char pal[256][3];
 
+/* 文編集's `|種 N|Paste`: the character type of the text it has in hand. */
+static int edit_type(const JwCmd *c, const Jwc *d)
+{
+    if (c->command == 28 && d && c->edit_text >= 0 && c->edit_text < d->n_texts) {
+        return d->texts[c->edit_text].size;
+    }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     /* -u: the whole screen, the frame around the drawing as well, so it can be
@@ -230,6 +239,8 @@ int main(int argc, char **argv)
                 t.stage = c.stage;
                 memcpy(t.typed, c.typed, sizeof t.typed);
                 t.typed_n = c.typed_n;
+                t.typed_at = c.typed_at;
+                t.edit_type = edit_type(&c, d);
                 t.num[0] = c.num[0];
                 t.num[1] = c.num[1];
                 t.dec[0] = c.dec[0];
@@ -332,6 +343,8 @@ int main(int argc, char **argv)
         s.stage = stage;
         memcpy(s.typed, c.typed, sizeof s.typed);
         s.typed_n = c.typed_n;
+        s.typed_at = c.typed_at;
+        s.edit_type = edit_type(&c, d);
         s.num[0] = num[0];
         s.num[1] = num[1];
         s.dec[0] = dec[0];

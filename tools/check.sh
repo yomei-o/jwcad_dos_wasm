@@ -294,6 +294,13 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full sh tools/savecheck.sh -c 11 -p 300 200 -p 400 200
     full sh tools/savecheck.sh -c 10 -r 380 140
     full DRAWING=SAMPLE6 BOOT=150000000 sh tools/savecheck.sh -c 5 -p 499 192 -k 300 -p 520 230
+    echo "=== 文編集【変更】: a text picked, retyped and put back (RESUME 4.22)"
+    sh tools/editcheck.sh 190 152 ''
+    sh tools/editcheck.sh 190 152 ABC
+    ENTER=1 sh tools/editcheck.sh 190 152 ABC
+    full ENTER=1 sh tools/editcheck.sh 190 152 ''
+    full BS=1 sh tools/editcheck.sh 190 152 AB
+    full DRAWING=SAMPLE6 BOOT=150000000 sh tools/editcheck.sh 459 70 ''
     echo "=== 複線 with a number typed in (src/cmd.c, RESUME 4.12)"
     sh tools/multicheck.sh 20 197 120
     full sh tools/multicheck.sh 40 197 300

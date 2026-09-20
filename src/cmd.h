@@ -139,6 +139,13 @@ typedef struct {
      * as they come and [Enter] writes the text.  Measured -- the original
      * shows the whole string again at column 1 of row 2 after every key. */
     int typing_text;
+    /* Where the next key goes in `typed`.  文字 always appends, so it is
+     * `typed_n` there; 文編集 starts the field with the text it was pointed
+     * at and the cursor at the **front** -- typing `ABC` on 「Ｈ７－Ａ００１」
+     * leaves 「ABCＨ７－Ａ００１」, measured off the original's own echo. */
+    int typed_at;
+    /* 文編集: the text being changed, or -1. */
+    long edit_text;
     /* How wide and how tall the string being typed comes out, in drawing
      * units -- the box 文字 shows while it is being typed.  Worked out again
      * after every key, because the width follows from the string. */

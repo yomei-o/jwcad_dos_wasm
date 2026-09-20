@@ -551,7 +551,8 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
      * written the text the command is at stage 2 and none of stage 1 is on
      * the screen any more (the original writes ` Get type[tab]` back at row 4
      * and its own line over the top one). */
-    if (q->command == 13 && q->stage == 1 && !s->typing_text) {
+    if ((q->command == 13 || q->command == 28)
+        && q->stage == 1 && !s->typing_text) {
         return;
     }
     /* 線変更's word beside the counts is the one thing in the table that
@@ -581,6 +582,16 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
             jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
             return;
         }
+    }
+    /* 文編集's `|種 3|Paste` carries the character type of the text it was
+     * pointed at, so that digit is the drawing's too. */
+    if (q->command == 28 && q->col == 5 && q->row == 4) {
+        char one[160];
+        double n = s->edit_type;
+
+        put_numbers(one, sizeof one, q->text, &n, 1, 0);
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+        return;
     }
     /* 測定's two lengths and the scale in its own line. */
     if (q->command == 15) {
@@ -976,27 +987,31 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                                  * line whichever of the three was picked */
                 }
                 if (q->command == s->command && q->stage == i
-                    && q->row != 1 && q->col <= 15
+                    && (q->row == 2 || q->row == 3) && q->col <= 15
                     && !(q->moved && !s->moved)) {
-                    own = 1;    /* inside the box; columns 17 and 22 of the
-                                 * same row are beside it, not in it */
+                    own = 1;    /* inside the box, which is (1,17)-(120,47)
+                                 * -- rows 2 and 3.  Columns 17 and 22 of the
+                                 * same row are beside it, not in it, and so
+                                 * is row 4: 文編集 writes ` Get type[tab]`
+                                 * there when it is done and the counts are
+                                 * back in the box under it. */
                 }
             }
             for (q = JW_TYPED; q->command; q++) {
                 if (q->command == s->command && q->stage == i
-                    && q->row != 1 && q->col <= 15) {
+                    && (q->row == 2 || q->row == 3) && q->col <= 15) {
                     own = 1;
                 }
             }
             for (q = JW_COPY; q->command; q++) {
                 if (q->command == s->command && q->stage == i
-                    && q->row != 1 && q->col <= 15) {
+                    && (q->row == 2 || q->row == 3) && q->col <= 15) {
                     own = 1;
                 }
             }
             for (q = JW_MOVE; q->command; q++) {
                 if (q->command == s->command && q->stage == i
-                    && q->row != 1 && q->col <= 15) {
+                    && (q->row == 2 || q->row == 3) && q->col <= 15) {
                     own = 1;
                 }
             }
@@ -1015,7 +1030,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * (columns 1 to 15) is painted separately just below. */
             fill(v, 122, 17, 638, 31, 0);
             top_clear();
-            if (s->command == 13 && i == 1 && s->typing_text) {
+            if ((s->command == 13 || s->command == 28)
+                && i == 1 && s->typing_text) {
                 /* 文字's field takes the screen over: the whole band under the
                  * top line goes black -- the counts and their label with it --
                  * and so does the strip along the very bottom.  Measured on
@@ -1114,11 +1130,24 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             /* 文字's field: the string as it has been typed so far, at
              * column 1 of row 2.  The original writes the whole of it again
              * after every key (`A`, `AB`, `ABC`), so this does the same. */
-            if (s->command == 13 && i == 1 && s->typing_text) {
+            if ((s->command == 13 || s->command == 28)
+                && i == 1 && s->typing_text) {
                 jw_ui_text(v, 1, 2, 7, 0, s->typed);
                 /* and the block where the next character will go, colour 4,
-                 * nine rows of the cell -- the same one 複線's field has */
-                fill(v, s->typed_n * 8, 23, s->typed_n * 8 + 7, 31, 4);
+                 * nine rows of the cell -- the same one 複線's field has.
+                 * 文編集 starts with the cursor in front of the string it
+                 * was given, so it goes where the cursor is, and it goes on
+                 * **exclusive-or**: over the empty field 文字 has it reads 4
+                 * either way, but over the left half of 「Ｈ」 the original
+                 * reads ff00ff, which is 7 exclusive-or 4. */
+                {
+                    int y;
+
+                    for (y = 23; y <= 31; y++) {
+                        jw_line(v, s->typed_at * 8, y, s->typed_at * 8 + 7, y,
+                                4, 0x18, JW_STYLE_SOLID);
+                    }
+                }
             }
             /* 線変更 says `線` or `円` there, whichever it took. */
             if (s->command == 24 && i == 1 && s->hit_kind) {
@@ -1288,7 +1317,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     jw_line(v, 0, 16, 639, 16, 7, ROP_REPLACE, JW_STYLE_SOLID);
     /* 文字's field takes that line away from where the string it is taking
      * has got to -- see the stage loop, where the rest of the band goes. */
-    if (s->command == 13 && s->typing_text) {
+    if ((s->command == 13 || s->command == 28) && s->typing_text) {
         fill(v, s->typed_n * 8, 16, 638, 16, 0);
     }
     if (s->guide) {

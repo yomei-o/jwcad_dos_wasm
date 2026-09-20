@@ -266,6 +266,10 @@ void jwc_remove_text(Jwc *d, long k);
 /* Put one in, the way 文字 does: the record **and** the string, which is
  * appended to the pool the way the original appends it.  Returns 0 if there
  * was no memory for it. */
+/* 文編集: a new string on the text at `k`.  The record goes to the back and
+ * its baseline gets a new far end; see jwc.c. */
+int jwc_edit_text(Jwc *d, long k, const char *str);
+
 int jwc_add_text(Jwc *d, float x0, float y0, float x1, float y1,
                  const char *str, unsigned char size, unsigned char layer);
 
