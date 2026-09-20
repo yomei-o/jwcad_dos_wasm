@@ -2580,10 +2580,18 @@ SAMPLE6、線と弧、当たらなかった場合——**全部 0 画素差**。
    **上の行とレコードの変化が 1 回で両方出ます**。
    規則が見えるまで 2〜3 例。水平・垂直だけで決めないこと（SAMPLE6 の
    斜線で 1 例取ると、向きの規則がしばしばひっくり返ります）
-3. **上の行を採る** —— `tools/stage_table.py` の `COMMANDS` に 1 行足して
-   `python tools/stage_table.py`。同じ項目でボタン違いの枝があるなら
-   3 つ目の要素で段番号をずらす（線切断が 11 番台）。
-   **打ち込みのある段は採れません**——`src/typed.h` に手で入れること
+3. **上の行を採る** —— 押すだけなら `tools/stage_table.py` の `COMMANDS` に
+   1 行足して `python tools/stage_table.py`。同じ項目でボタン違いの枝が
+   あるなら 3 つ目の要素で段番号をずらす（線切断が 11 番台）。
+   **打ち込みがあるなら `tools/steps_table.py`**:
+
+   ```sh
+   python tools/steps_table.py 21 d 250 200 450 200 t 4 e
+   ```
+
+   押し・右押し・捨て駒・打ち込み・[Enter] を並べられて、段ごとの行を
+   `src/stage.h` の形で吐きます。それを `src/typed.h` に貼る。
+   数の入るセル（`[2]`、`残 97`、入力欄）だけは手で直すこと
 4. **書く** —— `src/cmd.c` の `jw_cmd_press()` に枝を足す。
    注意点は 3 つ: `JwCmd.press_x` は毎回上書きされるので 1 回目の位置は
    `pick_x/pick_y` に、新しい実体を作る命令は `c->n0_lines = d->n_lines` を
