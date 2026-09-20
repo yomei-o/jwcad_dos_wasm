@@ -45,6 +45,7 @@ int main(int argc, char **argv)
     int mods = 0;                       /* -M: which modifier keys are held */
     int mx = 200, my = 200;     /* where the original leaves the pointer */
     int press[8][3], n_press = 0, stage = 0;
+    int zoom[4] = { 0, 0, 0, 0 }, zoomed = 0;
     double num[2] = { 0.0, 0.0 };
     int dec[2] = { 3, 3 };
     /* Zeroed before the first jw_cmd_pick: the command state owns a little
@@ -170,6 +171,14 @@ int main(int argc, char **argv)
             press[n_press][2] = 0;
             n_press++;
             a += 2;
+        } else if (strcmp(argv[a], "-Z") == 0 && a + 4 < argc) {
+            /* zoom to that screen rectangle before anything else is drawn */
+            zoom[0] = atoi(argv[a + 1]);
+            zoom[1] = atoi(argv[a + 2]);
+            zoom[2] = atoi(argv[a + 3]);
+            zoom[3] = atoi(argv[a + 4]);
+            zoomed = 1;
+            a += 5;
         } else if (strcmp(argv[a], "-w") == 0 && a + 1 < argc) {
             /* Write the drawing out when the presses are done, the way the
              * original's 入出力 → ﾌｧｲﾙ → 保存 does.  tools/savecheck.sh then
@@ -221,6 +230,9 @@ int main(int argc, char **argv)
         jw_view_original(&w);
     } else {
         jw_view_fit(&w, &v, d);
+    }
+    if (zoomed) {
+        jw_view_zoom(&w, zoom[0], zoom[1], zoom[2], zoom[3]);
     }
     /* -p: presses in the drawing area, before anything is drawn -- a command
      * changes the drawing, and the screen shows what came out. */

@@ -1066,3 +1066,49 @@ void jw_view_rgba(const VGA *v, const unsigned char *pixels, unsigned char *rgba
         rgba[i * 4 + 3] = 255;
     }
 }
+
+/* ズームバーの ■拡大■: make the rectangle two presses gave fill the window.
+ *
+ * **Read out of the original, not fitted to a picture.**  Dumping the whole of
+ * DGROUP before and after a zoom (`dump +3375:0000 44320` twice in one script)
+ * leaves five numbers changed, and they are the view:
+ *
+ *     0x0c30, 0x0c3c  float  the scale, x and y -- 1.0 before, and after a
+ *                            zoom on a rectangle 450 screen pixels wide
+ *                            **1.151111**, which is 518/450 to seven digits
+ *     0x0c38          float  121.0, untouched -- `screen_x = (x-ox)*s + 121`
+ *     0x0c48, 0x0c4c  float  the origin (ox, oy): 29.0 and 38.83977 for that
+ *                            zoom, where the rectangle ran x 29..479 and
+ *                            y 203..263 in drawing units
+ *     0x896e          double the 表示倍率 the band prints, 0.5723906822 ->
+ *                            0.6588851280, whose ratio is the same 1.1511109
+ *
+ * So the window is **518 by 447** -- a zoom on a 300 pixel tall rectangle
+ * multiplies the scale by exactly 447/300 = 1.49 -- and what the original
+ * keeps is the bottom left of what is visible:
+ *
+ *     ox = cx - 259/s      oy = cy - 223.5/s
+ *
+ * with (cx,cy) the rectangle's middle.  For the 450 wide one that gives
+ * 254 - 225 = 29 and 233 - 194.15 = 38.85, which is what DGROUP holds.
+ * 121 and 463 do not move, so the window is screen x 121..639, y 16..463.
+ */
+void jw_view_zoom(JwView *w, int sx0, int sy0, int sx1, int sy1)
+{
+    const double lo_x = sx0 < sx1 ? sx0 : sx1, hi_x = sx0 < sx1 ? sx1 : sx0;
+    const double lo_y = sy0 < sy1 ? sy0 : sy1, hi_y = sy0 < sy1 ? sy1 : sy0;
+    const double wide = hi_x - lo_x, tall = hi_y - lo_y;
+    double by, cx, cy;
+
+    if (wide < 1.0 || tall < 1.0) {
+        return;
+    }
+    cx = ((lo_x + hi_x) / 2.0 - w->ax) / w->scale + w->ox;
+    cy = (w->ay - (lo_y + hi_y) / 2.0) / w->scale + w->oy;
+    by = 518.0 / wide < 447.0 / tall ? 518.0 / wide : 447.0 / tall;
+    w->scale = (float)(w->scale * by);
+    w->ox = (float)(cx - 259.0 / w->scale);
+    w->oy = (float)(cy - 223.5 / w->scale);
+    w->ax = 121.0f;
+    w->ay = 463.0f;
+}
