@@ -1,13 +1,27 @@
 #!/bin/sh
 # Everything, without opening a window.
 #
-#   sh tools/check.sh
+#   sh tools/check.sh          # the short one: about five minutes
+#   FULL=1 sh tools/check.sh   # every case there is: about fifty
 #
 # Builds both halves, runs the unit checks, reads every drawing the
 # distribution ships, and compares the native and WASM screens byte for byte.
+#
+# **Most of the time is the emulator.** Each comparison starts the original
+# from cold and runs tens of millions of instructions, so a hundred and fifty
+# of them is most of an hour.  The short run keeps one or two cases per
+# command -- enough to catch a change that breaks something -- and the full one
+# keeps the rest, which are the cases that only break when that command is
+# being worked on.  `full` below is what marks them.
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp
+
+# A case that is only worth running when everything is being checked.
+full() {
+    [ -n "$FULL" ] || return 0
+    "$@"
+}
 
 echo "=== building"
 sh tools/build_tests.sh
@@ -40,10 +54,10 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "    (＋ and ／ leave the original's own (0,16) pixel -- 4.11)"
     sh tools/pressfull.sh 2 300 200
     sh tools/pressfull.sh 3 300 200
-    sh tools/pressfull.sh 4 250 150
-    sh tools/pressfull.sh 11 300 200
-    sh tools/pressfull.sh 12 300 250
-    sh tools/pressfull.sh 12 300 250 400 250
+    full sh tools/pressfull.sh 4 250 150
+    full sh tools/pressfull.sh 11 300 200
+    full sh tools/pressfull.sh 12 300 250
+    full sh tools/pressfull.sh 12 300 250 400 250
     sh tools/pressfull.sh 25 150 130
     echo "    ...and after a **read** press, where the point taken is not the"
     echo "    pixel pressed, so the reading is up straight away (4.14)"
@@ -51,17 +65,17 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     DRAWING=SAMPLE6 sh tools/pressfull.sh 3 r 470 305
     echo "=== 文字: a point, then the keys, then [Enter] writes the text"
     sh tools/textcheck.sh 250 200 ABC
-    sh tools/textcheck.sh 250 200 A
-    sh tools/textcheck.sh 200 157 ABC
+    full sh tools/textcheck.sh 250 200 A
+    full sh tools/textcheck.sh 200 157 ABC
     ENTER=1 sh tools/textcheck.sh 250 200 ABC
-    ENTER=1 sh tools/textcheck.sh 300 300 Hello
+    full ENTER=1 sh tools/textcheck.sh 300 300 Hello
     echo "=== 文字 in Japanese: the Shift-JIS bytes an input method gives"
     sh tools/jptext.sh 250 200 あいう
-    BS=1 sh tools/jptext.sh 250 200 あいう
+    full BS=1 sh tools/jptext.sh 250 200 あいう
     ENTER=1 sh tools/jptext.sh 250 200 あいう
-    ENTER=1 sh tools/jptext.sh 200 150 日本語のテスト
-    ENTER=1 sh tools/jptext.sh 300 300 図面A1
-    sh tools/jptext.sh 250 200 ｱｲｳ
+    full ENTER=1 sh tools/jptext.sh 200 150 日本語のテスト
+    full ENTER=1 sh tools/jptext.sh 300 300 図面A1
+    full sh tools/jptext.sh 250 200 ｱｲｳ
     echo "=== 線変更: one press gives a line or an arc the writing pen, line"
     echo "    type and layer; the word beside the counts says which it took"
     sh tools/pressfull.sh 24 197 157
@@ -79,132 +93,132 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/pressfull.sh 12 300 250 398 233 206 284
     echo "=== the right button reading a point, against the original's answer"
     sh tools/readcheck.sh 170 150 214 152 383 401 388 401 386 404 380 393         165 143 380 249 324 249 233 190
-    DRAWING=SAMPLE1 sh tools/readcheck.sh 500 57 503 60
+    full DRAWING=SAMPLE1 sh tools/readcheck.sh 500 57 503 60
     DRAWING=SAMPLE6 sh tools/readcheck.sh 470 305 468 183 448 191
-    DRAWING=TEST1 sh tools/readcheck.sh 245 341 201 341 450 290
+    full DRAWING=TEST1 sh tools/readcheck.sh 245 341 201 341 450 290
     echo "=== the read with a modifier key held: [SHIFT] a point on a line"
     echo "    or a circle, [GRPH] a centre or the middle of two points (4.19)"
     sh tools/snapcheck.sh
     echo "=== and the words it puts in the band while a key is held,"
     echo "    which are per key and per command (src/snap.h)"
-    for n in 2 3 4 10 11 12 13 15 20 22 25; do
+    for n in 3 $([ -n "$FULL" ] && echo 2 4 10 11 12 13 15 20 22 25); do
         for m in shift ctrl alt; do sh tools/modscreen.sh $m $n; done
     done
     echo "=== and the line it writes while it waits for the second press"
     sh tools/snapscreen.sh shift 300 402
-    sh tools/snapscreen.sh shift 300 300
-    sh tools/snapscreen.sh alt 232 157
-    sh tools/snapscreen.sh alt 300 398
-    CMDN=2 sh tools/snapscreen.sh shift 300 402
-    CMDN=22 sh tools/snapscreen.sh shift 300 402
+    full sh tools/snapscreen.sh shift 300 300
+    full sh tools/snapscreen.sh alt 232 157
+    full sh tools/snapscreen.sh alt 300 398
+    full CMDN=2 sh tools/snapscreen.sh shift 300 402
+    full CMDN=22 sh tools/snapscreen.sh shift 300 402
     DRAWING=SAMPLE6 sh tools/snapscreen.sh shift 415 158
-    DRAWING=SAMPLE6 sh tools/snapscreen.sh alt 415 158
+    full DRAWING=SAMPLE6 sh tools/snapscreen.sh alt 415 158
     echo "=== [CTRL] in a command that is neither ＋ nor ／: 円周1/4点."
     echo "    Its search takes only the writing pen and line type, and no"
     echo "    drawing that ships has a circle of its own, so one is drawn first"
     sh tools/quartercheck.sh 309 202
-    sh tools/quartercheck.sh 349 257
-    sh tools/quartercheck.sh 251 243
-    sh tools/quartercheck.sh 293 299
+    full sh tools/quartercheck.sh 349 257
+    full sh tools/quartercheck.sh 251 243
+    full sh tools/quartercheck.sh 293 299
     sh tools/quartercheck.sh 600 100
-    CMDN=11 sh tools/quartercheck.sh 309 202
-    CMDN=12 sh tools/quartercheck.sh 309 202
-    CMDN=22 sh tools/quartercheck.sh 309 202
+    full CMDN=11 sh tools/quartercheck.sh 309 202
+    full CMDN=12 sh tools/quartercheck.sh 309 202
+    full CMDN=22 sh tools/quartercheck.sh 309 202
     ARC="291 201 251 241" sh tools/quartercheck.sh 275 207
-    ARC="291 201 251 241" CMDN=11 sh tools/quartercheck.sh 275 207
+    full ARC="291 201 251 241" CMDN=11 sh tools/quartercheck.sh 275 207
     echo "=== a command started from a read point"
     sh tools/pressfull.sh 3 r 170 150 l 400 300
     DRAWING=SAMPLE6 sh tools/pressfull.sh 3 r 470 305 l 400 300
     echo "=== [ESC], which throws the point in hand away and asks again"
     sh tools/esccheck.sh 2 300 200
     sh tools/esccheck.sh 3 300 200
-    sh tools/esccheck.sh 4 300 200
-    sh tools/esccheck.sh 11 300 200
-    sh tools/esccheck.sh 12 300 200
+    full sh tools/esccheck.sh 4 300 200
+    full sh tools/esccheck.sh 11 300 200
+    full sh tools/esccheck.sh 12 300 200
     echo "    (the range commands go all the way back to the line they came"
     echo "     up with; 複写 and 移動 leave the original's own (0,16) pixel)"
     sh tools/esccheck.sh 25 150 130
-    TWO="245 170" sh tools/esccheck.sh 25 150 130
+    full TWO="245 170" sh tools/esccheck.sh 25 150 130
     sh tools/esccheck.sh 1 150 130
-    sh tools/esccheck.sh 16 150 130
+    full sh tools/esccheck.sh 16 150 130
     echo "=== 消去 picking a range"
     sh tools/pressfull.sh 25 150 130 r 245 170
     echo "=== 消去 with the left button: 追加･除外, then 範囲確定 and 実行"
     echo "    (the 2 left over are the original's own erase clipping)"
     sh tools/erase2.sh 150 130 245 170 197 157
     echo "=== and [F2], which throws the whole selection away (4.9b)"
-    FKEY=2 STOP=1 sh tools/erase2.sh 150 130 245 170 197 157
+    full FKEY=2 STOP=1 sh tools/erase2.sh 150 130 245 170 197 157
     FKEY=2 sh tools/erase2.sh 150 130 245 170 197 157
     echo "=== and 文字(R): a text is taken by a box ten wide round its baseline"
     echo "    (the dummy press is there because the first press after the range"
     echo "     never reaches the search -- RESUME 4.9b)"
     DUMMY="600 450" RIGHT=1 STOP=1 sh tools/erase2.sh 150 130 245 170 190 152
-    DUMMY="600 450" RIGHT=1 STOP=1 sh tools/erase2.sh 150 130 245 170 163 143
-    DUMMY="600 450" RIGHT=1 STOP=1 sh tools/erase2.sh 150 130 245 170 190 163
-    DUMMY="600 450" RIGHT=1 STOP=1 sh tools/erase2.sh 150 130 245 170 225 152
+    full DUMMY="600 450" RIGHT=1 STOP=1 sh tools/erase2.sh 150 130 245 170 163 143
+    full DUMMY="600 450" RIGHT=1 STOP=1 sh tools/erase2.sh 150 130 245 170 190 163
+    full DUMMY="600 450" RIGHT=1 STOP=1 sh tools/erase2.sh 150 130 245 170 225 152
     DUMMY="600 450" RIGHT=1 sh tools/erase2.sh 150 130 245 170 190 152
     echo "=== ②範囲外消去, which is a **cut**: what crosses the edge is shown"
     echo "    dotted and comes back shortened, not taken away"
     OUT=1 DUMMY="600 450" STOP=1 sh tools/erase2.sh 150 130 245 170 600 460
-    OUT=1 DUMMY="600 450" STOP=1 sh tools/erase2.sh 150 130 245 170 197 157
-    OUT=1 DUMMY="600 450" STOP=1 sh tools/erase2.sh 150 130 245 170 500 250
+    full OUT=1 DUMMY="600 450" STOP=1 sh tools/erase2.sh 150 130 245 170 197 157
+    full OUT=1 DUMMY="600 450" STOP=1 sh tools/erase2.sh 150 130 245 170 500 250
     OUT=1 DUMMY="600 450" sh tools/erase2.sh 150 130 245 170 600 460
-    OUT=1 DUMMY="600 450" sh tools/erase2.sh 150 130 245 170 197 157
+    full OUT=1 DUMMY="600 450" sh tools/erase2.sh 150 130 245 170 197 157
     echo "=== ③指定範囲, the data selection 複写 and 移動 use.  The first"
     echo "    button says whether the texts come in with the lines"
     STOP=1 sh tools/span.sh 150 130 245 170
-    STOP=1 R1=1 sh tools/span.sh 150 130 245 170
-    STOP=1 sh tools/span.sh 150 130 245 170 197 157
+    full STOP=1 R1=1 sh tools/span.sh 150 130 245 170
+    full STOP=1 sh tools/span.sh 150 130 245 170 197 157
     sh tools/span.sh 150 130 245 170
-    R1=1 sh tools/span.sh 150 130 245 170
+    full R1=1 sh tools/span.sh 150 130 245 170
     echo "=== 複写 (1) taking its range -- the same two presses as ③指定範囲,"
     echo "    then ①範囲 確定 and ①ﾏｳｽ位置 on the top line"
     STEP=2 sh tools/copy.sh 150 130 245 170
-    STEP=2 R1=1 sh tools/copy.sh 150 130 245 170
+    full STEP=2 R1=1 sh tools/copy.sh 150 130 245 170
     STEP=3 sh tools/copy.sh 150 130 245 170
-    STEP=3 R1=1 sh tools/copy.sh 150 130 245 170
-    STEP=4 sh tools/copy.sh 150 130 245 170
-    STEP=4 R1=1 sh tools/copy.sh 150 130 245 170
+    full STEP=3 R1=1 sh tools/copy.sh 150 130 245 170
+    full STEP=4 sh tools/copy.sh 150 130 245 170
+    full STEP=4 R1=1 sh tools/copy.sh 150 130 245 170
     echo "=== 複写's ②数値位置: the distance typed in, and 前回と同じ"
     STOP=1 sh tools/copynum.sh 20,30
     sh tools/copynum.sh 20,30
-    sh tools/copynum.sh 5
-    SAME=1 sh tools/copynum.sh
-    AGAIN=1 sh tools/copynum.sh 20,30
-    AGAIN=2 sh tools/copynum.sh 20,30
-    THEN=120 sh tools/copynum.sh 20,30
-    THEN=220 sh tools/copynum.sh 20,30
+    full sh tools/copynum.sh 5
+    full SAME=1 sh tools/copynum.sh
+    full AGAIN=1 sh tools/copynum.sh 20,30
+    full AGAIN=2 sh tools/copynum.sh 20,30
+    full THEN=120 sh tools/copynum.sh 20,30
+    full THEN=220 sh tools/copynum.sh 20,30
     echo "=== 複写's ①ﾏｳｽ位置: the base point, then where it goes -- and it"
     echo "    does not end there, every press after puts another one down"
     sh tools/copypos.sh
-    MORE="300 300" sh tools/copypos.sh
-    AGAIN=1 sh tools/copypos.sh
-    THEN=350 sh tools/copypos.sh
+    full MORE="300 300" sh tools/copypos.sh
+    full AGAIN=1 sh tools/copypos.sh
+    full THEN=350 sh tools/copypos.sh
     echo "=== 移動 (16), which takes its range the same way and shifts what"
     echo "    it picked instead of copying it (the 2 left over are the"
     echo "    original's own erase clipping a neighbour)"
     CMD=16 STEP=3 sh tools/copy.sh 150 130 245 170
-    CMD=16 STEP=4 sh tools/copy.sh 150 130 245 170
-    CMD=16 STOP=1 sh tools/copynum.sh 20,30
+    full CMD=16 STEP=4 sh tools/copy.sh 150 130 245 170
+    full CMD=16 STOP=1 sh tools/copynum.sh 20,30
     CMD=16 sh tools/copynum.sh 20,30
-    CMD=16 SAME=1 sh tools/copynum.sh
-    CMD=16 AGAIN=1 sh tools/copynum.sh 20,30
+    full CMD=16 SAME=1 sh tools/copynum.sh
+    full CMD=16 AGAIN=1 sh tools/copynum.sh 20,30
     echo "    (移動's are the original's own erase clipping a neighbour)"
     CMD=16 sh tools/copypos.sh
-    CMD=16 MORE="300 300" sh tools/copypos.sh
-    CMD=16 AGAIN=1 sh tools/copypos.sh
+    full CMD=16 MORE="300 300" sh tools/copypos.sh
+    full CMD=16 AGAIN=1 sh tools/copypos.sh
     echo "=== 追加･除外 on SAMPLE6, a busy drawing (the 2 left over are the"
     echo "    original marking a neighbour one pixel shorter than it drew it)"
     DRAWING=SAMPLE6 WAIT=150000000 STOP=1 sh tools/erase2.sh 170 235 215 260 209 242
     echo "=== 点 dropping a 仮点"
     sh tools/pressfull.sh 22 300 250
-    sh tools/pressfull.sh 22 300 250 400 300
+    full sh tools/pressfull.sh 22 300 250 400 300
     echo "=== 線伸縮 (6): a line is stretched to a point"
     sh tools/pressfull.sh 6 220 157
-    sh tools/pressfull.sh 6 220 157 300 157
-    sh tools/pressfull.sh 6 170 157 300 157
-    sh tools/pressfull.sh 6 220 157 300 200
-    sh tools/pressfull.sh 6 220 157 140 250
+    full sh tools/pressfull.sh 6 220 157 300 157
+    full sh tools/pressfull.sh 6 170 157 300 157
+    full sh tools/pressfull.sh 6 220 157 300 200
+    full sh tools/pressfull.sh 6 220 157 140 250
     sh tools/savecheck.sh -c 6 -p 220 157 -p 300 157
     echo "=== 線切断 (6, the right button): the line is cut where it was"
     echo "    pressed, but only once the pointer leaves it"
@@ -212,9 +226,9 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/savecheck.sh -c 6 -r 220 157 -m 400 300
     echo "=== ２線 (9): a pair of lines either side of one already there"
     sh tools/pressfull.sh 9 220 157
-    sh tools/pressfull.sh 9 220 157 250 200
+    full sh tools/pressfull.sh 9 220 157 250 200
     sh tools/pressfull.sh 9 220 157 250 200 450 200
-    sh tools/pressfull.sh 9 220 157 250 200 450 200 500 250
+    full sh tools/pressfull.sh 9 220 157 250 200 450 200 500 250
     sh tools/savecheck.sh -c 9 -p 220 157 -p 250 200 -p 450 200 -m 500 250
     DRAWING=SAMPLE6 BOOT=150000000 sh tools/savecheck.sh -c 9 -p 500 193 -p 480 220 -p 520 190 -m 300 400
     echo "=== 面取 (8): the corner between two lines is cut off"
@@ -224,62 +238,62 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     DRAWING=SAMPLE6 BOOT=150000000 sh tools/savecheck.sh -c 8 -p 499 270 -p 490 240
     echo "=== 中心線 (20): the bisector of two lines, between two points"
     sh tools/pressfull.sh 20 220 157
-    sh tools/pressfull.sh 20 220 157 300 401
-    sh tools/pressfull.sh 20 220 157 300 401 200 279
+    full sh tools/pressfull.sh 20 220 157 300 401
+    full sh tools/pressfull.sh 20 220 157 300 401 200 279
     sh tools/pressfull.sh 20 220 157 300 401 200 279 500 279
     sh tools/savecheck.sh -c 20 -p 220 157 -p 300 401 -p 200 279 -p 500 279
     echo "=== コーナー連結 (7): two lines cut back to meet at a corner"
     echo "    (the 1-2 left over are the original's own erase clipping a neighbour)"
     sh tools/pressfull.sh 7 220 157
-    sh tools/pressfull.sh 7 220 157 424 300
+    full sh tools/pressfull.sh 7 220 157 424 300
     sh tools/pressfull.sh 7 220 157 596 300
-    sh tools/pressfull.sh 7 598 148 220 157
-    sh tools/pressfull.sh 7 300 419 596 300
+    full sh tools/pressfull.sh 7 598 148 220 157
+    full sh tools/pressfull.sh 7 300 419 596 300
     sh tools/savecheck.sh -c 7 -p 220 157 -p 596 300
     sh tools/pressfull.sh 22 r 383 401
     echo "=== taking a line away with 線消 (the rest is the original's own"
     echo "    erase clipping its neighbours, which it never paints back)"
     sh tools/delcheck.sh 380 140
-    sh tools/delcheck.sh 197 157
+    full sh tools/delcheck.sh 197 157
     echo "=== and an arc: the original's 線消 says 線,円弧, and takes either"
     DRAWING=SAMPLE6 sh tools/delcheck.sh 446 189
-    DRAWING=SAMPLE6 sh tools/delcheck.sh 260 152
-    DRAWING=SAMPLE6 sh tools/delcheck.sh 191 259
+    full DRAWING=SAMPLE6 sh tools/delcheck.sh 260 152
+    full DRAWING=SAMPLE6 sh tools/delcheck.sh 191 259
     echo "=== a press that finds nothing: 8.5 from an arc, and on the three"
     echo "    quarters of its circle it does not draw"
     DRAWING=SAMPLE6 sh tools/delcheck.sh 244 140
-    DRAWING=SAMPLE6 sh tools/delcheck.sh 254 120
+    full DRAWING=SAMPLE6 sh tools/delcheck.sh 254 120
     echo "=== which entity a press picks, against the original's own answer"
     sh tools/pickcheck.sh
-    DRAWING=SAMPLE0 sh tools/pickcheck.sh 197 157 200 140 324 250 162 175 300 249
+    full DRAWING=SAMPLE0 sh tools/pickcheck.sh 197 157 200 140 324 250 162 175 300 249
     DRAWING=SAMPLE6 WAIT=150000000 AX=170 AY=235 BX=215 BY=260 sh tools/pickcheck.sh 209 243 210 243 214 245 499 271 560 210 210 249
     echo "=== saving: the port writes the file, the original opens it"
     sh tools/savecheck.sh
     sh tools/savecheck.sh -c 3 -p 200 100 -p 500 400
-    sh tools/savecheck.sh -c 11 -p 300 200 -p 400 200
-    sh tools/savecheck.sh -c 10 -r 380 140
+    full sh tools/savecheck.sh -c 11 -p 300 200 -p 400 200
+    full sh tools/savecheck.sh -c 10 -r 380 140
     DRAWING=SAMPLE6 BOOT=150000000 sh tools/savecheck.sh -c 5 -p 499 192 -k 300 -p 520 230
     echo "=== 複線 with a number typed in (src/cmd.c, RESUME 4.12)"
     sh tools/multicheck.sh 20 197 120
-    sh tools/multicheck.sh 40 197 300
+    full sh tools/multicheck.sh 40 197 300
     DRAWING=SAMPLE1 LX=300 LY=200 sh tools/multicheck.sh 500 300 160
-    DRAWING=SAMPLE1 LX=200 LY=400 sh tools/multicheck.sh 500 200 360
+    full DRAWING=SAMPLE1 LX=200 LY=400 sh tools/multicheck.sh 500 200 360
     echo "=== and on a slanted line: the 3 left over are the original drawing"
     echo "    the copy on top of a finished screen, where the port redraws"
     DRAWING=SAMPLE6 LX=499 LY=192 sh tools/multicheck.sh 300 520 230
-    DRAWING=SAMPLE6 LX=499 LY=192 sh tools/multicheck.sh 300 470 160
+    full DRAWING=SAMPLE6 LX=499 LY=192 sh tools/multicheck.sh 300 470 160
     echo "=== 複線's other ways in: the function keys, (R)同じ寸法, ②連続"
     FKEY=1 sh tools/multicheck.sh - 197 120
-    FKEY=5 sh tools/multicheck.sh - 197 300
+    full FKEY=5 sh tools/multicheck.sh - 197 300
     RIGHT=1 sh tools/multicheck.sh 20 197 120
-    CONT=1 sh tools/multicheck.sh 20 197 120
+    full CONT=1 sh tools/multicheck.sh 20 197 120
     GET=197,419 sh tools/multicheck.sh - 300 300
     echo "=== picking a command with its one-letter key"
     sh tools/keycheck.sh D 10
-    sh tools/keycheck.sh C 1
+    full sh tools/keycheck.sh C 1
     echo "=== the line a half-finished command drags"
     sh tools/bandcheck.sh 3 300 200 450 320
-    sh tools/bandcheck.sh 4 250 150 450 350
+    full sh tools/bandcheck.sh 4 250 150 450 350
     echo "    ...and a circle wider than the drawing area, which the original"
     echo "    cuts at its edge (4.19)"
     sh tools/bandcheck.sh 11 300 200 450 400
@@ -338,4 +352,8 @@ done
 [ "$fail" = 0 ] || { echo "native and WASM disagree" >&2; exit 1; }
 
 echo
-echo "all checks passed"
+if [ -n "$FULL" ]; then
+    echo "all checks passed"
+else
+    echo "all checks passed (the short run -- FULL=1 for every case)"
+fi
