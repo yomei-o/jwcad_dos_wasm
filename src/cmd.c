@@ -31,6 +31,8 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->gap_two[0] = c->gap_two[1] = 75.0;
     /* 分割's `[2]`, the count it offers as 前回と同じ. */
     c->divisions = 2;
+    /* 正多角形's `[5]`, likewise. */
+    c->sides = 5;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -1236,7 +1238,7 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * this puts them back afterwards.  ２線's pair reaches y=26 on SAMPLE0
      * and lost 201 pixels to that fill. */
     if (!d || !(JW_RANGE_CMD(c->command) || c->command == 8
-                || c->command == 9 || c->command == 20)
+                || c->command == 9 || c->command == 19 || c->command == 20)
         || (JW_RANGE_CMD(c->command) && c->pressed != 2)) {
         return;
     }
@@ -1327,6 +1329,22 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
      * ①範囲内消去 reddens 224 in the box.
      *
      * ③指定範囲 is the data selection 複写 and 移動 use; it is not done. */
+    if (c->command == 19) {
+        /* 多角形's two menus: `②正多角形` on the item's own line, then
+         * `①任意寸法の正多角形`, and then it asks for the number of sides. */
+        if (c->stage == 0 && item == 2) {
+            c->stage = 1;
+            return 1;
+        }
+        if (c->stage == 1 && item == 1) {
+            c->stage = 2;
+            c->typing = 1;
+            c->typed_n = 0;
+            c->typed[0] = 0;
+            return 1;
+        }
+        return 0;
+    }
     if (c->command == 25 && c->pressed == 0 && c->stage == 0) {
         if (item == 1 || item == 2) {
             c->outside = item == 2;
@@ -1720,6 +1738,30 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->typed_n = (int)strlen(c->typed);
         key = 13;
     }
+    if (c->command == 19) {
+        /* 正多角形's number of sides.  Three or more; the original's own
+         * `[5]` is what it offers. */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n && atoi(c->typed) >= 3) {
+                c->sides = atoi(c->typed);
+            }
+            c->typing = 0;
+            c->stage = 4;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (key >= '0' && key <= '9' && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
     if (c->command == 21) {
         /* 分割's count.  N divisions leave N-1 仮点 between the two points --
          * measured on SAMPLE0, where typing 4 takes `残 100` down to `残 97`. */
@@ -1949,6 +1991,33 @@ static void keep_far(Jwc *d, long k, double cx, double cy, float px, float py)
         jwc_relink_line(d, k, px, py, l->x0, l->y0);
     } else {
         jwc_relink_line(d, k, px, py, l->x1, l->y1);
+    }
+}
+
+/* 正多角形: n corners on the circle through the vertex given, starting at it
+ * and going counter-clockwise. */
+static void polygon(JwCmd *c, Jwc *d, double px, double py)
+{
+    const double dx = px - c->x0, dy = py - c->y0;
+    const double r = sqrt(dx * dx + dy * dy);
+    const double a0 = atan2(dy, dx);
+    const double step = 2.0 * 3.14159265358979323846 / c->sides;
+    int i;
+
+    if (!d || c->sides < 3 || r <= 0.0) {
+        return;
+    }
+    for (i = 0; i < c->sides; i++) {
+        const double a = a0 + step * i, b = a0 + step * (i + 1);
+
+        if (jwc_add_line(d, (float)(c->x0 + r * cos(a)),
+                         (float)(c->y0 + r * sin(a)),
+                         (float)(c->x0 + r * cos(b)),
+                         (float)(c->y0 + r * sin(b)),
+                         (unsigned char)d->line_type, (unsigned char)d->pen,
+                         (unsigned char)((0 << 4) | (d->write_layer & 15)))) {
+            d->lines[d->n_lines - 1].rest[1] = 6;
+        }
     }
 }
 
@@ -2357,6 +2426,38 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typed[0] = 0;
         c->typed_n = 0;
         text_box(c, d);
+        return 1;
+    }
+    if (c->command == 19) {
+        /* 正多角形 —— the centre, then a vertex.
+         *
+         * The vertex given **is** one of the corners, and the rest are at
+         * 360/n round the centre from it, counter-clockwise.  Measured on
+         * SAMPLE0: centre (179,213) and vertex (279,213) with six sides gives
+         * (279,213), (229,299.603), (129,299.603), (79,213), (129,126.397),
+         * (229,126.397) -- a circumradius of 100 all the way round.  With four
+         * sides and a vertex at 45 degrees it comes out square on the axes,
+         * which is the same rule.
+         *
+         * The lines carry **6** in the byte a drawn line carries 3 in,
+         * whatever the number of sides. */
+        double px, py;
+
+        if (c->stage < 4) {
+            return 0;           /* the sides have not been settled yet */
+        }
+        if (!take(c, d, w, sx, sy, right, &px, &py)) {
+            return 1;
+        }
+        if (c->stage != 5) {
+            c->x0 = px;
+            c->y0 = py;
+            c->n0_lines = d->n_lines;
+            c->stage = 5;
+            return 1;
+        }
+        polygon(c, d, px, py);
+        c->stage = 6;
         return 1;
     }
     if (c->command == 21) {

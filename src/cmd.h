@@ -160,6 +160,9 @@ typedef struct {
      * bisectors is decided by the side each line was pressed on. */
     long pick_b;
     int pick_bx, pick_by;
+    /* 正多角形's number of sides -- `正多角形の角数 = ` with `[5]` offered
+     * as 前回と同じ. */
+    int sides;
     /* 分割's count -- `分割 数 = ` with `[2]` offered as 前回と同じ.  The
      * original starts at 2 and remembers what was last typed. */
     int divisions;

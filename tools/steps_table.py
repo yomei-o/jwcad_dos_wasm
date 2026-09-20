@@ -160,6 +160,10 @@ def main():
                 continue
             if cell[1] in (25, 30):
                 continue
+            # The "please wait" flash, which is gone by the time the screen
+            # settles -- tools/stage_table.py's WAIT.
+            if s == '¨Ò¿º³¢':
+                continue
             moved = 1 if t - lo >= COLLECT else 0
             print('    { %d, %d, %2d, %d, %d, 0x%04x, 0, 0, { 0, 0 }, %d, %s },'
                   % (n, k, cell[0], cell[1], fg, bg, moved, escape(s)))
