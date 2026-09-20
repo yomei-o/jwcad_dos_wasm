@@ -1111,6 +1111,25 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * while they wait for Ｂ.  線伸縮 does **not** -- its first press leaves
      * the line white and only changes the line above (measured: one press on
      * SAMPLE0's line 5 leaves all 71 of its pixels as they were). */
+    /* 測定 draws each leg as it is measured, in the same colour 2 (measured:
+     * the 201 pixels between (250,200) and (450,300) come out f30000). */
+    if (c->command == 15) {
+        int k;
+
+        for (k = 1; k < c->meas_n; k++) {
+            int x0, y0, x1, y1;
+
+            at_screen(w, c->meas_px[k - 1], c->meas_py[k - 1], &x0, &y0);
+            at_screen(w, c->meas_px[k], c->meas_py[k], &x1, &y1);
+            /* **Exclusive-or**, not a plain draw: the point two legs share
+             * comes out black because it is drawn twice, and where a leg
+             * crosses something already on the screen the colours mix.  Both
+             * measured -- a plain colour-2 line left the shared point red and
+             * 51 pixels wrong where SAMPLE6's walls cross it. */
+            jw_line(v, x0, y0, x1, y1, mark, ROP_XOR, JW_STYLE_SOLID);
+        }
+        return;
+    }
     /* ２線 shows the pair it is about to put down in the same colour 2, while
      * the pointer is still on the end point (measured: 402 pixels of it). */
     if (c->command == 9) {
@@ -2426,6 +2445,41 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typed[0] = 0;
         c->typed_n = 0;
         text_box(c, d);
+        return 1;
+    }
+    if (c->command == 15) {
+        /* 測定【①距離】 —— press point after point and it adds them up.
+         *
+         * Nothing is drawn and nothing is added to the drawing: the two
+         * lengths go in the band beside the counts, in **metres**.  The first
+         * press starts the run at zero; every one after it adds the leg from
+         * the press before.  Measured on SAMPLE0 (unit_mm 1.744108): from
+         * (129,263) to (329,163) is 0.128 m, and a third press at (379,263)
+         * makes the total 0.192 with the leg 0.064. */
+        double px, py;
+
+        if (!take(c, d, w, sx, sy, right, &px, &py)) {
+            return 1;
+        }
+        if (c->stage != 1) {
+            c->meas_total = 0.0;
+            c->meas_last = 0.0;
+            c->meas_n = 0;
+        } else {
+            const double dx = px - c->meas_x, dy = py - c->meas_y;
+            const double mm = d->unit_mm > 0.0f ? d->denom / d->unit_mm : 1.0;
+
+            c->meas_last = sqrt(dx * dx + dy * dy) * mm / 1000.0;
+            c->meas_total += c->meas_last;
+        }
+        c->meas_x = px;
+        c->meas_y = py;
+        if (c->meas_n < JW_MEAS_MAX) {
+            c->meas_px[c->meas_n] = px;
+            c->meas_py[c->meas_n] = py;
+            c->meas_n++;
+        }
+        c->stage = 1;
         return 1;
     }
     if (c->command == 19) {

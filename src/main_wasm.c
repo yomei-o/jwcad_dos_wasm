@@ -75,6 +75,8 @@ static void sync_ui(void)
     ui.hit_kind = cmd.hit_kind;
     ui.cutting = cmd.cutting;
     ui.divisions = cmd.divisions;
+    ui.meas_total = cmd.meas_total;
+    ui.meas_last = cmd.meas_last;
     ui.temp_left = JWC_TEMP_MAX - (drawing ? drawing->n_temp : 0);
     ui.typing_text = cmd.typing_text;
     ui.mods = cmd.mods;

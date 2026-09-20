@@ -23,6 +23,10 @@
 #define JW_FLIP_ARC  1
 #define JW_FLIP_TEXT 2
 
+/* How many points 測定 keeps for drawing its legs.  The original's own limit
+ * is not known; this is enough for any run a check makes. */
+#define JW_MEAS_MAX 64
+
 typedef struct {
     int command;                /* the menu item in force, 1 to 30, or 0 */
     int pressed;                /* how many points have been taken */
@@ -160,6 +164,13 @@ typedef struct {
      * bisectors is decided by the side each line was pressed on. */
     long pick_b;
     int pick_bx, pick_by;
+    /* 測定【①距離】's running total and last leg, in metres, and where the
+     * last press was.  Each press adds the leg from the one before. */
+    double meas_total, meas_last, meas_x, meas_y;
+    /* And the points themselves, so the legs can be drawn: the original puts
+     * each one on the screen in colour 2 as it is measured. */
+    double meas_px[JW_MEAS_MAX], meas_py[JW_MEAS_MAX];
+    int meas_n;
     /* 正多角形's number of sides -- `正多角形の角数 = ` with `[5]` offered
      * as 前回と同じ. */
     int sides;

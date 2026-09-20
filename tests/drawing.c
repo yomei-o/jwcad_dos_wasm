@@ -244,6 +244,8 @@ int main(int argc, char **argv)
                 t.hit_kind = c.hit_kind;
                 t.cutting = c.cutting;
                 t.divisions = c.divisions;
+                t.meas_total = c.meas_total;
+                t.meas_last = c.meas_last;
                 t.temp_left = JWC_TEMP_MAX - (d ? d->n_temp : 0);
                 t.typing_text = c.typing_text;
                 jw_ui_draw(&v, &t);
@@ -348,6 +350,8 @@ int main(int argc, char **argv)
         s.hit_kind = c.hit_kind;
         s.cutting = c.cutting;
         s.divisions = c.divisions;
+        s.meas_total = c.meas_total;
+        s.meas_last = c.meas_last;
         s.temp_left = JWC_TEMP_MAX - (d ? d->n_temp : 0);
         s.typing_text = c.typing_text;
         if (command) {

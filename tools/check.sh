@@ -236,6 +236,12 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full sh tools/pressfull.sh 9 220 157 250 200 450 200 500 250
     sh tools/savecheck.sh -c 9 -p 220 157 -p 250 200 -p 450 200 -m 500 250
     full DRAWING=SAMPLE6 BOOT=150000000 sh tools/savecheck.sh -c 9 -p 500 193 -p 480 220 -p 520 190 -m 300 400
+    echo "=== 測定 (15 ①距離): the legs add up, and each is drawn in"
+    echo "    exclusive-or as it is measured"
+    sh tools/meascheck.sh 250 200 450 300
+    full sh tools/meascheck.sh 250 200 450 300 500 200
+    full sh tools/meascheck.sh 300 250 300 400 450 400 450 250
+    DRAWING=SAMPLE6 BOOT=150000000 sh tools/meascheck.sh 250 200 450 300
     echo "=== 正多角形 (19 ②): the sides typed, then the centre and a vertex"
     sh tools/polycheck.sh 300 250 400 250 6
     full sh tools/polycheck.sh 300 250 370 180 4

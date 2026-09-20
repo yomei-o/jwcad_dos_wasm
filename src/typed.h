@@ -126,6 +126,23 @@ static const JwStage JW_TYPED[] = {
     { 19, 6,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
     { 19, 6,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "\x9c" " \x92" "\x86" "\x90" "S\x93" "_ \x83" "}\x83" "E\x83" "X\x8e" "w\x8e" "\xa6" " (L)free (R)Read  |\x87" "@\x8a" "p\x90" "\x94" "\x95" "\xcf" "\x8d" "X|" },
     { 19, 6, 73, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[BS]\x91" "O\x8d" "\x80" },
+    /* 測定【①距離】's one stage (15).  Captured with
+     * `python tools/steps_table.py 15 250 200 450 300`.
+     *
+     * Every press writes the same three cells, so there is only one stage:
+     * the two lengths in the band and the command's own line.  The numbers in
+     * them are the program's -- the running total, the last leg and the
+     * drawing's scale -- and src/ui.c puts them back (stage_text).
+     *
+     * The lengths are in **metres**, to three decimals with the trailing
+     * zeros and a trailing point taken off: 0 comes out `0`, 100mm `0.1`,
+     * 128.2mm `0.128`.  Measured four ways. */
+    { 15, 1, 20, 3, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x8b" "\x97" "\x97" "\xa3" " \x97" "\xdd" "\x8c" "v = 0 \x82" "\x8d" },
+    { 15, 1, 50, 3, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x8b" "\x97" "\x97" "\xa3" " " },
+    { 15, 1, 55, 3, 7, 0x0000, 0, 0, { 0, 0 }, 0, " = 0 \x82" "\x8d" },
+    { 15, 1,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 15, 1,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
+    { 15, 1,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x8b" "\x97" "\x97" "\xa3" " \x81" "\x9f" "\x8e" "\x9f" "\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read \x81" "i\x82" "r\x81" "\x81" "1/1\x81" "j|\x87" "@\x95" "\\ \x8e" "\xa6" "|\x87" "A\xb8" "\xd8" "\xb1" "\xb0" "|\x87" "B\x89" "~ \x8e" "\xfc" "|" },
     { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0, 0 },
 };
 

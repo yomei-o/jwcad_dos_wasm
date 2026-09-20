@@ -496,6 +496,39 @@ static void put_numbers(char *out, size_t cap, const char *text,
     out[o] = 0;
 }
 
+/* A length in metres, the way 測定 writes it: three decimals, then the
+ * trailing zeros and a trailing point taken off.  Measured -- 0 comes out
+ * `0`, a tenth of a metre `0.1`, 128.2mm `0.128`. */
+static void put_metres(char *out, size_t cap, const char *text, double m)
+{
+    size_t o = 0;
+    int done = 0;
+
+    while (*text && o + 24 < cap) {
+        if (!done && ((*text >= '0' && *text <= '9') || *text == '.')) {
+            char num[32];
+            size_t n;
+
+            while (*text && ((*text >= '0' && *text <= '9') || *text == '.')) {
+                text++;
+            }
+            n = (size_t)sprintf(num, "%.3f", m);
+            while (n > 0 && num[n - 1] == '0') {
+                n--;
+            }
+            if (n > 0 && num[n - 1] == '.') {
+                n--;
+            }
+            num[n] = 0;
+            o += (size_t)sprintf(out + o, "%s", num);
+            done = 1;
+            continue;
+        }
+        out[o++] = *text++;
+    }
+    out[o] = 0;
+}
+
 static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
     char out[160];
@@ -545,6 +578,26 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
             char one[160];
 
             put_numbers(one, sizeof one, q->text, n, k, q->row == 3);
+            jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+            return;
+        }
+    }
+    /* 測定's two lengths and the scale in its own line. */
+    if (q->command == 15) {
+        char one[160];
+
+        if (q->row == 3 && (q->col == 20 || q->col == 55)) {
+            put_metres(one, sizeof one, q->text,
+                       q->col == 20 ? s->meas_total : s->meas_last);
+            jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+            return;
+        }
+        if (q->row == 1 && q->col == 8) {
+            double n[2];
+
+            n[0] = 1.0;
+            n[1] = s->denom;
+            put_numbers(one, sizeof one, q->text, n, 2, 0);
             jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
             return;
         }

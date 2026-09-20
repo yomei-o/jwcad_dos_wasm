@@ -70,6 +70,10 @@ typedef struct {
      * says so in the band beside the counts and leaves it there until the next
      * press finds something or another item is picked; see jw_ui_draw. */
     int missed;
+    /* 測定【①距離】's two lengths, in metres: the running total and the
+     * last leg.  The band shows them to three decimals with the trailing
+     * zeros taken off. */
+    double meas_total, meas_last;
     /* 分割's count -- what its line offers as 前回と同じ and writes beside
      * the counts -- and how many 仮点 are still free. */
     int divisions;
