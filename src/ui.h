@@ -70,6 +70,10 @@ typedef struct {
      * says so in the band beside the counts and leaves it there until the next
      * press finds something or another item is picked; see jw_ui_draw. */
     int missed;
+    /* 分割's count -- what its line offers as 前回と同じ and writes beside
+     * the counts -- and how many 仮点 are still free. */
+    int divisions;
+    int temp_left;
     /* 線切断 has just cut a line and the pointer has not moved: the top line
      * says `□ 線切断はマウス移動` (src/stage.h stage 11) instead of the
      * command's own line. */

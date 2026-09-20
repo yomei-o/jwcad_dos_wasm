@@ -1730,7 +1730,10 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             c->typing = 0;
             divide_points(c, d);
-            c->stage = 1;
+            /* Its own line again, with the count it used beside the counts
+             * and `残` down by however many points it left -- src/typed.h's
+             * stage 4. */
+            c->stage = 4;
             return 1;
         }
         if (key == 8) {
@@ -2373,6 +2376,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             return 1;
         }
         if (c->stage != 1) {
+            /* Stage 4 is where [Enter] leaves it, asking for another start. */
             c->x0 = px;
             c->y0 = py;
             c->stage = 1;

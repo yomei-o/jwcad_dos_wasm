@@ -3,11 +3,7 @@
 #
 #   sh tools/divcheck.sh 250 200 450 200 4
 #
-# **まだ通りません。** 仮点の位置は合っていますが（作図領域の差はリングでは
-# なく、上の行の `残 97` が右端で作図領域に食い込んでいるぶん）、分割の
-# 上の行を src/typed.h に入れていないので 1800 画素ほど違います。
-# RESUME.md 4.19f に採ってある文字列があります。tools/check.sh には
-# まだ入れていません。
+#   DRAWING=SAMPLE6 BOOT=150000000 sh tools/divcheck.sh 250 200 450 200 5
 #
 # 項目を選んだあとの最初の押しは届かないので、捨て駒を 1 回入れています。
 set -e
@@ -17,7 +13,12 @@ EMU=../dosv_emu_cpp/dosemu.exe
 DRAWING="${DRAWING:-SAMPLE0}"
 ax=$1; ay=$2; bx=$3; by=$4; n=${5:-4}
 {
-    printf 'wait 40000000\nmouse 30 152\nwait 2000000\nclick left\nwait 40000000\n'
+    printf 'wait %s
+mouse 30 152
+wait 2000000
+click left
+wait 40000000
+' "${BOOT:-40000000}"
     # the first press after the item is picked never reaches the command
     printf 'mouse 600 450\nwait 3000000\ndown left\nwait 3000000\nup left\nwait 20000000\n'
     printf 'mouse %s %s\nwait 3000000\ndown left\nwait 3000000\nup left\nwait 20000000\n' "$ax" "$ay"

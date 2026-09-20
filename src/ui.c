@@ -549,6 +549,21 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
             return;
         }
     }
+    /* 分割's numbers are the program's too: the count it offers as 前回と同じ
+     * (`[2]`), how many 仮点 are left (`残 97`) and the count it just used
+     * (`   4` beside the counts).  The digits in the captured text are
+     * replaced the way 文字's are. */
+    if (q->command == 21 && (q->col == 55 || q->col == 72 || q->col == 8)) {
+        char one[160];
+        double n[1];
+
+        n[0] = q->col == 55 ? s->divisions
+             : q->col == 72 ? s->divisions
+             : s->temp_left;
+        put_numbers(one, sizeof one, q->text, n, 1, 0);
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+        return;
+    }
     if (q->numbers == 3) {
         /* The one cell the original prints with a bare `%g` -- 「（」's radius
          * at the end of its line.  See tools/stage_table.py's LOOSE. */
@@ -1066,7 +1081,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             /* 複写's distance field, the same shape but from column 18:
              * `[ESC].距離 X,Y =` fills columns 1 to 16 and the characters go in
              * one to a cell after it. */
-            if ((s->command == 1 || s->command == 16) && i == 7) {
+            if (((s->command == 1 || s->command == 16) && i == 7)
+                || (s->command == 21 && i == 2)) {
                 int n;
 
                 for (n = 0; n < s->typed_n && n < 8; n++) {

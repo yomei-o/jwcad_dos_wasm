@@ -236,6 +236,11 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full sh tools/pressfull.sh 9 220 157 250 200 450 200 500 250
     sh tools/savecheck.sh -c 9 -p 220 157 -p 250 200 -p 450 200 -m 500 250
     full DRAWING=SAMPLE6 BOOT=150000000 sh tools/savecheck.sh -c 9 -p 500 193 -p 480 220 -p 520 190 -m 300 400
+    echo "=== 分割 (21): 仮点 spread evenly between two points"
+    sh tools/divcheck.sh 250 200 450 200 4
+    full sh tools/divcheck.sh 250 200 450 350 6
+    full sh tools/divcheck.sh 300 250 300 400 2
+    DRAWING=SAMPLE6 BOOT=150000000 sh tools/divcheck.sh 250 200 450 200 5
     echo "=== 面取 (8): the corner between two lines is cut off"
     sh tools/pressfull.sh 8 220 157
     sh tools/pressfull.sh 8 220 157 163 300

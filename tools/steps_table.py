@@ -151,6 +151,15 @@ def main():
             fg, bg, s, t = last[cell]
             if not s.strip() and cell[1] != 1:
                 continue
+            # The two counts and their label belong to the panel, which
+            # src/ui.c draws from the drawing.  Replaying them would put the
+            # capture's own drawing's numbers on every other one -- SAMPLE6
+            # came out saying 30|13.  Same rule as tools/stage_table.py's
+            # PANEL.
+            if cell[0] == 1 and cell[1] in (2, 3) and fg == 0:
+                continue
+            if cell[1] in (25, 30):
+                continue
             moved = 1 if t - lo >= COLLECT else 0
             print('    { %d, %d, %2d, %d, %d, 0x%04x, 0, 0, { 0, 0 }, %d, %s },'
                   % (n, k, cell[0], cell[1], fg, bg, moved, escape(s)))

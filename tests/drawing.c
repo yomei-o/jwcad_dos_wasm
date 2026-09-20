@@ -243,6 +243,8 @@ int main(int argc, char **argv)
                 t.moved = c.moved;
                 t.hit_kind = c.hit_kind;
                 t.cutting = c.cutting;
+                t.divisions = c.divisions;
+                t.temp_left = JWC_TEMP_MAX - (d ? d->n_temp : 0);
                 t.typing_text = c.typing_text;
                 jw_ui_draw(&v, &t);
                 jw_cmd_top(&c, d, jw_ui_top_item(press[i][1], 8));
@@ -345,6 +347,8 @@ int main(int argc, char **argv)
         s.moved = c.moved;
         s.hit_kind = c.hit_kind;
         s.cutting = c.cutting;
+        s.divisions = c.divisions;
+        s.temp_left = JWC_TEMP_MAX - (d ? d->n_temp : 0);
         s.typing_text = c.typing_text;
         if (command) {
             /* the line of guidance goes the moment anything is picked */
