@@ -1502,7 +1502,7 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * and lost 201 pixels to that fill. */
     if (!d || !(JW_RANGE_CMD(c->command) || c->command == 8
                 || c->command == 9 || c->command == 19 || c->command == 20
-                || c->command == 23)
+                || c->command == 23 || c->command == 26)
         || (JW_RANGE_CMD(c->command) && c->pressed != 2)) {
         return;
     }
@@ -1593,6 +1593,14 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
      * ①範囲内消去 reddens 224 in the box.
      *
      * ③指定範囲 is the data selection 複写 and 移動 use; it is not done. */
+    if (c->command == 26) {
+        /* `接線 |①円～円間 |②円周点 |③指定点 |④角度指定 |` -- only ③. */
+        if (c->tan_on && c->stage == 1 && item == 3) {
+            c->stage = 2;
+            return 1;
+        }
+        return 0;
+    }
     if (c->command == 18) {
         /* ①【指示終了】 once the frame is closed, and then ① 実 行.  The
          * line the second one comes up with is
@@ -2634,6 +2642,57 @@ static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
     jwc_relink_line(d, second, bx, by, (float)cx, (float)cy);
 }
 
+/* ------------------------------------------------------- 円線接 ①接線 */
+
+/* ③指定点: the tangent from the point in hand to the circle that was
+ * pressed.  There are two of them and the one nearer the press wins.
+ *
+ * Measured on TEST1: with the point at (379,113) and the quarter arc
+ * c=(165,193.397) r=43.603 pressed at its middle, the original draws
+ * (379,113)-(187.838,230.540).  That end is on the circle to a thousandth and
+ * the radius there is square to the line, and it is the nearer of the two
+ * tangent points to the press.  The record's A byte is 0x05.
+ */
+static int tangent_to(JwCmd *c, Jwc *d, const JwView *w, long k,
+                      int sx, int sy)
+{
+    const JwcArc *a = &d->arcs[k];
+    const double dx = c->tan_x - a->cx, dy = c->tan_y - a->cy;
+    const double far = sqrt(dx * dx + dy * dy);
+    double base, half, bx, by, best = 0.0, px, py;
+    int i, got = 0;
+
+    if (far <= (double)a->r) {
+        return 0;               /* inside it: there is no tangent */
+    }
+    base = atan2(dy, dx);
+    half = acos((double)a->r / far);
+    jw_cmd_at(w, sx, sy, &px, &py);
+    for (i = 0; i < 2; i++) {
+        const double t = base + (i ? -half : half);
+        const double tx = a->cx + a->r * cos(t);
+        const double ty = a->cy + a->r * sin(t);
+        const double away = (tx - px) * (tx - px) + (ty - py) * (ty - py);
+
+        if (!got || away < best) {
+            best = away;
+            bx = tx;
+            by = ty;
+            got = 1;
+        }
+    }
+    if (!got) {
+        return 0;
+    }
+    if (!jwc_add_line(d, (float)c->tan_x, (float)c->tan_y, (float)bx, (float)by,
+                      (unsigned char)d->line_type, (unsigned char)d->pen,
+                      (unsigned char)((0 << 4) | (d->write_layer & 15)))) {
+        return 0;
+    }
+    d->lines[d->n_lines - 1].rest[1] = 0x05;
+    return 1;
+}
+
 /* ----------------------------------------------------------- ハッチ */
 
 /* Where a hatch line crosses one side of the frame.
@@ -3094,6 +3153,55 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typed_at = 0;
         text_box(c, d);
         return 1;
+    }
+    if (c->command == 26) {
+        /* 円線接: the item's own line offers ①接 線 with the left button and
+         * ②接円 with the right, and the first press in the drawing is what
+         * chooses -- it is taken for that and nothing else.  Then ③指定点 off
+         * the top line, a point, and a circle. */
+        if (!c->tan_on) {
+            if (right) {
+                return 0;       /* ②接円 is not done */
+            }
+            c->tan_on = 1;
+            c->pressed = 1;
+            c->stage = 1;
+            return 1;
+        }
+        if (c->stage == 2 || c->stage == 4) {
+            if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->tan_x = x;
+            c->tan_y = y;
+            c->pressed = 1;
+            c->stage = 3;
+            return 1;
+        }
+        if (c->stage == 3) {
+            const long k = jw_cmd_arc_at(d, w, sx, sy);
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            /* The new line goes **over** the finished screen, which is what
+             * the original does -- a text drawn after it in the file would
+             * otherwise cover it (TEST1 has one right across the tangent).
+             * jw_cmd_after draws everything past these three. */
+            c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
+            if (!tangent_to(c, d, w, k, sx, sy)) {
+                return 0;
+            }
+            c->stage = 4;
+            return 1;
+        }
+        return 0;
     }
     if (c->command == 18) {
         /* ハッチ: the frame is built out of lines that are pressed one after

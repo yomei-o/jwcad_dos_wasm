@@ -175,6 +175,10 @@ typedef struct {
     long hatch_line[JW_HATCH_MAX];
     int hatch_n;                /* how many are in the frame */
     int hatch;                  /* the frame is being taken */
+    /* 円線接（26 番）の ①接線 ③指定点 —— 指した点と、そこから円に引いた
+     * 接線。②接円 と ①円～円間・②円周点・④角度指定 は入れていません。 */
+    int tan_on;                 /* ①接線 is running */
+    double tan_x, tan_y;        /* the 指定点 it has in hand */
     int hatch_closed;           /* the start line has come round again */
     long hatch_first;           /* the first line ① 実 行 made */
     double hatch_angle;         /* ③角 度, degrees -- 45.00 to start with */
