@@ -1282,7 +1282,18 @@ static int turn_range(JwCmd *c, Jwc *d, double px, double py)
                 d->lines[k].x0, d->lines[k].y0, &x0, &y0);
         turn_at(c->base_x, c->base_y, co, si, px, py,
                 d->lines[k].x1, d->lines[k].y1, &x1, &y1);
-        if (jwc_dup_line(d, k, 0.0f, 0.0f)) {
+        /* 移動 takes the originals with it instead of leaving them.
+         * Measured: 移動 ⑥回転 on SAMPLE0's (150,130)-(245,170) with the
+         * base at (79,163), 30 degrees and the place at (279,163) puts lines
+         * 5 and 6 and text 0 at exactly the coordinates 複写 gives its
+         * copies, and the counts stay at 30|13. */
+        if (JW_MOVING(c)) {
+            d->lines[k].x0 = (float)x0;
+            d->lines[k].y0 = (float)y0;
+            d->lines[k].x1 = (float)x1;
+            d->lines[k].y1 = (float)y1;
+            n++;
+        } else if (jwc_dup_line(d, k, 0.0f, 0.0f)) {
             JwcLine *q = &d->lines[d->n_lines - 1];
 
             q->x0 = (float)x0;
@@ -1300,6 +1311,13 @@ static int turn_range(JwCmd *c, Jwc *d, double px, double py)
         }
         turn_at(c->base_x, c->base_y, co, si, px, py,
                 d->arcs[k].cx, d->arcs[k].cy, &cx, &cy);
+        if (JW_MOVING(c)) {
+            d->arcs[k].cx = (float)cx;
+            d->arcs[k].cy = (float)cy;
+            d->arcs[k].tilt += twist;
+            n++;
+            continue;
+        }
         if (jwc_dup_arc(d, k, 0.0f, 0.0f)) {
             JwcArc *q = &d->arcs[d->n_arcs - 1];
 
@@ -1348,7 +1366,13 @@ static int turn_range(JwCmd *c, Jwc *d, double px, double py)
             x1 = x0 + len * cos(dir);
             y1 = y0 + len * sin(dir);
         }
-        if (jwc_dup_text(d, k, 0.0f, 0.0f)) {
+        if (JW_MOVING(c)) {
+            d->texts[k].x0 = (float)x0;
+            d->texts[k].y0 = (float)y0;
+            d->texts[k].x1 = (float)x1;
+            d->texts[k].y1 = (float)y1;
+            n++;
+        } else if (jwc_dup_text(d, k, 0.0f, 0.0f)) {
             JwcText *q = &d->texts[d->n_texts - 1];
 
             q->x0 = (float)x0;
@@ -1401,43 +1425,73 @@ static int scale_range(JwCmd *c, Jwc *d, double px, double py)
         if (!picked_line(c, d, k)) {
             continue;
         }
-        if (jwc_dup_line(d, k, 0.0f, 0.0f)) {
-            JwcLine *q = &d->lines[d->n_lines - 1];
+        {
+            const double ax = (d->lines[k].x0 - c->base_x) * sx + px;
+            const double ay = (d->lines[k].y0 - c->base_y) * sy + py;
+            const double bx = (d->lines[k].x1 - c->base_x) * sx + px;
+            const double by = (d->lines[k].y1 - c->base_y) * sy + py;
+            JwcLine *q = NULL;
 
-            q->x0 = (float)((d->lines[k].x0 - c->base_x) * sx + px);
-            q->y0 = (float)((d->lines[k].y0 - c->base_y) * sy + py);
-            q->x1 = (float)((d->lines[k].x1 - c->base_x) * sx + px);
-            q->y1 = (float)((d->lines[k].y1 - c->base_y) * sy + py);
-            n++;
+            if (JW_MOVING(c)) {
+                q = &d->lines[k];
+            } else if (jwc_dup_line(d, k, 0.0f, 0.0f)) {
+                q = &d->lines[d->n_lines - 1];
+            }
+            if (q) {
+                q->x0 = (float)ax;
+                q->y0 = (float)ay;
+                q->x1 = (float)bx;
+                q->y1 = (float)by;
+                n++;
+            }
         }
     }
     for (k = 0; k < c->n0_arcs; k++) {
         if (!picked_arc(c, d, k)) {
             continue;
         }
-        if (jwc_dup_arc(d, k, 0.0f, 0.0f)) {
-            JwcArc *q = &d->arcs[d->n_arcs - 1];
+        {
+            const double ax = (d->arcs[k].cx - c->base_x) * sx + px;
+            const double ay = (d->arcs[k].cy - c->base_y) * sy + py;
+            const double r = d->arcs[k].r * sx;
+            JwcArc *q = NULL;
 
-            q->cx = (float)((d->arcs[k].cx - c->base_x) * sx + px);
-            q->cy = (float)((d->arcs[k].cy - c->base_y) * sy + py);
-            q->r = (float)(d->arcs[k].r * sx);
-            n++;
+            if (JW_MOVING(c)) {
+                q = &d->arcs[k];
+            } else if (jwc_dup_arc(d, k, 0.0f, 0.0f)) {
+                q = &d->arcs[d->n_arcs - 1];
+            }
+            if (q) {
+                q->cx = (float)ax;
+                q->cy = (float)ay;
+                q->r = (float)r;
+                n++;
+            }
         }
     }
     for (k = 0; k < c->n0_texts && takes_text(c); k++) {
         if (!picked_text(c, d, k)) {
             continue;
         }
-        if (jwc_dup_text(d, k, 0.0f, 0.0f)) {
-            JwcText *q = &d->texts[d->n_texts - 1];
+        {
             const double x0 = (d->texts[k].x0 - c->base_x) * sx + px;
             const double y0 = (d->texts[k].y0 - c->base_y) * sy + py;
+            const double dx = d->texts[k].x1 - d->texts[k].x0;
+            const double dy = d->texts[k].y1 - d->texts[k].y0;
+            JwcText *q = NULL;
 
-            q->x0 = (float)x0;
-            q->y0 = (float)y0;
-            q->x1 = (float)(x0 + (d->texts[k].x1 - d->texts[k].x0));
-            q->y1 = (float)(y0 + (d->texts[k].y1 - d->texts[k].y0));
-            n++;
+            if (JW_MOVING(c)) {
+                q = &d->texts[k];
+            } else if (jwc_dup_text(d, k, 0.0f, 0.0f)) {
+                q = &d->texts[d->n_texts - 1];
+            }
+            if (q) {
+                q->x0 = (float)x0;
+                q->y0 = (float)y0;
+                q->x1 = (float)(x0 + dx);
+                q->y1 = (float)(y0 + dy);
+                n++;
+            }
         }
     }
     return n;
@@ -1621,6 +1675,13 @@ static void copy_again(JwCmd *c, Jwc *d)
      *
      * Both are `base + n x offset` for the translation, which is what
      * ①ﾏｳｽ位置 does as well. */
+    if (JW_MOVING(c) && (c->rotate || c->scaling || c->mscale)) {
+        /* 移動 has already taken the originals with it, so another step would
+         * have to turn or scale what is now in place -- and what the original
+         * does there is **not measured**.  Doing nothing is nearer to "not
+         * done" than doing the wrong thing. */
+        return;
+    }
     if (c->rotate) {
         const double was = c->rot_deg;
 
@@ -1722,7 +1783,6 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 
     for (k = 0; k < c->n0_lines; k++) {
         const JwcLine *l = &d->lines[k];
-        int x0, y0, x1, y1;
         int style = jw_view_line_style(l->type);
 
         if (!in_reach_layer(d, l->layer)) {
@@ -1751,16 +1811,15 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         } else if (!picked_line(c, d, k)) {
             continue;
         }
-        at_screen(w, l->x0, l->y0, &x0, &y0);
-        at_screen(w, l->x1, l->y1, &x1, &y1);
         if (style != jw_view_line_style(l->type)) {
             /* The dotted one is not painted *over* the line: the original
              * blacks the whole of it first, so the gaps come out background
              * and not the white that was there.  Measured -- the gaps are
              * 000000 in the original's screen, not ffffff. */
-            jw_line(v, x0, y0, x1, y1, 0, ROP_REPLACE, JW_STYLE_SOLID);
+            jw_view_mark(v, w, l->x0, l->y0, l->x1, l->y1, 0,
+                         JW_STYLE_SOLID);
         }
-        jw_line(v, x0, y0, x1, y1, mark, ROP_REPLACE, style);
+        jw_view_mark(v, w, l->x0, l->y0, l->x1, l->y1, mark, style);
     }
     for (k = 0; k < c->n0_arcs; k++) {
         const JwcArc *a = &d->arcs[k];
@@ -2244,20 +2303,20 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
             copy_again(c, d);
             return 1;
         }
-        if (c->command == 1 && c->stage == 4 && item == 4) {
+        if (c->stage == 4 && item == 4) {
             /* ④ﾏｳｽ倍率: four presses and no typing.  Stages 21 to 25. */
             c->mscale = 1;
             c->stage = 21;
             return 1;
         }
-        if (c->command == 1 && c->stage == 4 && item == 3) {
+        if (c->stage == 4 && item == 3) {
             /* ③数値倍率: the 基準点 first, on the same line ⑥回転 and
              * ①ﾏｳｽ位置 put up.  Stages 17 to 20 are free in src/copy.h. */
             c->scaling = 1;
             c->stage = 17;
             return 1;
         }
-        if (c->command == 1 && c->stage == 4 && item == 6) {
+        if (c->stage == 4 && item == 6) {
             /* ⑥回転: the 基準点 first, on the same line ①ﾏｳｽ位置 puts up.
              * Stages 13 to 16 are free in src/copy.h. */
             c->rotate = 1;

@@ -327,6 +327,12 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     echo "    ...and ③連続, which adds the angle up but not the scale (4.30)"
     full LABEL=回転→③連続 sh tools/recsave.sh -c 1 -r 150 130 -p 245 170 -t 580 -t 520 -p 200 300 -k 30 -p 400 300 -t 540
     full LABEL=倍率→③連続 sh tools/recsave.sh -c 1 -r 150 130 -p 245 170 -t 580 -t 300 -p 200 300 -k 2 -p 400 300 -t 540
+    echo "=== 移動 (16) の ⑥回転・③数値倍率・④ﾏｳｽ倍率 -- in place (4.33)"
+    echo "    the 2 left over are the original's own erase taking a neighbour"
+    LABEL=移動⑥回転 sh tools/reccheck.sh -c 16 -r 150 130 -p 245 170 -t 580 -t 520 -p 200 300 -k 30 -p 400 300
+    full LABEL=移動③倍率 sh tools/reccheck.sh -c 16 -r 150 130 -p 245 170 -t 580 -t 300 -p 200 300 -k 2 -p 400 300
+    full LABEL=移動⑥回転の記録 sh tools/recsave.sh -c 16 -r 150 130 -p 245 170 -t 580 -t 520 -p 200 300 -k 30 -p 400 300
+    full LABEL=移動④ﾏｳｽ倍率の記録 sh tools/recsave.sh -c 16 -r 150 130 -p 245 170 -t 580 -t 390 -p 200 300 -p 300 380 -p 350 200 -p 550 360
     echo "=== 複写 ④ﾏｳｽ倍率: the scale off two boxes (RESUME 4.32)"
     LABEL=ﾏｳｽ倍率 sh tools/reccheck.sh -c 1 -r 150 130 -p 245 170 -t 580 -t 390 -p 200 300 -p 300 380 -p 350 200 -p 550 360
     full LABEL=ﾏｳｽ倍率の記録 sh tools/recsave.sh -c 1 -r 150 130 -p 245 170 -t 580 -t 390 -p 200 300 -p 300 380 -p 350 200 -p 550 360

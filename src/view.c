@@ -975,6 +975,37 @@ void jw_view_line(VGA *v, const Jwc *d, const JwcLine *l, const JwView *w,
         jw_view_pen_colour(l->pen), ROP_REPLACE, jw_view_line_style(l->type));
     }
 
+/* A line in drawing coordinates, cut to the window, in whatever colour and
+ * style the caller wants.
+ *
+ * `jw_line` does not clip -- v->clip_* is the caller's business, the way
+ * `inside` above explains -- so anything that hands it screen coordinates has
+ * to cut them first.  The range marking (src/cmd.c's jw_cmd_marked) did not,
+ * and it never showed while only 複写 used it, because 複写 leaves what it
+ * picked where it was.  移動 takes the selection with it: scaling SAMPLE0's
+ * (150,130)-(245,170) by two puts line 5 at screen y=14.77, and 141 red
+ * pixels landed across the top line.
+ */
+void jw_view_mark(VGA *v, const JwView *w, double ax, double ay,
+                  double bx, double by, unsigned colour, int style)
+{
+    double fx0 = (ax - w->ox) * w->scale + w->ax;
+    double fy0 = w->ay - (ay - w->oy) * w->scale;
+    double fx1 = (bx - w->ox) * w->scale + w->ax;
+    double fy1 = w->ay - (by - w->oy) * w->scale;
+
+    if (!inside(w, (int)fx0, (int)fy0)) {
+        if (!inside(w, (int)fx1, (int)fy1)) {
+            return;
+        }
+        clip_far(w, fx1, fy1, &fx0, &fy0);
+    } else {
+        clip_far(w, fx0, fy0, &fx1, &fy1);
+    }
+    jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy1, colour, ROP_REPLACE,
+            style);
+}
+
 /* 用紙枠: the paper's edge, in red and dashed.
  *
  * It is the rectangle **(0,0)-(518,447)** in drawing units, which at scale

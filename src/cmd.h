@@ -303,6 +303,10 @@ typedef struct {
  * `|①同形別処理|②他図形処理|③連続|`: 8 is ②数値位置's, 9 is ①ﾏｳｽ位置's, and
  * 16, 20 and 25 belong to ⑥回転, ③数値倍率 and ④ﾏｳｽ倍率 (src/typed.h).  The
  * line is word for word the same in all of them. */
+/* 移動 takes the originals with it where 複写 leaves them behind; the
+ * transforms are the same either way. */
+#define JW_MOVING(c) ((c)->command == 16)
+
 #define JW_REDO_STAGE(n) \
     ((n) == 8 || (n) == 9 || (n) == 16 || (n) == 20 || (n) == 25)
 
