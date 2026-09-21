@@ -482,6 +482,8 @@ sh tools/seqcheck.sh "80 344 left" "44 360 right" || true
 sh tools/seqcheck.sh "80 344 left" "16 360 right" || true
 sh tools/seqcheck.sh "16 360 left" "16 360 right" || true
 sh tools/seqcheck.sh "40 392 left" || true
+sh tools/seqcheck.sh "30 296 left" "110 8 left" || true
+sh tools/seqcheck.sh "30 296 left" "220 8 left" || true
 full sh -c 'DRAWING=SAMPLE3 BOOT=90000000 sh tools/seqcheck.sh "40 392 left"' || true
 full sh -c 'DRAWING=SAMPLE6 BOOT=120000000 sh tools/seqcheck.sh "80 344 left" "16 360 right"' || true
 full "$NODE" tests/upload_check.js orig/TEST7.JWC

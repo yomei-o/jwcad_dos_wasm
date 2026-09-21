@@ -89,9 +89,16 @@ typedef struct {
     /* サブ画面表示: a miniature of the whole drawing in the box at the
      * bottom of the panel, with the paper's edge round it. */
     int sub_screen;
+    /* 入出力 (30) is a menu of menus.  0 is the one the item itself puts
+     * up; JW_IO_* say which of its own the top line is showing. */
+    int io_stage;
 
 /* What JwUi.data_screen holds: 1 = the sixteen groups, 2 = the sixteen
  * layers of the group being written to. */
+/* 入出力's own menus, JwUi.io_stage. */
+#define JW_IO_FILE 1            /* ①ﾌｧｲﾙ  -> |①保存(L)|②読込(R)|…  */
+#define JW_IO_PLOT 2            /* ②ﾌﾟﾛｯﾀ -> |①RS-232C出力(L)|…     */
+
 #define JW_DATA_GROUP 1
 #define JW_DATA_LAYER 2
     int layer_mode;

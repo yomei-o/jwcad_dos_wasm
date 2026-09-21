@@ -557,6 +557,20 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
      * (4.9 in RESUME.md).  jw_ui_top_item reads the line the chrome last
      * wrote, so the chrome has to have been drawn -- present() does that at
      * the end of every press, so by the time anyone can click it has. */
+    /* 入出力's top line is its own menu, and pressing an item there opens
+     * another one.  Measured: ①ﾌｧｲﾙ and ②ﾌﾟﾛｯﾀ each replace the line; the
+     * rest are not done yet, and pressing them leaves it as it was. */
+    if (ui.command == 30 && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
+        const int item = jw_ui_top_item(x, y);
+
+        if (ui.io_stage == 0 && (item == 1 || item == 2)) {
+            ui.io_stage = item == 1 ? JW_IO_FILE : JW_IO_PLOT;
+        }
+        mouse_x = x;
+        mouse_y = y;
+        present();
+        return -1;
+    }
     if (cmd.command && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
         if (jw_cmd_top(&cmd, drawing, jw_ui_top_item(x, y))) {
             jw_ui_from(&ui, drawing);       /* the counts move with it */

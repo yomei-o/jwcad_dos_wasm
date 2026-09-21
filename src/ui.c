@@ -146,6 +146,18 @@ static int is_lead(unsigned char c)
 #define JW_SUB_AX 26.3
 #define JW_SUB_AY 461.0
 
+/* 入出力's two menus, byte for byte off the original. */
+#define JW_IO_FILE_BAR \
+    "|\x87\x40\x95\xdb\x91\xb6(L)|\x87\x41\x93\xc7\x8d\x9e(R)" \
+    "|\x87\x42\x8d\x87\x90\xac|\x87\x43\x8d\xed\x8f\x9c" \
+    "|\x87\x44\xc4\xde\xd7\xb2\xcc\xde\x95\xcf\x8d\x58" \
+    "|\x87\x45\x82\x63\x82\x77\x82\x65|\x87\x46INDEX|"
+#define JW_IO_PLOT_BAR \
+    "|\x87\x40RS-232C\x8f\x6f\x97\xcd(L)" \
+    "|\x87\x41\xcc\xdf\xd8\xdd\xc0\xce\xdf\xb0\xc4\x8f\x6f\x97\xcd(R)" \
+    "|\x87\x42\xcc\xa7\xb2\xd9\x8f\x6f\x97\xcd" \
+    "|\x87\x43\x98\x67\x8f\x91\x8d\x9e|"
+
 static char top_line[82];
 
 static void top_clear(void)
@@ -924,6 +936,12 @@ static void menu_hover(VGA *v, const JwUi *s)
     } else {
         return;
     }
+    if (command == s->command) {
+        /* The row that is **picked** keeps its yellow: pointing at it does
+         * not turn it white.  Caught by picking 入出力 with the pointer
+         * still on it -- 638 pixels of the row came out white. */
+        return;
+    }
     fill(v, x0, 64 + 16 * row, x1, 79 + 16 * row, 7);
     jw_ui_text(v, col, row + 5, 0, 0, jw_ui_menu_label(command));
 }
@@ -1264,6 +1282,19 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 12, 1, 7, 0, "\x95" "\x5c" "\x8e" "\xa6" "\x92" "\x86" "\x90" "S " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" "   " "\x94" "C" "\x88" "\xd3" "\x94" "{" "\x97" "\xa6" "\xcf" "\xb3" "\xbd" "(L) " "\x94" "{" "\x97" "\xa6" "=1.0" "\xcf" "\xb3" "\xbd" "(R)  " "\x8d" "\xc4" "\x95" "\x5c" "\x8e" "\xa6" "[XFER]");
         } else {
             jw_ui_text(v, 30, 1, 7, 0, s->zoom_stage == 1 ? "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "\x8e" "n" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " " : "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "    " "\x8f" "I" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " ");
+        }
+    } else if (s->command == 30 && s->io_stage) {
+        /* 入出力's own menus.  Read off the original: ①ﾌｧｲﾙ and ②ﾌﾟﾛｯﾀ
+         * each replace the top line with one of their own, both behind an
+         * `[ESC]`, and ﾌｧｲﾙ adds the drive beside it and `[BS]前項` at the
+         * far end. */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        if (s->io_stage == JW_IO_FILE) {
+            jw_ui_text(v, 8, 1, 7, 0, JW_IO_FILE_BAR);
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91\x4f\x8d\x80");
+            jw_ui_text(v, 46, 2, 7, 0xffffu, "(A:/B:)");
+        } else {
+            jw_ui_text(v, 8, 1, 7, 0, JW_IO_PLOT_BAR);
         }
     } else if (s->command >= 1 && s->command <= 30) {
         /* what the original writes there once an item is picked, piece by
