@@ -611,6 +611,57 @@ Jwc *jwc_load(const char *path, const char **why)
     return d;
 }
 
+/* An empty drawing -- what the original has in hand when it is started with
+ * no file on its command line, and what ⑤新規図面 gives.
+ *
+ * **It matters that there is one at all.**  Every drawing command asks the
+ * drawing for the entity under the pointer before it does anything, and with
+ * nothing in hand they all return at the first line: the port started with
+ * no drawing, and then 文字 and every other command did nothing at all until
+ * one was opened.  The original is never in that state.
+ *
+ * The settings are the ones jw_ui_default() carries, which are the original's
+ * own startup values -- the screen it draws with no drawing is compared with
+ * the original's, whole, by tools/ui.sh, and stays at nought pixels.
+ *
+ * `raw` is null: a .JWC is a memory image, and the preamble to write one is
+ * the drawing's own.  jwc_bytes says so rather than inventing 1,589 bytes of
+ * it, until 入出力 → ①保存 is built and the original's preamble for a new
+ * drawing has been read off it. */
+Jwc *jwc_new(void)
+{
+    static const short DEF_W[11] = {30, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100};
+    static const short DEF_G[11] = { 5,  0,  0,  5,  5,  5, 10, 10, 10, 10,  10};
+    static const short DEF_P[11] = { 2,  1,  1,  2,  2,  3,  3,  4,  4,  5,   5};
+    static const double PAPER[5] = {1189.0, 841.0, 594.0, 420.0, 297.0};
+    Jwc *d = calloc(1, sizeof *d);
+    int i;
+
+    if (!d) {
+        return NULL;
+    }
+    d->pen = 2;
+    d->line_type = 1;
+    d->paper = 3;
+    d->denom = 100.0f;
+    d->decimals = 3;
+    d->scale = 1.0f;
+    d->unit_mm = (float)(518.0 / PAPER[d->paper]);
+    for (i = 0; i < 256; i++) {
+        d->layer_on[i] = 1;
+        d->layer_edit[i] = 1;
+    }
+    for (i = 0; i < 16; i++) {
+        d->group_on[i] = 1;
+        d->group_edit[i] = 1;
+    }
+    memcpy(d->text_w, DEF_W, sizeof d->text_w);
+    memcpy(d->text_h, DEF_W, sizeof d->text_h);
+    memcpy(d->text_gap, DEF_G, sizeof d->text_gap);
+    memcpy(d->text_pen, DEF_P, sizeof d->text_pen);
+    return d;
+}
+
 void jwc_free(Jwc *d)
 {
     if (d) {

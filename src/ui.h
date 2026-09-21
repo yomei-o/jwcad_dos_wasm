@@ -135,6 +135,7 @@ typedef struct {
 #define JW_IO_PSET 4            /* -> |①確定(L)|②範囲変更(R)|…      */
 #define JW_IO_PGO 5             /* -> 作図開始|① 実行(L)|…           */
 #define JW_IO_LOAD 6            /* ②読込 -> ファイル選択の一覧        */
+#define JW_IO_SAVE 7            /* ①保存 -> 同じ一覧、上の行が違う    */
 
 #define JW_DATA_GROUP 1
 #define JW_DATA_LAYER 2

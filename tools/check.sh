@@ -495,6 +495,9 @@ echo "=== プロッタ出力を本物の道筋で: 入出力 → ②ﾌﾟﾛｯ
 "$NODE" tools/plotroad.mjs orig/SAMPLE0.JWC
 full "$NODE" tools/plotroad.mjs orig/TEST6.JWC
 
+echo "=== 図面を開く前から使えるか: 空の用紙の上で作図命令"
+"$NODE" tools/freshcheck.mjs
+
 echo "=== 図面を開く道: 入出力 → ①ﾌｧｲﾙ → ②読込 → ①選択確定"
 "$NODE" tools/loadcheck.mjs
 

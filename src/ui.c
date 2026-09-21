@@ -149,11 +149,18 @@ static int is_lead(unsigned char c)
 /* ②読込's ファイル選択 screen, byte for byte off the original
  * (tools/sjisc.py turns a line into the literal; a hex escape in C is
  * greedy, so every run of them is closed before the ASCII that follows). */
+/* **The two are not the same line.**  ①保存 can make a file, so it offers
+ * ③ 新規 保存 and ④ﾃﾞｨﾚｸﾄﾘ作成 and is drawn yellow on white; ②読込 only
+ * opens one, and stops after ②ドライブ変更, white on black.  Measured, both
+ * of them (tools/seqcheck.sh "30 296 left" "110 8 left" "100 8 left" and
+ * the same with "180 8 left"). */
 #define JW_FILE_BAR \
     "[ESC] " "\x83" "t" "\x83" "@" "\x83" "C" "\x83\x8b\x91" "I" \
     "\x91\xf0" " |" "\x87" "@" "\x91" "I" "\x91\xf0\x8a" "m" \
     "\x92\xe8" " |" "\x87" "A" "\x83" "h" "\x83\x89\x83" "C" "\x83" \
-    "u(A:)" "\x95\xcf\x8d" "X |" "\x87" "B " "\x90" "V" "\x8b" "K " \
+    "u(A:)" "\x95\xcf\x8d" "X |"
+#define JW_SAVE_BAR \
+    JW_FILE_BAR "\x87" "B " "\x90" "V" "\x8b" "K " \
     "\x95\xdb\x91\xb6" " |" "\x87" "C" \
     "\xc3\xde\xa8\xda\xb8\xc4\xd8\x8d\xec\x90\xac" "|"
 #define JW_FILE_PATH "path=A:" "\x5c" "*.jwc"
@@ -1402,7 +1409,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_PSET_BAR);
         } else if (s->io_stage == JW_IO_PGO) {
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_PGO_BAR);
-        } else if (s->io_stage == JW_IO_LOAD) {
+        } else if (s->io_stage == JW_IO_LOAD || s->io_stage == JW_IO_SAVE) {
+            const int saving = s->io_stage == JW_IO_SAVE;
             char one[96];
             int k;
 
@@ -1428,7 +1436,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             fill(v, 120, 110, 639, 110, 7);
             fill(v, 121, 452, 639, 452, 7);
             fill(v, 0, 463, 639, 463, 7);
-            jw_ui_text(v, 1, 1, 6, 0xffffu, JW_FILE_BAR);
+            if (saving) {
+                jw_ui_text(v, 1, 1, 6, 0xffffu, JW_SAVE_BAR);
+            } else {
+                jw_ui_text(v, 1, 1, 7, 0, JW_FILE_BAR);
+            }
             jw_ui_text(v, 17, 2, 5, 0, JW_FILE_PATH);
             sprintf(one, "(%dfiles)", s->file_n);
             jw_ui_text(v, 70, 2, 5, 0, one);
@@ -1465,9 +1477,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                                "                                             ");
                     continue;
                 }
-                jw_ui_text(v, 17, 8 + k, on ? 6 : 7, on ? 1 : 0, s->file_name[i]);
+                /* The row that is picked: 保存 draws it yellow on blue,
+                 * 読込 cyan on blue.  Both measured. */
+                const int fg = on ? (saving ? 6 : 5) : 7;
+                const unsigned bg = on ? 1u : 0u;
+
+                jw_ui_text(v, 17, 8 + k, fg, bg, s->file_name[i]);
                 sprintf(one, "%-45.45s", s->file_title[i]);
-                jw_ui_text(v, 33, 8 + k, on ? 6 : 7, on ? 1 : 0, one);
+                jw_ui_text(v, 33, 8 + k, fg, bg, one);
             }
         } else if (s->io_stage == JW_IO_FILE) {
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_FILE_BAR);

@@ -41,6 +41,9 @@ static JwView view;
 static JwUi ui;
 static JwCmd cmd;
 static Jwc *drawing;
+/* The drawing that is open, in the shape the list shows ("SAMPLE0 .JWC"),
+ * so that the save list can put it at the top the way the original does. */
+static char loaded_name[13];
 static unsigned char pixels[VGA_MAX_STRIDE * 8 * VGA_MAX_HEIGHT];
 static unsigned char rgba[640 * 480 * 4];
 static char status[256];
@@ -60,6 +63,17 @@ EMSCRIPTEN_KEEPALIVE void jw_init(void)
     jw_ui_default(&ui);
     ui.guide = jw_ui_guide();
     strcpy(status, jw_view_fonts("font") ? "ready" : "ready (no font)");
+    /* **An empty drawing, not none.**  The original always has one: started
+     * with no file it draws an empty sheet and every command works on it.
+     * With nothing in hand jw_cmd_press returns at its first line and the
+     * whole program is inert, which is what the page became. */
+    jwc_free(drawing);
+    drawing = jwc_new();
+    jw_view_original(&view);
+    jw_cmd_pick(&cmd, 0);
+    jw_ui_from(&ui, drawing);
+    ui.guide = jw_ui_guide();
+    memset(loaded_name, 0, sizeof loaded_name);
     /* The screen the original shows when it is started with no drawing:
      * the menu, the counts, the bars and an empty sheet.  present() draws
      * it, and without this the page had nothing to show until a drawing was
@@ -147,7 +161,6 @@ static void present(void)
 
 /* The drawing that is open, in the shape the list shows ("SAMPLE0 .JWC"),
  * so that ②読込 can put it at the top the way the original does. */
-static char loaded_name[13];
 
 static void file_title_of(const char *path, char *out, int n)
 {
@@ -189,7 +202,7 @@ static int file_cmp(const void *a, const void *b)
     return strcmp((const char *)a, (const char *)b);
 }
 
-static void file_list(void)
+static void file_list(int for_save)
 {
     char names[JW_FILE_MAX][13];
     int n = 0, i;
@@ -245,10 +258,18 @@ static void file_list(void)
         }
     }
     ui.file_n = n;
-    /* **The drawing that is open comes first**, not in its alphabetical
-     * place.  Measured: with eighteen files on the disk and SAMPLE0 loaded,
-     * the original listed SAMPLE0, AUTO, ONE2, QBYTES, QPICK, SAMPLE1 ...
-     * -- alphabetical, with the one in hand lifted out and put on top. */
+    /* **保存 puts the drawing that is open first; 読込 does not.**  Both
+     * were measured, and they are not the same list:
+     *
+     *   ①保存  SAMPLE0, AUTO, ONE2, QBYTES, QPICK, SAMPLE1 ...  (SAMPLE0
+     *           was the drawing in hand -- it is the name you would be
+     *           overwriting, so it is the one offered)
+     *   ②読込  AUTO, QPICK, SAMPLE0, SAMPLE1 ...  (plain alphabetical,
+     *           and the first row is the one picked)
+     *
+     * Reading one of them and assuming the other is what put the port's
+     * list in the wrong order the first time. */
+    if (!for_save) return;
     for (i = 0; i < n; i++) {
         if (memcmp(ui.file_name[i], loaded_name, 12) != 0) continue;
         while (i > 0) {
@@ -283,6 +304,19 @@ static void file_list(void)
 /* What ②読込's list holds, for tools/loadcheck.mjs.  The page does not use
  * these: its own list is for moving files about, and opening a drawing is
  * the program's business. */
+/* How much is in the drawing, for the checks: 0 lines, 1 arcs, 2 texts,
+ * 3 points.  The status line only changes when a drawing is opened, so it
+ * cannot answer "did that command put anything down". */
+EMSCRIPTEN_KEEPALIVE long jw_count(int which)
+{
+    if (!drawing) return -1;
+    return which == 0 ? drawing->n_lines
+         : which == 1 ? drawing->n_arcs
+         : which == 2 ? drawing->n_texts
+         : which == 3 ? drawing->n_points
+         : which == 4 ? drawing->n_temp : -1;   /* 4 = the 仮点 */
+}
+
 EMSCRIPTEN_KEEPALIVE int jw_file_count(void) { return ui.file_n; }
 EMSCRIPTEN_KEEPALIVE int jw_file_sel(void) { return ui.file_sel; }
 
@@ -807,6 +841,11 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         ui.guide = 0;
         jw_cmd_pick(&cmd, pick);
         ui.stage = 0;
+        /* Picking an item starts that command over, and 入出力 is a command
+         * like any other: its own menus go with it.  Without this, pressing
+         * 入出力 while its file list was up left the list there, and the
+         * next press on the top line was read as ①選択確定. */
+        ui.io_stage = 0;
         ui.missed = 0;          /* picking an item clears the band */
         mouse_x = x;
         mouse_y = y;
@@ -824,7 +863,8 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
      * rest are not done yet, and pressing them leaves it as it was. */
     /* A press on one of the rows of ②読込's list picks that drawing.  The
      * rows are 8 to 28 and the list starts at column 17, both measured. */
-    if (ui.command == 30 && ui.io_stage == JW_IO_LOAD && x >= 128 && y >= 112) {
+    if (ui.command == 30 && (ui.io_stage == JW_IO_LOAD || ui.io_stage == JW_IO_SAVE)
+        && x >= 128 && y >= 112) {
         const int row = y / 16 - 7;
 
         if (row >= 0 && row < JW_FILE_ROWS
@@ -841,13 +881,21 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
         if (ui.io_stage == 0 && (item == 1 || item == 2)) {
             ui.io_stage = item == 1 ? JW_IO_FILE : JW_IO_PLOT;
-        } else if (ui.io_stage == JW_IO_FILE && item == 1 && right) {
-            /* `|①保存(L)|②読込(R)|` -- one item, and the button says
-             * which.  The right button is 読込, and it puts up the list of
-             * what is on the disk. */
-            file_list();
-            ui.io_stage = JW_IO_LOAD;
-        } else if (ui.io_stage == JW_IO_LOAD && item == 1) {
+        } else if (ui.io_stage == JW_IO_FILE && (item == 1 || item == 2)) {
+            /* `|①保存(L)|②読込(R)|③合成|…` -- **each label is its own
+             * cell**, and either button presses it.  The (L) and (R) are
+             * the original telling you which button it answers elsewhere,
+             * not which one to use here: the 入出力 line above works the
+             * same way, and ②ﾌﾟﾛｯﾀ(R) is pressed with the left button at
+             * its own column (tools/plotrun.sh, against the original).
+             *
+             * This was read the other way at first -- one cell, the button
+             * choosing -- and pressing the word 読込 then did nothing at
+             * all, which is what a visitor hit. */
+            file_list(item == 1);
+            ui.io_stage = item == 1 ? JW_IO_SAVE : JW_IO_LOAD;
+        } else if ((ui.io_stage == JW_IO_LOAD || ui.io_stage == JW_IO_SAVE)
+                   && item == 1) {
             /* ①選択確定: open the drawing the list has picked. */
             if (ui.file_n) {
                 char path[256];

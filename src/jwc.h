@@ -220,6 +220,9 @@ int jwc_save(const Jwc *d, const char *path, const char **why);
  * to -- the browser wants them so it can hand the page a Blob.  The caller
  * frees what comes back; NULL means failure and `why` says what. */
 unsigned char *jwc_bytes(const Jwc *d, long *out_len, const char **why);
+/* An empty drawing, the one the original has when it is started with no
+ * file.  Without one in hand every drawing command does nothing. */
+Jwc *jwc_new(void);
 void jwc_free(Jwc *d);
 
 /* Is an entity on a layer that is shown?  `layer` is rest[0].
