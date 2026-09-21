@@ -460,6 +460,18 @@ done
 # And the page's own controls: the upload path and, above all, the download
 # (a detached <a> downloads nothing; revoking the URL too early cancels it).
 sh tools/pagecheck.sh
+
+# Just moving the pointer, pressing nothing.  Every other case here presses
+# first, and that blind spot hid a whole feature: the menu cell under the
+# pointer is inverted, and the counts box turns into a 目盛/軸角 panel
+# (RESUME 4.35).
+sh tools/hovercheck.sh
+full STEP=40 sh tools/hovercheck.sh
+
+# The chrome's own targets, driven through jw_click the way the page does
+# (RESUME 4.34).  tests/drawing.exe reaches past jw_click, so nothing else
+# here has ever pressed the layer buttons.
+sh tools/clickcheck.sh tools/chrome_points.txt || true
 full "$NODE" tests/upload_check.js orig/TEST7.JWC
 
 echo

@@ -62,6 +62,16 @@ typedef struct {
     /* Where the pointer is.  The menu row it rests on is drawn inverted
      * whether or not anything has been pressed -- see menu_hover. */
     int mouse_x, mouse_y;
+    /* レイヤ変更 is running: pressing one of the sixteen layer buttons puts
+     * the program in a mode of its own, with its own line along the top.
+     * Measured -- the original writes, at column 7,
+     *
+     *   レイヤ変更（ﾏｳｽ(L)表示切替 (R)書込選択） ［終了］マウスを作図範囲に移動
+     *
+     * so the left button turns a layer's drawing on and off, the right one
+     * makes it the one written to, and moving the pointer into the drawing
+     * area is how it ends. */
+    int layer_mode;
     /* 寸法: the value it has just written, which the band shows. */
     double dim_value;
     /* and the three numbers in its box: how many texts there were when it

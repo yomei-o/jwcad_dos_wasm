@@ -59,6 +59,10 @@ EMSCRIPTEN_KEEPALIVE void jw_init(void)
  * one place. */
 static void sync_ui(void)
 {
+    /* The chrome draws the menu row the pointer rests on inverted, so it has
+     * to know where the pointer is. */
+    ui.mouse_x = mouse_x;
+    ui.mouse_y = mouse_y;
     ui.stage = cmd.stage;
     ui.typed_n = cmd.typed_n;
     memcpy(ui.typed, cmd.typed, sizeof ui.typed);
@@ -223,6 +227,12 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
     }
     mouse_x = x;
     mouse_y = y;
+    /* レイヤ変更 ends by itself: its own line says
+     * `［終了］マウスを作図範囲に移動`, and that is the whole of it. */
+    if (ui.layer_mode && x >= AREA_X0 && x <= AREA_X1
+        && y >= AREA_Y0 && y <= AREA_Y1) {
+        ui.layer_mode = 0;
+    }
     /* a command with a point in hand keeps its reading up to date as the
      * pointer moves, the way the original does */
     jw_cmd_track(&cmd, drawing, &view, x, y);
@@ -249,6 +259,44 @@ EMSCRIPTEN_KEEPALIVE void jw_mods(int m)
  * item fills its row and writes the command's own line along the top, which is
  * what the original does (tools/menucheck.sh compares the two).  The line of
  * guidance goes the moment anything is picked, as it does there. */
+/* The sixteen layer buttons, and the mode pressing one puts the program in.
+ *
+ * They are two rows of eight, drawn by src/ui.c at
+ *
+ *     (10 + 14k, 353) to (22 + 14k, 367)      k = 0..7, layers 0 to 7
+ *     (10 + 14k, 369) to (22 + 14k, 383)      layers 8 to F
+ *
+ * and the original answers a press on one with a line of its own (read off
+ * with `sh tools/pressstr.sh 16 360 left`):
+ *
+ *     レイヤ変更（ﾏｳｽ(L)表示切替 (R)書込選択） ［終了］マウスを作図範囲に移動
+ *
+ * -- the left button turns a layer's drawing on and off, the right one makes
+ * it the layer written to, and the mode ends when the pointer goes back into
+ * the drawing area.  The first press does both: it starts the mode **and**
+ * acts.
+ *
+ * `d->layer_on` is indexed by the whole byte (group in the high nibble), and
+ * jwc_visible reads it, so turning one off takes its lines off the screen.
+ */
+static int layer_at(int x, int y)
+{
+    int k, row;
+
+    if (y >= 353 && y <= 367) {
+        row = 0;
+    } else if (y >= 369 && y <= 383) {
+        row = 1;
+    } else {
+        return -1;
+    }
+    k = (x - 10) / 14;
+    if (x < 10 || k > 7 || x > 10 + 14 * k + 12) {
+        return -1;
+    }
+    return row * 8 + k;
+}
+
 EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 {
     const int pick = jw_ui_menu_hit(x, y);
@@ -305,6 +353,40 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         return -1;
     }
 
+    {
+        const int n = layer_at(x, y);
+
+        if (n >= 0 && drawing) {
+            /* `layer_on` is indexed by the whole byte: the group in the
+             * high nibble, the layer in the low one (src/jwc.h). */
+            const int full = (ui.group << 4) | n;
+
+            if (right) {
+                drawing->write_layer = full;
+                /* Writing to a layer shows it: the original cannot leave the
+                 * one it writes to hidden. */
+                drawing->layer_on[full] = 1;
+            } else if (full != drawing->write_layer) {
+                /* **The layer being written to cannot be turned off.**
+                 * Measured on SAMPLE0, whose write layer is 0 and whose
+                 * layer 1 starts hidden, so layer 0 carries the whole
+                 * drawing: the original leaves the screen exactly as a press
+                 * on an empty layer leaves it (2445 lit pixels in the
+                 * drawing area), while turning it off would empty the screen
+                 * altogether -- which is what the port did until this. */
+                drawing->layer_on[full] = !drawing->layer_on[full];
+            }
+            mouse_x = x;
+            mouse_y = y;
+            jw_ui_from(&ui, drawing);
+            /* **After** jw_ui_from, which starts from jw_ui_default and that
+             * memsets the whole thing -- setting the flag first loses it. */
+            ui.layer_mode = 1;
+            sync_ui();
+            present();
+            return -1;
+        }
+    }
     if (pick) {
         ui.command = pick;
         ui.guide = 0;

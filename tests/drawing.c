@@ -273,6 +273,8 @@ int main(int argc, char **argv)
                 t.typed_at = c.typed_at;
                 t.edit_type = edit_type(&c, d);
                 t.poly_deg = c.poly_deg;
+                t.mouse_x = mx;
+                t.mouse_y = my;
                 t.mirror = c.mirror;
                 t.rotate = c.rotate;
                 t.scaling = c.scaling;
@@ -393,6 +395,11 @@ int main(int argc, char **argv)
         s.typed_at = c.typed_at;
         s.edit_type = edit_type(&c, d);
         s.poly_deg = c.poly_deg;
+        /* The chrome inverts the menu cell the pointer rests on, so it
+         * has to be told where the pointer is -- the same thing
+         * src/main_wasm.c's sync_ui does. */
+        s.mouse_x = mx;
+        s.mouse_y = my;
         s.mirror = c.mirror;
         s.rotate = c.rotate;
         s.scaling = c.scaling;

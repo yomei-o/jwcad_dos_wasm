@@ -871,6 +871,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     /* -- the menu ------------------------------------------------------- */
     menu(v);
     menu_pick(v, s->command);
+    menu_hover(v, s);
     box(v, 0, 48, 121, 304, 7);
     jw_line(v, 0, 63, 121, 63, 7, ROP_REPLACE, JW_STYLE_SOLID);
     box(v, 1, 49, 120, 305, 7);
@@ -1510,6 +1511,20 @@ void jw_ui_draw(VGA *v, const JwUi *s)
      * has got to -- see the stage loop, where the rest of the band goes. */
     if ((s->command == 13 || s->command == 28) && s->typing_text) {
         fill(v, s->typed_n * 8, 16, 638, 16, 0);
+    }
+    /* レイヤ変更's own line.  Read off the original with
+     * `sh tools/pressstr.sh 16 360 left`: column 7, colour 7, and the whole
+     * of it in one write. */
+    if (s->layer_mode) {
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 7, 1, 7, 0,
+                   "\x83\x8c\x83\x43\x83\x84\x95\xcf\x8d\x58\x81\x69"
+                   "\xcf\xb3\xbd" "(L)\x95\x5c\x8e\xa6\x90\xd8\x91\xd6"
+                   " (R)\x8f\x91\x8d\x9e\x91\x49\x91\xf0\x81\x6a "
+                   "\x81\x6d\x8f\x49\x97\xb9\x81\x6e\x83\x7d\x83\x45"
+                   "\x83\x58\x82\xf0\x8d\xec\x90\x7d\x94\xcd\x88\xcd"
+                   "\x82\xc9\x88\xda\x93\xae");
     }
     if (s->guide) {
         jw_ui_text(v, 17, 3, 7, 0, s->guide);

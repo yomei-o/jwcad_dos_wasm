@@ -1,0 +1,27 @@
+# The chrome's own targets: x y button what.  Driven by tools/clickcheck.sh.
+# The left panel's lower half is what the visitor reaches for -- the pen, the
+# paper, the group and the sixteen layers -- and none of it answered a press
+# until these were measured.
+20 312 left ペン
+20 312 right ペン(右)
+85 312 left ペンの見本
+18 328 left 紙
+18 328 right 紙(右)
+70 328 left 縮尺
+70 328 right 縮尺(右)
+30 344 left 図面名
+80 344 left ｸﾞﾙｰﾌﾟ
+115 344 left ｸﾞﾙｰﾌﾟ番号
+115 344 right ｸﾞﾙｰﾌﾟ番号(右)
+16 360 left レイヤ0
+16 360 right レイヤ0(右)
+44 360 left レイヤ2
+100 360 left レイヤ6
+16 376 left レイヤ8
+100 376 left レイヤE
+40 392 left サブ画面表示
+40 392 right サブ画面表示(右)
+30 24 left 目盛
+30 40 left 軸角
+90 24 left 目盛の数字
+90 40 left 字表示

@@ -46,8 +46,11 @@ bad=0
 n=0
 while read -r x y; do
     [ -f "tmp/hov/${x}_${y}.raw" ] || continue
+    # `< /dev/null`: without it the child inherits the loop's stdin -- the
+    # point list -- and eats the rest of it, so the sweep stops after a few
+    # and never reaches its own summary.
     ./tests/drawing.exe -u -m "$x" "$y" "orig/$DRAWING.JWC" tmp/hov/port.raw \
-        > /dev/null
+        > /dev/null < /dev/null
     got=$(python tools/fulldiff.py "tmp/hov/${x}_${y}.raw" tmp/hov/port.raw \
           | sed 's/ different.*//')
     n=$((n + 1))
