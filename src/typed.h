@@ -343,6 +343,38 @@ static const JwStage JW_TYPED[] = {
     { 1, 20,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
     { 1, 20,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
     { 1, 20,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x8d" "\xc4" "\x95" "\xa1" "\x8e" "\xca" " \x88" "\xca" "\x92" "u\x8e" "w\x8e" "\xa6" "(L)free (R)Read |\x87" "@\x93" "\xaf" "\x8c" "`\x95" "\xca" "\x8f" "\x88" "\x97" "\x9d" "|\x87" "A\x91" "\xbc" "\x90" "}\x8c" "`\x8f" "\x88" "\x97" "\x9d" "|\x87" "B\x98" "A\x91" "\xb1" "|" },
+    /* 1 複写 ④ﾏｳｽ倍率 (and 16 移動), read off
+     *
+     *   python tools/steps_table.py 1 150 130 245 170 580 8 390 8 \
+     *          200 300 300 380 350 200 550 360
+     *
+     * Four presses and no typing: the box round the original, then the box
+     * the copy has to fill.  Stages 21 to 25.
+     */
+    /*
+     * 21: after ④ﾏｳｽ倍率 -- the same line ①ﾏｳｽ位置 puts up (copy.h 5)
+     */
+    { 1, 21,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 1, 21,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x95" "\xa1" "\x8e" "\xca" "  \x8c" "\xb4" "\x90" "}\x8c" "`\x82" "\xcc" "\x8a" "\xee" "\x8f" "\x80" "\x93" "_\x88" "\xca" "\x92" "u \x83" "}\x83" "E\x83" "X\x8e" "w\x8e" "\xa6" " (L)free (R)Read  |\x87" "@\x81" "y\x94" "C\x88" "\xd3" "\x81" "z\x95" "\xfb" "\x8c" "\xfc" "|" },
+    /*
+     * 22: the other corner of the box round the original
+     */
+    { 1, 22,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 1, 22,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x8c" "\xb4" "\x90" "}\x8c" "`\x82" "\xcc" " \x83" "}\x83" "E\x83" "X\x94" "{\x97" "\xa6" " \x91" "\xce" "\x8a" "p\x88" "\xca" "\x92" "u  \x83" "}\x83" "E\x83" "X\x8e" "w\x8e" "\xa6" " (L)free (R)Read " },
+    /*
+     * 23: where it goes.  Word for word 段 19, ③数値倍率's own
+     */
+    { 1, 23,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]  \x95" "\xa1" "\x8e" "\xca" " \x88" "\xca" "\x92" "u \x83" "}\x83" "E\x83" "X\x8e" "w\x8e" "\xa6" " (L)free (R)Read  |\x87" "@\x81" "y\x94" "C\x88" "\xd3" "\x81" "z\x95" "\xfb" "\x8c" "\xfc" "|\x87" "A\x89" "\xbc" "\x95" "\\\x8e" "\xa6" "|" },
+    /*
+     * 24: the other corner of the box the copy has to fill
+     */
+    { 1, 24,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]  \x95" "\xa1" "\x8e" "\xca" "\x82" "\xcc" " \x83" "}\x83" "E\x83" "X\x94" "{\x97" "\xa6" " \x91" "\xce" "\x8a" "p\x88" "\xca" "\x92" "u  \x83" "}\x83" "E\x83" "X\x8e" "w\x8e" "\xa6" " (L)free (R)Read " },
+    /*
+     * 25: after the fourth press -- copy.h 9 again
+     */
+    { 1, 25,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 1, 25,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
+    { 1, 25,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x8d" "\xc4" "\x95" "\xa1" "\x8e" "\xca" " \x88" "\xca" "\x92" "u\x8e" "w\x8e" "\xa6" "(L)free (R)Read |\x87" "@\x93" "\xaf" "\x8c" "`\x95" "\xca" "\x8f" "\x88" "\x97" "\x9d" "|\x87" "A\x91" "\xbc" "\x90" "}\x8c" "`\x8f" "\x88" "\x97" "\x9d" "|\x87" "B\x98" "A\x91" "\xb1" "|" },
     { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0, 0 },
 };
 

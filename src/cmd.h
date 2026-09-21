@@ -160,6 +160,12 @@ typedef struct {
      * with a pair of scales instead of an angle.  See scale_range. */
     int scaling;
     double scale_x, scale_y;
+    /* 複写/移動 ④ﾏｳｽ倍率: 1 while it asks for the 基準点, then the opposite
+     * corner of the box round the original (msc_bx), then where it goes
+     * (msc_px), then the opposite corner of the box the copy has to fill,
+     * which is what settles the scale.  5 once a copy is down. */
+    int mscale;
+    double msc_bx, msc_by, msc_px, msc_py;
     /* Where the next key goes in `typed`.  文字 always appends, so it is
      * `typed_n` there; 文編集 starts the field with the text it was pointed
      * at and the cursor at the **front** -- typing `ABC` on 「Ｈ７－Ａ００１」

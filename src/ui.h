@@ -57,6 +57,8 @@ typedef struct {
     double rot_deg;
     /* 複写 ③数値倍率, the same way. */
     int scaling;
+    /* 複写 ④ﾏｳｽ倍率, the same way. */
+    int mscale;
     /* 寸法: the value it has just written, which the band shows. */
     double dim_value;
     /* and the three numbers in its box: how many texts there were when it

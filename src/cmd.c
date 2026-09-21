@@ -2184,6 +2184,12 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
             copy_again(c, d);
             return 1;
         }
+        if (c->stage == 4 && item == 4) {
+            /* ④ﾏｳｽ倍率: four presses and no typing.  Stages 21 to 25. */
+            c->mscale = 1;
+            c->stage = 21;
+            return 1;
+        }
         if (c->stage == 4 && item == 3) {
             /* ③数値倍率: the 基準点 first, on the same line ⑥回転 and
              * ①ﾏｳｽ位置 put up.  Stages 17 to 20 are free in src/copy.h. */
@@ -4463,6 +4469,58 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
              * (L)free (R)Read, like every other point. */
             double px, py;
 
+            if (c->mscale) {
+                /* ④ﾏｳｽ倍率.  The box round the original and the box the copy
+                 * has to fill; the scale is one against the other, and the
+                 * rest is ③数値倍率 (scale_range).
+                 *
+                 * Measured on SAMPLE0, range (150,130)-(245,170), the four
+                 * presses at screen (200,300) (300,380) (350,200) (550,360)
+                 * -- records (79,163) (179,83) (229,263) (429,103), so the
+                 * boxes are 100 x -80 and 200 x -160 and the scale is 2 by 2.
+                 * Line 5 comes out (152.946,548.232)-(292.475,548.232) and
+                 * text 0 (173.344,558.914)-(215.202,558.914), which is
+                 * S(p - 基準点) + 置く点 with the text keeping its length. */
+                if (!take(c, d, w, sx, sy, right, &px, &py)) {
+                    return 1;
+                }
+                if (c->mscale == 1) {
+                    c->base_x = px;
+                    c->base_y = py;
+                    c->mscale = 2;
+                    c->stage = 22;
+                    return 1;
+                }
+                if (c->mscale == 2) {
+                    c->msc_bx = px;
+                    c->msc_by = py;
+                    c->mscale = 3;
+                    c->stage = 23;
+                    return 1;
+                }
+                if (c->mscale == 3) {
+                    c->msc_px = px;
+                    c->msc_py = py;
+                    c->mscale = 4;
+                    c->stage = 24;
+                    return 1;
+                }
+                {
+                    const double ax = c->msc_bx - c->base_x;
+                    const double ay = c->msc_by - c->base_y;
+
+                    /* A box with no width or no height says nothing about
+                     * that axis, so it is left alone rather than divided by
+                     * zero.  Not measured -- the original may well refuse the
+                     * press instead. */
+                    c->scale_x = ax != 0.0 ? (px - c->msc_px) / ax : 1.0;
+                    c->scale_y = ay != 0.0 ? (py - c->msc_py) / ay : 1.0;
+                }
+                scale_range(c, d, c->msc_px, c->msc_py);
+                c->mscale = 5;
+                c->stage = 25;
+                return 1;
+            }
             if (c->rotate || c->scaling) {
                 /* ⑥回転 and ③数値倍率 run ①ﾏｳｽ位置's two presses with a
                  * number between them: 基準点 (段 13 / 17), the field

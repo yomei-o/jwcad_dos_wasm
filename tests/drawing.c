@@ -276,6 +276,7 @@ int main(int argc, char **argv)
                 t.mirror = c.mirror;
                 t.rotate = c.rotate;
                 t.scaling = c.scaling;
+                t.mscale = c.mscale;
                 t.rot_deg = c.rot_deg;
                 t.dim_value = c.dim_value;
                 t.dim_texts = c.dim_texts;
@@ -395,6 +396,7 @@ int main(int argc, char **argv)
         s.mirror = c.mirror;
         s.rotate = c.rotate;
         s.scaling = c.scaling;
+        s.mscale = c.mscale;
         s.rot_deg = c.rot_deg;
         s.dim_value = c.dim_value;
         s.dim_texts = c.dim_texts;

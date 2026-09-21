@@ -1121,7 +1121,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
             for (q = JW_COPY; q->command; q++) {
-                if ((s->mirror || s->rotate || s->scaling)
+                if ((s->mirror || s->rotate || s->scaling || s->mscale)
                     && q->stage >= 5 && q->stage <= 11) {
                     continue;   /* ⑤反転, ⑥回転 and ③数値倍率 go their own
                                  * way */
