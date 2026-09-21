@@ -1121,9 +1121,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
             for (q = JW_COPY; q->command; q++) {
-                if ((s->mirror || s->rotate)
+                if ((s->mirror || s->rotate || s->scaling)
                     && q->stage >= 5 && q->stage <= 11) {
-                    continue;   /* ⑤反転 and ⑥回転 go their own way */
+                    continue;   /* ⑤反転, ⑥回転 and ③数値倍率 go their own
+                                 * way */
                 }
                 if (q->command == s->command && q->stage == i
                     && (q->row == 2 || q->row == 3) && q->col <= 15) {
@@ -1302,7 +1303,24 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 n = s->typed_n < 8 ? s->typed_n : 8;
                 fill(v, 136 + n * 8, 7, 143 + n * 8, 15, 4);
             }
-            /* ⑥回転's angle field starts at column 15: `[ESC]  角度 =`
+            if ((s->command == 1 || s->command == 16) && i == 18) {
+                /* ③数値倍率's pair.  `[ESC].倍率 X,Y =` fills columns 1 to
+                 * 16 and the field is at 18, the same place ②数値位置 puts
+                 * its distance. */
+                int n;
+
+                for (n = 0; n < s->typed_n && n < 8; n++) {
+                    char one[4];
+
+                    one[0] = s->typed[n];
+                    one[1] = one[2] = ' ';
+                    one[3] = 0;
+                    jw_ui_text(v, 18 + n, 1, 7, 0, one);
+                }
+                n = s->typed_n < 8 ? s->typed_n : 8;
+                fill(v, 136 + n * 8, 7, 143 + n * 8, 15, 4);
+            }
+            /* ⑥回転's angle field starts at column 15 instead: `[ESC]  角度 =`
              * fills columns 1 to 13 and the digits go in one to a cell after
              * the space. */
             if ((s->command == 1 || s->command == 16) && i == 14) {

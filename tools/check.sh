@@ -320,6 +320,10 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full TEXT=1 sh tools/rotatecheck.sh 160 140 230 165 200 300 150 400 300
     full sh tools/rotatesave.sh 150 130 245 170 200 300 30 400 300
     full DRAWING=TEST1 BOOT=60000000 sh tools/rotatesave.sh 235 218 340 320 300 350 12.5 400 350
+    echo "=== 複写 ③数値倍率: the range scaled about a point (RESUME 4.31)"
+    ITEM=300 sh tools/rotatecheck.sh 150 130 245 170 200 300 2 400 300
+    full ITEM=300 sh tools/rotatesave.sh 150 130 245 170 200 300 2 400 300
+    full ITEM=300 DRAWING=TEST1 BOOT=60000000 sh tools/rotatesave.sh 235 218 340 320 300 350 2 400 350
     echo "    ...and the records, where the order of a text's ends shows"
     full sh tools/mirrorsave.sh 150 130 245 170 300 402
     full DRAWING=TEST1 BOOT=60000000 sh tools/mirrorsave.sh 460 255 600 380 199 350

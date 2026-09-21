@@ -156,6 +156,10 @@ typedef struct {
      * is down.  rot_deg is what was typed.  See turn_range. */
     int rotate;
     double rot_deg;
+    /* 複写/移動 ③数値倍率, which goes through the same four steps as ⑥回転
+     * with a pair of scales instead of an angle.  See scale_range. */
+    int scaling;
+    double scale_x, scale_y;
     /* Where the next key goes in `typed`.  文字 always appends, so it is
      * `typed_n` there; 文編集 starts the field with the text it was pointed
      * at and the cursor at the **front** -- typing `ABC` on 「Ｈ７－Ａ００１」

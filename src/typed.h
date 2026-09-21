@@ -305,6 +305,44 @@ static const JwStage JW_TYPED[] = {
     { 1, 16,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
     { 1, 16,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
     { 1, 16,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x8d" "\xc4" "\x95" "\xa1" "\x8e" "\xca" " \x88" "\xca" "\x92" "u\x8e" "w\x8e" "\xa6" "(L)free (R)Read |\x87" "@\x93" "\xaf" "\x8c" "`\x95" "\xca" "\x8f" "\x88" "\x97" "\x9d" "|\x87" "A\x91" "\xbc" "\x90" "}\x8c" "`\x8f" "\x88" "\x97" "\x9d" "|\x87" "B\x98" "A\x91" "\xb1" "|" },
+    /* 1 複写 ③数値倍率 (and 16 移動), read off
+     *
+     *   python tools/steps_table.py 1 150 130 245 170 580 8 300 8 200 300 \
+     *          t 2 e 400 300
+     *
+     * The same three steps ⑥回転 takes -- 基準点, a number, then where it
+     * goes -- so stages 17 to 20 sit beside its 13 to 16.  (JW_CADV.HLP says
+     * the scale is asked for *after* the place; the original asks before it.
+     * Measured, not taken from the doc.)
+     */
+    /*
+     * 17: after ③数値倍率 -- the same line ①ﾏｳｽ位置 puts up (copy.h 5)
+     */
+    { 1, 17,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 1, 17,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x95" "\xa1" "\x8e" "\xca" "  \x8c" "\xb4" "\x90" "}\x8c" "`\x82" "\xcc" "\x8a" "\xee" "\x8f" "\x80" "\x93" "_\x88" "\xca" "\x92" "u \x83" "}\x83" "E\x83" "X\x8e" "w\x8e" "\xa6" " (L)free (R)Read  |\x87" "@\x81" "y\x94" "C\x88" "\xd3" "\x81" "z\x95" "\xfb" "\x8c" "\xfc" "|" },
+    /*
+     * 18: the two scales.  The field is at column 18 and src/ui.c
+     *     draws what has been typed into it; `[     2.000,     2.000]`
+     *     at columns 56 to 78 is the 前回と同じ pair the original
+     *     starts with, which does not follow what is typed
+     */
+    { 1, 18,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC].\x94" "{\x97" "\xa6" " X,Y =" },
+    { 1, 18, 38, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x91" "O\x89" "\xf1" "\x82" "\xc6" "\x93" "\xaf" "\x82" "\xb6" " \xcf" "\xb3" "\xbd" "(R) " },
+    { 1, 18, 56, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[     2.000" },
+    { 1, 18, 67, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, ",     2.000" },
+    { 1, 18, 78, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "]" },
+    { 1, 18, 18, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "        " },
+    /*
+     * 19: after [Enter].  Not copy.h 6: that line ends
+     *     `|②仮表示|③回転角|` and this one has no ③回転角
+     */
+    { 1, 19,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]  \x95" "\xa1" "\x8e" "\xca" " \x88" "\xca" "\x92" "u \x83" "}\x83" "E\x83" "X\x8e" "w\x8e" "\xa6" " (L)free (R)Read  |\x87" "@\x81" "y\x94" "C\x88" "\xd3" "\x81" "z\x95" "\xfb" "\x8c" "\xfc" "|\x87" "A\x89" "\xbc" "\x95" "\\\x8e" "\xa6" "|" },
+    /*
+     * 20: after the place press -- copy.h 9 again
+     */
+    { 1, 20,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 1, 20,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
+    { 1, 20,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x8d" "\xc4" "\x95" "\xa1" "\x8e" "\xca" " \x88" "\xca" "\x92" "u\x8e" "w\x8e" "\xa6" "(L)free (R)Read |\x87" "@\x93" "\xaf" "\x8c" "`\x95" "\xca" "\x8f" "\x88" "\x97" "\x9d" "|\x87" "A\x91" "\xbc" "\x90" "}\x8c" "`\x8f" "\x88" "\x97" "\x9d" "|\x87" "B\x98" "A\x91" "\xb1" "|" },
     { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0, 0 },
 };
 

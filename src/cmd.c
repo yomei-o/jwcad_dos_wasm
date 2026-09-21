@@ -1339,6 +1339,88 @@ static int turn_range(JwCmd *c, Jwc *d, double px, double py)
     return n;
 }
 
+/* 複写/移動 ③数値倍率: the range again, scaled about a point.
+ *
+ * The same three points ⑥回転 takes -- 基準点, a number, where it goes --
+ * with `.倍率 X,Y =` in place of the angle.  For a line and an arc it is what
+ * it sounds like:
+ *
+ *     p' = S (p - base) + place
+ *
+ * **A text is different: only its start point moves.**  JW_CADV.HLP says so
+ * under 複写:
+ *
+ *     ※　数値倍率・マウス倍率の場合、文字は指定されている文字の基準
+ *     　点を倍率複写した位置になります。ただし、角度は変りません。
+ *
+ * -- the character size is an index into the drawing's own table, so a string
+ * cannot be made bigger by a scale, and its baseline's length follows from
+ * the string and that size (jwc_text_length).  So the baseline keeps its
+ * length and its direction and is simply carried to where its start landed.
+ *
+ * Measured on SAMPLE0, range (150,130)-(245,170), base (79,163), place
+ * (279,163), scale 2:
+ *
+ *     line 5 (40.973,305.616)-(110.737,305.616)
+ *              -> (202.946,448.232)-(342.475,448.232)      both ends doubled
+ *     text 0 (51.172,310.957)-(93.030,310.957)
+ *              -> (223.344,458.914)-(265.202,458.914)      41.858 long still
+ */
+static int scale_range(JwCmd *c, Jwc *d, double px, double py)
+{
+    const double sx = c->scale_x, sy = c->scale_y;
+    long k;
+    int n = 0;
+
+    if (!c->sel_line) {
+        freeze(c, d);
+    }
+    for (k = 0; k < c->n0_lines; k++) {
+        if (!picked_line(c, d, k)) {
+            continue;
+        }
+        if (jwc_dup_line(d, k, 0.0f, 0.0f)) {
+            JwcLine *q = &d->lines[d->n_lines - 1];
+
+            q->x0 = (float)((d->lines[k].x0 - c->base_x) * sx + px);
+            q->y0 = (float)((d->lines[k].y0 - c->base_y) * sy + py);
+            q->x1 = (float)((d->lines[k].x1 - c->base_x) * sx + px);
+            q->y1 = (float)((d->lines[k].y1 - c->base_y) * sy + py);
+            n++;
+        }
+    }
+    for (k = 0; k < c->n0_arcs; k++) {
+        if (!picked_arc(c, d, k)) {
+            continue;
+        }
+        if (jwc_dup_arc(d, k, 0.0f, 0.0f)) {
+            JwcArc *q = &d->arcs[d->n_arcs - 1];
+
+            q->cx = (float)((d->arcs[k].cx - c->base_x) * sx + px);
+            q->cy = (float)((d->arcs[k].cy - c->base_y) * sy + py);
+            q->r = (float)(d->arcs[k].r * sx);
+            n++;
+        }
+    }
+    for (k = 0; k < c->n0_texts && takes_text(c); k++) {
+        if (!picked_text(c, d, k)) {
+            continue;
+        }
+        if (jwc_dup_text(d, k, 0.0f, 0.0f)) {
+            JwcText *q = &d->texts[d->n_texts - 1];
+            const double x0 = (d->texts[k].x0 - c->base_x) * sx + px;
+            const double y0 = (d->texts[k].y0 - c->base_y) * sy + py;
+
+            q->x0 = (float)x0;
+            q->y0 = (float)y0;
+            q->x1 = (float)(x0 + (d->texts[k].x1 - d->texts[k].x0));
+            q->y1 = (float)(y0 + (d->texts[k].y1 - d->texts[k].y0));
+            n++;
+        }
+    }
+    return n;
+}
+
 static int copy_range(const JwCmd *c, Jwc *d, double dx, double dy)
 {
     const long lines = c->n0_lines, arcs = c->n0_arcs, texts = c->n0_texts;
@@ -2102,6 +2184,13 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
             copy_again(c, d);
             return 1;
         }
+        if (c->stage == 4 && item == 3) {
+            /* ③数値倍率: the 基準点 first, on the same line ⑥回転 and
+             * ①ﾏｳｽ位置 put up.  Stages 17 to 20 are free in src/copy.h. */
+            c->scaling = 1;
+            c->stage = 17;
+            return 1;
+        }
         if (c->stage == 4 && item == 6) {
             /* ⑥回転: the 基準点 first, on the same line ①ﾏｳｽ位置 puts up.
              * Stages 13 to 16 are free in src/copy.h. */
@@ -2532,6 +2621,39 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (key >= '0' && key <= '9') {
+            if (c->typed_n < 8) {
+                c->typed[c->typed_n++] = (char)key;
+                c->typed[c->typed_n] = 0;
+            }
+            return 1;
+        }
+        return 1;
+    }
+    if (JW_MOVE_CMD(c->command) && c->scaling == 2) {
+        /* ③数値倍率's pair, `X,Y`.  One number on its own means both, the
+         * way ②数値位置's distance does.  The line also offers
+         * `前回と同じ ﾏｳｽ(R)`, which is not done. */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                const char *comma = strchr(c->typed, ',');
+
+                c->scale_x = atof(c->typed);
+                c->scale_y = comma ? atof(comma + 1) : c->scale_x;
+            }
+            c->typing = 0;
+            c->scaling = 3;
+            c->stage = 19;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if ((key >= '0' && key <= '9') || key == '.' || key == '-'
+            || key == ',') {
             if (c->typed_n < 8) {
                 c->typed[c->typed_n++] = (char)key;
                 c->typed[c->typed_n] = 0;
@@ -4341,30 +4463,38 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
              * (L)free (R)Read, like every other point. */
             double px, py;
 
-            if (c->rotate) {
-                /* ⑥回転 runs the same two presses with the angle between
-                 * them: 基準点 (段 13), `角度 =` (段 14), 位置 (段 15), and
-                 * then 再複写 (段 16), where every further press puts another
-                 * one down. */
-                if (c->rotate == 2) {
+            if (c->rotate || c->scaling) {
+                /* ⑥回転 and ③数値倍率 run ①ﾏｳｽ位置's two presses with a
+                 * number between them: 基準点 (段 13 / 17), the field
+                 * (14 / 18), 位置 (15 / 19), and then 再複写 (16 / 20),
+                 * where every further press puts another one down. */
+                int *state = c->rotate ? &c->rotate : &c->scaling;
+                const int field = c->rotate ? 14 : 18;
+                const int done = c->rotate ? 16 : 20;
+
+                if (*state == 2) {
                     return 0;           /* the field has it */
                 }
                 if (!take(c, d, w, sx, sy, right, &px, &py)) {
                     return 1;
                 }
-                if (c->rotate == 1) {
+                if (*state == 1) {
                     c->base_x = px;
                     c->base_y = py;
-                    c->rotate = 2;
-                    c->stage = 14;
+                    *state = 2;
+                    c->stage = field;
                     c->typing = 1;
                     c->typed_n = 0;
                     c->typed[0] = 0;
                     return 1;
                 }
-                turn_range(c, d, px, py);
-                c->rotate = 4;
-                c->stage = 16;
+                if (c->rotate) {
+                    turn_range(c, d, px, py);
+                } else {
+                    scale_range(c, d, px, py);
+                }
+                *state = 4;
+                c->stage = done;
                 return 1;
             }
             if (c->stage != 5 && c->stage != 6 && c->stage != 9) {
