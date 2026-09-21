@@ -131,6 +131,8 @@ void jw_view_original(JwView *w)
     w->y0 = 17;
     w->x1 = 638;
     w->y1 = 462;
+    w->group1 = 0;              /* every group */
+    w->frame_box = 0;
 }
 
 static Fontx ank, kanji;
@@ -874,6 +876,12 @@ static void draw_grid(VGA *v, const Jwc *d, const JwView *w)
     double lo, hi, gy;
     long i, j, i0, i1, j0, j1;
 
+    /* No 目盛 in グループ データ表示's panels: SAMPLE1's grid is 15.697
+     * units, which comes out as dotted rows three pixels apart all over the
+     * panel, and the original's is bare. */
+    if (w->group1) {
+        return;
+    }
     if (!d->grid_on || d->grid_x <= 0.0 || d->grid_y <= 0.0 ||
         w->scale <= 0.0f) {
         return;
@@ -925,6 +933,21 @@ static void draw_grid(VGA *v, const Jwc *d, const JwView *w)
     }
 }
 
+/* Is this entity drawn in this view?
+ *
+ * The main view asks the drawing: the layer has to be on and so does its
+ * group.  グループ データ表示's little panels ask something else -- they
+ * are **one group each, everything in it**, whether it is switched on or
+ * not.  Measured: SAMPLE0's layer 1 is hidden and its pen 1 lines are all
+ * over the original's first panel. */
+static int visible_in(const Jwc *d, const JwView *w, unsigned char layer)
+{
+    if (w->group1) {
+        return (layer >> 4) == w->group1 - 1;
+    }
+    return jwc_visible(d, layer);
+}
+
 /* One line, clipped and styled the way jw_view_draw does it.  複写 puts
  * its copies back with this after the chrome has been drawn. */
 void jw_view_line(VGA *v, const Jwc *d, const JwcLine *l, const JwView *w,
@@ -942,7 +965,7 @@ void jw_view_line(VGA *v, const Jwc *d, const JwcLine *l, const JwView *w,
     double fx1 = (l->x1 - w->ox) * w->scale + w->ax;
     double fy1 = w->ay - (l->y1 - w->oy) * w->scale;
 
-    if (!jwc_visible(d, l->layer)) {
+    if (!visible_in(d, w, l->layer)) {
         return;
     }
     /* A line the record marks with bit 0x10 of its fourth trailing byte is
@@ -1021,6 +1044,7 @@ void jw_view_mark(VGA *v, const JwView *w, double ax, double ay,
  * is the screen's, not the line's: the column at 187 lights rows 19, 23, 27 …
  * and so does the one at 603.
  */
+
 static void paper_frame(VGA *v, const JwView *w)
 {
     const int style = jw_view_line_style(9);
@@ -1039,6 +1063,21 @@ static void paper_frame(VGA *v, const JwView *w)
     const int vs = v->clip_y0 + (((1 - v->clip_y0) % 4) + 4) % 4;
     const int hs = v->clip_x0 - (((v->clip_x0 - 2) % 4) + 4) % 4;
 
+    /* Corner to corner, and each edge's dashes count from its own start --
+     * which is how the little panels come out: the top edge lights 130, 134
+     * … from a left corner at 128, the same "start plus two" the main
+     * view's lines have from the window's edge. */
+    if (w->frame_box) {
+        jw_line(v, (int)fx0, (int)fy1, (int)fx0, (int)fy0, 2, ROP_REPLACE,
+                style);
+        jw_line(v, (int)fx1, (int)fy1, (int)fx1, (int)fy0, 2, ROP_REPLACE,
+                style);
+        jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy0, 2, ROP_REPLACE,
+                style);
+        jw_line(v, (int)fx0, (int)fy1, (int)fx1, (int)fy1, 2, ROP_REPLACE,
+                style);
+        return;
+    }
     if (fx0 >= v->clip_x0 && fx0 <= v->clip_x1) {
         jw_line(v, (int)fx0, vs, (int)fx0, v->clip_y1, 2, ROP_REPLACE, style);
     }
@@ -1055,9 +1094,14 @@ static void paper_frame(VGA *v, const JwView *w)
 
 void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
 {
+    memset(v->plane, 0, sizeof v->plane);
+    jw_view_draw_into(v, d, w);
+}
+
+void jw_view_draw_into(VGA *v, const Jwc *d, const JwView *w)
+{
     long k;
 
-    memset(v->plane, 0, sizeof v->plane);
     /* Everything below draws through the clip, as the original does. */
     v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
     v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
@@ -1069,13 +1113,13 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
                      jw_view_pen_colour(d->lines[k].pen));
     }
     for (k = 0; k < d->n_arcs; k++) {
-        if (!jwc_visible(d, d->arcs[k].layer)) {
+        if (!visible_in(d, w, d->arcs[k].layer)) {
             continue;
         }
         jw_view_arc(v, d, &d->arcs[k], w, jw_view_pen_colour(d->arcs[k].pen));
     }
     for (k = 0; k < d->n_texts; k++) {
-        if (!jwc_visible(d, d->texts[k].layer)) {
+        if (!visible_in(d, w, d->texts[k].layer)) {
             continue;
         }
         draw_text(v, d, &d->texts[k], w, (double)d->unit_mm * w->scale,
@@ -1096,7 +1140,7 @@ void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
         int x = to_x(w, d->points[k].x);
         int y = to_y(v, w, d->points[k].y);
 
-        if (!jwc_visible(d, d->points[k].layer) || !inside(w, x, y)) {
+        if (!visible_in(d, w, d->points[k].layer) || !inside(w, x, y)) {
             continue;
         }
         /* One pixel, in the record's own pen -- not the five-by-five cross in

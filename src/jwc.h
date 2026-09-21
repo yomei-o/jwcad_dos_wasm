@@ -196,6 +196,11 @@ typedef struct {
      * put it exactly write_layer * 8 bytes in -- SAMPLE2 writes to layer 9 and
      * shows 図名, TEST6 to layer 1 and shows タイトル. */
     char layer_name[256][9];
+    /* And the sixteen **groups'** names, sixteen bytes each, in the last
+     * 256 bytes of the file -- straight after the 2048 the layer names
+     * take.  TEST6 has them (`　布地・建物`, ` サッシ`, …); SAMPLE0 has
+     * none.  グループ データ表示 puts each one beside its panel. */
+    char group_name[16][17];
 } Jwc;
 
 /* Returns NULL and leaves `why` pointing at a reason on failure. */

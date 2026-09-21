@@ -494,6 +494,14 @@ Jwc *jwc_load(const char *path, const char **why)
         }
         d->layer_name[k][8] = 0;
     }
+    for (k = 0; k < 16; k++) {
+        long o = d->data_end + 2048 + k * 16;
+
+        if (o + 16 <= blen) {
+            memcpy(d->group_name[k], b + o, 16);
+        }
+        d->group_name[k][16] = 0;
+    }
 
     d->lines = (JwcLine *)calloc((size_t)(d->n_lines + 1), sizeof *d->lines);
     d->arcs = (JwcArc *)calloc((size_t)(d->n_arcs + 1), sizeof *d->arcs);

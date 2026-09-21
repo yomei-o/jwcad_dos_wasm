@@ -136,6 +136,10 @@ static int is_lead(unsigned char c)
 #define GROUP_PICK "  \xb8\xde\xd9\xb0\xcc\xdf \x8e\x77\x8e\xa6  "
 #define GROUP_ALL  "\x91\x53\x83\x8c\x83\x43\x83\x84 \x95\x5c\x8e\xa6"
 
+/* The little views' scale.  The paper is 518 by 447 units and lands on 106
+ * by 92 pixels, which pins it between 0.204633 and 0.205817. */
+#define JW_DATA_SCALE 0.2058
+
 static char top_line[82];
 
 static void top_clear(void)
@@ -1805,6 +1809,100 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     if (s->guide) {
         jw_ui_text(v, 17, 3, 7, 0, s->guide);
     }
+}
+
+/* グループ データ表示.
+ *
+ * Read off the original: the right button on the group being written to,
+ * while ｸﾞﾙｰﾌﾟ is asking, puts the whole drawing area over to sixteen little
+ * views, one per group, four across and four down.  Each one carries a white
+ * block with its digit in black at column 17, 33, 49 or 65 of rows 2, 9, 16
+ * and 23, and under it the group's own geometry with the paper's edge round
+ * it -- the red dashes of 用紙枠, which the main view never shows because at
+ * scale 1 they fall outside the window.
+ *
+ * The panels are 128 apart across and 112 down.  The paper's corner (0,0)
+ * lands on (128,126) in the first one and its far corner (518,447) on
+ * (234,34), which is where the scale comes from.
+ *
+ * The strip along the bottom and the panel below the menu go with it. */
+void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
+{
+    int k;
+
+    if (!s->data_screen || !d) {
+        return;
+    }
+    fill(v, 0, 305, 121, 305, 7);
+    fill(v, 122, 17, 638, 462, 0);
+    /* The panel keeps ｸﾞﾙｰﾌﾟ's own rows -- the red words and the sixteen
+     * group boxes are still there -- but the pen's row, 紙 and the scale,
+     * and サブ画面表示 all go.  And so does everything the strip along the
+     * bottom has right of the panel. */
+    fill(v, 1, 306, 120, 335, 0);
+    fill(v, 1, 416, 120, 462, 0);
+    fill(v, 122, 463, 638, 478, 0);
+    for (k = 0; k < 16; k++) {
+        JwView w;
+        const int cx = 128 * (k & 3), cy = 112 * (k >> 2);
+
+        w.ox = 0.0f;
+        w.oy = 0.0f;
+        w.scale = (float)JW_DATA_SCALE;
+        w.ax = (float)(128 + cx);
+        w.ay = (float)(126 + cy);
+        /* The window is the **whole drawing area**, not the panel: SAMPLE3
+         * has lines that reach x=122 out of the first panel and the
+         * original draws them. */
+        w.x0 = 122;
+        w.y0 = 17;
+        w.x1 = 638;
+        w.y1 = 462;
+        w.group1 = k + 1;
+        w.frame_box = 1;
+        /* An empty group gets no view at all -- not even the paper's edge.
+         * SAMPLE0 has everything in group 0 and the original leaves the
+         * other fifteen panels blank; TEST6, which uses four groups, draws
+         * a frame in each of those. */
+        if (s->group_geom[k] || s->group_text[k]) {
+            jw_view_draw_into(v, d, &w);
+        }
+
+    }
+    /* The sixteen labels go on afterwards, with the clip put back: a view
+     * leaves it on its own panel, and a label sits **above** its panel, so
+     * drawn inside the loop they came out clipped away. */
+    v->clip_x0 = 0;
+    v->clip_y0 = 0;
+    v->clip_x1 = v->width - 1;
+    v->clip_y1 = v->height - 1;
+    for (k = 0; k < 16; k++) {
+        char one[2];
+
+        one[0] = (char)(k < 10 ? '0' + k : 'A' + k - 10);
+        one[1] = 0;
+        jw_ui_text(v, 17 + 16 * (k & 3), 2 + 7 * (k >> 2), 7, 0xffffu, one);
+        jw_ui_text(v, 18 + 16 * (k & 3), 2 + 7 * (k >> 2), 7, 0,
+                   d->group_name[k]);
+    }
+    /* The rule under the top line goes back on **after** the names: they
+     * paint black behind themselves and break it otherwise. */
+    fill(v, 122, 16, 639, 16, 7);
+    /* jw_view_draw_into leaves the clip on the last panel it drew, so
+     * the top line has to put it back before writing there -- without
+     * this nothing above y=368 appeared at all. */
+    v->clip_x0 = 0;
+    v->clip_y0 = 0;
+    v->clip_x1 = v->width - 1;
+    v->clip_y1 = v->height - 1;
+    fill(v, 0, 0, 639, 15, 0);
+    jw_ui_text(v, 17, 1, 7, 0, "\x83\x4f\x83\x8b\x81\x5b\x83\x76");
+    jw_ui_text(v, 25, 1, 7, 0,
+               " \x83\x66\x81\x5b\x83\x5e\x95\x5c\x8e\xa6");
+    jw_ui_text(v, 36, 1, 7, 0,
+               " \x81\x6d\x8f\x49\x97\xb9\x81\x6e\x83\x7d\x83\x45"
+               "\x83\x58\x82\xf0\x8d\xec\x90\x7d\x94\xcd\x88\xcd"
+               "\x82\xc9\x88\xda\x93\xae");
 }
 
 /* ----------------------------------------------------------- the pointer */

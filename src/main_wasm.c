@@ -106,6 +106,7 @@ static void present(void)
     ui.snap = mouse_x >= AREA_X0 && mouse_x <= AREA_X1
         && mouse_y >= AREA_Y0 && mouse_y <= AREA_Y1;
     jw_ui_draw(&vga, &ui);
+    jw_ui_data(&vga, &ui, drawing);
     jw_cmd_marked(&cmd, &vga, drawing, &view);
     jw_cmd_after(&cmd, &vga, drawing, &view);
     /* the line a half-finished command drags, then the pointer -- both
@@ -229,12 +230,13 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
     mouse_y = y;
     /* レイヤ変更 ends by itself: its own line says
      * `［終了］マウスを作図範囲に移動`, and that is the whole of it. */
-    if ((ui.layer_mode || ui.group_mode || ui.pen_board)
+    if ((ui.layer_mode || ui.group_mode || ui.pen_board || ui.data_screen)
         && x >= AREA_X0 && x <= AREA_X1
         && y >= AREA_Y0 && y <= AREA_Y1) {
         ui.layer_mode = 0;
         ui.group_mode = 0;
         ui.pen_board = 0;
+        ui.data_screen = 0;
     }
     /* a command with a point in hand keeps its reading up to date as the
      * pointer moves, the way the original does */
@@ -450,6 +452,18 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
                 drawing->group_on[n] = 1;
             } else if (n != (drawing->write_layer >> 4)) {
                 drawing->group_on[n] = !drawing->group_on[n];
+            }
+            if (right && n == (drawing->write_layer >> 4)) {
+                /* The right button on the group already being written to
+                 * opens グループ データ表示 instead. */
+                mouse_x = x;
+                mouse_y = y;
+                jw_ui_from(&ui, drawing);
+                ui.group_mode = 1;      /* the panel keeps ｸﾞﾙｰﾌﾟ's rows */
+                ui.data_screen = 1;
+                sync_ui();
+                present();
+                return -1;
             }
             mouse_x = x;
             mouse_y = y;

@@ -472,6 +472,15 @@ full STEP=40 sh tools/hovercheck.sh
 # (RESUME 4.34).  tests/drawing.exe reaches past jw_click, so nothing else
 # here has ever pressed the layer buttons.
 sh tools/clickcheck.sh tools/chrome_points.txt || true
+
+# And the screens those targets put up, which take a second press to reach
+# (RESUME 4.39, 4.42, 4.43).
+echo "=== what a press on the chrome puts up: the pen's board, ｸﾞﾙｰﾌﾟ's"
+echo "    sixteen boxes and グループ データ表示"
+sh tools/seqcheck.sh "20 312 left" "20 120 left" || true
+sh tools/seqcheck.sh "80 344 left" "44 360 right" || true
+sh tools/seqcheck.sh "80 344 left" "16 360 right" || true
+full sh -c 'DRAWING=SAMPLE6 BOOT=120000000 sh tools/seqcheck.sh "80 344 left" "16 360 right"' || true
 full "$NODE" tests/upload_check.js orig/TEST7.JWC
 
 echo

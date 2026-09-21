@@ -12,6 +12,15 @@ typedef struct {
     float scale;        /* screen pixels per drawing unit */
     float ax, ay;       /* the screen position (ox,oy) lands on */
     int x0, y0, x1, y1; /* the window on screen, inclusive; outside it, nothing */
+    /* Which layer group to draw, plus one -- 0 is every group, which is what
+     * a JwView that nobody set means.  グループ データ表示 wants one group
+     * per panel and nothing else does. */
+    int group1;
+    /* 用紙枠 as a closed rectangle, corner to corner, instead of four lines
+     * run out to the window's edges.  The main view needs the second (only
+     * part of the paper is on screen); グループ データ表示's little panels
+     * hold the whole sheet and the original draws the box. */
+    int frame_box;
 } JwView;
 
 /* The view that fits the whole drawing on the screen, with a small margin.
@@ -105,6 +114,10 @@ int jw_view_line_style(unsigned type);
  * the screen comparison against dosv_emu_cpp (which installs the same file
  * because the guest asks it to) fails on every coloured pixel. */
 int jw_view_palette(VGA *v, const char *path);
+
+/* The same as jw_view_draw without the clearing, for a drawing that goes
+ * into part of a screen someone else is building. */
+void jw_view_draw_into(VGA *v, const Jwc *d, const JwView *w);
 
 /* Clear and draw.  Lines and arcs go through the translated primitives; texts
  * are drawn with the fonts, points as a cross. */

@@ -82,6 +82,10 @@ typedef struct {
      * press on the pen box at (1,305)-(120,319) puts it up and the pointer
      * back in the drawing takes it away, like ｸﾞﾙｰﾌﾟ. */
     int pen_board;
+    /* グループ データ表示: the whole screen becomes sixteen little views,
+     * one per layer group.  The right button on the group being written to,
+     * while ｸﾞﾙｰﾌﾟ is asking, opens it. */
+    int data_screen;
     int layer_mode;
     /* The left panel's own questions.  Pressing 紙 or the scale beside it
      * puts a line along the top and takes a number in a field, ended with
@@ -219,6 +223,10 @@ void jw_ui_from(JwUi *s, const Jwc *d);
 
 /* Draw the whole chrome.  The drawing area (122,17)-(638,462) is left alone. */
 void jw_ui_draw(VGA *v, const JwUi *s);
+
+/* グループ データ表示, which needs the drawing as well as the state: it is
+ * sixteen little views of it.  Drawn over the top of jw_ui_draw's screen. */
+void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d);
 
 /* One string on the character grid, as 1def:23c5 does it: `col` and `row` are
  * one-based, a half-width character is eight pixels wide and a full-width one
