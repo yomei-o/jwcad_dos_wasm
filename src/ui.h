@@ -77,6 +77,11 @@ typedef struct {
      * (row 25).  It ends the same way -- the pointer back in the drawing.
      * Read off the original with tools/pressstr.sh 80 344 left. */
     int group_mode;
+    /* ペン's board: the menu's fifteen rows become six pens and nine line
+     * types, with `#` beside the pen in use and `*` beside the type.  A
+     * press on the pen box at (1,305)-(120,319) puts it up and the pointer
+     * back in the drawing takes it away, like ｸﾞﾙｰﾌﾟ. */
+    int pen_board;
     int layer_mode;
     /* The left panel's own questions.  Pressing 紙 or the scale beside it
      * puts a line along the top and takes a number in a field, ended with

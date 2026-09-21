@@ -229,10 +229,12 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
     mouse_y = y;
     /* レイヤ変更 ends by itself: its own line says
      * `［終了］マウスを作図範囲に移動`, and that is the whole of it. */
-    if ((ui.layer_mode || ui.group_mode) && x >= AREA_X0 && x <= AREA_X1
+    if ((ui.layer_mode || ui.group_mode || ui.pen_board)
+        && x >= AREA_X0 && x <= AREA_X1
         && y >= AREA_Y0 && y <= AREA_Y1) {
         ui.layer_mode = 0;
         ui.group_mode = 0;
+        ui.pen_board = 0;
     }
     /* a command with a point in hand keeps its reading up to date as the
      * pointer moves, the way the original does */
@@ -369,6 +371,19 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         present();
         return -1;
     }
+    /* ペン: the box above 紙, y 305..319.  It puts a board over the menu --
+     * six pens and nine line types -- and the pointer back in the drawing
+     * takes it away again. */
+    if (x >= 1 && x <= 120 && y >= 305 && y <= 319 && drawing) {
+        mouse_x = x;
+        mouse_y = y;
+        jw_ui_from(&ui, drawing);
+        ui.pen_board = 1;       /* after jw_ui_from, which memsets */
+        sync_ui();
+        present();
+        return -1;
+    }
+
     /* 図面名: the box left of ｸﾞﾙｰﾌﾟ on the same row.  It asks for the
      * **layer's** name -- `レイヤ名を入力` along the top with a field at
      * column 34 -- and takes the strip along the bottom away while it does.

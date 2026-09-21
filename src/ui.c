@@ -996,9 +996,64 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     jw_line(v, 55, 64, 55, 304, 7, ROP_REPLACE, 0x5555);
     jw_line(v, 111, 64, 111, 304, 7, ROP_REPLACE, 0x5555);
     fill(v, 0, 48, 7, 304, 7);
-    jw_line(v, 1, 176, 6, 176, 0, ROP_REPLACE, JW_STYLE_SOLID);
-    jw_ui_blit(v, 0, 112, 0x100 | 'U', 0);
-    jw_ui_blit(v, 0, 236, 0x100 | 'D', 0);
+    if (!s->pen_board) {
+        /* The two scroll arrows and the mark between them are not there
+         * while ペン's board is up: the original leaves x 0..1 white down
+         * the whole strip, and the board's own fill takes x 2..7. */
+        jw_line(v, 1, 176, 6, 176, 0, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_ui_blit(v, 0, 112, 0x100 | 'U', 0);
+        jw_ui_blit(v, 0, 236, 0x100 | 'D', 0);
+    }
+
+    /* ペン's board goes over the menu.  Read off the original after a press
+     * on the pen box: `線 種   変 更` in black on a white row 4, then
+     * `Pen.1`..`Pen.6` down rows 5..10 with a 47x12 block of the pen's own
+     * colour at (64,+3)-(110,+14), and the nine line types down rows 11..19
+     * with a sample line at (64,+8)-(110,+8) in that type's pattern.  `#`
+     * marks the pen in use and `*` the type, both at column 8. */
+    if (s->pen_board) {
+        static const char *const TYPE[9] = {
+            "\x8e\xc0\x81\x40\x90\xfc",   /* 実　線 */
+            "\x93\x5f\x81\x40\x90\xfc",   /* 点　線 */
+            "\x93\x5f\x81\x40\x90\xfc",
+            "\x93\x5f\x81\x40\x90\xfc",
+            "\x82\x50\x93\x5f\x8d\xbd",   /* １点鎖 */
+            "\x82\x50\x93\x5f\x8d\xbd",
+            "\x82\x51\x93\x5f\x8d\xbd",   /* ２点鎖 */
+            "\x82\x51\x93\x5f\x8d\xbd",
+            "\x95\xe2\x8f\x95\x90\xfc"    /* 補助線 */
+        };
+        int k;
+
+        fill(v, 0, 48, 121, 63, 7);
+        jw_ui_text(v, 2, 4, 0, 0,
+                   "\x90\xfc\x20\x8e\xed\x20\x20\x20\x95\xcf\x20\x8d\x58");
+        fill(v, 2, 65, 119, 303, 0);
+        for (k = 0; k < 6; k++) {
+            const int by = 64 + 16 * k;
+            char one[8];
+
+            sprintf(one, "Pen.%d", k + 1);
+            jw_ui_text(v, 2, 5 + k, 7, 0, one);
+            fill(v, 64, by + 3, 110, by + 14,
+                 jw_view_pen_colour((unsigned)(k + 1)));
+        }
+        for (k = 0; k < 9; k++) {
+            const int by = 160 + 16 * k;
+
+            jw_ui_text(v, 2, 11 + k, 7, 0, TYPE[k]);
+            jw_line(v, 64, by + 8, 110, by + 8, 7, ROP_REPLACE,
+                    jw_view_line_style((unsigned)(k + 1)));
+        }
+        jw_ui_text(v, 8, 4 + s->pen, 7, 0, "#");
+        jw_ui_text(v, 8, 10 + s->line_type, 7, 0, "*");
+        /* Two white rules right across, **after** the words: one under the
+         * title and one above 補助線, which is set apart from the eight
+         * patterned types.  Drawn first they came out broken, because the
+         * labels paint black behind themselves. */
+        fill(v, 0, 64, 121, 64, 7);
+        fill(v, 0, 288, 121, 288, 7);
+    }
 
     /* -- the pen, the paper, the group, the layers ---------------------- */
     fill(v, 1, 306, 120, 383, 0);
@@ -1720,6 +1775,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                    "\xcf\xb3\xbd" "(L)\x95\x5c\x8e\xa6\x90\xd8\x91\xd6"
                    " (R)\x8f\x91\x8d\x9e\x91\x49\x91\xf0\x81\x6a "
                    "\x81\x6d\x8f\x49\x97\xb9\x81\x6e\x83\x7d\x83\x45"
+                   "\x83\x58\x82\xf0\x8d\xec\x90\x7d\x94\xcd\x88\xcd"
+                   "\x82\xc9\x88\xda\x93\xae");
+    }
+    if (s->pen_board) {
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 20, 1, 7, 0,
+                   " \x81\x6d\x8f\x49\x97\xb9\x81\x6e\x83\x7d\x83\x45"
                    "\x83\x58\x82\xf0\x8d\xec\x90\x7d\x94\xcd\x88\xcd"
                    "\x82\xc9\x88\xda\x93\xae");
     }
