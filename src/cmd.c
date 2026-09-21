@@ -2082,7 +2082,7 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 }
 
 
-int jw_cmd_top(JwCmd *c, Jwc *d, int item)
+static int cmd_top(JwCmd *c, Jwc *d, int item)
 {
     long k;
     int changed = 0;
@@ -2111,6 +2111,18 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
      * what a branch of the table is. */
     if ((c->command == 2 || c->command == 3) && (item == 2 || item == 3)
         && c->stage == 0) {
+        c->ask_kind = item - 1;
+        return 1;
+    }
+    /* ④平行 and ⑤垂直 ask for a 基準線 to be parallel or square to.  **＋
+     * has the two in one item and ／ keeps them apart** -- `④ 平 行・垂 直`
+     * against `④平 行 |⑤垂 直` -- and ＋'s item puts up the same screen as
+     * ／'s ④, the one that offers 平行線(L) / 同一線上の線(R). */
+    if (c->command == 2 && item == 4 && c->stage == 0) {
+        c->ask_kind = 3;
+        return 1;
+    }
+    if (c->command == 3 && (item == 4 || item == 5) && c->stage == 0) {
         c->ask_kind = item - 1;
         return 1;
     }
@@ -2449,6 +2461,26 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
      * and then ①実行, and the band beside the counts says 消去 再度(L), not
      * the complaint. */
     c->missed = 0;
+    return changed;
+}
+
+int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
+{
+    int changed;
+
+    /* The press belongs to whatever claims it.  A command that has been built
+     * this far answers in cmd_top above and the table never sees the press;
+     * one that has not leaves the screen as it was, and then src/item.h --
+     * what the original wrote when the same cell was pressed there -- is put
+     * over the line the menu item came up with.  See src/ui.c. */
+    c->top_item = 0;
+    c->top_right = 0;
+    changed = cmd_top(c, d, item);
+    if (!changed && jw_ui_item_has(c->command, item, right)) {
+        c->top_item = item;
+        c->top_right = right;
+        return 1;
+    }
     return changed;
 }
 

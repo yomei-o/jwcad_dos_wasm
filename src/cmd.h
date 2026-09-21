@@ -214,11 +214,19 @@ typedef struct {
     int hatch_closed;           /* the start line has come round again */
     long hatch_first;           /* the first line ① 実 行 made */
     /* ＋ and ／'s ②寸 法 and ③角 度: which of the two is being asked for,
-     * 0 for neither, 1 for the length and 2 for the angle.  Both ask from
+     * 0 for neither, 1 for the length, 2 for the angle, 3 for a line to
+     * be parallel to and 4 for one to be square to.  Both ask from
      * the top line, and both offer what was used last -- `任意寸法 ﾏｳｽ(L)
      * 前回と同じ ﾏｳｽ(R)` -- so the last one is kept here.  The screens are
      * in src/ui.c and the numbers the original comes up with are in
      * jw_cmd_pick. */
+    /* Which cell of the top row was pressed, and with which button, when
+     * nothing else in jw_cmd_top claimed it.  src/item.h holds what the
+     * original writes for each -- **the line, not yet the behaviour**: as
+     * each command's item is built, its own code claims the press and the
+     * entry goes out of the table. */
+    int top_item;
+    int top_right;
     int ask_kind;
     double ask_len;             /* `[  1000.000mm]` */
     double ask_ang;             /* `[  45.000\xdf]` */
@@ -381,7 +389,11 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
  * `復活出来ません |① 実行(L)|② 中止(R)|` -- columns 24 to 33 carry it out,
  * 35 to 44 call it off, and column 34, the bar itself, does nothing.
  * Returns 1 if the drawing changed. */
-int jw_cmd_top(JwCmd *c, Jwc *d, int item);
+int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right);
+
+/* Has src/item.h anything to say about this press?  Defined in src/ui.c,
+ * which is where the table lives. */
+int jw_ui_item_has(int command, int item, int right);
 
 /* A key, while a command is asking for a number.  Digits and a point go into
  * the field, [BS] takes one back and [Enter] ends it; anything else is left

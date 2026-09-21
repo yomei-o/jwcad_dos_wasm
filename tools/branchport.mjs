@@ -1,9 +1,17 @@
 /* The port through the same branches tools/branchorig.sh walks.
  *
- *     node tools/branchport.mjs 1 40
+ *     node tools/branchport.mjs 1 284
  *
  * Leaves tmp/branch/p<line>.raw, one per branch, to be put beside the
  * original's with tools/branchdiff.py.
+ *
+ * **One run, not one per branch.**  The original is started once and walked
+ * through every branch in order with two [ESC]s between them, which is what
+ * tools/branchorig.sh does -- and some of what a command remembers survives
+ * those: 面取's 【角面】/【丸面】/【Ｌ面】 is one setting, and pressing ① on
+ * three branches running walks it round the three.  Starting the port over
+ * for each branch measured a different program from the one the screenshots
+ * came from, and the three lines never lined up.
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -13,7 +21,7 @@ const createJwcad = require('../jwcad.js');
 const M = await createJwcad();
 mkdirSync('tmp/branch', { recursive: true });
 const from = Number(process.argv[2] || 1);
-const to = Number(process.argv[3] || 40);
+const to = Number(process.argv[3] || 284);
 const lines = readFileSync('tmp/branch/list.txt', 'utf8').trim().split('\n');
 const press = (x, y, right) => { M._jw_mouse(x, y); M._jw_click(x, y, right ? 1 : 0); };
 
@@ -30,17 +38,18 @@ function reopen() {
   }
 }
 
+reopen();
 lines.forEach((line, i) => {
   const n = i + 1;
-
-  if (n < from || n > to) return;
   const [menu, item, button, mx, my, bx] = line.split(/\s+/);
 
-  /* A fresh module for each branch, which is what the two [ESC]s do for the
-     original: start from the same screen every time. */
-  reopen();
+  /* The two [ESC]s the harness puts between branches: back to the menu,
+     whatever the branch before was in the middle of. */
+  M._jw_key(27);
+  M._jw_key(27);
   press(Number(mx), Number(my));
   if (item !== '0') press(Number(bx), 8, button === 'right');
+  if (n < from || n > to) return;
   const w = M._jw_width(), h = M._jw_height();
   writeFileSync('tmp/branch/p' + n + '.raw',
                 Buffer.from(M.HEAPU8.buffer, M._jw_framebuffer(), w * h * 4));

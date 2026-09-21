@@ -131,6 +131,17 @@ typedef struct {
      * puts up; JW_OPT_* say which of its own is showing. */
     /* ＋ and ／'s ②寸 法 / ③角 度 -- JwCmd.ask_kind and the two numbers
      * it offers.  See src/cmd.h. */
+    /* JwCmd.top_item and .top_right -- see src/item.h. */
+    /* **The ファイル選択 screen is shared.**  入出力 lists drawings, 図形
+     * lists the drawings a figure can be taken out of, 多角形 ④座標ファイル
+     * 読込 lists `*.txt` and ｵﾌﾟｼｮﾝ ⑦外部処理 lists `*.bat`.  The screen is
+     * the same one -- the same bars, the same box, the same two sliders --
+     * and only these three strings change.  NULL means 入出力's own. */
+    const char *file_bar;
+    const char *file_path;
+    const char *file_word;
+    int top_item;
+    int top_right;
     int ask_kind;
     double ask_len;
     double ask_ang;

@@ -15,6 +15,7 @@
 #include "copy.h"
 #include "move.h"
 #include "esc.h"
+#include "item.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -80,6 +81,18 @@ static const char MENU[30][7] = {
 /* The key that picks each one, DGROUP 0x7cad: the fifteen of the right column
  * in capitals, then the fifteen of the left in small letters. */
 static const char MENU_KEY[31] = "CHXBFTVRWDENASQchxbftvrwdenasq";
+
+int jw_ui_item_has(int command, int item, int right)
+{
+    const JwItem *q;
+
+    for (q = JW_ITEM; q->command; q++) {
+        if (q->command == command && q->item == item && q->right == right) {
+            return 1;
+        }
+    }
+    return 0;
+}
 
 const char *jw_ui_menu_label(int command)
 {
@@ -1498,6 +1511,21 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * original's, not a tidying. */
         char one[32];
 
+        if (s->ask_kind >= 3) {
+            /* 平行 and 垂直 ask for a line, not a number, so there is no
+             * field and no cursor -- and `[ESC]` here has no trailing
+             * spaces, which the two below do have. */
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 8, 1, 7, 0, s->ask_kind == 3
+                       ? "\x8a\xee\x8f\x80\x90\xfc\x81" "@" "\x83" "}" "\x83" "E"
+                         "\x83" "X" "\x8e" "w" "\x8e\xa6" " |" "\x87" "@" "\x8e" "w"
+                         "\x92\xe8\x89\xf0\x8f\x9c" "|" "\x81" "@" "\x95\xbd\x8d" "s"
+                         "\x90\xfc" "(L)   "
+                         "\x93\xaf\x88\xea\x90\xfc\x8f\xe3\x82\xcc\x90\xfc" "(R)"
+                       : "\x8a\xee\x8f\x80\x90\xfc\x81" "@" "\x83" "}" "\x83" "E"
+                         "\x83" "X" "\x8e" "w" "\x8e\xa6" " |" "\x87" "@" "\x8e" "w"
+                         "\x92\xe8\x89\xf0\x8f\x9c" "|");
+        } else {
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
         if (s->ask_kind == 1) {
             jw_ui_text(v, 8, 1, 7, 0, "\x90\xa1\x96" "@ = ");
@@ -1509,10 +1537,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 54, 2, 7, 0xffff, one);
         } else {
             jw_ui_text(v, 8, 1, 7, 0, "\x8a" "p" "\x93" "x =");
-            jw_ui_text(v, 32, 1, 7, 0,
-                       "\x81" "b0 " "\x93" "x " "\xcf\xb3\xbd" "(L)" "\x81" "b" "\x91"
-                       "O" "\x89\xf1\x82\xc6\x93\xaf\x82\xb6" " " "\xcf\xb3\xbd" "(R) "
-                       "\x81" "b[F1] " "\xcf\xb3\xbd\x8a" "p" "\x93" "x" "\x81" "b");
+            /* **The two are not the same bar.**  ＋ offers `｜0 度 ﾏｳｽ(L)｜`
+             * and ／ offers `｜任意角度(L)｜` -- branches 9 and 19. */
+            jw_ui_text(v, 32, 1, 7, 0, s->command == 2
+                       ? "\x81" "b0 " "\x93" "x " "\xcf\xb3\xbd" "(L)" "\x81" "b" "\x91"
+                         "O" "\x89\xf1\x82\xc6\x93\xaf\x82\xb6" " " "\xcf\xb3\xbd" "(R) "
+                         "\x81" "b[F1] " "\xcf\xb3\xbd\x8a" "p" "\x93" "x" "\x81" "b"
+                       : "\x81" "b" "\x94" "C" "\x88\xd3\x8a" "p" "\x93" "x(L)" "\x81"
+                         "b" "\x91" "O" "\x89\xf1\x82\xc6\x93\xaf\x82\xb6" " "
+                         "\xcf\xb3\xbd" "(R) " "\x81" "b[F1] " "\xcf\xb3\xbd\x8a" "p"
+                         "\x93" "x" "\x81" "b");
             sprintf(one, "[%8.3f\xdf]", s->ask_ang);
             jw_ui_text(v, 50, 2, 7, 0xffff, one);
         }
@@ -1522,6 +1556,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * Measured on the original: x 112..119, y 7..15, which is column 15
          * with nothing typed. */
         fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
+        }
     } else if (s->command == 29 && s->opt_stage == JW_OPT_PLAN) {
         /* ｵﾌﾟｼｮﾝ → ①建具平面.  The sixteen shapes in the library file, two
          * to a row, and the three sizes on the top line.  Measured: the
@@ -1551,7 +1586,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
         jw_ui_text(v, 8, 1, 7, 0, JW_IO_BAR);
         jw_ui_text(v, 34, 2, 6, 1, JW_DONE);
-    } else if (s->command == 30 && s->io_stage) {
+    } else if (s->io_stage) {
+        /* 入出力 is not the only command with a file screen -- see
+         * JwUi.file_bar. */
         /* 入出力's own menus.  Read off the original: ①ﾌｧｲﾙ and ②ﾌﾟﾛｯﾀ
          * each replace the top line with one of their own, both behind an
          * `[ESC]`, and ﾌｧｲﾙ adds the drive beside it and `[BS]前項` at the
@@ -1673,13 +1710,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             } else if (saving) {
                 jw_ui_text(v, 1, 1, 6, 0xffffu, JW_SAVE_BAR);
             } else {
-                jw_ui_text(v, 1, 1, 7, 0, JW_FILE_BAR);
+                jw_ui_text(v, 1, 1, 7, 0,
+                           s->file_bar ? s->file_bar : JW_FILE_BAR);
             }
             if (!asking) {
                 /* The two questions clear this line as well as the one
                  * below it -- measured: at 同名ﾌｧｲﾙが存在します the cyan
                  * path and count are gone. */
-                jw_ui_text(v, 17, 2, 5, 0, JW_FILE_PATH);
+                jw_ui_text(v, 17, 2, 5, 0,
+                           s->file_path ? s->file_path : JW_FILE_PATH);
                 sprintf(one, "(%dfiles)", s->file_n);
                 jw_ui_text(v, 70, 2, 5, 0, one);
             }
@@ -1695,7 +1734,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 17, 3, 7, 0xffffu, one);
             } else {
                 sprintf(one, "%s%s bytes free   ",
-                        saving ? JW_FILE_SAVE : JW_FILE_LOAD, s->file_free);
+                        s->file_word ? s->file_word
+                                     : (saving ? JW_FILE_SAVE : JW_FILE_LOAD),
+                        s->file_free);
                 jw_ui_text(v, 17, 3, 7, 0, one);
                 jw_ui_text(v, 51, 3, 7, 0, JW_FILE_EDIT);
                 jw_ui_text(v, 55, 3, 7, 0, JW_FILE_NAMED);
@@ -1933,6 +1974,21 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             }
             jw_ui_text(v, p->col, p->row, (unsigned)p->fg, (unsigned)p->bg,
                        text);
+        }
+        /* A press on the top row that the command has no answer for yet.  The
+         * original does not clear the row for these -- it writes over part of
+         * what is already there -- so these go on after the prompt and before
+         * the stages, in the order the original wrote them.  src/item.h. */
+        if (s->top_item) {
+            const JwItem *r;
+
+            for (r = JW_ITEM; r->command; r++) {
+                if (r->command == s->command && r->item == s->top_item
+                    && r->right == s->top_right) {
+                    jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
+                               (unsigned)r->bg, r->text);
+                }
+            }
         }
         /* Then what the command has written since, stage by stage, because a
          * later stage only writes over part of what an earlier one left -- and

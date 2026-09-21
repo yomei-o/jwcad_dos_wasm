@@ -15,6 +15,7 @@ actually wrote, which is the thing the screens are compared against, so no
 encoding step can go wrong in between.
 """
 import io
+import os
 import re
 import sys
 
@@ -54,15 +55,34 @@ def literal(raw, indent='      ', width=64):
     return (' \\\n' + indent).join(lines)
 
 
-at = 0
-for line in open('tmp/branch/rawstr.txt', encoding='latin-1'):
-    m = re.search(r'wrote .*?mark(\d+)\.raw', line)
+# **The shot is taken after the presses, so a branch's lines come BEFORE its
+# marker, not after.**  The emulator prints its own line when it writes the
+# shot; everything logged since the last one is what that branch did.
+held = []
+
+
+def flush(n):
+    for col, row, fg, bg, text in held:
+        print('  col=%-3d row=%-3d fg=%d bg=%04X %s' % (col, row, fg, bg, text))
+        if as_c:
+            raw = text[text.index('"') + 1:text.rindex('"')].encode('latin-1')
+            print('      ' + literal(raw))
+    del held[:]
+
+
+LOG = os.environ.get('BRANCHLOG', 'tmp/branch/rawstr.txt')
+for line in open(LOG, encoding='latin-1'):
+    # The emulator prints `[shot] <file> after <n>` on stdout, in the same
+    # buffer as the tracing, so the marker sits where it belongs among the
+    # writes.  (`dosemu: wrote ...` on stderr does not: stderr is
+    # unbuffered and stdout is not, and a merged log has it too early.)
+    m = re.search(r'\[shot\] .*?mark(\d+)\.raw', line)
     if m:
-        at = int(m.group(1))
-        if at in want:
-            print('== branch %d' % at)
-        continue
-    if at not in want:
+        n = int(m.group(1))
+        if n in want:
+            print('== branch %d' % n)
+            flush(n)
+        del held[:]
         continue
     if '[bp]' not in line or line.count('"') < 2:
         continue
@@ -74,8 +94,4 @@ for line in open('tmp/branch/rawstr.txt', encoding='latin-1'):
         fg, bg = int(f[10], 16), int(f[11], 16)
     except ValueError:
         continue
-    text = line[line.index('"'):].rstrip('\n')
-    print('  col=%-3d row=%-3d fg=%d bg=%04X %s' % (col, row, fg, bg, text))
-    if as_c:
-        raw = text[text.index('"') + 1:text.rindex('"')].encode('latin-1')
-        print('      ' + literal(raw))
+    held.append((col, row, fg, bg, line[line.index('"'):].rstrip('\n')))

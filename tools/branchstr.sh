@@ -10,6 +10,13 @@
 # be the original's bytes and not a reading of the pixels.
 #
 # Leaves tmp/branch/str.txt with a `== branch N` line before each one.
+#
+# **The two streams are kept apart.**  The tracing goes to stdout and the
+# emulator's own notes to stderr, and merging them with `2>&1` cuts a stdout
+# line in half: stderr is unbuffered, so a `dosemu: wrote ...` lands in the
+# middle of a string the program was writing and that string is lost.  It cost
+# a day -- half the lines of src/item.h went missing and looked like the
+# program not writing them.
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/branch
@@ -37,12 +44,17 @@ want=" $* "
         printf 'key esc\nwait 4000000\nkey esc\nwait 8000000\n'
         printf 'mouse %s %s\nwait 2000000\ndown left\nwait 2000000\nup left\nwait %s\n' \
             "$mx" "$my" "$WAIT"
+        # **Two shots, not one.**  The first is the screen the menu item came
+        # up with and the second the one the press on the top row left, so
+        # what lies between the two markers in the log is exactly what that
+        # press wrote -- nothing has to be guessed about where the screen
+        # before it ended.  The emulator prints `[shot] ...` on stdout, beside
+        # the tracing, so the two are in order.
+        printf 'shot ../jwcad_dos_wasm/tmp/branch/pre%s.raw\n' "$n"
         if [ "$item" != "0" ]; then
             printf 'mouse %s 8\nwait 2000000\ndown %s\nwait 2000000\nup %s\nwait %s\n' \
                 "$bx" "$button" "$button" "$WAIT"
         fi
-        # A shot is how the log is cut into branches: the emulator prints a
-        # line of its own when it writes one.
         printf 'shot ../jwcad_dos_wasm/tmp/branch/mark%s.raw\n' "$n"
     done < tmp/branch/list.txt
 } > tmp/branch/ss.txt
@@ -51,7 +63,7 @@ DOSEMU_CLOCK="${DOSEMU_CLOCK:-20000}" \
 DOSEMU_BP='+0DEF:23C5' DOSEMU_BPSTR=2 DOSEMU_BPN=20000 \
     "$EMU" --root tmp/branch/sroot --font-ank font/JWANK16.FNT \
     --font-kanji font/JWKAN16.FNT --script tmp/branch/ss.txt \
-    tmp/branch/sroot/JW_CADV.EXE "$DRAWING.JWC" > tmp/branch/rawstr.txt 2>&1 || true
+    tmp/branch/sroot/JW_CADV.EXE "$DRAWING.JWC"     > tmp/branch/rawstr.txt 2> tmp/branch/rawstr.err || true
 
 # The log is Shift-JIS bytes, which the console's own codec would refuse,
 # so the parse lives in tools/strpick.py -- it writes them straight

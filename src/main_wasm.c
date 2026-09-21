@@ -135,6 +135,8 @@ static void sync_ui(void)
     ui.typing_text = cmd.typing_text;
     ui.mods = cmd.mods;
     ui.snapping = cmd.snap;
+    ui.top_item = cmd.top_item;
+    ui.top_right = cmd.top_right;
     ui.ask_kind = cmd.ask_kind;
     ui.ask_len = cmd.ask_len;
     ui.ask_ang = cmd.ask_ang;
@@ -187,7 +189,11 @@ static void present(void)
 /* The drawing that is open, in the shape the list shows ("SAMPLE0 .JWC"),
  * so that ②読込 can put it at the top the way the original does. */
 
-static void file_title_of(const char *path, char *one, char *two)
+/* `at` is where the two title fields start: 40 in a drawing's header, and
+ * 0 in anything else -- the original shows the first 64 bytes of a `*.txt` or
+ * a `*.bat` in the same two lines, which is how JW_SAMPL.BAT comes to read
+ * `@REM 三 斜 計 算 (三角形の辺 200` / `まで選択)`. */
+static void file_title_at(const char *path, char *one, char *two, int at)
 {
     unsigned char head[200];
     FILE *f = fopen(path, "rb");
@@ -199,19 +205,24 @@ static void file_title_of(const char *path, char *one, char *two)
     if (!f) return;
     got = fread(head, 1, sizeof head, f);
     fclose(f);
-    if (got < 104) return;
+    if (got < (size_t)at + 64) return;
     for (w = 0; w < 32; w++) {
-        const unsigned char c = head[40 + w];
+        const unsigned char c = head[at + w];
 
         one[w] = c == 0 || c == 0x0d || c == 0x0a ? ' ' : (char)c;
     }
     for (w = 0; w < 32; w++) {
-        const unsigned char c = head[72 + w];
+        const unsigned char c = head[at + 32 + w];
 
         two[w] = c == 0 || c == 0x0d || c == 0x0a ? ' ' : (char)c;
     }
     for (k = 31; k >= 0 && one[k] == ' '; k--) one[k] = 0;
     for (k = 31; k >= 0 && two[k] == ' '; k--) two[k] = 0;
+}
+
+static void file_title_of(const char *path, char *one, char *two)
+{
+    file_title_at(path, one, two, 40);
 }
 
 /* 268,431,360 -- the original groups it in threes. */
@@ -234,12 +245,21 @@ static int file_cmp(const void *a, const void *b)
     return strcmp((const char *)a, (const char *)b);
 }
 
-static void file_list(int for_save)
+/* `ext` is the three letters without the dot, in capitals: "JWC" for the
+ * drawings 入出力 and 図形 list, "TXT" for 多角形 ④座標ファイル読込, "BAT"
+ * for ｵﾌﾟｼｮﾝ ⑦外部処理.  The screen is the same one either way -- see
+ * JwUi.file_bar. */
+static void file_list_ext(int for_save, const char *ext)
 {
     char names[JW_FILE_MAX][13];
+    char dotext[5];
     int n = 0, i;
     DIR *dir = opendir(JW_DIR);
     struct dirent *e;
+
+    dotext[0] = '.';
+    memcpy(dotext + 1, ext, 3);
+    dotext[4] = 0;
 
     ui.file_n = 0;
     ui.file_sel = 0;
@@ -249,14 +269,14 @@ static void file_list(int for_save)
             const char *dot = strrchr(e->d_name, '.');
             int k;
 
-            if (!dot || strcasecmp(dot, ".JWC") != 0) continue;
+            if (!dot || strcasecmp(dot, dotext) != 0) continue;
             if (dot - e->d_name > 8 || dot == e->d_name) continue;
             /* DOS spells it "SAMPLE0 .JWC": the stem padded to eight. */
             memset(names[n], ' ', 8);
             for (k = 0; k < (int)(dot - e->d_name); k++) {
                 names[n][k] = (char)toupper((unsigned char)e->d_name[k]);
             }
-            memcpy(names[n] + 8, ".JWC", 5);
+            memcpy(names[n] + 8, dotext, 5);
             n++;
         }
         closedir(dir);
@@ -274,9 +294,12 @@ static void file_list(int for_save)
         memcpy(stem, names[i], 8);
         stem[8] = 0;
         for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
-        sprintf(path, "%s/%s.JWC", JW_DIR, stem);
+        sprintf(path, "%s/%s%s", JW_DIR, stem, dotext);
         memcpy(ui.file_name[i], names[i], sizeof ui.file_name[0]);
-        file_title_of(path, ui.file_t1[i], ui.file_t2[i]);
+        /* A drawing keeps its 図面名 at 40 and 72 of the header; anything
+         * else has its first 64 bytes read as the same two fields. */
+        file_title_at(path, ui.file_t1[i], ui.file_t2[i],
+                      strcmp(ext, "JWC") == 0 ? 40 : 0);
         ui.file_size[i] = 0;
         ui.file_stamp[i] = 0;
         strcpy(ui.file_date[i], "                ");
@@ -312,7 +335,7 @@ static void file_list(int for_save)
             for (d = 0; JW_FILE_DATE[d].name; d++) {
                 char want[16];
 
-                sprintf(want, "%s.JWC", stem);
+                sprintf(want, "%s%s", stem, dotext);
                 if (strcmp(want, JW_FILE_DATE[d].name) != 0) continue;
                 sprintf(ui.file_date[i], "%s  ", JW_FILE_DATE[d].when);
                 ui.file_stamp[i] = JW_FILE_DATE[d].stamp;
@@ -410,6 +433,11 @@ static void file_list(int for_save)
      * this pair of repositories says: 8 sectors a cluster x 512 bytes x
      * 65535 free clusters, which is dosv_emu_cpp's answer to INT 21h AH=36h
      * and what the original prints when it runs there.  Measured. */
+}
+
+static void file_list(int for_save)
+{
+    file_list_ext(for_save, "JWC");
 }
 
 /* The name the list has picked, as a path on the module's disk. */
@@ -1158,6 +1186,14 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         ui.missed = 0;          /* picking an item clears the band */
         mouse_x = x;
         mouse_y = y;
+        /* **And everything else the command was in the middle of.**
+         * jw_cmd_pick has just cleared the command's own state; without
+         * this the chrome keeps the last one's -- pick ＋, press ④平行,
+         * then pick ／, and the port still drew 基準線 マウス指示 because
+         * ui.ask_kind was never put back.  It shows only when one command
+         * follows another in the same run, which is how the program is
+         * used and how tools/branchport.mjs now walks it. */
+        sync_ui();
         present();
         return pick;
     }
@@ -1318,7 +1354,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         return -1;
     }
     if (cmd.command && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
-        if (jw_cmd_top(&cmd, drawing, jw_ui_top_item(x, y))) {
+        if (jw_cmd_top(&cmd, drawing, jw_ui_top_item(x, y), right)) {
             jw_ui_from(&ui, drawing);       /* the counts move with it */
             ui.command = cmd.command;
             ui.guide = 0;
