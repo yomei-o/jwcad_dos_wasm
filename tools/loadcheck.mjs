@@ -49,10 +49,31 @@ ok(titleOf(2).startsWith('マンション'),
    "and each one's own 図面名 beside it (" + titleOf(2).trim() + ')');
 
 /* A press on the third row, then ①選択確定. */
-press(300, 112 + 2 * 16);
+const row = (n) => press(300, 112 + n * 16);
+
+row(2);
 ok(M._jw_file_sel() === 2, 'a press on a row picks it (' + M._jw_file_sel() + ')');
+/* **Another row only moves the pick** -- measured on the original, which
+   leaves the list up (tools/dblcheck.sh ROW2=12). */
+row(4);
+ok(M._jw_file_sel() === 4 && M._jw_file_count() === 14,
+   'a press on a different row moves the pick and leaves the list up');
 press(180, 8);                      // ①選択確定 -- the item starts at column 21
 ok(/lines/.test(status()), '①選択確定 opens it (' + status() + ')');
+
+/* **The same row again confirms it**, which is what a double press comes
+   to.  Not a timed double click: on the original two presses 300,000 and
+   30,000,000 instructions apart both open the drawing. */
+press(30, 296);
+press(110, 8);
+press(180, 8);                      // ②読込
+row(1);
+ok(M._jw_file_sel() === 1, 'a row is picked (' + M._jw_file_sel() + ')');
+const before = status();
+row(1);
+ok(status() !== before && /lines/.test(status()),
+   'and pressing it again opens it, the way a double press does ('
+   + status() + ')');
 
 /* **The two lists are not in the same order**, and both were measured:
      ②読込  plain alphabetical, the first row picked
@@ -64,7 +85,7 @@ press(30, 296);
 press(110, 8);
 press(180, 8);
 ok(M.UTF8ToString(M._jw_file_name(0)) === 'SAMPLE0 .JWC',
-   '②読込 stays alphabetical with SAMPLE2 open ('
+   '②読込 stays alphabetical whatever is open ('
    + M.UTF8ToString(M._jw_file_name(0)) + ')');
 ok(M._jw_file_sel() === 0, 'and the first row is the one picked');
 
@@ -72,6 +93,7 @@ press(30, 296);
 press(110, 8);
 press(100, 8);                      // ①保存 -- the other cell
 ok(M._jw_file_count() === 14, 'pressing 保存 puts up the list too');
-ok(M.UTF8ToString(M._jw_file_name(0)) === 'SAMPLE2 .JWC',
-   'with the drawing in hand on top (' + M.UTF8ToString(M._jw_file_name(0)) + ')');
+ok(M.UTF8ToString(M._jw_file_name(0)) === 'SAMPLE1 .JWC',
+   'with the drawing in hand on top -- SAMPLE1, the one the double press'
+   + ' opened (' + M.UTF8ToString(M._jw_file_name(0)) + ')');
 process.exit(bad ? 1 : 0);

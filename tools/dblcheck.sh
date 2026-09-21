@@ -4,6 +4,7 @@
 #     sh tools/dblcheck.sh              # the original, two presses close together
 #     GAP=20000000 sh tools/dblcheck.sh # far apart, for the difference
 #     PRESSES=1 sh tools/dblcheck.sh   # one press, to see what one does
+#     ROW2=12 sh tools/dblcheck.sh    # the second press on another row
 #
 # A visitor said the list answers a double click and the port did not
 # (2026-09-21).  Before writing any of that, this asks the original.
@@ -41,8 +42,11 @@ cp -r orig tmp/dbl/root
     printf 'mouse 300 %s\nwait 200000\ndown left\nwait 200000\nup left\nwait %s\n' \
         "$y" "$GAP"
     if [ "${PRESSES:-2}" -ge 2 ]; then
+        # ROW2 makes the second press land on a different row, which is how
+        # "the same row again" is told apart from "any second press".
+        y2=$(( ${ROW2:-$ROW} * 16 - 8 ))
         printf 'mouse 300 %s\nwait 200000\ndown left\nwait 200000\nup left\nwait %s\n' \
-            "$y" "$WAIT"
+            "$y2" "$WAIT"
     fi
     printf 'wait %s\n' "${TAIL:-100000000}"
     printf 'shot ../jwcad_dos_wasm/tmp/dbl/after.raw\n'

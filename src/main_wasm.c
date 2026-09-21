@@ -301,6 +301,27 @@ static void file_list(int for_save)
                    - (double)emscripten_get_heap_size(), ui.file_free);
 }
 
+/* Open the drawing the list has picked.  Two things do it -- ①選択確定 on
+ * the top line, and a second press on the row that is already picked -- so
+ * it is in one place. */
+int jw_open(const char *path);
+
+static void file_chosen(void)
+{
+    char path[256];
+    char stem[9];
+    int k;
+
+    if (!ui.file_n) {
+        return;
+    }
+    memcpy(stem, ui.file_name[ui.file_sel], 8);
+    stem[8] = 0;
+    for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
+    sprintf(path, "%s/%s.JWC", JW_DIR, stem);
+    jw_open(path);
+}
+
 /* What ②読込's list holds, for tools/loadcheck.mjs.  The page does not use
  * these: its own list is for moving files about, and opening a drawing is
  * the program's business. */
@@ -867,12 +888,30 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         && x >= 128 && y >= 112) {
         const int row = y / 16 - 7;
 
-        if (row >= 0 && row < JW_FILE_ROWS
-            && ui.file_top + row < ui.file_n) {
-            ui.file_sel = ui.file_top + row;
-        }
         mouse_x = x;
         mouse_y = y;
+        if (row >= 0 && row < JW_FILE_ROWS
+            && ui.file_top + row < ui.file_n) {
+            /* **A press on the row that is already picked confirms it** --
+             * which is what a double press comes to, and what a visitor
+             * meant by "the list answers a double click".
+             *
+             * It is not a timed double click.  Measured three ways
+             * (tools/dblcheck.sh): two presses 300,000 instructions apart
+             * and two 30,000,000 apart both open the drawing, one press on
+             * its own leaves the list up, and a second press on a
+             * **different** row leaves it up as well and picks that row.
+             * So the rule is "the same row again", not "quickly". */
+            const int was = ui.io_stage;
+
+            if (ui.file_top + row == ui.file_sel) {
+                ui.io_stage = JW_IO_FILE;
+                if (was == JW_IO_LOAD) file_chosen();
+                present();
+                return -1;
+            }
+            ui.file_sel = ui.file_top + row;
+        }
         present();
         return -1;
     }
@@ -896,23 +935,15 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             ui.io_stage = item == 1 ? JW_IO_SAVE : JW_IO_LOAD;
         } else if ((ui.io_stage == JW_IO_LOAD || ui.io_stage == JW_IO_SAVE)
                    && item == 1) {
-            /* ①選択確定: open the drawing the list has picked. */
-            if (ui.file_n) {
-                char path[256];
-                char stem[9];
-                int k;
+            /* ①選択確定 */
+            const int was = ui.io_stage;
 
-                memcpy(stem, ui.file_name[ui.file_sel], 8);
-                stem[8] = 0;
-                for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
-                sprintf(path, "%s/%s.JWC", JW_DIR, stem);
-                ui.io_stage = 0;
-                mouse_x = x;
-                mouse_y = y;
-                jw_open(path);
-                return -1;
-            }
-            ui.io_stage = 0;
+            ui.io_stage = JW_IO_FILE;
+            mouse_x = x;
+            mouse_y = y;
+            if (was == JW_IO_LOAD) file_chosen();
+            present();
+            return -1;
         } else if (ui.io_stage == JW_IO_PLOT && item == 3) {
             /* ③ﾌｧｲﾙ出力.  The original asks which `*.JWP` to use first --
              * a plotter definition, which says what language the plotter
