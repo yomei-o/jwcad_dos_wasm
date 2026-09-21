@@ -21,6 +21,7 @@ EXPORTS=$EXPORTS,_jw_save,_jw_saved,_jw_saved_size
 EXPORTS=$EXPORTS,_jw_plot,_jw_plot_wanted,_jw_plot_name
 EXPORTS=$EXPORTS,_jw_file_count,_jw_file_sel,_jw_file_name,_jw_file_title
 EXPORTS=$EXPORTS,_jw_count
+EXPORTS=$EXPORTS,_jw_top_item,_jw_io_stage
 EXPORTS=$EXPORTS,_malloc,_free
 
 SRC="src/main_wasm.c src/view.c src/draw.c src/vga.c src/jwc.c src/fontx.c src/ui.c src/cmd.c src/read.c src/plot.c src/png.c"

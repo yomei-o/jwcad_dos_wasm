@@ -170,6 +170,10 @@ typedef struct {
     /* The drawing in hand, without its extension -- 編集ファイル名 on the
      * file screen's third row. */
     char open_name[9];
+    /* ③ 新規 保存's field: the name to write under, prefilled with the
+     * drawing in hand.  It sits at row 5, column 17 -- measured. */
+    char save_name[13];
+    int save_name_n;
     /* Which of ◆ｍｅｍｏ入力's two lines the cursor is on (0 or 1), and
      * what has been typed into them.  The original asks for two. */
     /* Set once ① 実 行 has written the drawing: the original leaves
@@ -197,6 +201,7 @@ typedef struct {
 #define JW_IO_DRIVE 13          /* ⑤ﾄﾞﾗｲﾌﾞ変更 -> |①【Ａ】|② Ｂ|…    */
 #define JW_IO_DXF 14            /* ⑥ＤＸＦ -> |① 保存|② 読込|③ 設定| */
 #define JW_IO_INDEX 15          /* ⑦INDEX -> 選択ファイル名 ﾏｳｽ指示    */
+#define JW_IO_NEWNAME 16        /* ③ 新規 保存 -> ◆ファイル名入力     */
 
 /* ｵﾌﾟｼｮﾝ's own menus, JwUi.opt_stage. */
 #define JW_OPT_PLAN 1           /* ①建具平面 -> 建具選択 の一覧        */

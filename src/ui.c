@@ -1623,6 +1623,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
                 jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
                 jw_ui_text(v, 8, 1, 7, 0, JW_WRITE_BAR);
+            } else if (s->io_stage == JW_IO_NEWNAME) {
+                /* ③ 新規 保存 asks for a name.  Measured: the line is
+                 * `[ESC]  ` and ` ◆ファイル名入力` at column 8, and the
+                 * field is at row 5 column 17 with the drawing in hand
+                 * already in it. */
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                jw_ui_text(v, 8, 1, 7, 0,
+                           " " "\x81\x9f\x83" "t" "\x83" "@" "\x83" "C"
+                           "\x83\x8b\x96\xbc\x93\xfc\x97\xcd");
             } else if (saving) {
                 jw_ui_text(v, 1, 1, 6, 0xffffu, JW_SAVE_BAR);
             } else {
@@ -1679,6 +1688,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 47, 5, 7, 0, one);
                 sprintf(one, "%-32.32s", s->file_t2[sel]);
                 jw_ui_text(v, 47, 6, 7, 0, one);
+            }
+            if (s->io_stage == JW_IO_NEWNAME) {
+                char field[16];
+
+                sprintf(field, "%-13.13s", s->save_name);
+                jw_ui_text(v, 17, 5, 7, 0, field);
             }
             if (s->io_stage == JW_IO_MEMO) {
                 /* ◆ｍｅｍｏ入力 writes over the title field, two lines of

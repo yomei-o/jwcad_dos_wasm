@@ -504,6 +504,9 @@ echo "=== 図面を開く道: 入出力 → ①ﾌｧｲﾙ → ②読込 → �
 echo "=== 図面を保存する道: 入出力 → ①ﾌｧｲﾙ → ①保存 → ◆ﾒﾓ → ①上書きする → ① 実 行"
 "$NODE" tools/savecheck2.mjs
 
+echo "=== ③ 新規 保存: 名前を打って書く"
+"$NODE" tools/newnamecheck.mjs
+
 echo "=== 入出力 → ①ﾌｧｲﾙ の残り: ③合成 ④削除 ⑤ﾄﾞﾗｲﾌﾞ変更 ⑥ＤＸＦ ⑦INDEX"
 "$NODE" tools/iocheck2.mjs
 

@@ -415,6 +415,18 @@ static void file_picked(char *path)
     char stem[9];
     int k;
 
+    /* ③ 新規 保存 puts a name of its own in; otherwise it is the row the
+     * list has picked. */
+    if (ui.save_name[0]) {
+        /* DOS takes the first eight, whatever the field holds. */
+        char name[9];
+
+        memcpy(name, ui.save_name, 8);
+        name[8] = 0;
+        for (k = 7; k >= 0 && (name[k] == ' ' || name[k] == 0); k--) name[k] = 0;
+        sprintf(path, "%s/%s.JWC", JW_DIR, name);
+        return;
+    }
     memcpy(stem, ui.file_name[ui.file_sel], 8);
     stem[8] = 0;
     for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
@@ -510,9 +522,15 @@ static int file_write(void)
     if (!drawing || !ui.file_n) {
         return 0;
     }
-    memcpy(stem, ui.file_name[ui.file_sel], 8);
-    stem[8] = 0;
-    for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
+    if (ui.save_name[0]) {
+        memcpy(stem, ui.save_name, 8);
+        stem[8] = 0;
+        for (k = 7; k >= 0 && (stem[k] == ' ' || stem[k] == 0); k--) stem[k] = 0;
+    } else {
+        memcpy(stem, ui.file_name[ui.file_sel], 8);
+        stem[8] = 0;
+        for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
+    }
     sprintf(path, "%s/%s.JWC", JW_DIR, stem);
     sprintf(bak, "%s/%s.bak", JW_DIR, stem);
     bytes = jwc_bytes(drawing, &len, &why);
@@ -568,6 +586,8 @@ EMSCRIPTEN_KEEPALIVE long jw_count(int which)
          : which == 4 ? drawing->n_temp : -1;   /* 4 = the 仮点 */
 }
 
+EMSCRIPTEN_KEEPALIVE int jw_top_item(int x, int y) { return jw_ui_top_item(x, y); }
+EMSCRIPTEN_KEEPALIVE int jw_io_stage(void) { return ui.io_stage; }
 EMSCRIPTEN_KEEPALIVE int jw_file_count(void) { return ui.file_n; }
 EMSCRIPTEN_KEEPALIVE int jw_file_sel(void) { return ui.file_sel; }
 
@@ -1251,6 +1271,13 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             }
             present();
             return -1;
+        } else if (ui.io_stage == JW_IO_SAVE && item == 3) {
+            /* 3 shinki hozon: write under a name of your own rather than
+             * over one from the list. */
+            ui.io_stage = JW_IO_NEWNAME;
+            memcpy(ui.save_name, ui.open_name, sizeof ui.open_name);
+            ui.save_name[sizeof ui.open_name - 1] = 0;
+            ui.save_name_n = (int)strlen(ui.save_name);
         } else if (ui.io_stage == JW_IO_OVER && item == 1) {
             ui.io_stage = JW_IO_WRITE;      /* ①上書きする */
         } else if (ui.io_stage == JW_IO_OVER && item == 2) {
@@ -1261,6 +1288,8 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
              * tools/saveroad.sh reads `1)ファイル(L)2)プロッタ(R)…`). */
             ui.saved_done = file_write();
             ui.io_stage = 0;
+            ui.save_name[0] = 0;        /* the typed name belongs to that save */
+            ui.save_name_n = 0;
         } else if (ui.io_stage == JW_IO_WRITE && item == 2) {
             ui.io_stage = JW_IO_SAVE;       /* ② 再選択 */
         } else if (ui.io_stage == JW_IO_PLOT && item == 3) {
@@ -1330,6 +1359,37 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * the second and then on.  Measured: ①選択確定 puts the line up, the
      * first [Enter] moves 144 pixels (rows 5 and 6 -- the cursor), the
      * second brings up the overwrite question. */
+    /* ③ 新規 保存's field.  [Enter] takes the name on to ◆ｍｅｍｏ入力 and
+     * the rest of the road; [ESC] goes back to the list. */
+    if (ui.command == 30 && ui.io_stage == JW_IO_NEWNAME) {
+        if (key == 27) {
+            ui.io_stage = JW_IO_SAVE;
+            ui.save_name_n = 0;
+        } else if (key == 13 || key == 10) {
+            if (ui.save_name_n) {
+                ui.io_stage = JW_IO_MEMO;
+                ui.memo_row = 0;
+            }
+        } else if (key == 8) {
+            if (ui.save_name_n > 0) ui.save_name[--ui.save_name_n] = 0;
+        } else if (key > ' ' && key < 127
+                   && (int)strlen(ui.save_name) < (int)sizeof ui.save_name - 1) {
+            /* **The cursor is at the front.**  The field comes up with the
+             * drawing in hand in it and a keystroke goes in before that,
+             * not after: measured on the original, `X` over `SAMPLE0` gives
+             * `XSAMPLE0` and `ABC` gives `ABCSAMPLE0` -- ten characters,
+             * so it does not stop at eight either. */
+            char rest[13];
+            const int n = ui.save_name_n;
+
+            strcpy(rest, ui.save_name + n);
+            ui.save_name[n] = (char)toupper(key);
+            strcpy(ui.save_name + n + 1, rest);
+            ui.save_name_n = n + 1;
+        }
+        present();
+        return 1;
+    }
     if (ui.command == 30 && ui.io_stage == JW_IO_MEMO) {
         if (key == 27) {
             ui.io_stage = JW_IO_SAVE;
@@ -1341,14 +1401,13 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
                  * overwrite; a name that is not on the disk goes straight
                  * to 書き込みます. */
                 char path[256];
-                char stem[9];
                 FILE *f;
-                int k;
 
-                memcpy(stem, ui.file_name[ui.file_sel], 8);
-                stem[8] = 0;
-                for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
-                sprintf(path, "%s/%s.JWC", JW_DIR, stem);
+                /* **The name that will be written**, which after
+                 * ③ 新規 保存 is the one that was typed and not the row the
+                 * list has picked.  Asking the wrong one sent every new
+                 * name through 同名ﾌｧｲﾙが存在します. */
+                file_picked(path);
                 f = fopen(path, "rb");
                 if (f) {
                     fclose(f);
