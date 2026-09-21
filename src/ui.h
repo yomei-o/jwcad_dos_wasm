@@ -135,6 +135,9 @@ typedef struct {
     int file_sel;               /* which row is yellow on blue */
     int file_top;               /* the first row shown, for long lists */
     char file_free[24];         /* "268,431,360", what the disk has left */
+    /* The drawing in hand, without its extension -- 編集ファイル名 on the
+     * file screen's third row. */
+    char open_name[9];
     /* Which of ◆ｍｅｍｏ入力's two lines the cursor is on (0 or 1), and
      * what has been typed into them.  The original asks for two. */
     /* Set once ① 実 行 has written the drawing: the original leaves

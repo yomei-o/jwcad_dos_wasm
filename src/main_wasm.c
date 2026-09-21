@@ -281,8 +281,12 @@ static void file_list(int for_save)
             ui.file_size[i] = (long)st.st_size;
             tm = localtime(&st.st_mtime);
             if (tm) {
+                /* **The year is years-since-1900, not the last two digits.**
+                 * The original prints it with %02d, so 1995 comes out `95`
+                 * and 2026 comes out `126` -- three digits, running into
+                 * the next column.  Its own screen says `126/09/22`. */
                 sprintf(ui.file_date[i], "%02d/%02d/%02d %02d:%02d  ",
-                        (tm->tm_year + 1900) % 100, tm->tm_mon + 1,
+                        tm->tm_year, tm->tm_mon + 1,
                         tm->tm_mday, tm->tm_hour, tm->tm_min);
                 ui.file_stamp[i] =
                     ((unsigned long)(((tm->tm_year + 1900 - 1980) << 9)
@@ -360,6 +364,17 @@ static void file_list(int for_save)
      *
      * Reading one of them and assuming the other is what put the port's
      * list in the wrong order the first time. */
+    /* What the original puts beside 保存 is drive A's free space, and it
+     * gets it from DOS.  **Before the return below**, because ②読込's screen
+     * shows it too. */
+    file_thousands(8.0 * 512.0 * 65535.0, ui.file_free);
+    {
+        int k;
+
+        memcpy(ui.open_name, loaded_name, 8);
+        ui.open_name[8] = 0;
+        for (k = 7; k >= 0 && ui.open_name[k] == ' '; k--) ui.open_name[k] = 0;
+    }
     if (!for_save) return;
     for (i = 0; i < n; i++) {
         if (memcmp(ui.file_name[i], loaded_name, 12) != 0) continue;
@@ -387,17 +402,11 @@ static void file_list(int for_save)
         }
         break;
     }
-    /* What the original puts beside 保存 is drive A's free space, and it
-     * gets it from DOS.  The port has no drive of its own -- its disk is
-     * the module's memory, which has no size worth printing -- so it says
-     * what the A: drive of this pair of repositories says:
-     *
-     *     8 sectors a cluster x 512 bytes x 65535 free clusters
-     *
-     * That is dosv_emu_cpp's answer to INT 21h AH=36h (src/dos.cpp), and
-     * it is what the original prints when it runs there: 268,431,360.
-     * Measured, not chosen. */
-    file_thousands(8.0 * 512.0 * 65535.0, ui.file_free);
+    /* The port has no drive of its own -- its disk is the module's memory,
+     * which has no size worth printing -- so it says what the A: drive of
+     * this pair of repositories says: 8 sectors a cluster x 512 bytes x
+     * 65535 free clusters, which is dosv_emu_cpp's answer to INT 21h AH=36h
+     * and what the original prints when it runs there.  Measured. */
 }
 
 /* Open the drawing the list has picked.  Two things do it -- ①選択確定 on

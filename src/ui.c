@@ -223,7 +223,10 @@ static int is_lead(unsigned char c)
     "I" "\x91\xf0" "(R)|" "\x87" "B" \
     "\xca\xde\xaf\xb8\xb1\xaf\xcc\xdf\x8d\xec\x90\xac\x81" "y" \
     "\x82\xb7\x82\xe9\x81" "z|"
+/* The word beside the free space says which way the screen is going:
+ * 保存 on ①保存's, 読込 on ②読込's.  Measured on both. */
 #define JW_FILE_SAVE " " "\x95\xdb\x91\xb6" "    "
+#define JW_FILE_LOAD " " "\x93\xc7\x8d\x9e" "    "
 #define JW_FILE_EDIT "\x95\xd2\x8f" "W"
 #define JW_FILE_NAMED "\x83" "t" "\x83" "@" "\x83" "C" "\x83\x8b\x96\xbc"
 
@@ -1561,7 +1564,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 sprintf(one, "%s%s.JWC", JW_SAVE_FILE, stem);
                 jw_ui_text(v, 17, 3, 7, 0xffffu, one);
             } else {
-                sprintf(one, "%s%s bytes free   ", JW_FILE_SAVE, s->file_free);
+                sprintf(one, "%s%s bytes free   ",
+                        saving ? JW_FILE_SAVE : JW_FILE_LOAD, s->file_free);
                 jw_ui_text(v, 17, 3, 7, 0, one);
                 jw_ui_text(v, 51, 3, 7, 0, JW_FILE_EDIT);
                 jw_ui_text(v, 55, 3, 7, 0, JW_FILE_NAMED);
@@ -1577,7 +1581,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 stem[8] = 0;
                 for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
                 if (!asking) {
-                    jw_ui_text(v, 66, 3, 7, 0, stem);
+                    /* **編集ファイル名 is the drawing in hand**, not the row
+                     * the list has picked: the original shows SAMPLE0 there
+                     * while AUTO.JWC is the row under the bar. */
+                    jw_ui_text(v, 66, 3, 7, 0, s->open_name);
                 }
                 jw_ui_text(v, 17, 5, 7, 0, s->file_name[sel]);
                 jw_ui_text(v, 32, 5, 7, 0, s->file_date[sel]);

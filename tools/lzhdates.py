@@ -68,8 +68,9 @@ if __name__ == '__main__':
                 continue
             stamp = ((((Y - 1980) << 9) | (M << 5) | D) << 16) \
                     | ((h << 11) | (m << 5) | (sec // 2))
+            # years since 1900, the way the original prints it
             print('    { "%s", "%02d/%02d/%02d %02d:%02d", 0x%08lXul },'
-                  % (n.upper(), Y % 100, M, D, h, m, stamp))
+                  % (n.upper(), Y - 1900, M, D, h, m, stamp))
         print('    { 0, 0, 0 },')
         print('};')
     else:
