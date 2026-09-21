@@ -1972,6 +1972,8 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
          * and a green dashed line along the bottom. */
         JwView w;
 
+        memset(&w, 0, sizeof w);
+
         w.ox = 0.0f;
         w.oy = 0.0f;
         w.scale = (float)JW_SUB_SCALE;
@@ -1982,6 +1984,11 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
         w.x1 = 120;
         w.y1 = 462;
         w.group1 = 0;
+        /* **Set every field.**  layer1 came later than this block and was
+         * left as whatever the stack held, which made visible_in hide the
+         * whole drawing -- the box came out with its frame and nothing in
+         * it, and only the pixels said so. */
+        w.layer1 = 0;
         w.frame_box = 1;
         fill(v, 1, 401, 120, 462, 0);
         jw_view_draw_into(v, d, &w);
@@ -2017,6 +2024,8 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
     fill(v, 122, 463, 638, 478, 0);
     for (k = 0; k < 16; k++) {
         JwView w;
+
+        memset(&w, 0, sizeof w);
         const int cx = 128 * (k & 3), cy = 112 * (k >> 2);
 
         w.ox = 0.0f;
