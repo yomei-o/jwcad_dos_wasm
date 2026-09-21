@@ -21,7 +21,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const html = readFileSync('index.html', 'utf8');
-const script = html.slice(html.indexOf('<script>', html.indexOf('jwcad.js')) + 8,
+/* The page's own code is the **last** <script> in the file; the ones before
+   it are the build stamp and the module. */
+const script = html.slice(html.lastIndexOf('<script>') + 8,
                           html.lastIndexOf('</script>'));
 
 const anchors = [];
@@ -98,6 +100,9 @@ const Module = {
   _jw_menu_at: () => 0, _jw_typing: () => 0,
 };
 globalThis.createJwcad = () => Promise.resolve(Module);
+/* The stamp the build writes into the page, so the .wasm is fetched
+   under a name that changes when it changes. */
+globalThis.JW_BUILD = 'test';
 
 vm.runInThisContext(script, { filename: 'index.html#script' });
 await new Promise(r => setTimeout(r, 10));   // let createJwcad resolve

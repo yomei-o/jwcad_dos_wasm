@@ -49,4 +49,13 @@ if [ ! -f jwcad.wasm ] || [ ! jwcad.wasm -nt "$STAMP" ]; then
     echo "emcc did not rewrite jwcad.wasm - the build failed" >&2
     exit 1
 fi
+# **The stamp the page puts on the two file names.**  Without it a browser
+# that has read jwcad.js and jwcad.wasm once keeps using them, and a push
+# changes nothing for anyone who has been to the page before.
+BUILD=$(date +%Y%m%d%H%M%S)
+sed -i "s/const JW_BUILD = '[^']*'/const JW_BUILD = '$BUILD'/" index.html
+sed -i "s|src=\"jwcad.js?v=[^\"]*\"|src=\"jwcad.js?v=$BUILD\"|" index.html
+grep -q "JW_BUILD = '$BUILD'" index.html || {
+    echo "the build stamp did not go into index.html" >&2; exit 1; }
+
 echo "built jwcad.js + jwcad.wasm"
