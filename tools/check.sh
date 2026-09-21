@@ -495,6 +495,10 @@ echo "=== プロッタ出力を本物の道筋で: 入出力 → ②ﾌﾟﾛｯ
 "$NODE" tools/plotroad.mjs orig/SAMPLE0.JWC
 full "$NODE" tools/plotroad.mjs orig/TEST6.JWC
 
+echo "=== ひととおり: 図面を開く → 線を引く → 保存 → 開き直す → プロッタ出力 → PDF/PNG"
+"$NODE" tools/flowcheck.mjs orig/SAMPLE1.JWC
+full "$NODE" tools/flowcheck.mjs orig/SAMPLE6.JWC
+
 echo
 if [ -n "$FULL" ]; then
     echo "all checks passed"

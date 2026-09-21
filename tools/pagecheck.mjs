@@ -17,7 +17,7 @@
  *
  * Both were wrong here until 2026-09-21.
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const html = readFileSync('index.html', 'utf8');
@@ -100,7 +100,22 @@ const ok = (cond, what) => {
 };
 const fire = (k, a) => listeners.get(k)(a);
 
-ok(els.pick.options.length > 0, 'the drawings that ship are offered');
+/* **All fourteen**, and every one of them really in the .wasm.  The page
+   offered eight for a long time, which is not a bug anything would catch:
+   the list is hand written, the six that were missing were simply never
+   typed, and four of the eight labels described the wrong drawing. */
+const offered = els.pick.options.map(o => o.value);
+const shipped = readdirSync('orig').filter(n => /^(SAMPLE|TEST)\d+\.JWC$/i.test(n))
+                                   .map(n => 'orig/' + n).sort();
+
+ok(offered.length === 14, 'all fourteen drawings are offered (' + offered.length + ')');
+ok(String([...offered].sort()) === String(shipped),
+   'and they are exactly the ones that ship');
+ok(offered.every(v => els.pick.options.find(o => o.value === v)
+                        .textContent.startsWith(v.replace(/^orig[/]/, ''))),
+   'each one is listed by its file name as well as its title');
+ok(els.pick.value === 'orig/SAMPLE2.JWC',
+   'and the list shows the drawing that is actually open');
 
 /* アップロード: into the module's own filesystem, then opened by name. */
 els.up.files = [{ name: 'mine.jwc', arrayBuffer: async () => new ArrayBuffer(6) }];

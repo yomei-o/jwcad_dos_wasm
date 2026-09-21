@@ -14,7 +14,10 @@ NODE="${NODE:-}"
 [ -n "$NODE" ] || NODE=$(ls /c/prog/emsdk/emsdk/node/*/bin/node.exe 2>/dev/null | head -1)
 [ -n "$NODE" ] || { echo "no node (set NODE)" >&2; exit 2; }
 bad=0
-for f in orig/*.JWC; do
+# The fourteen that ship, not orig/*.JWC: orig/ is also where the drawings
+# written while analysing go, and those are not drawings the plotter is
+# meant to open (AUTO.JWC is an empty file JW_CAD left behind).
+for f in orig/SAMPLE*.JWC orig/TEST*.JWC; do
     n=$(basename "$f" .JWC)
     out=$("$NODE" tools/plotcheck.mjs "$f" | tr '\n' ' ') || bad=$((bad + 1))
     printf '  %-10s %s\n' "$n" "$out"

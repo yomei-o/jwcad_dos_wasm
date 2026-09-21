@@ -102,16 +102,35 @@
 
 <script src="jwcad.js"></script>
 <script>
+/* **All fourteen** drawings that ship with JW_CAD, in the order the archive
+   has them, and what each one calls itself.
+
+   The labels are not ours: every .JWC carries its 図面名 at offset 40 of the
+   header, and this is that field, read out of the files (tmp/titles.txt).
+   The eight that used to be here were described from memory -- SAMPLE2 as
+   「集合住宅 平面図」 when the drawing says 「マンション 基準階平面図
+   １／１００」, SAMPLE3 as 「指定点」 when it is a 日影図 -- and six of the
+   fourteen were missing outright. dosv_emu_cpp's page lists the same
+   fourteen with the same words, so the two read alike. */
 const FILES = [
-  ['orig/SAMPLE2.JWC', '集合住宅 平面図'],
-  ['orig/SAMPLE6.JWC', '住宅 平面図'],
-  ['orig/SAMPLE1.JWC', '木造平面図'],
-  ['orig/SAMPLE3.JWC', '指定点'],
-  ['orig/SAMPLE5.JWC', 'SAMPLE5'],
-  ['orig/TEST6.JWC',   'TEST6'],
-  ['orig/TEST7.JWC',   'TEST7'],
   ['orig/SAMPLE0.JWC', '図面枠'],
+  ['orig/SAMPLE1.JWC', '木造平面図'],
+  ['orig/SAMPLE2.JWC', 'マンション 基準階平面図 １／１００'],
+  ['orig/SAMPLE3.JWC', 'マンション 日影図 １／２００'],
+  ['orig/SAMPLE4.JWC', 'マンション 南側立面図 １／１００'],
+  ['orig/SAMPLE5.JWC', 'マンション ２．５Ｄ'],
+  ['orig/SAMPLE6.JWC', '木造間取図＋設備図'],
+  ['orig/TEST1.JWC',   '日影図 ＴＥＳＴ用データ（陸屋根）'],
+  ['orig/TEST2.JWC',   '日影図 ＴＥＳＴ用データ（切妻屋根）'],
+  ['orig/TEST3.JWC',   '日影図ＴＥＳＴ用データ（ドーム屋根の概略日影図）'],
+  ['orig/TEST4.JWC',   '日影図ＴＥＳＴ用データ（かまぼこ屋根の概略日影図）'],
+  ['orig/TEST5.JWC',   '特殊な日影図'],
+  ['orig/TEST6.JWC',   '２．５用ＴＥＳＴデータ'],
+  ['orig/TEST7.JWC',   '壁面日影 サンプル'],
 ];
+/* What the page opens with. SAMPLE2 rather than the first of the list: a
+   plan drawing shows what the port can do, and 図面枠 is an empty sheet. */
+const FIRST = 'orig/SAMPLE2.JWC';
 
 let Module = null;
 const canvas = document.getElementById('screen');
@@ -163,11 +182,15 @@ createJwcad().then(M => {
   Module._jw_init();
   for (const [path, label] of FILES) {
     const o = document.createElement('option');
-    o.value = path; o.textContent = label;
+    o.value = path;
+    /* The file name as well as the title. The two pages and every script in
+       the repo call these drawings SAMPLE2.JWC, so the list should too. */
+    o.textContent = path.replace(/^.*[/]/, '') + '  ' + label;
     pick.appendChild(o);
   }
   pick.onchange = () => open(pick.value);
-  open(FILES[0][0]);
+  pick.value = FIRST;
+  open(FIRST);
 });
 
 /* アップロード -- a .JWC from the visitor's machine.
