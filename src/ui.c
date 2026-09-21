@@ -785,6 +785,41 @@ static void menu_pick(VGA *v, int command)
     jw_ui_text(v, left ? 8 : 15, row + 5, 0, 0, key);
 }
 
+/* And the item the pointer is **resting on**, which is a different highlight
+ * from the picked one: white behind the label rather than yellow behind the
+ * whole row, and the one-letter key beside it is left alone.
+ *
+ * Measured against the original with nothing pressed, pointer at (8,128):
+ * it differs from the port over **x 8..55, y 128..143** and nowhere else, and
+ * at (88,128) over **x 72..111**.  Those are the label cells -- six columns
+ * from column 2 on the left, five from column 10 on the right -- so the key
+ * at column 8 (and 15) stays as it was.  The rows are the menu's own, sixteen
+ * pixels from y=64, and above them (y 52..63) nothing highlights.
+ *
+ * Every other check presses something first, so nothing caught this until
+ * tools/hovercheck.sh went looking at the resting pointer alone.
+ */
+static void menu_hover(VGA *v, const JwUi *s)
+{
+    const int row = (s->mouse_y - 64) / 16;
+    int command, x0, x1, col;
+
+    if (s->mouse_y < 64 || row < 0 || row > 14) {
+        return;
+    }
+    if (s->mouse_x >= 8 && s->mouse_x <= 55) {
+        command = row + 16;                     /* the left column */
+        x0 = 8; x1 = 55; col = 2;
+    } else if (s->mouse_x >= 72 && s->mouse_x <= 111) {
+        command = row + 1;                      /* the right one */
+        x0 = 72; x1 = 111; col = 10;
+    } else {
+        return;
+    }
+    fill(v, x0, 64 + 16 * row, x1, 79 + 16 * row, 7);
+    jw_ui_text(v, col, row + 5, 0, 0, jw_ui_menu_label(command));
+}
+
 static void menu(VGA *v)
 {
     int i;

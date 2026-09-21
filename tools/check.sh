@@ -456,6 +456,10 @@ done
 # The page's アップロード: a drawing written into the module's own filesystem
 # and opened by name has to draw what the baked-in copy draws (RESUME 4.29).
 "$NODE" tests/upload_check.js orig/SAMPLE2.JWC
+
+# And the page's own controls: the upload path and, above all, the download
+# (a detached <a> downloads nothing; revoking the URL too early cancels it).
+sh tools/pagecheck.sh
 full "$NODE" tests/upload_check.js orig/TEST7.JWC
 
 echo

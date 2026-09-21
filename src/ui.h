@@ -59,6 +59,9 @@ typedef struct {
     int scaling;
     /* 複写 ④ﾏｳｽ倍率, the same way. */
     int mscale;
+    /* Where the pointer is.  The menu row it rests on is drawn inverted
+     * whether or not anything has been pressed -- see menu_hover. */
+    int mouse_x, mouse_y;
     /* 寸法: the value it has just written, which the band shows. */
     double dim_value;
     /* and the three numbers in its box: how many texts there were when it

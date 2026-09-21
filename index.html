@@ -193,19 +193,42 @@ document.getElementById('up').onchange = async e => {
   open(last);
 };
 
+/* Hand the visitor a file.
+ *
+ * Two things here are not optional, and both were wrong until 2026-09-21:
+ *
+ *   the <a> has to be **in the document**.  Clicking a detached one does
+ *   nothing at all in some browsers, so the button appeared dead.
+ *
+ *   the object URL must **not** be revoked in the same turn as the click.
+ *   The browser has not started reading the blob yet, and revoking cancels
+ *   the download.  It happens to work where the read wins the race, which
+ *   is the worst kind of bug: it works on the machine it was written on.
+ */
+function handOver(name, bytes) {
+  const url = URL.createObjectURL(
+    new Blob([bytes], { type: 'application/octet-stream' }));
+  const a = document.createElement('a');
+
+  a.href = url;
+  a.download = name;
+  a.style.display = 'none';
+  document.body.append(a);
+  a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 10000);
+}
+
 /* ダウンロード -- the port writes the .JWC itself (src/jwc.c's jwc_save), the
    same bytes tests/roundtrip.exe checks and the real JW_CAD opens in
    tools/savecheck.sh.  The page only wraps them in a Blob. */
 document.getElementById('save').onclick = () => {
-  if (!Module || !Module._jw_save()) { say(); return; }
+  if (!Module) return;
+  if (!Module._jw_save()) { say(); return; }
   const p = Module._jw_saved(), n = Module._jw_saved_size();
   const bytes = Module.HEAPU8.slice(p, p + n);
-  const name = loaded.replace(/^.*[/]/, '');
-  const url = URL.createObjectURL(new Blob([bytes], {type: 'application/octet-stream'}));
-  const a = document.createElement('a');
-  a.href = url; a.download = name;
-  a.click();
-  URL.revokeObjectURL(url);
+  const name = loaded.replace(/^.*[/]/, '') || 'JW_CAD.JWC';
+
+  handOver(name, bytes);
   say(name + ' — ' + n + ' バイト');
 };
 
