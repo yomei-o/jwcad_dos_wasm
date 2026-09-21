@@ -43,7 +43,8 @@ function el(id) {
   };
 }
 const els = {};
-for (const id of ['screen', 'status', 'pick', 'up', 'save', 'ime']) els[id] = el(id);
+for (const id of ['screen', 'status', 'pick', 'up', 'save', 'pdf', 'png',
+                  'ime']) els[id] = el(id);
 
 globalThis.document = {
   body,
@@ -83,6 +84,7 @@ const Module = {
   _jw_width: () => 640, _jw_height: () => 480, _jw_framebuffer: () => 0,
   _jw_status: () => 0,
   _jw_save: () => 1, _jw_saved: () => 0, _jw_saved_size: () => SAVED,
+  _jw_plot: () => 1,
   _jw_zoom() {}, _jw_pan() {}, _jw_mouse() {}, _jw_mods() {},
   _jw_menu_at: () => 0, _jw_typing: () => 0,
 };
@@ -121,5 +123,16 @@ ok(anchors[0].clicked === 1, 'and clicked');
 ok(revoked === 0, 'the object URL is NOT revoked in the same turn');
 await new Promise(r => setTimeout(r, 30));
 ok(revoked === 0, 'nor a moment later -- the browser is still reading it');
+
+/* プロッタ出力: the same two things a plotter's paper is for. */
+for (const [id, ext] of [['pdf', '.pdf'], ['png', '.png']]) {
+  anchors.length = 0;
+  body.children.length = 0;
+  els[id].onclick();
+  ok(anchors.length === 1 && anchors[0].download === 'MINE' + ext,
+     id.toUpperCase() + ' hands over MINE' + ext);
+  ok(body.children[0] === anchors[0] && anchors[0].clicked === 1,
+     '  in the document and clicked');
+}
 
 process.exit(bad ? 1 : 0);
