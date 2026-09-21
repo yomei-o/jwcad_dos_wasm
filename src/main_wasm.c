@@ -86,6 +86,12 @@ static void sync_ui(void)
 /* Redraw at the current view and unpack the planes for the canvas.  The order
  * is the original's: the drawing (which clears the screen first), then the
  * frame round it, then the pointer, which is exclusive-or and has to go last. */
+/* ■拡大■ keeps the corner it has been given, and 前倍率 the view before the
+ * last zoom -- `前倍率表示[NFER]` in JW_CAD.DOC. */
+static int zoom_x, zoom_y;
+static JwView before_zoom;
+static int have_before;
+
 static void present(void)
 {
     if (!drawing) {
@@ -101,6 +107,9 @@ static void present(void)
     /* the line a half-finished command drags, then the pointer -- both
      * exclusive-or, and both after everything else */
     jw_cmd_band(&cmd, &vga, &view, mouse_x, mouse_y);
+    if (ui.zoom_stage == 2) {
+        jw_ui_zoom_band(&vga, zoom_x, zoom_y, mouse_x, mouse_y);
+    }
     jw_ui_cursor(&vga, mouse_x, mouse_y);
     vga_render(&vga, pixels);
     jw_view_rgba(&vga, pixels, rgba);
@@ -172,6 +181,7 @@ EMSCRIPTEN_KEEPALIVE void jw_zoom(double factor, int sx, int sy)
     view.scale = (float)(view.scale * factor);
     view.ox = (float)(wx - (sx - view.ax) / view.scale);
     view.oy = (float)(wy - (view.ay - sy) / view.scale);
+    ui.view_scale = view.scale;
     present();
 }
 
@@ -190,6 +200,7 @@ EMSCRIPTEN_KEEPALIVE void jw_home(void)
 {
     if (drawing) {
         jw_view_original(&view);
+        ui.view_scale = view.scale;
         present();
     }
 }
@@ -198,6 +209,7 @@ EMSCRIPTEN_KEEPALIVE void jw_fit(void)
 {
     if (drawing) {
         jw_view_fit_in(&view, drawing, AREA_X0, AREA_Y0, AREA_X1, AREA_Y1);
+        ui.view_scale = view.scale;
         present();
     }
 }
@@ -240,6 +252,45 @@ EMSCRIPTEN_KEEPALIVE void jw_mods(int m)
 EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 {
     const int pick = jw_ui_menu_hit(x, y);
+    const int bar = jw_ui_bar_item(x, y);
+
+    /* The strip along the bottom.  Only the two that move the view are done:
+     * ■拡大■ (the Zoom bar) takes two corners and 前倍率 goes back to the
+     * view before the last one.  電卓, 範囲記憶, 倍率指定, ｵﾌｾｯﾄ and HELP are
+     * measured but not built (RESUME 4.27). */
+    if (bar) {
+        if (bar == JW_BAR_ZOOM) {
+            ui.zoom_stage = 1;
+        } else if (bar == JW_BAR_PREV && have_before) {
+            view = before_zoom;
+            have_before = 0;
+            ui.view_scale = view.scale;
+        }
+        mouse_x = x;
+        mouse_y = y;
+        present();
+        return -1;
+    }
+    /* While ■拡大■ is running the drawing window is where its two corners
+     * come from, and nothing else happens there. */
+    if (ui.zoom_stage && x >= AREA_X0 && x <= AREA_X1
+        && y >= AREA_Y0 && y <= AREA_Y1) {
+        if (ui.zoom_stage == 1) {
+            zoom_x = x;
+            zoom_y = y;
+            ui.zoom_stage = 2;
+        } else {
+            before_zoom = view;
+            have_before = 1;
+            jw_view_zoom(&view, zoom_x, zoom_y, x, y);
+            ui.view_scale = view.scale;
+            ui.zoom_stage = 0;
+        }
+        mouse_x = x;
+        mouse_y = y;
+        present();
+        return -1;
+    }
 
     if (pick) {
         ui.command = pick;
@@ -293,6 +344,27 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
     int pick;
+
+    /* ■拡大■ has the keyboard while it is asking for corners: [ESC] gives up
+     * and the space bar takes the whole paper, which is what the bar itself
+     * offers (`用紙全体再表示 [ｽﾍﾟｰｽｷｰ]`). */
+    if (ui.zoom_stage) {
+        if (key == 27) {
+            ui.zoom_stage = 0;
+            present();
+            return -1;
+        }
+        if (key == ' ' && drawing) {
+            before_zoom = view;
+            have_before = 1;
+            jw_view_original(&view);
+            ui.view_scale = view.scale;
+            ui.zoom_stage = 0;
+            present();
+            return -1;
+        }
+        return 0;
+    }
 
     /* A command that is asking for a number has the keyboard until [Enter]:
      * the one-letter keys would otherwise pick another item out from under it

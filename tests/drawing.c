@@ -46,6 +46,8 @@ int main(int argc, char **argv)
     int mx = 200, my = 200;     /* where the original leaves the pointer */
     int press[8][3], n_press = 0, stage = 0;
     int zoom[4] = { 0, 0, 0, 0 }, zoomed = 0;
+    int zoom_stage = 0;
+    int zoom_at[2] = { 0, 0 };
     double num[2] = { 0.0, 0.0 };
     int dec[2] = { 3, 3 };
     /* Zeroed before the first jw_cmd_pick: the command state owns a little
@@ -171,6 +173,13 @@ int main(int argc, char **argv)
             press[n_press][2] = 0;
             n_press++;
             a += 2;
+        } else if (strcmp(argv[a], "-S") == 0 && a + 3 < argc) {
+            /* which step of ■拡大■ the chrome should show, and the corner it
+             * already has */
+            zoom_stage = atoi(argv[a + 1]);
+            zoom_at[0] = atoi(argv[a + 2]);
+            zoom_at[1] = atoi(argv[a + 3]);
+            a += 4;
         } else if (strcmp(argv[a], "-Z") == 0 && a + 4 < argc) {
             /* zoom to that screen rectangle before anything else is drawn */
             zoom[0] = atoi(argv[a + 1]);
@@ -358,7 +367,9 @@ int main(int argc, char **argv)
         JwUi s;
 
         jw_ui_from(&s, d);
-        s.guide = zoomed ? 0 : jw_ui_guide();   /* a zoom repaints, and the
+        s.view_scale = w.scale;
+        s.zoom_stage = zoom_stage;
+        s.guide = (zoomed || zoom_stage) ? 0 : jw_ui_guide();   /* a zoom repaints, and the
                                               * opening message goes */
         s.command = command;
         s.stage = stage;
@@ -409,6 +420,9 @@ int main(int argc, char **argv)
         /* the line a half-finished command drags, then the pointer -- both
          * exclusive-or, and both after everything else */
         jw_cmd_band(&c, &v, &w, mx, my);
+        if (zoom_stage == 2) {
+            jw_ui_zoom_band(&v, zoom_at[0], zoom_at[1], mx, my);
+        }
         jw_ui_cursor(&v, mx, my);
     }
     vga_render(&v, pixels);

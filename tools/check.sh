@@ -303,6 +303,9 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full DRAWING=SAMPLE6 BOOT=150000000 sh tools/editcheck.sh 459 70 ''
     echo "=== ズームバーの ■拡大■ と 用紙枠 (RESUME 4.27)"
     sh tools/zoomcheck.sh 200 100 300 400
+    sh tools/barcheck.sh
+    sh tools/barcheck.sh 200 100
+    full MX=300 MY=200 sh tools/barcheck.sh 450 380
     full sh tools/zoomcheck.sh 150 200 600 260
     full sh tools/zoomcheck.sh 300 17 400 60
     full sh tools/zoomcheck.sh 620 200 638 220

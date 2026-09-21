@@ -394,6 +394,7 @@ void jw_ui_default(JwUi *s)
 
     memset(s, 0, sizeof(*s));
     s->pen = 2;
+    s->view_scale = 1.0;
     s->line_type = 1;
     s->dec[0] = s->dec[1] = 3;
     s->paper = 3;
@@ -943,6 +944,23 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     /* -- the strip along the bottom ------------------------------------- */
     fill(v, 1, 464, 638, 478, 0);
     box(v, 0, 463, 639, 479, 7);
+    if (s->zoom_stage) {
+        /* ■拡大■ takes the whole strip: 電卓, 範囲記憶, 前倍率, 倍率指定,
+         * ｵﾌｾｯﾄ and HELP all go black and only the Zoom bar is left, in
+         * **green** while it waits for the first corner and back to its
+         * usual yellow after.  Until a corner is down it
+         * offers the whole paper on the space bar; after that only the word
+         * is left.  Measured -- the strip is black from x=1 to 223 and green
+         * from 224 to 438, exactly the bar's own width, and the letters run
+         * **over** the frame's bottom row, so that goes on first.  RESUME
+         * 4.27. */
+        fill(v, 224, 464, 438, 478, s->zoom_stage == 1 ? 4 : 6);
+        if (s->zoom_stage == 1) {
+            jw_ui_text(v, 29, 30, 0, 0, " " "\x97" "p" "\x8e" "\x86" "\x91" "S" "\x91" "\xcc" "\x8d" "\xc4" "\x95" "\x5c" "\x8e" "\xa6" "  [" "\xbd" "\xcd" "\xdf" "\xb0" "\xbd" "\xb7" "\xb0" "] ");
+        } else {
+            jw_ui_text(v, 30, 30, 0, 0, "      " "\x82" "y" "\x81" "@" "\x82" "\x8f" "\x81" "@" "\x82" "\x8f" "\x81" "@" "\x82" "\x8d" "      ");
+        }
+    } else {
     box(v, 0, 463, 121, 479, 7);
     jw_ui_text(v, 1, 30, 7, 0, "    [Z   ");
     jw_ui_blit(v, 2, 463, 0x4545, 7);      /* JIS 4545 and 426e: 電卓 */
@@ -953,7 +971,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     jw_ui_text(v, 17, 30, 7, 0, "\x91\x4f\x94\x7b\x97\xa6[NFER]");
     fill(v, 224, 463, 438, 479, 6);
     sprintf(buf, "Zoom[\xbd\xcd\xdf\xb0\xbd] \x95\x5c\x8e\xa6\x94\x7b\x97\xa6 %4.2f ",
-            magnification(s->paper));
+            magnification(s->paper) * s->view_scale);
     jw_ui_text(v, 30, 30, 0, 0, buf);
     jw_ui_text(v, 56, 30, 7, 0, "\x94\x7b\x97\xa6\x8e\x77\x92\xe8[XFER]");
     fill(v, 550, 464, 606, 478, 4);
@@ -965,11 +983,21 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     jw_ui_blit(v, 599, 471, 0x100 | 'e', 0);
     box(v, 550, 463, 606, 479, 7);
     box(v, 0, 463, 639, 479, 7);
+    }
 
     /* -- the title and the guidance ------------------------------------- */
     fill(v, 0, 0, 639, 15, 0);
     top_clear();
-    if (s->command >= 1 && s->command <= 30) {
+    if (s->zoom_stage) {
+        /* ■拡大■ writes over whatever the command had there. */
+        if (s->zoom_stage == 1) {
+            /* Only while it waits for the first corner: once one is down
+             * the original clears the row and writes nothing but the
+             * prompt. */
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        }
+        jw_ui_text(v, 30, 1, 7, 0, s->zoom_stage == 1 ? "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "\x8e" "n" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " " : "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "    " "\x8f" "I" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " ");
+    } else if (s->command >= 1 && s->command <= 30) {
         /* what the original writes there once an item is picked, piece by
          * piece and in its own order -- see src/prompt.h */
         const JwPrompt *p = JW_PROMPT[s->command - 1];
@@ -1460,6 +1488,56 @@ void jw_ui_cursor(VGA *v, int x, int y)
 /* Which command a point picks.  The menu's fifteen rows are rows 5 to 19 of the
  * character grid -- y 64 to 303 -- and the two columns are split by the white
  * bar the original paints at x 65 to 70. */
+/* Which button of the strip along the bottom a press is on, or 0.
+ *
+ * The edges are where jw_ui_draw puts them: 電卓 up to the box at 51, 範囲記憶
+ * in the green one from 52 to 120, then 前倍率, the Zoom bar (the yellow
+ * 224..438), 倍率指定, ｵﾌｾｯﾄ in the green 550..606 and HELP after it. */
+/* The rectangle ■拡大■ drags from the corner it has to the pointer.  Colour
+ * 4 and exclusive-or, like 消去's range: the original's screen after the first
+ * corner has green sides right across the drawing. */
+void jw_ui_zoom_band(VGA *v, int x0, int y0, int x1, int y1)
+{
+    v->clip_x0 = 122;
+    v->clip_y0 = 17;
+    v->clip_x1 = 638;
+    v->clip_y1 = 462;
+    jw_line(v, x0, y0, x1, y0, 4, 0x18, JW_STYLE_SOLID);
+    jw_line(v, x1, y0, x1, y1, 4, 0x18, JW_STYLE_SOLID);
+    jw_line(v, x1, y1, x0, y1, 4, 0x18, JW_STYLE_SOLID);
+    jw_line(v, x0, y1, x0, y0, 4, 0x18, JW_STYLE_SOLID);
+    v->clip_x0 = 0;
+    v->clip_y0 = 0;
+    v->clip_x1 = v->width - 1;
+    v->clip_y1 = v->height - 1;
+}
+
+int jw_ui_bar_item(int x, int y)
+{
+    if (y < 463 || y > 479 || x < 0 || x > 639) {
+        return 0;
+    }
+    if (x <= 51) {
+        return JW_BAR_CALC;
+    }
+    if (x <= 120) {
+        return JW_BAR_KEEP;
+    }
+    if (x < 224) {
+        return JW_BAR_PREV;
+    }
+    if (x <= 438) {
+        return JW_BAR_ZOOM;
+    }
+    if (x < 550) {
+        return JW_BAR_SCALE;
+    }
+    if (x <= 606) {
+        return JW_BAR_OFFSET;
+    }
+    return JW_BAR_HELP;
+}
+
 int jw_ui_menu_hit(int x, int y)
 {
     int row;

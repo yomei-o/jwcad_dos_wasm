@@ -42,6 +42,11 @@ typedef struct {
      * `typed_n` there; 文編集 starts the field with the text it was pointed
      * at and the cursor in front of it. */
     int typed_at;
+    /* 下の帯: how far the view is zoomed in (1 at the original's own view --
+     * the `表示倍率` the bar prints is the paper's times this), and which step
+     * of ■拡大■ is running: 0 none, 1 asking for the 始点, 2 the 終点. */
+    double view_scale;
+    int zoom_stage;
     /* 寸法: the value it has just written, which the band shows. */
     double dim_value;
     /* and the three numbers in its box: how many texts there were when it
@@ -183,6 +188,20 @@ int jw_ui_key_command(int key);
 /* Which command a point in the menu picks, or 0.  The menu is fifteen rows of
  * two columns; the original draws them at rows 5 to 19 of the character grid,
  * the left column from column 2 and the right from column 10. */
+/* The strip along the bottom. */
+#define JW_BAR_CALC    1        /* 電卓 */
+#define JW_BAR_KEEP    2        /* 範囲記憶 */
+#define JW_BAR_PREV    3        /* 前倍率[NFER] */
+#define JW_BAR_ZOOM    4        /* Zoom[ｽﾍﾟｰｽ] */
+#define JW_BAR_SCALE   5        /* 倍率指定[XFER] */
+#define JW_BAR_OFFSET  6        /* ｵﾌｾｯﾄ */
+#define JW_BAR_HELP    7        /* HELP */
+int jw_ui_bar_item(int x, int y);
+
+/* The rectangle ■拡大■ drags once it has a corner: colour 4, exclusive-or,
+ * the same band 消去 pulls round a range. */
+void jw_ui_zoom_band(VGA *v, int x0, int y0, int x1, int y1);
+
 int jw_ui_menu_hit(int x, int y);
 
 /* The mouse pointer.  0885:4f03 draws it with the same line routine as
