@@ -48,6 +48,7 @@ int main(int argc, char **argv)
     int zoom[4] = { 0, 0, 0, 0 }, zoomed = 0;
     int zoom_stage = 0;
     int zoom_at[2] = { 0, 0 };
+    int actual[2] = { 0, 0 }, actualed = 0;
     double num[2] = { 0.0, 0.0 };
     int dec[2] = { 3, 3 };
     /* Zeroed before the first jw_cmd_pick: the command state owns a little
@@ -180,6 +181,12 @@ int main(int argc, char **argv)
             zoom_at[0] = atoi(argv[a + 2]);
             zoom_at[1] = atoi(argv[a + 3]);
             a += 4;
+        } else if (strcmp(argv[a], "-A") == 0 && a + 2 < argc) {
+            /* 倍率指定 の右押し: 原寸でその点を中心に */
+            actual[0] = atoi(argv[a + 1]);
+            actual[1] = atoi(argv[a + 2]);
+            actualed = 1;
+            a += 3;
         } else if (strcmp(argv[a], "-Z") == 0 && a + 4 < argc) {
             /* zoom to that screen rectangle before anything else is drawn */
             zoom[0] = atoi(argv[a + 1]);
@@ -242,6 +249,9 @@ int main(int argc, char **argv)
     }
     if (zoomed) {
         jw_view_zoom(&w, zoom[0], zoom[1], zoom[2], zoom[3]);
+    }
+    if (actualed) {
+        jw_view_actual(&w, d, actual[0], actual[1]);
     }
     /* -p: presses in the drawing area, before anything is drawn -- a command
      * changes the drawing, and the screen shows what came out. */
@@ -369,7 +379,7 @@ int main(int argc, char **argv)
         jw_ui_from(&s, d);
         s.view_scale = w.scale;
         s.zoom_stage = zoom_stage;
-        s.guide = (zoomed || zoom_stage) ? 0 : jw_ui_guide();   /* a zoom repaints, and the
+        s.guide = (zoomed || actualed || zoom_stage) ? 0 : jw_ui_guide();   /* a zoom repaints, and the
                                               * opening message goes */
         s.command = command;
         s.stage = stage;

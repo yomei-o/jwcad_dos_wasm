@@ -26,6 +26,9 @@ void jw_view_fit_in(JwView *w, const Jwc *d, int x0, int y0, int x1, int y1);
 /* ズームバーの ■拡大■: the rectangle two presses gave fills the window. */
 void jw_view_zoom(JwView *w, int sx0, int sy0, int sx1, int sy1);
 
+/* 倍率指定[XFER] の右押し: 原寸（表示倍率 1.0）でその点を中心に。 */
+void jw_view_actual(JwView *w, const Jwc *d, int sx, int sy);
+
 /* The view the original uses.
  *
  * Measured, not guessed: breaking on the original's own line routine

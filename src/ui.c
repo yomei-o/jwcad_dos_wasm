@@ -990,13 +990,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     top_clear();
     if (s->zoom_stage) {
         /* ■拡大■ writes over whatever the command had there. */
-        if (s->zoom_stage == 1) {
-            /* Only while it waits for the first corner: once one is down
-             * the original clears the row and writes nothing but the
-             * prompt. */
+        if (s->zoom_stage != 2) {
+            /* ■拡大■ drops it once a corner is down: the original clears the
+             * row and writes nothing but the prompt.  倍率指定 keeps it. */
             jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
         }
-        jw_ui_text(v, 30, 1, 7, 0, s->zoom_stage == 1 ? "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "\x8e" "n" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " " : "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "    " "\x8f" "I" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " ");
+        if (s->zoom_stage == 3) {
+            jw_ui_text(v, 12, 1, 7, 0, "\x95" "\x5c" "\x8e" "\xa6" "\x92" "\x86" "\x90" "S " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" "   " "\x94" "C" "\x88" "\xd3" "\x94" "{" "\x97" "\xa6" "\xcf" "\xb3" "\xbd" "(L) " "\x94" "{" "\x97" "\xa6" "=1.0" "\xcf" "\xb3" "\xbd" "(R)  " "\x8d" "\xc4" "\x95" "\x5c" "\x8e" "\xa6" "[XFER]");
+        } else {
+            jw_ui_text(v, 30, 1, 7, 0, s->zoom_stage == 1 ? "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "\x8e" "n" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " " : "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "    " "\x8f" "I" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " ");
+        }
     } else if (s->command >= 1 && s->command <= 30) {
         /* what the original writes there once an item is picked, piece by
          * piece and in its own order -- see src/prompt.h */

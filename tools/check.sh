@@ -306,6 +306,7 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sh tools/barcheck.sh
     sh tools/barcheck.sh 200 100
     full MX=300 MY=200 sh tools/barcheck.sh 450 380
+    full XFER=1 sh tools/barcheck.sh
     full sh tools/zoomcheck.sh 150 200 600 260
     full sh tools/zoomcheck.sh 300 17 400 60
     full sh tools/zoomcheck.sh 620 200 638 220

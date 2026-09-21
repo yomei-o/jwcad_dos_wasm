@@ -261,6 +261,8 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     if (bar) {
         if (bar == JW_BAR_ZOOM) {
             ui.zoom_stage = 1;
+        } else if (bar == JW_BAR_SCALE) {
+            ui.zoom_stage = 3;
         } else if (bar == JW_BAR_PREV && have_before) {
             view = before_zoom;
             have_before = 0;
@@ -275,7 +277,18 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
      * come from, and nothing else happens there. */
     if (ui.zoom_stage && x >= AREA_X0 && x <= AREA_X1
         && y >= AREA_Y0 && y <= AREA_Y1) {
-        if (ui.zoom_stage == 1) {
+        if (ui.zoom_stage == 3) {
+            /* 倍率指定: the right button is 原寸, `倍率=1.0ﾏｳｽ(R)`.  The left
+             * one asks for a number first, which is not done. */
+            if (!right) {
+                return -1;
+            }
+            before_zoom = view;
+            have_before = 1;
+            jw_view_actual(&view, drawing, x, y);
+            ui.view_scale = view.scale;
+            ui.zoom_stage = 0;
+        } else if (ui.zoom_stage == 1) {
             zoom_x = x;
             zoom_y = y;
             ui.zoom_stage = 2;

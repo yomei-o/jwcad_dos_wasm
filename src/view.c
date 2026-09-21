@@ -1141,6 +1141,31 @@ void jw_view_rgba(const VGA *v, const unsigned char *pixels, unsigned char *rgba
  * 254 - 225 = 29 and 233 - 194.15 = 38.85, which is what DGROUP holds.
  * 121 and 463 do not move, so the window is screen x 121..639, y 16..463.
  */
+/* 倍率指定[XFER] with the right button: the point pressed goes to the middle
+ * of the window and the 表示倍率 becomes 1.0 -- `倍率=1.0ﾏｳｽ(R)` on its own
+ * line, and 原寸 in JW_CAD.DOC.
+ *
+ * Read out of the original: a right press at (300,200) on SAMPLE0 leaves
+ * DGROUP 0x0c30 at 1.7470588 (which is 518 / (170 x unit_mm), the scale that
+ * makes the band print 1.00) and the origin at (30.7508, 135.357); one at
+ * (400,300) leaves (130.75083, 35.3569).  Both give **259 and 223** for the
+ * half-window -- note the 223, where ■拡大■ uses 223.5.
+ */
+void jw_view_actual(JwView *w, const Jwc *d, int sx, int sy)
+{
+    const double cx = (sx - w->ax) / w->scale + w->ox;
+    const double cy = (w->ay - sy) / w->scale + w->oy;
+
+    if (!d || d->unit_mm <= 0.0f) {
+        return;
+    }
+    w->scale = (float)(518.0 / (170.0 * d->unit_mm));
+    w->ox = (float)(cx - 259.0 / w->scale);
+    w->oy = (float)(cy - 223.0 / w->scale);
+    w->ax = 121.0f;
+    w->ay = 463.0f;
+}
+
 void jw_view_zoom(JwView *w, int sx0, int sy0, int sx1, int sy1)
 {
     const double lo_x = sx0 < sx1 ? sx0 : sx1, hi_x = sx0 < sx1 ? sx1 : sx0;
