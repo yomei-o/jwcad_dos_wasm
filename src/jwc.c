@@ -1256,6 +1256,28 @@ int jwc_add_arc_at(Jwc *d, float cx, float cy, float r, long start, long end,
     return 1;
 }
 
+/* 紙: the paper box in the left panel.  Pressing it asks
+ *
+ *     用紙 サイズ (A0～A4） 変更
+ *
+ * and takes a digit into the field at column 48; [Enter] applies it.
+ * Measured on SAMPLE0: it starts at A-4, and pressing the box then typing
+ * `2` and [Enter] leaves the panel reading A-2.
+ *
+ * The width is what unit_mm is made of, so the whole drawing rescales -- the
+ * same table jwc_read uses. */
+int jwc_set_paper(Jwc *d, int paper)
+{
+    static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f, 297.0f };
+
+    if (!d || paper < 0 || paper > 4) {
+        return 0;
+    }
+    d->paper = (unsigned char)paper;
+    d->unit_mm = 518.0f / PAPER[paper];
+    return 1;
+}
+
 int jwc_visible(const Jwc *d, unsigned char layer)
 {
     return d->layer_on[layer] && d->group_on[layer >> 4];

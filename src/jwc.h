@@ -226,6 +226,11 @@ void jwc_free(Jwc *d);
  * draws them puts a thicket of construction lines over the drawing. */
 int jwc_visible(const Jwc *d, unsigned char layer);
 
+/* Change the paper size (0 = A0 to 4 = A4).  Everything the drawing measures
+ * in millimetres of paper hangs off it -- unit_mm is 518 / the paper's width
+ * -- so it cannot just be stored. */
+int jwc_set_paper(Jwc *d, int paper);
+
 /* Add a line to the drawing, the way a drawing command does.  The arrays grow
  * by a block at a time; the counts the panel shows come straight off them.
  * Returns 0 if there was no memory for it. */

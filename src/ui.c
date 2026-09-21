@@ -1512,6 +1512,44 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     if ((s->command == 13 || s->command == 28) && s->typing_text) {
         fill(v, s->typed_n * 8, 16, 638, 16, 0);
     }
+    /* 紙's own line, and the field it takes the size in.
+     *
+     * Measured with `sh tools/pressstr.sh 18 328 left` and by reading the
+     * screen: `[ESC]  ` at column 1, the question at 18, `A-` at 46 and the
+     * usual green cursor block at 48 (x 376..383, rows 7..15).  Typing a
+     * digit and [Enter] applies it -- SAMPLE0 goes from A-4 to A-2.
+     */
+    if (s->ask) {
+        const int at = s->ask == JW_ASK_PAPER ? 48 : 50;
+        int i;
+
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        if (s->ask == JW_ASK_PAPER) {
+            jw_ui_text(v, 18, 1, 7, 0,
+                   "\x97""\x70""\x8e""\x86""\x20""\x83""\x54""\x83""\x43"
+                   "\x83""\x59""\x20""\x28""\x41""\x30""\x81""\x60""\x41"
+                   "\x34""\x81""\x6a""\x20""\x95""\xcf""\x8d""\x58");
+            jw_ui_text(v, 46, 1, 7, 0, "A-");
+        } else {
+            jw_ui_text(v, 18, 1, 7, 0,
+                   "\x83""\x8c""\x83""\x43""\x83""\x84""\x20""\x83""\x4f"
+                   "\x83""\x8b""\x81""\x5b""\x83""\x76""\x8f""\x6b""\x8e"
+                   "\xda""\x20""\x95""\xcf""\x8d""\x58");
+            jw_ui_text(v, 45, 1, 7, 0,
+                   "\x94""\x7b""\x97""\xa6""\x3d");
+        }
+        for (i = 0; i < s->ask_n && i < 6; i++) {
+            char one[2];
+
+            one[0] = s->ask_typed[i];
+            one[1] = 0;
+            jw_ui_text(v, at + i, 1, 7, 0, one);
+        }
+        i = s->ask_n < 6 ? s->ask_n : 6;
+        fill(v, (at - 1) * 8 + i * 8, 7, (at - 1) * 8 + 7 + i * 8, 15, 4);
+    }
     /* レイヤ変更's own line.  Read off the original with
      * `sh tools/pressstr.sh 16 360 left`: column 7, colour 7, and the whole
      * of it in one write. */

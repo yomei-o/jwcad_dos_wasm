@@ -72,6 +72,14 @@ typedef struct {
      * makes it the one written to, and moving the pointer into the drawing
      * area is how it ends. */
     int layer_mode;
+    /* The left panel's own questions.  Pressing 紙 or the scale beside it
+     * puts a line along the top and takes a number in a field, ended with
+     * [Enter]; JW_ASK_* says which.  Measured on SAMPLE0: 紙 then `2` and
+     * [Enter] goes A-4 to A-2, and the scale then `2` goes S=1/1.0 to
+     * S=1/2.0. */
+    int ask;
+    char ask_typed[8];
+    int ask_n;
     /* 寸法: the value it has just written, which the band shows. */
     double dim_value;
     /* and the three numbers in its box: how many texts there were when it
@@ -228,6 +236,10 @@ int jw_ui_bar_item(int x, int y);
 void jw_ui_zoom_band(VGA *v, int x0, int y0, int x1, int y1);
 
 int jw_ui_menu_hit(int x, int y);
+
+/* Which question the left panel is asking (JwUi.ask). */
+#define JW_ASK_PAPER 1          /* 用紙 サイズ (A0～A4） 変更 */
+#define JW_ASK_SCALE 2          /* レイヤ グループ縮尺 変更 */
 
 /* The mouse pointer.  0885:4f03 draws it with the same line routine as
  * everything else, but into planes 1 and 2 only and with the graphics

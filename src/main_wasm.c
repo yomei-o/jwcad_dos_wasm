@@ -353,6 +353,21 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         return -1;
     }
 
+    /* 紙: the paper box, x 1..47 of the row at y 321..335.  The scale beside
+     * it (S=1/...) starts at column 7 = x 48 and asks its own question, which
+     * is not done. */
+    if (x >= 1 && x <= 120 && y >= 321 && y <= 335 && drawing) {
+        mouse_x = x;
+        mouse_y = y;
+        jw_ui_from(&ui, drawing);
+        /* After jw_ui_from: it starts from jw_ui_default, which memsets. */
+        ui.ask = x <= 47 ? JW_ASK_PAPER : JW_ASK_SCALE;
+        ui.ask_n = 0;
+        ui.ask_typed[0] = 0;
+        sync_ui();
+        present();
+        return -1;
+    }
     {
         const int n = layer_at(x, y);
 
@@ -440,6 +455,49 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
     int pick;
 
+    /* 紙 has the keyboard while it is asking for a size.  Measured: a digit
+     * goes into the field at column 48 and [Enter] applies it -- SAMPLE0
+     * goes from A-4 to A-2 on `2` then [Enter]. */
+    if (ui.ask) {
+        const int what = ui.ask;
+
+        if (key == 27) {
+            ui.ask = 0;
+        } else if (key == 13 || key == 10) {
+            /* **The drawing is measured in millimetres of paper**, so a
+             * bigger sheet makes it smaller on the screen: unit_mm is
+             * 518 / the paper's width, and the view has to follow it.
+             * Measured on SAMPLE0 -- A-4 to A-2 doubles the width, and the
+             * original's drawing goes from 2421 lit pixels to 1212, which is
+             * the ratio of the two unit_mm exactly. */
+            const double was = drawing ? drawing->unit_mm : 1.0;
+
+            if (ui.ask_n > 0 && what == JW_ASK_PAPER) {
+                jwc_set_paper(drawing, ui.ask_typed[0] - '0');
+            } else if (ui.ask_n > 0 && drawing) {
+                const double n = atof(ui.ask_typed);
+
+                if (n > 0.0) {
+                    drawing->denom = (float)n;
+                }
+            }
+            jw_ui_from(&ui, drawing);
+            jw_view_original(&view);
+            if (drawing && was > 0.0) {
+                view.scale *= drawing->unit_mm / was;
+            }
+        } else if (key == 8) {
+            if (ui.ask_n > 0) {
+                ui.ask_typed[--ui.ask_n] = 0;
+            }
+        } else if (((key >= '0' && key <= '9') || key == '.')
+                   && ui.ask_n < (int)sizeof ui.ask_typed - 1) {
+            ui.ask_typed[ui.ask_n++] = (char)key;
+            ui.ask_typed[ui.ask_n] = 0;
+        }
+        present();
+        return -1;
+    }
     /* ■拡大■ has the keyboard while it is asking for corners: [ESC] gives up
      * and the space bar takes the whole paper, which is what the bar itself
      * offers (`用紙全体再表示 [ｽﾍﾟｰｽｷｰ]`). */
