@@ -3284,6 +3284,29 @@ SAMPLE0 は 10（4.43 と同じ文字の箱）。
 
 [Enter] で**書込レイヤの名前**になります。8787 → **0 画素差**。
 
+### 4.47 移植のプロッタ出力を本物と突き合わせた
+
+`tools/plotcmp.py`——本物が書いたプロッタ出力（dosv_emu_cpp の
+`tools/plotrun.sh` が実機を動かして取ります）と、移植の歩き
+（`tools/walk.c` → `tmp/walk.exe`）を線 1 本ずつ比べます。
+
+```
+sh tools/cc.sh -O1 -Isrc -o tmp/walk.exe tools/walk.c src/plot.c src/png.c     src/jwc.c src/view.c src/draw.c src/vga.c src/fontx.c -lm
+python tools/plotcmp.py ../dosv_emu_cpp/tmp/proot/PLOT orig/SAMPLE0.JWC
+```
+
+**SAMPLE0 で 11 本すべて一致**しました。
+
+分かったこと 3 つ:
+
+* **本物が出すのは「表示されている線」だけ**です。SAMPLE0 は 30 本のうち
+  **見えているのが 11 本**、点は 16 個あって**見えているのは 0**
+  ——移植の `jwc_visible` の判定とぴったり同じでした
+* 座標系は**平行移動だけ違います**。プロッタの原点は紙の中心、図面の
+  原点はその隅。SAMPLE0 では (-598.512, -427.958)
+* **向きは揃いません**。プロッタはペンを下ろしたまま繋ぐので、同じ線が
+  端から出ることがあります。線としては同じなので、比較は両向き見ます
+
 ### 4.46 画面を字に読み戻す道具（`tools/readrow.py`）
 
 ```
