@@ -104,6 +104,25 @@ typedef struct {
      * panel's bottom four rows, a display above it and its own top line. */
     /* 目盛, the left cell of the panel that appears over the counts: it
      * asks for the grid's X and Y spacing in millimetres of paper. */
+    /* 字表示 ↔ 枠表示, the right-hand cell of the panel's second row.
+     * Pressing it swaps the word and puts ［終了］マウスを作図範囲に移動 on
+     * the top line; the drawing itself changes when the pointer goes back
+     * into the drawing area. */
+    /* 軸角 on/off, the panel's second row, middle cell.
+     *
+     * **The black word is the state, the coloured one is the offer.**  With
+     * 軸角 off the original writes `off` in colour 0 -- black on black, so
+     * it cannot be seen -- and `on` in cyan; pressing `on` swaps them.  The
+     * 目盛 row above works the same way, with `off` black and the four
+     * numbers in yellow. */
+    /* Which of 目盛's five cells is chosen: 0 for `off`, 1..4 for 11, 12,
+     * 13 and 14.  The chosen cell is the one with the block of yellow under
+     * it, and its word is written in black on top -- the same way 軸角's
+     * row works. */
+    int gauge_pick;
+    int axis_on;
+    int frame_text;
+    int gauge_said;             /* that prompt is up */
     int grid_mode;
     double grid_x, grid_y;      /* its spacing, millimetres of paper */
     int calc;

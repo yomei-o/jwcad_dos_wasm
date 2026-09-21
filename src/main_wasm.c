@@ -951,6 +951,39 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
     /* 目盛: the left cell of the panel that shows over the counts while the
      * pointer is there (RESUME 4.38).  It asks for the grid's spacing. */
+    /* 字表示 ↔ 枠表示, the panel's second row, right-hand cell.  Measured:
+     * the press swaps the word and puts its own prompt up, and the drawing
+     * itself is left until the pointer goes back into the drawing area --
+     * which is what the prompt says to do. */
+    /* 目盛's five cells, the panel's first row: `off` and the four numbers. */
+    if (x >= 32 && x <= 119 && y >= 17 && y <= 31 && drawing) {
+        ui.gauge_pick = x <= 55 ? 0 : (x - 56) / 16 + 1;
+        ui.gauge_said = 1;
+        ui.guide = 0;
+        mouse_x = x;
+        mouse_y = y;
+        present();
+        return -1;
+    }
+    /* 軸角's on/off, the cell to its left. */
+    if (x >= 56 && x <= 71 && y >= 32 && y <= 47 && drawing) {
+        ui.axis_on = !ui.axis_on;
+        ui.gauge_said = 1;
+        ui.guide = 0;
+        mouse_x = x;
+        mouse_y = y;
+        present();
+        return -1;
+    }
+    if (x >= 72 && x <= 119 && y >= 32 && y <= 47 && drawing) {
+        ui.frame_text = !ui.frame_text;
+        ui.gauge_said = 1;
+        ui.guide = 0;           /* and the opening note goes with the banner */
+        mouse_x = x;
+        mouse_y = y;
+        present();
+        return -1;
+    }
     if (x >= 1 && x <= 55 && y >= 17 && y <= 31 && drawing) {
         mouse_x = x;
         mouse_y = y;

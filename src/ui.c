@@ -980,18 +980,38 @@ static void gauge(VGA *v, const JwUi *s)
         return;
     }
     fill(v, 1, 17, 120, 47, 0);
-    fill(v, 32, 18, 54, 31, 6);
-    fill(v, 32, 33, 54, 47, 5);
+    /* The block of yellow marks which of 目盛's cells is chosen: `off` at
+     * x32..54, and the four numbers at x56..71, 72..87, 88..103, 104..119.
+     * The numbers' blocks start a row higher than `off`'s -- measured. */
+    if (s->gauge_pick == 0) {
+        fill(v, 32, 18, 54, 31, 6);
+    } else {
+        fill(v, 56 + 16 * (s->gauge_pick - 1), 17,
+             71 + 16 * (s->gauge_pick - 1), 31, 6);
+    }
+    /* **The cell that is filled is the state.**  With 軸角 off the block of
+     * cyan is under `off` (x32..54) and `on` is written in cyan on black;
+     * pressing `on` moves the block to it (x56..70) and the words swap
+     * over.  Measured -- the original's cyan spans x32..70 afterwards,
+     * which is `off` in cyan letters and `on` on a cyan ground. */
+    if (s->axis_on) {
+        fill(v, 56, 33, 70, 47, 5);
+    } else {
+        fill(v, 32, 33, 54, 47, 5);
+    }
     jw_ui_text(v, 1, 2, 6, 0, "\x96" "\xda" "\x90" "\xb7");
-    jw_ui_text(v, 5, 2, 0, 0, "off");
-    jw_ui_text(v, 8, 2, 6, 0, "11");
-    jw_ui_text(v, 10, 2, 6, 0, "12");
-    jw_ui_text(v, 12, 2, 6, 0, "13");
-    jw_ui_text(v, 14, 2, 6, 0, "14");
+    jw_ui_text(v, 5, 2, s->gauge_pick == 0 ? 0 : 6, 0, "off");
+    jw_ui_text(v, 8, 2, s->gauge_pick == 1 ? 0 : 6, 0, "11");
+    jw_ui_text(v, 10, 2, s->gauge_pick == 2 ? 0 : 6, 0, "12");
+    jw_ui_text(v, 12, 2, s->gauge_pick == 3 ? 0 : 6, 0, "13");
+    jw_ui_text(v, 14, 2, s->gauge_pick == 4 ? 0 : 6, 0, "14");
     jw_ui_text(v, 1, 3, 6, 0, "\x8e" "\xb2" "\x8a" "\x70");
-    jw_ui_text(v, 5, 3, 0, 0, "off");
-    jw_ui_text(v, 8, 3, 5, 0, "on");
-    jw_ui_text(v, 10, 3, 6, 0, "\x8e" "\x9a" "\x95" "\x5c" "\x8e" "\xa6");
+    jw_ui_text(v, 5, 3, s->axis_on ? 5 : 0, 0, "off");
+    jw_ui_text(v, 8, 3, s->axis_on ? 0 : 5, 0, "on");
+    /* 字表示 or 枠表示, whichever way the cell has been pressed. */
+    jw_ui_text(v, 10, 3, 6, 0, s->frame_text
+               ? "\x98" "g" "\x95\x5c\x8e\xa6"
+               : "\x8e\x9a\x95\x5c\x8e\xa6");
 
     /* And a short slant beside each of the four numbers -- eight pixels of
      * yellow that no string write accounts for, the same shape by every one
@@ -999,7 +1019,10 @@ static void gauge(VGA *v, const JwUi *s)
      * and forty-eight pixels to the right.  Read off the original with the
      * pointer at (119,30), where nothing else is over them. */
     for (i = 0; i < 4; i++) {
-        jw_line(v, 63 + 16 * i, 20, 61 + 16 * i, 27, 6,
+        /* On the chosen number the slant is black, like the digits: the
+         * whole cell is yellow underneath. */
+        jw_line(v, 63 + 16 * i, 20, 61 + 16 * i, 27,
+                s->gauge_pick == i + 1 ? 0u : 6u,
                 ROP_REPLACE, JW_STYLE_SOLID);
     }
 
@@ -2297,6 +2320,17 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                    "\x81\x6d\x8f\x49\x97\xb9\x81\x6e\x83\x7d\x83\x45"
                    "\x83\x58\x82\xf0\x8d\xec\x90\x7d\x94\xcd\x88\xcd"
                    "\x82\xc9\x88\xda\x93\xae");
+    }
+    if (s->gauge_said) {
+        /* 字表示 ↔ 枠表示 answers with its own prompt, and **clears the
+         * line first**: the original's opening banner is gone after the
+         * press, the way picking a menu item takes it away. */
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 20, 1, 7, 0,
+                   " " "\x81" "m" "\x8f" "I" "\x97\xb9\x81" "n" "\x83" "}" "\x83"
+                   "E" "\x83" "X" "\x82\xf0\x8d\xec\x90" "}"
+                   "\x94\xcd\x88\xcd\x82\xc9\x88\xda\x93\xae");
     }
     if (s->grid_mode) {
         char one[64];
