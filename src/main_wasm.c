@@ -16,6 +16,7 @@
  */
 #include "cmd.h"
 #include "jwc.h"
+#include "plot.h"
 #include "ui.h"
 #include "view.h"
 
@@ -172,6 +173,28 @@ EMSCRIPTEN_KEEPALIVE int jw_save(void)
 
 EMSCRIPTEN_KEEPALIVE const unsigned char *jw_saved(void) { return saved; }
 EMSCRIPTEN_KEEPALIVE int jw_saved_size(void) { return (int)saved_len; }
+
+/* Plotter output.  入出力 → ②ﾌﾟﾛｯﾀ → ③ﾌｧｲﾙ出力 is where the original sends
+ * a drawing to a plotter through a `*.JWP` definition; the browser has no
+ * plotter, so what the page offers instead is the two things a plotter's
+ * paper is for -- a PDF to print and a PNG to look at (src/plot.c).  Both
+ * land in the same `saved` buffer the .JWC download uses. */
+EMSCRIPTEN_KEEPALIVE int jw_plot(int as_png)
+{
+    free(saved);
+    saved = NULL;
+    saved_len = 0;
+    if (!drawing) {
+        return 0;
+    }
+    saved = as_png ? jw_plot_png(drawing, 4.0, &saved_len)
+                   : jw_plot_pdf(drawing, &saved_len);
+    if (!saved) {
+        sprintf(status, "plot: out of memory");
+        return 0;
+    }
+    return 1;
+}
 
 /* Zoom about a point on the screen, so the drawing stays under the cursor. */
 EMSCRIPTEN_KEEPALIVE void jw_zoom(double factor, int sx, int sy)

@@ -488,6 +488,10 @@ full sh -c 'DRAWING=SAMPLE3 BOOT=90000000 sh tools/seqcheck.sh "40 392 left"' ||
 full sh -c 'DRAWING=SAMPLE6 BOOT=120000000 sh tools/seqcheck.sh "80 344 left" "16 360 right"' || true
 full "$NODE" tests/upload_check.js orig/TEST7.JWC
 
+# The plotter's PDF and PNG (RESUME 4.45).
+echo "=== プロッタ出力: the PDF and the PNG the page's two buttons hand over"
+sh tools/plotcheck.sh
+
 echo
 if [ -n "$FULL" ]; then
     echo "all checks passed"

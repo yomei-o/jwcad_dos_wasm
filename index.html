@@ -58,6 +58,8 @@
     <label class="filebtn">アップロード<input type="file" id="up"
            accept=".jwc,.JWC" multiple></label>
     <button id="save">ダウンロード</button>
+    <button id="pdf">PDF</button>
+    <button id="png">PNG</button>
     <span class="status" id="status">読み込み中…</span>
   </div>
 
@@ -86,6 +88,9 @@
     <b>アップロード</b>で手元の .JWC を開けます。<b>ダウンロード</b>は、いま画面に
     ある図面をそのまま .JWC で書き出します——本物の ＪＷ＿ＣＡＤ がそれを開いて
     同じ画面を描くところまで確かめてあります。<br>
+    <b>PDF</b> と <b>PNG</b> はプロッタ出力です。本物は 入出力 → ②ﾌﾟﾛｯﾀ →
+    ③ﾌｧｲﾙ出力 でプロッタに出しますが、ここにプロッタは無いので、その紙の
+    代わりになるものを渡します。用紙は描かれた中身に合わせます（周囲 10mm）。<br>
     ＪＷ＿ＣＡＤ の著作権は jw_software club にあります。
     <a href="https://github.com/yomei-o/jwcad_dos_wasm">解析と移植のソース</a>
   </footer>
@@ -231,6 +236,26 @@ document.getElementById('save').onclick = () => {
   handOver(name, bytes);
   say(name + ' — ' + n + ' バイト');
 };
+
+/* プロッタ出力 -- 入出力 → ②ﾌﾟﾛｯﾀ → ③ﾌｧｲﾙ出力 is where the original sends a
+   drawing to a plotter, through a `*.JWP` definition that says what the
+   plotter's command language is.  There is no plotter here, so the two
+   buttons hand over what a plotter's paper is for: a PDF to print and a PNG
+   to look at.  Both come out of src/plot.c, which walks the drawing in
+   millimetres of paper the way a plotter's coordinates are. */
+function plot(png) {
+  if (!Module) return;
+  if (!Module._jw_plot(png ? 1 : 0)) { say(); return; }
+  const p = Module._jw_saved(), n = Module._jw_saved_size();
+  const bytes = Module.HEAPU8.slice(p, p + n);
+  const stem = (loaded.replace(/^.*[/]/, '') || 'JW_CAD').replace(/\.[^.]*$/, '');
+  const name = stem + (png ? '.png' : '.pdf');
+
+  handOver(name, bytes);
+  say(name + ' — ' + n + ' バイト');
+}
+document.getElementById('pdf').onclick = () => plot(false);
+document.getElementById('png').onclick = () => plot(true);
 
 function at(e) {
   const r = canvas.getBoundingClientRect();
