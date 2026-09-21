@@ -38,6 +38,17 @@ DRAWING="${DRAWING:-SAMPLE0}"
 OUT="${OUT:-tmp/save/orig.raw}"
 BOOT="${BOOT:-40000000}"
 
+# Only one of these at a time.  Every save goes through tmp/sroot, so two
+# runs at once hand each other's answers back -- and they are answers,
+# not errors, so nothing looks wrong.  That happened three times in one
+# day.  `mkdir` is atomic, so it is the lock.
+if ! mkdir tmp/sroot.lock 2> /dev/null; then
+    echo "another save is running (tmp/sroot.lock).  Wait for it, or" >&2
+    echo "remove that directory if nothing is (tasklist | grep dosemu)." >&2
+    exit 2
+fi
+trap 'rmdir tmp/sroot.lock 2> /dev/null' EXIT INT TERM
+
 rm -rf tmp/sroot
 cp -r orig tmp/sroot
 

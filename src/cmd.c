@@ -1322,10 +1322,32 @@ static int turn_range(JwCmd *c, Jwc *d, double px, double py)
         if (!picked_text(c, d, k)) {
             continue;
         }
+        /* The start is turned like everything else; **the far end is worked
+         * out again from the string**, not turned with it.
+         *
+         * Measured with ③連続, which turns by twice the angle and so shows
+         * the difference: SAMPLE0's text 0 at 60 degrees comes back from the
+         * original as (336.951,212.879)-(357.881,249.129).  Turning the
+         * stored far end -- or the stored baseline vector, which is the same
+         * arithmetic -- gives 357.880 however the rounding is arranged;
+         * laying jwc_text_length along the new direction gives 357.881.
+         *
+         * It fits what the record is: a text's extent follows from its string
+         * and its character size, so once the direction changes the far end
+         * has to be re-derived.  ③数値倍率 does **not** do this -- there the
+         * angle does not change and both ends simply move (scale_range). */
         turn_at(c->base_x, c->base_y, co, si, px, py,
                 d->texts[k].x0, d->texts[k].y0, &x0, &y0);
-        turn_at(c->base_x, c->base_y, co, si, px, py,
-                d->texts[k].x1, d->texts[k].y1, &x1, &y1);
+        {
+            const double was = atan2(d->texts[k].y1 - d->texts[k].y0,
+                                     d->texts[k].x1 - d->texts[k].x0);
+            const double dir = was + rad;
+            const double len = jwc_text_length(d, d->texts[k].text,
+                                               d->texts[k].size);
+
+            x1 = x0 + len * cos(dir);
+            y1 = y0 + len * sin(dir);
+        }
         if (jwc_dup_text(d, k, 0.0f, 0.0f)) {
             JwcText *q = &d->texts[d->n_texts - 1];
 
@@ -1582,6 +1604,37 @@ static void copy_again(JwCmd *c, Jwc *d)
 {
     const double n = c->copies + 1.0;
 
+    /* After ⑥回転 and the two 倍率 ways the step is not a plain distance, and
+     * the two do **not** repeat the same way.  Measured on SAMPLE0 with the
+     * range (150,130)-(245,170), the base at (79,163) and the place at
+     * (279,163), pressing ③連続 once:
+     *
+     *   ⑥回転 30 度   the second copy is at R(**60**)(p - base) + base + 2 x
+     *                  offset -- line 5 comes out
+     *                  (336.477,201.376)-(371.359,261.793), which is what
+     *                  twice the angle gives and not what the first copy's
+     *                  transform applied twice gives ((452.205,263) for that
+     *                  end).  **The angle adds up.**
+     *   ③数値倍率 2   the second copy is the first one moved by the offset:
+     *                  (402.946,448.232) = (202.946,448.232) + (200,0).
+     *                  **The scale does not.**
+     *
+     * Both are `base + n x offset` for the translation, which is what
+     * ①ﾏｳｽ位置 does as well. */
+    if (c->rotate) {
+        const double was = c->rot_deg;
+
+        c->rot_deg = was * n;
+        turn_range(c, d, c->base_x + c->step_x * n, c->base_y + c->step_y * n);
+        c->rot_deg = was;
+        c->copies++;
+        return;
+    }
+    if (c->scaling || c->mscale) {
+        scale_range(c, d, c->base_x + c->step_x * n, c->base_y + c->step_y * n);
+        c->copies++;
+        return;
+    }
     if (c->command == 16) {
         move_range(c, d, c->step_x, c->step_y);
     } else {
@@ -2155,14 +2208,18 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
             c->stage = 5;
             return 1;
         }
-        if ((c->stage == 8 || c->stage == 9) && item == 1) {
+        if (JW_REDO_STAGE(c->stage) && item == 1) {
             /* ①同形別処理 -- the same selection again, by another method: the
              * line goes back to `|①ﾏｳｽ位置(L,R)|②数値位置|…|` with 変更無し
-             * in the band. */
+             * in the band -- so whichever of the seven was running is put
+             * away and another one can be picked. */
+            c->rotate = 0;
+            c->scaling = 0;
+            c->mscale = 0;
             c->stage = 4;
             return 1;
         }
-        if ((c->stage == 8 || c->stage == 9) && item == 2) {
+        if (JW_REDO_STAGE(c->stage) && item == 2) {
             /* ②他図形処理 -- another figure: back to the line the item came
              * up with, and nothing picked. */
             c->pressed = 0;
@@ -2170,13 +2227,16 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
             c->n_flip = 0;
             c->cleared = 0;
             c->copies = 0;
+            c->rotate = 0;
+            c->scaling = 0;
+            c->mscale = 0;
             free(c->sel_line);
             free(c->sel_arc);
             free(c->sel_text);
             c->sel_line = c->sel_arc = c->sel_text = 0;
             return 1;
         }
-        if ((c->stage == 8 || c->stage == 9) && item == 3) {
+        if (JW_REDO_STAGE(c->stage) && item == 3) {
             /* ③連続 -- another copy, one step further on.  The line stays as
              * it is and the counts go up again (32|14 to 34|15 on SAMPLE0).
              * ①ﾏｳｽ位置's own line (段 9) offers the same three items and its
@@ -2184,20 +2244,20 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
             copy_again(c, d);
             return 1;
         }
-        if (c->stage == 4 && item == 4) {
+        if (c->command == 1 && c->stage == 4 && item == 4) {
             /* ④ﾏｳｽ倍率: four presses and no typing.  Stages 21 to 25. */
             c->mscale = 1;
             c->stage = 21;
             return 1;
         }
-        if (c->stage == 4 && item == 3) {
+        if (c->command == 1 && c->stage == 4 && item == 3) {
             /* ③数値倍率: the 基準点 first, on the same line ⑥回転 and
              * ①ﾏｳｽ位置 put up.  Stages 17 to 20 are free in src/copy.h. */
             c->scaling = 1;
             c->stage = 17;
             return 1;
         }
-        if (c->stage == 4 && item == 6) {
+        if (c->command == 1 && c->stage == 4 && item == 6) {
             /* ⑥回転: the 基準点 first, on the same line ①ﾏｳｽ位置 puts up.
              * Stages 13 to 16 are free in src/copy.h. */
             c->rotate = 1;
@@ -4517,6 +4577,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                     c->scale_y = ay != 0.0 ? (py - c->msc_py) / ay : 1.0;
                 }
                 scale_range(c, d, c->msc_px, c->msc_py);
+                c->step_x = c->msc_px - c->base_x;
+                c->step_y = c->msc_py - c->base_y;
+                c->copies = 1;
                 c->mscale = 5;
                 c->stage = 25;
                 return 1;
@@ -4551,6 +4614,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 } else {
                     scale_range(c, d, px, py);
                 }
+                c->step_x = px - c->base_x;
+                c->step_y = py - c->base_y;
+                c->copies = 1;
                 *state = 4;
                 c->stage = done;
                 return 1;

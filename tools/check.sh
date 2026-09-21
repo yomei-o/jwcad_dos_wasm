@@ -324,6 +324,9 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     ITEM=300 sh tools/rotatecheck.sh 150 130 245 170 200 300 2 400 300
     full ITEM=300 sh tools/rotatesave.sh 150 130 245 170 200 300 2 400 300
     full ITEM=300 DRAWING=TEST1 BOOT=60000000 sh tools/rotatesave.sh 235 218 340 320 300 350 2 400 350
+    echo "    ...and ③連続, which adds the angle up but not the scale (4.30)"
+    full LABEL=回転→③連続 sh tools/recsave.sh -c 1 -r 150 130 -p 245 170 -t 580 -t 520 -p 200 300 -k 30 -p 400 300 -t 540
+    full LABEL=倍率→③連続 sh tools/recsave.sh -c 1 -r 150 130 -p 245 170 -t 580 -t 300 -p 200 300 -k 2 -p 400 300 -t 540
     echo "=== 複写 ④ﾏｳｽ倍率: the scale off two boxes (RESUME 4.32)"
     LABEL=ﾏｳｽ倍率 sh tools/reccheck.sh -c 1 -r 150 130 -p 245 170 -t 580 -t 390 -p 200 300 -p 300 380 -p 350 200 -p 550 360
     full LABEL=ﾏｳｽ倍率の記録 sh tools/recsave.sh -c 1 -r 150 130 -p 245 170 -t 580 -t 390 -p 200 300 -p 300 380 -p 350 200 -p 550 360

@@ -299,6 +299,13 @@ typedef struct {
  * (src/copy.h and src/move.h differ in a word or two). */
 #define JW_MOVE_CMD(n) ((n) == 1 || (n) == 16)
 
+/* The stages 複写 and 移動 end a copy on, where the line offers
+ * `|①同形別処理|②他図形処理|③連続|`: 8 is ②数値位置's, 9 is ①ﾏｳｽ位置's, and
+ * 16, 20 and 25 belong to ⑥回転, ③数値倍率 and ④ﾏｳｽ倍率 (src/typed.h).  The
+ * line is word for word the same in all of them. */
+#define JW_REDO_STAGE(n) \
+    ((n) == 8 || (n) == 9 || (n) == 16 || (n) == 20 || (n) == 25)
+
 /* Start a command, or leave it (0).
  *
  * The struct must be zeroed before the first call: it owns a little memory --
