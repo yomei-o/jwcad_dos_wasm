@@ -386,6 +386,12 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             view = before_zoom;
             have_before = 0;
             ui.view_scale = view.scale;
+        } else if (bar == JW_BAR_CALC && drawing) {
+            const int was_kept = ui.kept;
+
+            jw_ui_from(&ui, drawing);
+            ui.calc = 1;        /* after jw_ui_from, which memsets */
+            ui.kept = was_kept;
         } else if ((bar == JW_BAR_KEEP || bar == JW_BAR_OFFSET) && drawing) {
             /* 範囲記憶 and ｵﾌｾｯﾄ both leave the original **in 入出力**, the
              * same way 紙, the scale and サブ画面表示 do -- the item's row

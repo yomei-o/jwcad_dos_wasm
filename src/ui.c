@@ -152,6 +152,22 @@ static int is_lead(unsigned char c)
     "|\x87\x42\x8d\x87\x90\xac|\x87\x43\x8d\xed\x8f\x9c" \
     "|\x87\x44\xc4\xde\xd7\xb2\xcc\xde\x95\xcf\x8d\x58" \
     "|\x87\x45\x82\x63\x82\x77\x82\x65|\x87\x46INDEX|"
+/* 電卓's four keypad rows, its own line and the white strip of function
+ * keys under it -- byte for byte off the original. */
+#define JW_CALC_R1 " 7  8  9 \x81\x7c\x81\x80\x81\x7d"
+#define JW_CALC_R2 " 4  5  6 \x81\x7e \xdf" "AC"
+#define JW_CALC_R3 " 1  2  3  \x81\x7b \x82\x62"
+#define JW_CALC_R4 " 0\x81\x40,  \xa5  \x81\x81 En"
+#define JW_CALC_TOP \
+    "\x93\x64\x91\xec\x81\x69[,][Enter]\x82\xcd\x90\x94\x92\x6c\x93\xfc" \
+    "\x97\xcd\x8e\x9e\x82\xc9\x8e\x67\x97\x70\x81\x6a"
+#define JW_CALC_FKEY \
+    "|[f1]\x8c\x76\x8e\x5a\x8c\x8b\x89\xca\x95\x5c\x8e\xa6 " \
+    "|[f2]\x90\x94\x92\x6c\x8e\xe6\x93\xbe |"
+#define JW_CALC_F6 \
+    "[F6] \x82\xd7\x82\xab\x8f\xe6\x84\xa0[F7]  \xd9\xb0\xc4 \x84\xa0" \
+    "[F8]  COS \x84\xa0[F9]  SIN \x84\xa0[F10] ATAN "
+
 #define JW_IO_PSET_BAR \
     "\x90\xdd\x92\xe8 |\x87\x40\x8a\x6d\x92\xe8(L)" \
     "|\x87\x41\x94\xcd\x88\xcd\x95\xcf\x8d\x58(R)|\x87\x42\x94\x6a \x90\xfc" \
@@ -1125,10 +1141,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     box(v, 0, 320, 121, 336, 7);
 
     fill(v, 1, 306, 120, 318, 0);
-    if (s->group_mode) {
-        /* ｸﾞﾙｰﾌﾟ empties the pen's row: the original leaves y 305..319
-         * black, no `Pen.2` and no sample line. */
-        fill(v, 1, 305, 120, 319, 0);
+    if (s->group_mode || s->calc) {
+        /* ｸﾞﾙｰﾌﾟ and 電卓 both empty the pen's row: the original leaves
+         * y 305..319 black, no `Pen.2` and no sample line.  電卓 keeps the
+         * panel's right edge at x=120 on the first of those rows, ｸﾞﾙｰﾌﾟ
+         * does not -- one pixel, measured both ways. */
+        fill(v, 1, 305, s->calc ? 119 : 120, 319, 0);
     } else {
     jw_ui_text(v, 1, 20, 7, 0, "               ");
     pen_name(buf, s->pen, s->line_type);
@@ -1141,7 +1159,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     /* Two white rows under the menu -- but ｸﾞﾙｰﾌﾟ empties the pen's row and
      * that takes the lower one with it: the original has y=304 white and
      * y=305 black while it is asking. */
-    fill(v, 0, 304, 121, s->group_mode ? 304 : 305, 7);
+    fill(v, 0, 304, 121, (s->group_mode || s->calc) ? 304 : 305, 7);
     jw_line(v, 0, 16, 0, 463, 7, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, 121, 16, 121, 463, 7, ROP_REPLACE, JW_STYLE_SOLID);
 
@@ -1230,6 +1248,36 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     }
     box(v, 0, 384, 121, 400, 7);
     jw_line(v, 0, 479, 0, 16, 7, ROP_REPLACE, JW_STYLE_SOLID);
+
+    if (s->calc) {
+        /* 電卓's keypad, over the rows 図面名, the sixteen layers and
+         * サブ画面表示 had.  Read off the original with
+         * tools/pressstr.sh 25 470 left. */
+        int k;
+
+        fill(v, 1, 320, 120, 399, 0);
+        jw_ui_text(v, 1, 22, 6, 0, JW_CALC_R1);
+        jw_ui_text(v, 1, 23, 6, 0, JW_CALC_R2);
+        jw_ui_text(v, 1, 24, 6, 0, JW_CALC_R3);
+        jw_ui_text(v, 1, 25, 6, 0, JW_CALC_R4);
+        jw_ui_text(v, 13, 21, 7, 0, "0");
+        jw_ui_text(v, 12, 23, 6, 0, " \xdf");
+        /* The grid goes on **after** the keys: each row of them paints
+         * black behind itself and would cut the lines otherwise. */
+        /* The keys sit in a grid: a line every sixteen rows from y=336, and
+         * columns at x 0, 24, 48, 72, 102 and 121 -- plus one at 87 that
+         * stops after the third row, because ＝ is two keys wide. */
+        for (k = 0; k <= 4; k++) {
+            fill(v, 0, 336 + 16 * k, 121, 336 + 16 * k, 7);
+        }
+        fill(v, 0, 336, 0, 400, 7);
+        fill(v, 24, 336, 24, 400, 7);
+        fill(v, 48, 336, 48, 400, 7);
+        fill(v, 72, 336, 72, 400, 7);
+        fill(v, 87, 336, 87, 368, 7);
+        fill(v, 102, 336, 102, 400, 7);
+        fill(v, 121, 336, 121, 400, 7);
+    }
 
     /* -- the strip along the bottom ------------------------------------- */
     fill(v, 1, 464, 638, 478, 0);
@@ -1860,6 +1908,17 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                    "\x81\x6d\x8f\x49\x97\xb9\x81\x6e\x83\x7d\x83\x45"
                    "\x83\x58\x82\xf0\x8d\xec\x90\x7d\x94\xcd\x88\xcd"
                    "\x82\xc9\x88\xda\x93\xae");
+    }
+    if (s->calc) {
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 7, 1, 7, 0, JW_CALC_TOP);
+        jw_ui_text(v, 41, 1, 7, 0, JW_CALC_FKEY);
+        jw_ui_text(v, 18, 2, 7, 0xffffu, JW_CALC_F6);
+        /* And the rule under the top line back on: the strip of function
+         * keys paints black behind its letters and cuts it. */
+        fill(v, 122, 16, 639, 16, 7);
     }
     if (s->pen_board) {
         fill(v, 0, 0, 639, 15, 0);

@@ -93,6 +93,9 @@ typedef struct {
      * up; JW_IO_* say which of its own the top line is showing. */
     /* 範囲記憶 has been pressed: its button in the strip goes from green to
      * cyan and stays there. */
+    /* 電卓, the button at the left end of the strip: a keypad over the
+     * panel's bottom four rows, a display above it and its own top line. */
+    int calc;
     int kept;
     int io_stage;
     /* The name ③ﾌｧｲﾙ出力 asks for, in the field at column 25. */
