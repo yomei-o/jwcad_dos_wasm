@@ -759,6 +759,71 @@ static void counts(VGA *v, const JwUi *s)
     jw_ui_text(v, 1, 3, 0, 0, " \x90\xfc  \x90\x94|\x89\x7e\xa5\x95\xb6\x90\x94");
 }
 
+/* The panel the counts box turns into while the pointer rests on it.
+ *
+ * Nothing presses anything: moving the mouse into (1,17)-(120,47) blacks the
+ * green box out and puts two rows of settings there, and moving out puts the
+ * counts back.  Caught with the emulator parked at (60,30) -- ten string
+ * writes, all of them into the box:
+ *
+ *     col  1 row 2 fg 6   目盛        col  1 row 3 fg 6   軸角
+ *     col  5 row 2 fg 0   off         col  5 row 3 fg 0   off
+ *     col  8 row 2 fg 6   11          col  8 row 3 fg 5   on
+ *     col 10 row 2 fg 6   12          col 10 row 3 fg 6   字表示
+ *     col 12 row 2 fg 6   13
+ *     col 14 row 2 fg 6   14
+ *
+ * The rules and the two value boxes are not strings, so they came off the
+ * screen instead: white down x=31 and x=55 the whole height, white along
+ * y=32 across the box and along y=17 between the two rules, white down x=72
+ * on the lower row only, and the value box beside each label filled --
+ * (32,18)-(54,31) yellow for 目盛, (32,33)-(54,47) cyan for 軸角 -- with the
+ * `off` written over it in black, the transparent way the counts are. */
+static void gauge(VGA *v, const JwUi *s)
+{
+    int i;
+
+    if (s->mouse_x < 0 || s->mouse_x > 120 ||
+        s->mouse_y < 17 || s->mouse_y > 48) {
+        return;
+    }
+    fill(v, 1, 17, 120, 47, 0);
+    fill(v, 32, 18, 54, 31, 6);
+    fill(v, 32, 33, 54, 47, 5);
+    jw_ui_text(v, 1, 2, 6, 0, "\x96" "\xda" "\x90" "\xb7");
+    jw_ui_text(v, 5, 2, 0, 0, "off");
+    jw_ui_text(v, 8, 2, 6, 0, "11");
+    jw_ui_text(v, 10, 2, 6, 0, "12");
+    jw_ui_text(v, 12, 2, 6, 0, "13");
+    jw_ui_text(v, 14, 2, 6, 0, "14");
+    jw_ui_text(v, 1, 3, 6, 0, "\x8e" "\xb2" "\x8a" "\x70");
+    jw_ui_text(v, 5, 3, 0, 0, "off");
+    jw_ui_text(v, 8, 3, 5, 0, "on");
+    jw_ui_text(v, 10, 3, 6, 0, "\x8e" "\x9a" "\x95" "\x5c" "\x8e" "\xa6");
+
+    /* And a short slant beside each of the four numbers -- eight pixels of
+     * yellow that no string write accounts for, the same shape by every one
+     * of 11, 12, 13 and 14: (63,20)-(61,27) and the same sixteen, thirty-two
+     * and forty-eight pixels to the right.  Read off the original with the
+     * pointer at (119,30), where nothing else is over them. */
+    for (i = 0; i < 4; i++) {
+        jw_line(v, 63 + 16 * i, 20, 61 + 16 * i, 27, 6,
+                ROP_REPLACE, JW_STYLE_SOLID);
+    }
+
+    /* The rules go on last.  The two labels are kanji, so their cells are
+     * sixteen pixels wide and reach x=31 -- and 軸角 starts at y=32, the
+     * row the rule across the box runs along.  Drawing the rules first left
+     * the port without the white down x=31 and without most of the rule at
+     * y=32, 176 pixels in all: the original writes the text and then rules
+     * over it. */
+    fill(v, 31, 17, 55, 17, 7);
+    fill(v, 31, 17, 31, 47, 7);
+    fill(v, 55, 17, 55, 47, 7);
+    fill(v, 72, 33, 72, 47, 7);
+    fill(v, 1, 32, 120, 32, 7);
+}
+
 /* ------------------------------------------------------------------- draw */
 
 /* The fifteen rows of the menu, at rows 5 to 19 of the character grid.  The
@@ -804,13 +869,22 @@ static void menu_hover(VGA *v, const JwUi *s)
     const int row = (s->mouse_y - 64) / 16;
     int command, x0, x1, col;
 
-    if (s->mouse_y < 64 || row < 0 || row > 14) {
+    /* y=303 is the last row's last pixel and the original does **not**
+     * light it, though 300, 301 and 302 all do -- tools/menuhit.sh walked
+     * the row's bottom edge.  Why it stops one short is not known; the
+     * measurement is what the port follows. */
+    if (s->mouse_y < 64 || s->mouse_y > 302 || row < 0 || row > 14) {
         return;
     }
-    if (s->mouse_x >= 8 && s->mouse_x <= 55) {
+    /* The rectangle that lights up is not the rectangle that has to be
+     * pointed at.  tools/menuhit.sh walks x across a row: the original
+     * lights the **left** column anywhere from x=8 to x=68 -- over the bar
+     * between the two columns as well -- and the right one from x=69 out to
+     * x=121, the panel's own edge.  Only x 0..7 picks neither. */
+    if (s->mouse_x >= 8 && s->mouse_x <= 68) {
         command = row + 16;                     /* the left column */
         x0 = 8; x1 = 55; col = 2;
-    } else if (s->mouse_x >= 72 && s->mouse_x <= 111) {
+    } else if (s->mouse_x >= 69 && s->mouse_x <= 121) {
         command = row + 1;                      /* the right one */
         x0 = 72; x1 = 111; col = 10;
     } else {
@@ -867,6 +941,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     /* -- the two counts ------------------------------------------------- */
     box(v, 0, 16, 121, 48, 7);
     counts(v, s);
+    gauge(v, s);
 
     /* -- the menu ------------------------------------------------------- */
     menu(v);
