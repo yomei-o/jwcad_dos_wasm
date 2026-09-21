@@ -491,6 +491,9 @@ full "$NODE" tests/upload_check.js orig/TEST7.JWC
 # The plotter's PDF and PNG (RESUME 4.45).
 echo "=== プロッタ出力: the PDF and the PNG the page's two buttons hand over"
 sh tools/plotcheck.sh
+echo "=== プロッタ出力を本物の道筋で: 入出力 → ②ﾌﾟﾛｯﾀ → ③ﾌｧｲﾙ出力 → ① 実行"
+"$NODE" tools/plotroad.mjs orig/SAMPLE0.JWC
+full "$NODE" tools/plotroad.mjs orig/TEST6.JWC
 
 echo
 if [ -n "$FULL" ]; then

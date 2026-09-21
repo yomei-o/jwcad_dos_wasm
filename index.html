@@ -243,6 +243,23 @@ document.getElementById('save').onclick = () => {
    buttons hand over what a plotter's paper is for: a PDF to print and a PNG
    to look at.  Both come out of src/plot.c, which walks the drawing in
    millimetres of paper the way a plotter's coordinates are. */
+/* 入出力 → ②ﾌﾟﾛｯﾀ → ③ﾌｧｲﾙ出力 → ① 実行.  The original writes a plotter
+   file there; the port has no plotter, so it hands over the PDF and the PNG
+   -- the same two the buttons in the bar give, under the name that was
+   typed into the field. */
+function plotIfAsked() {
+  if (!Module._jw_plot_wanted || !Module._jw_plot_wanted()) return;
+  const typed = Module.UTF8ToString(Module._jw_plot_name()) || 'PLOT';
+
+  for (const png of [false, true]) {
+    if (!Module._jw_plot(png ? 1 : 0)) { say(); return; }
+    const p = Module._jw_saved(), n = Module._jw_saved_size();
+
+    handOver(typed + (png ? '.png' : '.pdf'), Module.HEAPU8.slice(p, p + n));
+  }
+  say(typed + '.pdf と ' + typed + '.png を書き出しました');
+}
+
 function plot(png) {
   if (!Module) return;
   if (!Module._jw_plot(png ? 1 : 0)) { say(); return; }
@@ -289,7 +306,7 @@ canvas.addEventListener('pointerdown', e => {
      that is running -- ／ takes two presses and leaves a line. Anywhere else is
      a drag, which is this viewer's own convenience. */
   if (Module && Module._jw_click(p[0], p[1], e.button === 2 ? 1 : 0)) {
-    blit(); say(); imeFollow(); return;
+    blit(); say(); imeFollow(); plotIfAsked(); return;
   }
   drag = p; canvas.classList.add('drag'); canvas.setPointerCapture(e.pointerId);
 });

@@ -92,12 +92,18 @@ typedef struct {
     /* 入出力 (30) is a menu of menus.  0 is the one the item itself puts
      * up; JW_IO_* say which of its own the top line is showing. */
     int io_stage;
+    /* The name ③ﾌｧｲﾙ出力 asks for, in the field at column 25. */
+    char io_name[13];
+    int io_name_n;
 
 /* What JwUi.data_screen holds: 1 = the sixteen groups, 2 = the sixteen
  * layers of the group being written to. */
 /* 入出力's own menus, JwUi.io_stage. */
 #define JW_IO_FILE 1            /* ①ﾌｧｲﾙ  -> |①保存(L)|②読込(R)|…  */
 #define JW_IO_PLOT 2            /* ②ﾌﾟﾛｯﾀ -> |①RS-232C出力(L)|…     */
+#define JW_IO_PNAME 3           /* ③ﾌｧｲﾙ出力 -> 出力ファイル名 ?      */
+#define JW_IO_PSET 4            /* -> |①確定(L)|②範囲変更(R)|…      */
+#define JW_IO_PGO 5             /* -> 作図開始|① 実行(L)|…           */
 
 #define JW_DATA_GROUP 1
 #define JW_DATA_LAYER 2

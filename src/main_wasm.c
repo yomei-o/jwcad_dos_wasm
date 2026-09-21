@@ -179,6 +179,27 @@ EMSCRIPTEN_KEEPALIVE int jw_saved_size(void) { return (int)saved_len; }
  * plotter, so what the page offers instead is the two things a plotter's
  * paper is for -- a PDF to print and a PNG to look at (src/plot.c).  Both
  * land in the same `saved` buffer the .JWC download uses. */
+/* Set when 入出力 → ②ﾌﾟﾛｯﾀ → ③ﾌｧｲﾙ出力 → ① 実行 has been pressed: the
+ * page reads it after every press, hands over the two files and clears it.
+ * The original writes a plotter file at that point; there is no plotter
+ * here, so what comes out is the PDF and the PNG. */
+static int plot_wanted;
+
+EMSCRIPTEN_KEEPALIVE int jw_plot_wanted(void)
+{
+    const int v = plot_wanted;
+
+    plot_wanted = 0;
+    return v;
+}
+
+/* And the name that was typed into the field, for what the page calls the
+ * files it hands over. */
+EMSCRIPTEN_KEEPALIVE const char *jw_plot_name(void)
+{
+    return ui.io_name;
+}
+
 EMSCRIPTEN_KEEPALIVE int jw_plot(int as_png)
 {
     free(saved);
@@ -588,6 +609,22 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
         if (ui.io_stage == 0 && (item == 1 || item == 2)) {
             ui.io_stage = item == 1 ? JW_IO_FILE : JW_IO_PLOT;
+        } else if (ui.io_stage == JW_IO_PLOT && item == 3) {
+            /* ③ﾌｧｲﾙ出力.  The original asks which `*.JWP` to use first --
+             * a plotter definition, which says what language the plotter
+             * speaks.  **The port has no plotter**: it writes the PDF and
+             * the PNG itself (src/plot.c), so there is nothing to choose
+             * and it goes straight to the name. */
+            ui.io_stage = JW_IO_PNAME;
+            ui.io_name_n = 0;
+            ui.io_name[0] = 0;
+        } else if (ui.io_stage == JW_IO_PSET && item == 1) {
+            ui.io_stage = JW_IO_PGO;            /* ①確定 */
+        } else if (ui.io_stage == JW_IO_PGO && item == 1) {
+            ui.io_stage = 0;                    /* ① 実行 */
+            plot_wanted = 1;
+        } else if (ui.io_stage == JW_IO_PGO && item == 2) {
+            ui.io_stage = 0;                    /* ② 中止 */
         }
         mouse_x = x;
         mouse_y = y;
@@ -633,6 +670,25 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* 紙 has the keyboard while it is asking for a size.  Measured: a digit
      * goes into the field at column 48 and [Enter] applies it -- SAMPLE0
      * goes from A-4 to A-2 on `2` then [Enter]. */
+    /* 入出力 → ②ﾌﾟﾛｯﾀ → ③ﾌｧｲﾙ出力's field.  [Enter] moves it on to the
+     * settings bar, [ESC] gives the whole thing up. */
+    if (ui.command == 30 && ui.io_stage == JW_IO_PNAME) {
+        if (key == 27) {
+            ui.io_stage = 0;
+        } else if (key == 13 || key == 10) {
+            ui.io_stage = JW_IO_PSET;
+        } else if (key == 8) {
+            if (ui.io_name_n > 0) {
+                ui.io_name[--ui.io_name_n] = 0;
+            }
+        } else if (key >= ' ' && key < 127
+                   && ui.io_name_n < (int)sizeof ui.io_name - 1) {
+            ui.io_name[ui.io_name_n++] = (char)key;
+            ui.io_name[ui.io_name_n] = 0;
+        }
+        present();
+        return -1;
+    }
     if (ui.ask) {
         const int what = ui.ask;
 

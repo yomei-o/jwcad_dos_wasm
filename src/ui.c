@@ -152,6 +152,17 @@ static int is_lead(unsigned char c)
     "|\x87\x42\x8d\x87\x90\xac|\x87\x43\x8d\xed\x8f\x9c" \
     "|\x87\x44\xc4\xde\xd7\xb2\xcc\xde\x95\xcf\x8d\x58" \
     "|\x87\x45\x82\x63\x82\x77\x82\x65|\x87\x46INDEX|"
+#define JW_IO_PSET_BAR \
+    "\x90\xdd\x92\xe8 |\x87\x40\x8a\x6d\x92\xe8(L)" \
+    "|\x87\x41\x94\xcd\x88\xcd\x95\xcf\x8d\x58(R)|\x87\x42\x94\x6a \x90\xfc" \
+    "|\x87\x43\x8d\xbd \x90\xfc|\x87\x44\x91\xac\x82\xb3" \
+    "|\x87\x45\x97\x70\x8e\x86|"
+#define JW_IO_PGO_BAR \
+    "\x8d\xec\x90\x7d\x8a\x4a\x8e\x6e|\x87\x40 \x8e\xc0\x8d\x73(L)" \
+    "|\x87\x41 \x92\x86\x8e\x7e(R)" \
+    "|\x87\x42\x83\x4f\x83\x8b\x81\x5b\x83\x76\x98\x41\x91\xb1\x8f\x6f\x97\xcd" \
+    "|\x87\x43\xcc\xa7\xb2\xd9\x98\x41\x91\xb1\x8f\x6f\x97\xcd" \
+    "|\x87\x44\x94\xcd\x88\xcd|"
 #define JW_IO_PLOT_BAR \
     "|\x87\x40RS-232C\x8f\x6f\x97\xcd(L)" \
     "|\x87\x41\xcc\xdf\xd8\xdd\xc0\xce\xdf\xb0\xc4\x8f\x6f\x97\xcd(R)" \
@@ -1289,7 +1300,31 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * `[ESC]`, and ﾌｧｲﾙ adds the drive beside it and `[BS]前項` at the
          * far end. */
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
-        if (s->io_stage == JW_IO_FILE) {
+        if (s->io_stage == JW_IO_PNAME) {
+            int i;
+
+            /* ③ﾌｧｲﾙ出力 asks where to put it.  This line does **not** go
+             * through the string routine in the original, so it was read
+             * off the screen with tools/readrow.py; the field is at column
+             * 25, which is where the green block sits before anything is
+             * typed. */
+            jw_ui_text(v, 8, 1, 7, 0,
+                       "\x8f\x6f\x97\xcd\x83\x74\x83\x40\x83\x43"
+                       "\x83\x8b\x96\xbc ?");
+            for (i = 0; i < s->io_name_n && i < 12; i++) {
+                char one[2];
+
+                one[0] = s->io_name[i];
+                one[1] = 0;
+                jw_ui_text(v, 25 + i, 1, 7, 0, one);
+            }
+            i = s->io_name_n < 12 ? s->io_name_n : 12;
+            fill(v, 24 * 8 + i * 8, 7, 24 * 8 + 7 + i * 8, 15, 4);
+        } else if (s->io_stage == JW_IO_PSET) {
+            jw_ui_text(v, 8, 1, 7, 0, JW_IO_PSET_BAR);
+        } else if (s->io_stage == JW_IO_PGO) {
+            jw_ui_text(v, 8, 1, 7, 0, JW_IO_PGO_BAR);
+        } else if (s->io_stage == JW_IO_FILE) {
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_FILE_BAR);
             jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91\x4f\x8d\x80");
             jw_ui_text(v, 46, 2, 7, 0xffffu, "(A:/B:)");
