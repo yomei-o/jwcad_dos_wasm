@@ -3295,7 +3295,8 @@ sh tools/cc.sh -O1 -Isrc -o tmp/walk.exe tools/walk.c src/plot.c src/png.c     s
 python tools/plotcmp.py ../dosv_emu_cpp/tmp/proot/PLOT orig/SAMPLE0.JWC
 ```
 
-**SAMPLE0 で 11 本すべて一致**しました。
+**SAMPLE0 で 11 本すべて一致**、**TEST5 でも 40 本すべて一致**しました
+（どちらも円弧のない図面）。
 
 分かったこと 3 つ:
 
@@ -3306,6 +3307,13 @@ python tools/plotcmp.py ../dosv_emu_cpp/tmp/proot/PLOT orig/SAMPLE0.JWC
   原点はその隅。SAMPLE0 では (-598.512, -427.958)
 * **向きは揃いません**。プロッタはペンを下ろしたまま繋ぐので、同じ線が
   端から出ることがあります。線としては同じなので、比較は両向き見ます
+
+**円弧のある図面は本数が合いません。** TEST6 では本物が D 507 本＋C 2 本、
+移植が直線 533 本＋円弧を折った 386 本。本物はほとんどの円弧を
+**M/D の折れ線に開いて**出していて（`CIRCLE` を書いてあるのに C は 2 本
+だけ）、その刻みが移植の 2 度刻みと違います。**紙の上では同じ絵**です
+が、本数での突き合わせはできないので、この検査は円弧のない図面で
+やります。
 
 ### 4.46 画面を字に読み戻す道具（`tools/readrow.py`）
 
