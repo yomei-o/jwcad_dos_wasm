@@ -40,6 +40,9 @@ void jw_cmd_pick(JwCmd *c, int command)
     /* ハッチ's `[  45.00]` and `[  10.0]`, likewise. */
     c->hatch_angle = 45.0;
     c->hatch_pitch = 10.0;
+    /* ＋ and ／'s `[  1000.000mm]` and `[  45.000\xdf]`, likewise. */
+    c->ask_len = 1000.0;
+    c->ask_ang = 45.0;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -2086,6 +2089,30 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
 
     if (!d) {
         return 0;
+    }
+    /* **＋ and ／ are a pair, and ① swaps them.**  Their lines say so:
+     *
+     *   ＋  ◇始点指示 (L)free (R)Read |①  ／  |②寸 法 |③角 度 |④ 平 行・垂 直  |
+     *   ／  ◇始点指示 (L)free (R)Read |①  ＋  |②寸 法 |③角 度 |④平 行 |⑤垂 直 |
+     *
+     * -- the first cell of each holds the other one's sign, and the two
+     * lines are not even the same length (／ keeps 平行 and 垂直 apart).
+     * The port left ① alone, so pressing it did nothing while the original
+     * changed command, menu row and line all three. */
+    if ((c->command == 2 || c->command == 3) && item == 1 && c->stage == 0) {
+        jw_cmd_pick(c, c->command == 2 ? 3 : 2);
+        return 1;
+    }
+    /* ②寸 法 and ③角 度 take the length and the angle of the next line off
+     * the top row instead of the second press.  **Either button opens
+     * them** -- the (L) and (R) in what they put up are the answer to the
+     * question, not the way in -- and the item is the whole cell.  What is
+     * done with the number is the next thing; this is the screen, which is
+     * what a branch of the table is. */
+    if ((c->command == 2 || c->command == 3) && (item == 2 || item == 3)
+        && c->stage == 0) {
+        c->ask_kind = item - 1;
+        return 1;
     }
     /* 複線's 「②連続」: one more copy, the same distance again and on the same
      * side.  Measured on SAMPLE0 -- the line at y=157 with 20 puts the first

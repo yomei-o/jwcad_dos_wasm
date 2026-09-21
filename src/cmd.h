@@ -213,6 +213,15 @@ typedef struct {
     double tan_x, tan_y;        /* the 指定点 it has in hand */
     int hatch_closed;           /* the start line has come round again */
     long hatch_first;           /* the first line ① 実 行 made */
+    /* ＋ and ／'s ②寸 法 and ③角 度: which of the two is being asked for,
+     * 0 for neither, 1 for the length and 2 for the angle.  Both ask from
+     * the top line, and both offer what was used last -- `任意寸法 ﾏｳｽ(L)
+     * 前回と同じ ﾏｳｽ(R)` -- so the last one is kept here.  The screens are
+     * in src/ui.c and the numbers the original comes up with are in
+     * jw_cmd_pick. */
+    int ask_kind;
+    double ask_len;             /* `[  1000.000mm]` */
+    double ask_ang;             /* `[  45.000\xdf]` */
     double hatch_angle;         /* ③角 度, degrees -- 45.00 to start with */
     double hatch_pitch;         /* ④ﾋﾟｯﾁ, millimetres of paper -- 10.0 */
     /* How wide and how tall the string being typed comes out, in drawing

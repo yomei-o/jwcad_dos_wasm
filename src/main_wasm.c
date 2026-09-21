@@ -135,6 +135,9 @@ static void sync_ui(void)
     ui.typing_text = cmd.typing_text;
     ui.mods = cmd.mods;
     ui.snapping = cmd.snap;
+    ui.ask_kind = cmd.ask_kind;
+    ui.ask_len = cmd.ask_len;
+    ui.ask_ang = cmd.ask_ang;
 }
 
 /* Redraw at the current view and unpack the planes for the canvas.  The order

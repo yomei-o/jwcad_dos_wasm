@@ -129,6 +129,11 @@ typedef struct {
     int kept;
     /* ｵﾌﾟｼｮﾝ (29) is a menu of menus too.  0 is the one the item itself
      * puts up; JW_OPT_* say which of its own is showing. */
+    /* ＋ and ／'s ②寸 法 / ③角 度 -- JwCmd.ask_kind and the two numbers
+     * it offers.  See src/cmd.h. */
+    int ask_kind;
+    double ask_len;
+    double ask_ang;
     int opt_stage;
     /* ①建具平面's two sizes and which letter of the library is in use --
      * `見込 70.0mm`, `枠幅 35.0mm` and `種類【A】`, the three the bar

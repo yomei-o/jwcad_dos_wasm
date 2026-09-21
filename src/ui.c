@@ -1484,6 +1484,44 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         } else {
             jw_ui_text(v, 30, 1, 7, 0, s->zoom_stage == 1 ? "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "\x8e" "n" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " " : "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "    " "\x8f" "I" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " ");
         }
+    } else if ((s->command == 2 || s->command == 3) && s->ask_kind) {
+        /* ＋ and ／'s ②寸 法 and ③角 度.  Read off the original, branches
+         * 7 and 9 of tmp/branch/list.txt:
+         *
+         *   [ESC]  寸法 =         任意寸法 ﾏｳｽ(L) 前回と同じ ﾏｳｽ(R)
+         *   [ESC]  角度 =        ｜0 度 ﾏｳｽ(L)｜前回と同じ ﾏｳｽ(R) ｜[F1] ﾏｳｽ角度｜
+         *
+         * with the field of eight blanks at column 15 and the number it
+         * offers on the row below -- `[  1000.000mm]` at column 54 and
+         * `[  45.000\xdf]` at column 50.  The two bars are not at the same
+         * column and 角度 has no trailing space after its `=`; both are the
+         * original's, not a tidying. */
+        char one[32];
+
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        if (s->ask_kind == 1) {
+            jw_ui_text(v, 8, 1, 7, 0, "\x90\xa1\x96" "@ = ");
+            jw_ui_text(v, 38, 1, 7, 0,
+                       "\x94" "C" "\x88\xd3\x90\xa1\x96" "@ " "\xcf\xb3\xbd" "(L) "
+                       "\x91" "O" "\x89\xf1\x82\xc6\x93\xaf\x82\xb6" " " "\xcf\xb3\xbd"
+                       "(R) ");
+            sprintf(one, "[%10.3fmm]", s->ask_len);
+            jw_ui_text(v, 54, 2, 7, 0xffff, one);
+        } else {
+            jw_ui_text(v, 8, 1, 7, 0, "\x8a" "p" "\x93" "x =");
+            jw_ui_text(v, 32, 1, 7, 0,
+                       "\x81" "b0 " "\x93" "x " "\xcf\xb3\xbd" "(L)" "\x81" "b" "\x91"
+                       "O" "\x89\xf1\x82\xc6\x93\xaf\x82\xb6" " " "\xcf\xb3\xbd" "(R) "
+                       "\x81" "b[F1] " "\xcf\xb3\xbd\x8a" "p" "\x93" "x" "\x81" "b");
+            sprintf(one, "[%8.3f\xdf]", s->ask_ang);
+            jw_ui_text(v, 50, 2, 7, 0xffff, one);
+        }
+        jw_ui_text(v, 15, 1, 7, 0, "        ");
+        /* And the cursor -- the same green block the other fields have, in
+         * the lower nine rows of the cell the next character goes in.
+         * Measured on the original: x 112..119, y 7..15, which is column 15
+         * with nothing typed. */
+        fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
     } else if (s->command == 29 && s->opt_stage == JW_OPT_PLAN) {
         /* ｵﾌﾟｼｮﾝ → ①建具平面.  The sixteen shapes in the library file, two
          * to a row, and the three sizes on the top line.  Measured: the
