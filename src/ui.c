@@ -1875,13 +1875,19 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
     if (!s->data_screen) {
         return;
     }
-    fill(v, 0, 305, 121, 305, 7);
+    if (s->data_screen == JW_DATA_GROUP) {
+        fill(v, 0, 305, 121, 305, 7);
+    }
     fill(v, 122, 17, 638, 462, 0);
     /* The panel keeps ｸﾞﾙｰﾌﾟ's own rows -- the red words and the sixteen
      * group boxes are still there -- but the pen's row, 紙 and the scale,
      * and サブ画面表示 all go.  And so does everything the strip along the
      * bottom has right of the panel. */
-    fill(v, 1, 306, 120, 335, 0);
+    if (s->data_screen == JW_DATA_GROUP) {
+        /* ｸﾞﾙｰﾌﾟ's screen empties the pen's row and 紙's; レイヤ's keeps
+         * them both. */
+        fill(v, 1, 306, 120, 335, 0);
+    }
     fill(v, 1, 416, 120, 462, 0);
     fill(v, 122, 463, 638, 478, 0);
     for (k = 0; k < 16; k++) {
@@ -1900,15 +1906,25 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
         w.y0 = 17;
         w.x1 = 638;
         w.y1 = 462;
-        w.group1 = k + 1;
         w.frame_box = 1;
-        /* An empty group gets no view at all -- not even the paper's edge.
+        w.group1 = 0;
+        w.layer1 = 0;
+        /* An empty panel gets no view at all -- not even the paper's edge.
          * SAMPLE0 has everything in group 0 and the original leaves the
-         * other fifteen panels blank; TEST6, which uses four groups, draws
-         * a frame in each of those. */
-        if (s->group_geom[k] || s->group_text[k]) {
-            jw_view_draw_into(v, d, &w);
+         * other fifteen blank; TEST6, which uses four groups, draws a
+         * frame in each of those. */
+        if (s->data_screen == JW_DATA_LAYER) {
+            w.layer1 = ((s->group << 4) | k) + 1;
+            if (!s->layer_geom[k] && !s->layer_text[k]) {
+                continue;
+            }
+        } else {
+            w.group1 = k + 1;
+            if (!s->group_geom[k] && !s->group_text[k]) {
+                continue;
+            }
         }
+        jw_view_draw_into(v, d, &w);
 
     }
     /* The sixteen labels go on afterwards, with the clip put back: a view
@@ -1919,13 +1935,22 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
     v->clip_x1 = v->width - 1;
     v->clip_y1 = v->height - 1;
     for (k = 0; k < 16; k++) {
-        char one[2];
+        const int col = 17 + 16 * (k & 3), row = 2 + 7 * (k >> 2);
+        char one[8];
 
-        one[0] = (char)(k < 10 ? '0' + k : 'A' + k - 10);
-        one[1] = 0;
-        jw_ui_text(v, 17 + 16 * (k & 3), 2 + 7 * (k >> 2), 7, 0xffffu, one);
-        jw_ui_text(v, 18 + 16 * (k & 3), 2 + 7 * (k >> 2), 7, 0,
-                   d->group_name[k]);
+        if (s->data_screen == JW_DATA_LAYER) {
+            /* `0-0 `, plain white on black -- no block behind it, which is
+             * what the group display has. */
+            sprintf(one, "%X-%X ", s->group & 15, k);
+            jw_ui_text(v, col, row, 7, 0, one);
+            jw_ui_text(v, col + 4, row, 7, 0,
+                       d->layer_name[(s->group << 4) | k]);
+        } else {
+            one[0] = (char)(k < 10 ? '0' + k : 'A' + k - 10);
+            one[1] = 0;
+            jw_ui_text(v, col, row, 7, 0xffffu, one);
+            jw_ui_text(v, col + 1, row, 7, 0, d->group_name[k]);
+        }
     }
     /* The rule under the top line goes back on **after** the names: they
      * paint black behind themselves and break it otherwise. */
@@ -1938,10 +1963,16 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
     v->clip_x1 = v->width - 1;
     v->clip_y1 = v->height - 1;
     fill(v, 0, 0, 639, 15, 0);
+    if (s->data_screen == JW_DATA_LAYER) {
+        jw_ui_text(v, 17, 1, 7, 0, "\x83\x8c\x83\x43\x83\x84");
+        jw_ui_text(v, 23, 1, 7, 0,
+                   " \x83\x66\x81\x5b\x83\x5e\x95\x5c\x8e\xa6");
+    } else {
     jw_ui_text(v, 17, 1, 7, 0, "\x83\x4f\x83\x8b\x81\x5b\x83\x76");
     jw_ui_text(v, 25, 1, 7, 0,
                " \x83\x66\x81\x5b\x83\x5e\x95\x5c\x8e\xa6");
-    jw_ui_text(v, 36, 1, 7, 0,
+    }
+    jw_ui_text(v, s->data_screen == JW_DATA_LAYER ? 34 : 36, 1, 7, 0,
                " \x81\x6d\x8f\x49\x97\xb9\x81\x6e\x83\x7d\x83\x45"
                "\x83\x58\x82\xf0\x8d\xec\x90\x7d\x94\xcd\x88\xcd"
                "\x82\xc9\x88\xda\x93\xae");

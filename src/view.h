@@ -21,6 +21,10 @@ typedef struct {
      * part of the paper is on screen); グループ データ表示's little panels
      * hold the whole sheet and the original draws the box. */
     int frame_box;
+    /* One layer, plus one -- the whole byte, group and layer.  レイヤ
+     * データ表示 wants one layer per panel; 0 means "whatever group1
+     * says". */
+    int layer1;
 } JwView;
 
 /* The view that fits the whole drawing on the screen, with a small margin.

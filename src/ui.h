@@ -89,6 +89,11 @@ typedef struct {
     /* サブ画面表示: a miniature of the whole drawing in the box at the
      * bottom of the panel, with the paper's edge round it. */
     int sub_screen;
+
+/* What JwUi.data_screen holds: 1 = the sixteen groups, 2 = the sixteen
+ * layers of the group being written to. */
+#define JW_DATA_GROUP 1
+#define JW_DATA_LAYER 2
     int layer_mode;
     /* The left panel's own questions.  Pressing 紙 or the scale beside it
      * puts a line along the top and takes a number in a field, ended with

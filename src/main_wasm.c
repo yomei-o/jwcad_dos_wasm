@@ -479,7 +479,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
                 mouse_y = y;
                 jw_ui_from(&ui, drawing);
                 ui.group_mode = 1;      /* the panel keeps ｸﾞﾙｰﾌﾟ's rows */
-                ui.data_screen = 1;
+                ui.data_screen = JW_DATA_GROUP;
                 sync_ui();
                 present();
                 return -1;
@@ -501,6 +501,19 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
              * high nibble, the layer in the low one (src/jwc.h). */
             const int full = (ui.group << 4) | n;
 
+            if (right && full == drawing->write_layer) {
+                /* The right button on the layer already being written to
+                 * opens レイヤ データ表示 -- the same screen ｸﾞﾙｰﾌﾟ has,
+                 * with one layer per panel and `0-0 ` for a label. */
+                mouse_x = x;
+                mouse_y = y;
+                jw_ui_from(&ui, drawing);
+                ui.layer_mode = 1;
+                ui.data_screen = JW_DATA_LAYER;
+                sync_ui();
+                present();
+                return -1;
+            }
             if (right) {
                 drawing->write_layer = full;
                 /* Writing to a layer shows it: the original cannot leave the

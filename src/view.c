@@ -133,6 +133,7 @@ void jw_view_original(JwView *w)
     w->y1 = 462;
     w->group1 = 0;              /* every group */
     w->frame_box = 0;
+    w->layer1 = 0;
 }
 
 static Fontx ank, kanji;
@@ -879,7 +880,7 @@ static void draw_grid(VGA *v, const Jwc *d, const JwView *w)
     /* No 目盛 in グループ データ表示's panels: SAMPLE1's grid is 15.697
      * units, which comes out as dotted rows three pixels apart all over the
      * panel, and the original's is bare. */
-    if (w->group1) {
+    if (w->group1 || w->layer1) {
         return;
     }
     if (!d->grid_on || d->grid_x <= 0.0 || d->grid_y <= 0.0 ||
@@ -942,6 +943,9 @@ static void draw_grid(VGA *v, const Jwc *d, const JwView *w)
  * over the original's first panel. */
 static int visible_in(const Jwc *d, const JwView *w, unsigned char layer)
 {
+    if (w->layer1) {
+        return layer == w->layer1 - 1;
+    }
     if (w->group1) {
         return (layer >> 4) == w->group1 - 1;
     }
