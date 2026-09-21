@@ -41,6 +41,9 @@ static JwView view;
 static JwUi ui;
 static JwCmd cmd;
 static Jwc *drawing;
+/* The module's own disk: where the drawings that ship are, where an
+ * upload is written, and what the file list reads. */
+#define JW_DIR "orig"
 /* The drawing that is open, in the shape the list shows ("SAMPLE0 .JWC"),
  * so that the save list can put it at the top the way the original does. */
 static char loaded_name[13];
@@ -63,6 +66,24 @@ EMSCRIPTEN_KEEPALIVE void jw_init(void)
     jw_ui_default(&ui);
     ui.guide = jw_ui_guide();
     strcpy(status, jw_view_fonts("font") ? "ready" : "ready (no font)");
+    /* **The original makes an empty AUTO.JWC at startup**, and it is in the
+     * list ②読込 shows.  Traced on the real program: it opens A:\\AUTO.JWC,
+     * gets "not found", and creates it (DOSEMU_FILE_TRACE=1 over the first
+     * 200 million instructions -- `open` then `create`).  自動保存 is off
+     * and it makes one anyway.
+     *
+     * The port's disk is the module's own, so this costs nothing and the
+     * two lists then hold the same names. */
+    {
+        FILE *f = fopen(JW_DIR "/AUTO.JWC", "rb");
+
+        if (f) {
+            fclose(f);
+        } else {
+            f = fopen(JW_DIR "/AUTO.JWC", "wb");
+            if (f) fclose(f);
+        }
+    }
     /* **An empty drawing, not none.**  The original always has one: started
      * with no file it draws an empty sheet and every command works on it.
      * With nothing in hand jw_cmd_press returns at its first line and the
@@ -157,29 +178,35 @@ static void present(void)
  * "基準階平面図　１／１００"), and the original prints the pair with the
  * gaps as spaces -- so the NULs become spaces here rather than ending the
  * string. */
-#define JW_DIR "orig"
 
 /* The drawing that is open, in the shape the list shows ("SAMPLE0 .JWC"),
  * so that ②読込 can put it at the top the way the original does. */
 
-static void file_title_of(const char *path, char *out, int n)
+static void file_title_of(const char *path, char *one, char *two)
 {
     unsigned char head[200];
     FILE *f = fopen(path, "rb");
     size_t got;
-    int k, w = 0;
+    int k, w;
 
-    memset(out, 0, (size_t)n);
+    memset(one, 0, 33);
+    memset(two, 0, 33);
     if (!f) return;
     got = fread(head, 1, sizeof head, f);
     fclose(f);
-    if (got < 100) return;
-    for (k = 40; k < (int)got && w < n - 1; k++) {
-        if (head[k] == 0x0d || head[k] == 0x0a) break;
-        out[w++] = head[k] ? (char)head[k] : ' ';
+    if (got < 104) return;
+    for (w = 0; w < 32; w++) {
+        const unsigned char c = head[40 + w];
+
+        one[w] = c == 0 || c == 0x0d || c == 0x0a ? ' ' : (char)c;
     }
-    while (w > 0 && out[w - 1] == ' ') w--;
-    out[w] = 0;
+    for (w = 0; w < 32; w++) {
+        const unsigned char c = head[72 + w];
+
+        two[w] = c == 0 || c == 0x0d || c == 0x0a ? ' ' : (char)c;
+    }
+    for (k = 31; k >= 0 && one[k] == ' '; k--) one[k] = 0;
+    for (k = 31; k >= 0 && two[k] == ' '; k--) two[k] = 0;
 }
 
 /* 268,431,360 -- the original groups it in threes. */
@@ -244,7 +271,7 @@ static void file_list(int for_save)
         for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
         sprintf(path, "%s/%s.JWC", JW_DIR, stem);
         memcpy(ui.file_name[i], names[i], sizeof ui.file_name[0]);
-        file_title_of(path, ui.file_title[i], (int)sizeof ui.file_title[0]);
+        file_title_of(path, ui.file_t1[i], ui.file_t2[i]);
         ui.file_size[i] = 0;
         strcpy(ui.file_date[i], "                ");
         if (stat(path, &st) == 0) {
@@ -274,20 +301,23 @@ static void file_list(int for_save)
         if (memcmp(ui.file_name[i], loaded_name, 12) != 0) continue;
         while (i > 0) {
             char name[13];
-            char title[sizeof ui.file_title[0]];
+            char t1[33], t2[33];
             char date[sizeof ui.file_date[0]];
             const long size = ui.file_size[i];
 
             memcpy(name, ui.file_name[i], sizeof name);
-            memcpy(title, ui.file_title[i], sizeof title);
+            memcpy(t1, ui.file_t1[i], sizeof t1);
+            memcpy(t2, ui.file_t2[i], sizeof t2);
             memcpy(date, ui.file_date[i], sizeof date);
             memcpy(ui.file_name[i], ui.file_name[i - 1], sizeof name);
-            memcpy(ui.file_title[i], ui.file_title[i - 1], sizeof title);
+            memcpy(ui.file_t1[i], ui.file_t1[i - 1], sizeof t1);
+            memcpy(ui.file_t2[i], ui.file_t2[i - 1], sizeof t2);
             memcpy(ui.file_date[i], ui.file_date[i - 1], sizeof date);
             ui.file_size[i] = ui.file_size[i - 1];
             i--;
             memcpy(ui.file_name[i], name, sizeof name);
-            memcpy(ui.file_title[i], title, sizeof title);
+            memcpy(ui.file_t1[i], t1, sizeof t1);
+            memcpy(ui.file_t2[i], t2, sizeof t2);
             memcpy(ui.file_date[i], date, sizeof date);
             ui.file_size[i] = size;
         }
@@ -305,6 +335,55 @@ static void file_list(int for_save)
  * the top line, and a second press on the row that is already picked -- so
  * it is in one place. */
 int jw_open(const char *path);
+
+/* Write the drawing in hand to the disk, under the name the list has picked,
+ * keeping the old one as a .bak.
+ *
+ * **The .bak is not a nicety.**  The original makes one: walking the road
+ * with tools/saveroad.sh leaves SAMPLE0.bak beside the drawing, and the
+ * 書き込みます line offers ③ﾊﾞｯｸｱｯﾌﾟ作成【する】 -- it is on by default.
+ *
+ * The bytes are jwc_bytes's, which the round-trip test and the real
+ * ＪＷ＿ＣＡＤ have both read back (tools/savecheck.sh). */
+static int file_write(void)
+{
+    char path[256];
+    char bak[256];
+    char stem[9];
+    const char *why;
+    unsigned char *bytes;
+    long len;
+    FILE *f;
+    int k;
+
+    if (!drawing || !ui.file_n) {
+        return 0;
+    }
+    memcpy(stem, ui.file_name[ui.file_sel], 8);
+    stem[8] = 0;
+    for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
+    sprintf(path, "%s/%s.JWC", JW_DIR, stem);
+    sprintf(bak, "%s/%s.bak", JW_DIR, stem);
+    bytes = jwc_bytes(drawing, &len, &why);
+    if (!bytes) {
+        sprintf(status, "%s", why);
+        return 0;
+    }
+    /* The old one first, so a write that fails does not lose both. */
+    remove(bak);
+    rename(path, bak);
+    f = fopen(path, "wb");
+    if (!f) {
+        free(bytes);
+        sprintf(status, "%s: cannot write", path);
+        return 0;
+    }
+    fwrite(bytes, 1, (size_t)len, f);
+    fclose(f);
+    free(bytes);
+    sprintf(status, "%s.JWC  %ld bytes", stem, len);
+    return 1;
+}
 
 static void file_chosen(void)
 {
@@ -348,7 +427,7 @@ EMSCRIPTEN_KEEPALIVE const char *jw_file_name(int i)
 
 EMSCRIPTEN_KEEPALIVE const char *jw_file_title(int i)
 {
-    return i >= 0 && i < ui.file_n ? ui.file_title[i] : "";
+    return i >= 0 && i < ui.file_n ? ui.file_t1[i] : "";
 }
 
 EMSCRIPTEN_KEEPALIVE int jw_open(const char *path)
@@ -858,6 +937,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         }
     }
     if (pick) {
+        ui.saved_done = 0;      /* the banner belongs to the save that made it */
         ui.command = pick;
         ui.guide = 0;
         jw_cmd_pick(&cmd, pick);
@@ -935,15 +1015,34 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             ui.io_stage = item == 1 ? JW_IO_SAVE : JW_IO_LOAD;
         } else if ((ui.io_stage == JW_IO_LOAD || ui.io_stage == JW_IO_SAVE)
                    && item == 1) {
-            /* ①選択確定 */
+            /* ①選択確定.  読込 opens the drawing there and then; 保存 goes
+             * on to ◆ｍｅｍｏ入力, the overwrite question and 書き込みます
+             * -- the road tools/saveroad.sh walked on the original. */
             const int was = ui.io_stage;
 
-            ui.io_stage = JW_IO_FILE;
             mouse_x = x;
             mouse_y = y;
-            if (was == JW_IO_LOAD) file_chosen();
+            if (was == JW_IO_LOAD) {
+                ui.io_stage = JW_IO_FILE;
+                file_chosen();
+            } else {
+                ui.io_stage = JW_IO_MEMO;
+                ui.memo_row = 0;
+            }
             present();
             return -1;
+        } else if (ui.io_stage == JW_IO_OVER && item == 1) {
+            ui.io_stage = JW_IO_WRITE;      /* ①上書きする */
+        } else if (ui.io_stage == JW_IO_OVER && item == 2) {
+            ui.io_stage = JW_IO_SAVE;       /* ② 再選択 */
+        } else if (ui.io_stage == JW_IO_WRITE && item == 1) {
+            /* ① 実 行.  The original goes all the way back to 入出力's own
+             * line afterwards, not to ①ﾌｧｲﾙ's -- measured (step 14 of
+             * tools/saveroad.sh reads `1)ファイル(L)2)プロッタ(R)…`). */
+            ui.saved_done = file_write();
+            ui.io_stage = 0;
+        } else if (ui.io_stage == JW_IO_WRITE && item == 2) {
+            ui.io_stage = JW_IO_SAVE;       /* ② 再選択 */
         } else if (ui.io_stage == JW_IO_PLOT && item == 3) {
             /* ③ﾌｧｲﾙ出力.  The original asks which `*.JWP` to use first --
              * a plotter definition, which says what language the plotter
@@ -1007,6 +1106,49 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * goes from A-4 to A-2 on `2` then [Enter]. */
     /* 入出力 → ②ﾌﾟﾛｯﾀ → ③ﾌｧｲﾙ出力's field.  [Enter] moves it on to the
      * settings bar, [ESC] gives the whole thing up. */
+    /* ◆ｍｅｍｏ入力 asks for two lines, and [Enter] moves from the first to
+     * the second and then on.  Measured: ①選択確定 puts the line up, the
+     * first [Enter] moves 144 pixels (rows 5 and 6 -- the cursor), the
+     * second brings up the overwrite question. */
+    if (ui.command == 30 && ui.io_stage == JW_IO_MEMO) {
+        if (key == 27) {
+            ui.io_stage = JW_IO_SAVE;
+        } else if (key == 13 || key == 10) {
+            if (ui.memo_row == 0) {
+                ui.memo_row = 1;
+            } else {
+                /* The question only comes up when there is something to
+                 * overwrite; a name that is not on the disk goes straight
+                 * to 書き込みます. */
+                char path[256];
+                char stem[9];
+                FILE *f;
+                int k;
+
+                memcpy(stem, ui.file_name[ui.file_sel], 8);
+                stem[8] = 0;
+                for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
+                sprintf(path, "%s/%s.JWC", JW_DIR, stem);
+                f = fopen(path, "rb");
+                if (f) {
+                    fclose(f);
+                    ui.io_stage = JW_IO_OVER;
+                } else {
+                    ui.io_stage = JW_IO_WRITE;
+                }
+            }
+        } else if (key == 8) {
+            if (ui.memo_n[ui.memo_row] > 0) {
+                ui.memo[ui.memo_row][--ui.memo_n[ui.memo_row]] = 0;
+            }
+        } else if (key >= ' ' && key < 127
+                   && ui.memo_n[ui.memo_row] < (int)sizeof ui.memo[0] - 1) {
+            ui.memo[ui.memo_row][ui.memo_n[ui.memo_row]++] = (char)key;
+            ui.memo[ui.memo_row][ui.memo_n[ui.memo_row]] = 0;
+        }
+        present();
+        return 1;
+    }
     if (ui.command == 30 && ui.io_stage == JW_IO_PNAME) {
         if (key == 27) {
             ui.io_stage = 0;

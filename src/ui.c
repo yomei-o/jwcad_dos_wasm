@@ -164,6 +164,40 @@ static int is_lead(unsigned char c)
     "\x95\xdb\x91\xb6" " |" "\x87" "C" \
     "\xc3\xde\xa8\xda\xb8\xc4\xd8\x8d\xec\x90\xac" "|"
 #define JW_FILE_PATH "path=A:" "\x5c" "*.jwc"
+/* What the two questions put on row 3, in place of the free space:
+ * the name about to be written, on white.  And the mark at column 6
+ * of the top line that goes with them. */
+#define JW_SAVE_FILE "\x95\xdb\x91\xb6\xcc\xa7\xb2\xd9" "=A:" "\x5c"
+#define JW_DOT "\x81" "E"
+/* 入出力's own line.  The prompt table writes it while the command is
+ * running; this copy is for the moment straight after ① 実 行, when the
+ * original puts it back with the mark and the banner. */
+#define JW_IO_BAR \
+    "|" "\x87" "@" "\x83" "t" "\x83" "@" "\x83" "C" "\x83\x8b" \
+    "(L)|" "\x87" "A" "\x83" "v" "\x83\x8d\x83" "b" "\x83" "^(R)|" \
+    "\x87" "B" "\x83" "v" "\x83\x8a\x83\x93\x83" "^|" "\x87" "C" \
+    "\x8e\xa9\x93\xae\x95\xdb\x91\xb6" "(" "\x96\xb3" ")|" "\x87" \
+    "D" "\x90" "V" "\x8b" "K" "\x90" "}" "\x96\xca" "|" "\x87" "E" \
+    "\x8f" "I" "\x97\xb9" "|"
+/* And what it says when the write is done -- yellow on blue, row 2
+ * column 34.  The original writes it and leaves it there. */
+#define JW_DONE " " "\x93" "o " "\x98" "^  " "\x8a\xae" " " "\x97\xb9" " "
+/* ①保存's road on from the list, each line read off the original
+ * (tools/saveroad.sh walks it a press at a time and logs what is written). */
+#define JW_MEMO_BAR \
+    "           " "\x81\x9f\x82\x8d\x82\x85\x82\x8d\x82\x8f" " " \
+    "\x93\xfc\x97\xcd"
+#define JW_OVER_BAR \
+    " " \
+    "\x93\xaf\x96\xbc\xcc\xa7\xb2\xd9\x82\xaa\x91\xb6\x8d\xdd\x82\xb5\x82\xdc\x82\xb7" \
+    " |" "\x87" "@" "\x8f\xe3\x8f\x91\x82\xab\x82\xb7\x82\xe9" \
+    "(L)|" "\x87" "A " "\x8d\xc4\x91" "I" "\x91\xf0" "(R)|"
+#define JW_WRITE_BAR \
+    "\x8f\x91\x82\xab\x8d\x9e\x82\xdd\x82\xdc\x82\xb7" " |" "\x87" \
+    "@ " "\x8e\xc0" " " "\x8d" "s(L)|" "\x87" "A " "\x8d\xc4\x91" \
+    "I" "\x91\xf0" "(R)|" "\x87" "B" \
+    "\xca\xde\xaf\xb8\xb1\xaf\xcc\xdf\x8d\xec\x90\xac\x81" "y" \
+    "\x82\xb7\x82\xe9\x81" "z|"
 #define JW_FILE_SAVE " " "\x95\xdb\x91\xb6" "    "
 #define JW_FILE_EDIT "\x95\xd2\x8f" "W"
 #define JW_FILE_NAMED "\x83" "t" "\x83" "@" "\x83" "C" "\x83\x8b\x96\xbc"
@@ -1379,6 +1413,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         } else {
             jw_ui_text(v, 30, 1, 7, 0, s->zoom_stage == 1 ? "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "\x8e" "n" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " " : "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "    " "\x8f" "I" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " ");
         }
+    } else if (s->command == 30 && s->saved_done) {
+        /* Straight after ① 実 行: the original goes back to 入出力's own
+         * line with the mark at column 6, and leaves ` 登 録  完 了 ` on
+         * row 2 in yellow on blue.  Measured at the end of the road
+         * tools/saveroad.sh walks. */
+        jw_ui_text(v, 1, 1, 7, 0, "     ");
+        jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+        jw_ui_text(v, 8, 1, 7, 0, JW_IO_BAR);
+        jw_ui_text(v, 34, 2, 6, 1, JW_DONE);
     } else if (s->command == 30 && s->io_stage) {
         /* 入出力's own menus.  Read off the original: ①ﾌｧｲﾙ and ②ﾌﾟﾛｯﾀ
          * each replace the top line with one of their own, both behind an
@@ -1409,8 +1452,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_PSET_BAR);
         } else if (s->io_stage == JW_IO_PGO) {
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_PGO_BAR);
-        } else if (s->io_stage == JW_IO_LOAD || s->io_stage == JW_IO_SAVE) {
-            const int saving = s->io_stage == JW_IO_SAVE;
+        } else if (s->io_stage == JW_IO_LOAD || s->io_stage == JW_IO_SAVE
+                   || s->io_stage == JW_IO_MEMO || s->io_stage == JW_IO_OVER
+                   || s->io_stage == JW_IO_WRITE) {
+            /* ①保存 keeps its list on the screen the whole way: ①選択確定,
+             * the two memo lines, the overwrite question and 書き込みます
+             * all change the top line and leave the rest where it is.
+             * Measured -- ①選択確定 moves 8,815 pixels and 8,623 of them
+             * are the top line. */
+            const int saving = s->io_stage != JW_IO_LOAD;
             char one[96];
             int k;
 
@@ -1421,12 +1471,22 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * DOS's 8.3 shape, the drawing's own 図面名 at 33, and the row
              * that is picked in yellow on blue.  The panel on the left
              * stays; only the drawing area is given over to the list. */
+            const int asking = s->io_stage == JW_IO_OVER
+                               || s->io_stage == JW_IO_WRITE;
+
             fill(v, 122, 16, 639, 463, 0);
             /* The strip along the bottom goes as well -- all of it, the
              * panel's end included -- and two solid yellow bars fence the
              * list off.  Measured off the original's own screen: y 99..109
-             * and y 453..462, both from x 122 to x 638. */
-            fill(v, 0, 464, 639, 479, 0);
+             * and y 453..462, both from x 122 to x 638.
+             *
+             * **The strip comes back for the two questions.**  同名ﾌｧｲﾙが
+             * 存在します and 書き込みます leave the list where it is but
+             * draw the strip again (5,865 pixels of row 30), and blank the
+             * 保存 … bytes free line while they are up. */
+            if (!asking) {
+                fill(v, 0, 464, 639, 479, 0);
+            }
             fill(v, 122, 99, 638, 109, 6);
             fill(v, 122, 453, 638, 462, 6);
             /* a rule under the header, two rows thick */
@@ -1436,7 +1496,18 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             fill(v, 120, 110, 639, 110, 7);
             fill(v, 121, 452, 639, 452, 7);
             fill(v, 0, 463, 639, 463, 7);
-            if (saving) {
+            if (s->io_stage == JW_IO_MEMO) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                jw_ui_text(v, 8, 1, 7, 0, JW_MEMO_BAR);
+            } else if (s->io_stage == JW_IO_OVER) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+                jw_ui_text(v, 8, 1, 7, 0, JW_OVER_BAR);
+            } else if (s->io_stage == JW_IO_WRITE) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+                jw_ui_text(v, 8, 1, 7, 0, JW_WRITE_BAR);
+            } else if (saving) {
                 jw_ui_text(v, 1, 1, 6, 0xffffu, JW_SAVE_BAR);
             } else {
                 jw_ui_text(v, 1, 1, 7, 0, JW_FILE_BAR);
@@ -1444,11 +1515,23 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 17, 2, 5, 0, JW_FILE_PATH);
             sprintf(one, "(%dfiles)", s->file_n);
             jw_ui_text(v, 70, 2, 5, 0, one);
-            sprintf(one, "%s%s bytes free   ", JW_FILE_SAVE, s->file_free);
-            jw_ui_text(v, 17, 3, 7, 0, one);
-            jw_ui_text(v, 51, 3, 7, 0, JW_FILE_EDIT);
-            jw_ui_text(v, 55, 3, 7, 0, JW_FILE_NAMED);
-            jw_ui_text(v, 65, 3, 7, 0, "=");
+            if (asking) {
+                /* 保存ﾌｧｲﾙ=A:\NAME.JWC, on white.  Measured off the
+                 * original the moment the question goes up. */
+                char stem[9];
+
+                memcpy(stem, s->file_n ? s->file_name[s->file_sel] : "        ", 8);
+                stem[8] = 0;
+                for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
+                sprintf(one, "%s%s.JWC", JW_SAVE_FILE, stem);
+                jw_ui_text(v, 17, 3, 7, 0xffffu, one);
+            } else {
+                sprintf(one, "%s%s bytes free   ", JW_FILE_SAVE, s->file_free);
+                jw_ui_text(v, 17, 3, 7, 0, one);
+                jw_ui_text(v, 51, 3, 7, 0, JW_FILE_EDIT);
+                jw_ui_text(v, 55, 3, 7, 0, JW_FILE_NAMED);
+                jw_ui_text(v, 65, 3, 7, 0, "=");
+            }
             if (s->file_n) {
                 const int sel = s->file_sel;
                 char stem[9];
@@ -1463,9 +1546,29 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 32, 5, 7, 0, s->file_date[sel]);
                 sprintf(one, "%8ld bytes   ", s->file_size[sel]);
                 jw_ui_text(v, 32, 6, 7, 0, one);
-                sprintf(one, "%-32.32s", s->file_title[sel]);
+                /* The box shows the two fields on two lines of their own,
+                 * which is also what ◆ｍｅｍｏ入力 edits. */
+                sprintf(one, "%-32.32s", s->file_t1[sel]);
                 jw_ui_text(v, 47, 5, 7, 0, one);
-                jw_ui_text(v, 47, 6, 7, 0, "                                ");
+                sprintf(one, "%-32.32s", s->file_t2[sel]);
+                jw_ui_text(v, 47, 6, 7, 0, one);
+            }
+            if (s->io_stage == JW_IO_MEMO) {
+                /* ◆ｍｅｍｏ入力 writes over the title field, two lines of
+                 * it, and puts a green block where the next character
+                 * goes.  The block is the one ③ﾌｧｲﾙ出力's name field has:
+                 * column 47, and the cell's lower nine rows (y+7..y+15).
+                 * Measured -- ①選択確定 changes exactly 72 pixels there. */
+                for (k = 0; k < 2; k++) {
+                    const int row = 5 + k;
+
+                    if (s->memo_n[k]) {
+                        jw_ui_text(v, 47, row, 7, 0, s->memo[k]);
+                    }
+                }
+                k = s->memo_n[s->memo_row];
+                fill(v, 46 * 8 + k * 8, (4 + s->memo_row) * 16 + 7,
+                     46 * 8 + 7 + k * 8, (4 + s->memo_row) * 16 + 15, 4);
             }
             for (k = 0; k < JW_FILE_ROWS; k++) {
                 const int i = s->file_top + k;
@@ -1483,7 +1586,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 const unsigned bg = on ? 1u : 0u;
 
                 jw_ui_text(v, 17, 8 + k, fg, bg, s->file_name[i]);
-                sprintf(one, "%-45.45s", s->file_title[i]);
+                /* `one two`, a single space between -- **not** the run of
+                 * NULs the file has there, which would put the second
+                 * field eleven columns further along. */
+                char joined[72];
+
+                sprintf(joined, "%s %s", s->file_t1[i], s->file_t2[i]);
+                sprintf(one, "%-45.45s", joined);
                 jw_ui_text(v, 33, 8 + k, fg, bg, one);
             }
         } else if (s->io_stage == JW_IO_FILE) {

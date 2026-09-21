@@ -501,6 +501,9 @@ echo "=== 図面を開く前から使えるか: 空の用紙の上で作図命�
 echo "=== 図面を開く道: 入出力 → ①ﾌｧｲﾙ → ②読込 → ①選択確定"
 "$NODE" tools/loadcheck.mjs
 
+echo "=== 図面を保存する道: 入出力 → ①ﾌｧｲﾙ → ①保存 → ◆ﾒﾓ → ①上書きする → ① 実 行"
+"$NODE" tools/savecheck2.mjs
+
 echo "=== ひととおり: 図面を開く → 線を引く → 保存 → 開き直す → プロッタ出力 → PDF/PNG"
 "$NODE" tools/flowcheck.mjs orig/SAMPLE1.JWC
 full "$NODE" tools/flowcheck.mjs orig/SAMPLE6.JWC

@@ -28,6 +28,15 @@ let bad = 0;
 const ok = (c, w) => { console.log((c ? '  ok   ' : '  FAIL ') + w); if (!c) bad++; };
 const press = (x, y, right) => { M._jw_mouse(x, y); M._jw_click(x, y, right ? 1 : 0); };
 const status = () => M.UTF8ToString(M._jw_status());
+/* Where a name is in the list.  **Not a fixed row**: the original makes an
+   empty AUTO.JWC at startup and it sorts first, so counting rows from the
+   top is counting on something that moves. */
+const rowOf = (name) => {
+  for (let i = 0; i < M._jw_file_count(); i++) {
+    if (M.UTF8ToString(M._jw_file_name(i)) === name) return i;
+  }
+  return -1;
+};
 const titleOf = (i) => {
   const p = M._jw_file_title(i);
   let n = 0;
@@ -41,22 +50,27 @@ ok(/^ready/.test(status()), 'the page starts with no drawing open (' + status() 
 press(30, 296);                     // 入出力
 press(110, 8);                      // ①ﾌｧｲﾙ
 press(180, 8);                      // ②読込 -- its own cell, the left button
-ok(M._jw_file_count() === 14,
-   'pressing the word 読込 puts up the list (' + M._jw_file_count() + ' files)');
-ok(M.UTF8ToString(M._jw_file_name(0)) === 'SAMPLE0 .JWC',
+ok(M._jw_file_count() === 15,
+   'pressing the word 読込 puts up the list (' + M._jw_file_count()
+   + ' files -- the fourteen and the AUTO.JWC the program makes)');
+ok(M.UTF8ToString(M._jw_file_name(0)) === 'AUTO    .JWC',
    'in DOS\'s spelling and alphabetical (' + M.UTF8ToString(M._jw_file_name(0)) + ')');
-ok(titleOf(2).startsWith('マンション'),
-   "and each one's own 図面名 beside it (" + titleOf(2).trim() + ')');
+ok(titleOf(rowOf('SAMPLE2 .JWC')).startsWith('マンション'),
+   "and each one's own 図面名 beside it ("
+   + titleOf(rowOf('SAMPLE2 .JWC')).trim() + ')');
 
 /* A press on the third row, then ①選択確定. */
 const row = (n) => press(300, 112 + n * 16);
 
-row(2);
-ok(M._jw_file_sel() === 2, 'a press on a row picks it (' + M._jw_file_sel() + ')');
+const two = rowOf('SAMPLE2 .JWC');
+const four = rowOf('SAMPLE4 .JWC');
+
+row(two);
+ok(M._jw_file_sel() === two, 'a press on a row picks it (' + M._jw_file_sel() + ')');
 /* **Another row only moves the pick** -- measured on the original, which
    leaves the list up (tools/dblcheck.sh ROW2=12). */
-row(4);
-ok(M._jw_file_sel() === 4 && M._jw_file_count() === 14,
+row(four);
+ok(M._jw_file_sel() === four && M._jw_file_count() === 15,
    'a press on a different row moves the pick and leaves the list up');
 press(180, 8);                      // ①選択確定 -- the item starts at column 21
 ok(/lines/.test(status()), '①選択確定 opens it (' + status() + ')');
@@ -67,10 +81,12 @@ ok(/lines/.test(status()), '①選択確定 opens it (' + status() + ')');
 press(30, 296);
 press(110, 8);
 press(180, 8);                      // ②読込
-row(1);
-ok(M._jw_file_sel() === 1, 'a row is picked (' + M._jw_file_sel() + ')');
+const one = rowOf('SAMPLE1 .JWC');
+
+row(one);
+ok(M._jw_file_sel() === one, 'a row is picked (' + M._jw_file_sel() + ')');
 const before = status();
-row(1);
+row(one);
 ok(status() !== before && /lines/.test(status()),
    'and pressing it again opens it, the way a double press does ('
    + status() + ')');
@@ -84,7 +100,7 @@ ok(status() !== before && /lines/.test(status()),
 press(30, 296);
 press(110, 8);
 press(180, 8);
-ok(M.UTF8ToString(M._jw_file_name(0)) === 'SAMPLE0 .JWC',
+ok(M.UTF8ToString(M._jw_file_name(0)) === 'AUTO    .JWC',
    '②読込 stays alphabetical whatever is open ('
    + M.UTF8ToString(M._jw_file_name(0)) + ')');
 ok(M._jw_file_sel() === 0, 'and the first row is the one picked');
@@ -92,7 +108,7 @@ ok(M._jw_file_sel() === 0, 'and the first row is the one picked');
 press(30, 296);
 press(110, 8);
 press(100, 8);                      // ①保存 -- the other cell
-ok(M._jw_file_count() === 14, 'pressing 保存 puts up the list too');
+ok(M._jw_file_count() === 15, 'pressing 保存 puts up the list too');
 ok(M.UTF8ToString(M._jw_file_name(0)) === 'SAMPLE1 .JWC',
    'with the drawing in hand on top -- SAMPLE1, the one the double press'
    + ' opened (' + M.UTF8ToString(M._jw_file_name(0)) + ')');

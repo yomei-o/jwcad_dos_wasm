@@ -29,6 +29,10 @@ ROW="${ROW:-10}"                # a row of the list; 8 is the first
 # an AUTO.JWC wherever it runs.
 rm -rf tmp/dbl/root
 cp -r orig tmp/dbl/root
+# Only the distribution.  orig/ is also where the drawings written while
+# analysing land, and one of those in the list puts every row below it out
+# of step with the port, which has only the fourteen.
+rm -f tmp/dbl/root/AUTO.JWC tmp/dbl/root/QPICK.JWC tmp/dbl/root/QBYTES.JWC tmp/dbl/root/ONE2.JWC
 
 {
     printf 'wait %s\n' "$BOOT"

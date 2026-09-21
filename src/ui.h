@@ -118,13 +118,28 @@ typedef struct {
      * own header.  The list is alphabetical with the drawing that is open
      * pulled to the top -- measured, not chosen. */
     char file_name[JW_FILE_MAX][13];
-    char file_title[JW_FILE_MAX][46];
+    /* **A drawing's 図面名 is two fields of 32 bytes**, at offsets 40 and
+     * 72 of the header.  The list shows them as `one two`, one space
+     * between, padded to 45 columns; the box above the list shows them on
+     * two lines of their own; and ◆ｍｅｍｏ入力 edits them.  Joining the
+     * NUL run between them into spaces instead put every title eleven
+     * columns out. */
+    char file_t1[JW_FILE_MAX][33];
+    char file_t2[JW_FILE_MAX][33];
     char file_date[JW_FILE_MAX][17];
     long file_size[JW_FILE_MAX];
     int file_n;
     int file_sel;               /* which row is yellow on blue */
     int file_top;               /* the first row shown, for long lists */
     char file_free[24];         /* "268,431,360", what the disk has left */
+    /* Which of ◆ｍｅｍｏ入力's two lines the cursor is on (0 or 1), and
+     * what has been typed into them.  The original asks for two. */
+    /* Set once ① 実 行 has written the drawing: the original leaves
+     * ` 登 録  完 了 ` on row 2 and the mark at column 6. */
+    int saved_done;
+    int memo_row;
+    char memo[2][41];
+    int memo_n[2];
 
 /* What JwUi.data_screen holds: 1 = the sixteen groups, 2 = the sixteen
  * layers of the group being written to. */
@@ -136,6 +151,9 @@ typedef struct {
 #define JW_IO_PGO 5             /* -> 作図開始|① 実行(L)|…           */
 #define JW_IO_LOAD 6            /* ②読込 -> ファイル選択の一覧        */
 #define JW_IO_SAVE 7            /* ①保存 -> 同じ一覧、上の行が違う    */
+#define JW_IO_MEMO 8            /* ①選択確定 -> ◆ｍｅｍｏ 入力        */
+#define JW_IO_OVER 9            /* -> 同名ﾌｧｲﾙが存在します            */
+#define JW_IO_WRITE 10          /* -> 書き込みます|① 実 行           */
 
 #define JW_DATA_GROUP 1
 #define JW_DATA_LAYER 2
