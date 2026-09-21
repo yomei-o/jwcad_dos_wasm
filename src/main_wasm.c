@@ -466,12 +466,11 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         } else if (key == 13 || key == 10) {
             /* **The drawing is measured in millimetres of paper**, so a
              * bigger sheet makes it smaller on the screen: unit_mm is
-             * 518 / the paper's width, and the view has to follow it.
-             * Measured on SAMPLE0 -- A-4 to A-2 doubles the width, and the
-             * original's drawing goes from 2421 lit pixels to 1212, which is
-             * the ratio of the two unit_mm exactly. */
-            const double was = drawing ? drawing->unit_mm : 1.0;
-
+             * 518 / the paper's width.  Measured on SAMPLE0 -- A-4 to A-2
+             * doubles the width, and the original's drawing goes from 2421
+             * lit pixels to 1212, which is the ratio of the two unit_mm
+             * exactly.  jwc_set_paper does the shrinking, on the geometry
+             * rather than on the view; the view is left alone. */
             if (ui.ask_n > 0 && what == JW_ASK_PAPER) {
                 jwc_set_paper(drawing, ui.ask_typed[0] - '0');
             } else if (ui.ask_n > 0 && drawing) {
@@ -482,10 +481,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
                 }
             }
             jw_ui_from(&ui, drawing);
-            jw_view_original(&view);
-            if (drawing && was > 0.0) {
-                view.scale *= drawing->unit_mm / was;
-            }
+            ui.ask = 0;                 /* the question goes with the answer */
         } else if (key == 8) {
             if (ui.ask_n > 0) {
                 ui.ask_typed[--ui.ask_n] = 0;

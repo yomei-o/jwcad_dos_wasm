@@ -1269,12 +1269,53 @@ int jwc_add_arc_at(Jwc *d, float cx, float cy, float r, long start, long end,
 int jwc_set_paper(Jwc *d, int paper)
 {
     static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f, 297.0f };
+    double was, k;
+    long i;
 
     if (!d || paper < 0 || paper > 4) {
         return 0;
     }
+    was = d->unit_mm;
     d->paper = (unsigned char)paper;
     d->unit_mm = 518.0f / PAPER[paper];
+    if (was <= 0.0) {
+        return 1;
+    }
+
+    /* **The geometry moves, not the view.**  A-4 to A-2 on SAMPLE0 leaves the
+     * original's drawing at screen x 141..359, y 301..441 -- half the size
+     * it was, about the drawing's own origin -- and its 用紙枠 **stays
+     * invisible**.  Scaling the view instead puts the drawing in exactly the
+     * same place but brings the paper's edge on screen, 239 red pixels the
+     * original does not have: the frame is the rectangle (0,0)-(518,447) in
+     * drawing units, so it only stays off the right edge while the view is
+     * at scale 1.  So what the paper changes is what a stored coordinate is
+     * worth -- the drawing is held in millimetres of paper and 518/width
+     * turns them into units -- and every coordinate follows unit_mm. */
+    k = d->unit_mm / was;
+    for (i = 0; i < d->n_lines; i++) {
+        d->lines[i].x0 = (float)(d->lines[i].x0 * k);
+        d->lines[i].y0 = (float)(d->lines[i].y0 * k);
+        d->lines[i].x1 = (float)(d->lines[i].x1 * k);
+        d->lines[i].y1 = (float)(d->lines[i].y1 * k);
+    }
+    for (i = 0; i < d->n_arcs; i++) {
+        d->arcs[i].cx = (float)(d->arcs[i].cx * k);
+        d->arcs[i].cy = (float)(d->arcs[i].cy * k);
+        d->arcs[i].r = (float)(d->arcs[i].r * k);
+    }
+    for (i = 0; i < d->n_texts; i++) {
+        d->texts[i].x0 = (float)(d->texts[i].x0 * k);
+        d->texts[i].y0 = (float)(d->texts[i].y0 * k);
+        d->texts[i].x1 = (float)(d->texts[i].x1 * k);
+        d->texts[i].y1 = (float)(d->texts[i].y1 * k);
+    }
+    for (i = 0; i < d->n_points; i++) {
+        d->points[i].x = (float)(d->points[i].x * k);
+        d->points[i].y = (float)(d->points[i].y * k);
+    }
+    d->grid_x *= k;
+    d->grid_y *= k;
     return 1;
 }
 
