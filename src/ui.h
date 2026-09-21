@@ -127,6 +127,19 @@ typedef struct {
     double grid_x, grid_y;      /* its spacing, millimetres of paper */
     int calc;
     int kept;
+    /* ｵﾌﾟｼｮﾝ (29) is a menu of menus too.  0 is the one the item itself
+     * puts up; JW_OPT_* say which of its own is showing. */
+    int opt_stage;
+    /* ①建具平面's two sizes and which letter of the library is in use --
+     * `見込 70.0mm`, `枠幅 35.0mm` and `種類【A】`, the three the bar
+     * offers.  The letter picks the file: A is JW_OPT1.DAT, B is
+     * JW_OPT1B.DAT and so on (JW_CAD.DOC, and the format is written out in
+     * JW_OPT1.DAT itself from line 240). */
+    double opt_depth, opt_width;
+    char opt_kind;
+    /* What is in that file: up to sixteen shapes, each with a name. */
+    char opt_name[16][32];
+    int opt_n;
     int io_stage;
     /* The name ③ﾌｧｲﾙ出力 asks for, in the field at column 25. */
     char io_name[13];
@@ -184,6 +197,9 @@ typedef struct {
 #define JW_IO_DRIVE 13          /* ⑤ﾄﾞﾗｲﾌﾞ変更 -> |①【Ａ】|② Ｂ|…    */
 #define JW_IO_DXF 14            /* ⑥ＤＸＦ -> |① 保存|② 読込|③ 設定| */
 #define JW_IO_INDEX 15          /* ⑦INDEX -> 選択ファイル名 ﾏｳｽ指示    */
+
+/* ｵﾌﾟｼｮﾝ's own menus, JwUi.opt_stage. */
+#define JW_OPT_PLAN 1           /* ①建具平面 -> 建具選択 の一覧        */
 
 #define JW_DATA_GROUP 1
 #define JW_DATA_LAYER 2

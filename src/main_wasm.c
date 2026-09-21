@@ -1131,6 +1131,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
          * 入出力 while its file list was up left the list there, and the
          * next press on the top line was read as ①選択確定. */
         ui.io_stage = 0;
+        ui.opt_stage = 0;       /* and ｵﾌﾟｼｮﾝ's, for the same reason */
         ui.missed = 0;          /* picking an item clears the band */
         mouse_x = x;
         mouse_y = y;
@@ -1180,6 +1181,20 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             }
             ui.file_sel = ui.file_top + row;
         }
+        present();
+        return -1;
+    }
+    /* ｵﾌﾟｼｮﾝ's top line.  ①建具平面 puts up the library's sixteen shapes;
+     * the rest are not built yet and leave the line as it was. */
+    if (ui.command == 29 && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
+        if (ui.opt_stage == 0 && jw_ui_top_item(x, y) == 1) {
+            ui.opt_stage = JW_OPT_PLAN;
+            ui.opt_depth = 70.0;
+            ui.opt_width = 35.0;
+            ui.opt_kind = 'A';
+        }
+        mouse_x = x;
+        mouse_y = y;
         present();
         return -1;
     }

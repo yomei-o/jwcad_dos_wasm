@@ -1484,6 +1484,26 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         } else {
             jw_ui_text(v, 30, 1, 7, 0, s->zoom_stage == 1 ? "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "\x8e" "n" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " " : "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "    " "\x8f" "I" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " ");
         }
+    } else if (s->command == 29 && s->opt_stage == JW_OPT_PLAN) {
+        /* ｵﾌﾟｼｮﾝ → ①建具平面.  The sixteen shapes in the library file, two
+         * to a row, and the three sizes on the top line.  Measured: the
+         * labels sit at columns 17 and 49, on rows 2, 5, 8, 11, 14, 17, 20
+         * and 23. */
+        char one[64];
+        int k;
+
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        sprintf(one, "\x8c\x9a\x8b\xef\x91" "I" "\x91\xf0"
+                " |" "\x87" "@" "\x8c\xa9\x8d\x9e" " %.1fmm|"
+                "\x87" "A" "\x98" "g" "\x95\x9d" " %.1fmm|"
+                "\x87" "B" "\x8e\xed\x97\xde\x81" "y%c" "\x81" "z"
+                "\x95\xcf\x8d" "X|",
+                s->opt_depth, s->opt_width, s->opt_kind);
+        jw_ui_text(v, 8, 1, 7, 0, one);
+        for (k = 0; k < 16; k++) {
+            sprintf(one, "[%d]", k + 1);
+            jw_ui_text(v, k % 2 ? 49 : 17, 2 + 3 * (k / 2), 7, 0, one);
+        }
     } else if (s->command == 30 && s->saved_done) {
         /* Straight after ① 実 行: the original goes back to 入出力's own
          * line with the mark at column 6, and leaves ` 登 録  完 了 ` on
