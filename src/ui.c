@@ -146,6 +146,21 @@ static int is_lead(unsigned char c)
 #define JW_SUB_AX 26.3
 #define JW_SUB_AY 461.0
 
+/* ②読込's ファイル選択 screen, byte for byte off the original
+ * (tools/sjisc.py turns a line into the literal; a hex escape in C is
+ * greedy, so every run of them is closed before the ASCII that follows). */
+#define JW_FILE_BAR \
+    "[ESC] " "\x83" "t" "\x83" "@" "\x83" "C" "\x83\x8b\x91" "I" \
+    "\x91\xf0" " |" "\x87" "@" "\x91" "I" "\x91\xf0\x8a" "m" \
+    "\x92\xe8" " |" "\x87" "A" "\x83" "h" "\x83\x89\x83" "C" "\x83" \
+    "u(A:)" "\x95\xcf\x8d" "X |" "\x87" "B " "\x90" "V" "\x8b" "K " \
+    "\x95\xdb\x91\xb6" " |" "\x87" "C" \
+    "\xc3\xde\xa8\xda\xb8\xc4\xd8\x8d\xec\x90\xac" "|"
+#define JW_FILE_PATH "path=A:" "\x5c" "*.jwc"
+#define JW_FILE_SAVE " " "\x95\xdb\x91\xb6" "    "
+#define JW_FILE_EDIT "\x95\xd2\x8f" "W"
+#define JW_FILE_NAMED "\x83" "t" "\x83" "@" "\x83" "C" "\x83\x8b\x96\xbc"
+
 /* 入出力's two menus, byte for byte off the original. */
 #define JW_IO_FILE_BAR \
     "|\x87\x40\x95\xdb\x91\xb6(L)|\x87\x41\x93\xc7\x8d\x9e(R)" \
@@ -1387,6 +1402,73 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_PSET_BAR);
         } else if (s->io_stage == JW_IO_PGO) {
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_PGO_BAR);
+        } else if (s->io_stage == JW_IO_LOAD) {
+            char one[96];
+            int k;
+
+            /* ②読込: the drawings on the disk, listed over the drawing
+             * area.  Every column here was read off the original
+             * (tools/seqcheck.sh "30 296 left" "110 8 left" "100 8 right",
+             * with the string routine logged): the name at column 17 in
+             * DOS's 8.3 shape, the drawing's own 図面名 at 33, and the row
+             * that is picked in yellow on blue.  The panel on the left
+             * stays; only the drawing area is given over to the list. */
+            fill(v, 122, 16, 639, 463, 0);
+            /* The strip along the bottom goes as well -- all of it, the
+             * panel's end included -- and two solid yellow bars fence the
+             * list off.  Measured off the original's own screen: y 99..109
+             * and y 453..462, both from x 122 to x 638. */
+            fill(v, 0, 464, 639, 479, 0);
+            fill(v, 122, 99, 638, 109, 6);
+            fill(v, 122, 453, 638, 462, 6);
+            /* a rule under the header, two rows thick */
+            fill(v, 120, 56, 639, 57, 7);
+            /* and a white rule above and below each of them */
+            fill(v, 120, 98, 639, 98, 7);
+            fill(v, 120, 110, 639, 110, 7);
+            fill(v, 121, 452, 639, 452, 7);
+            fill(v, 0, 463, 639, 463, 7);
+            jw_ui_text(v, 1, 1, 6, 0xffffu, JW_FILE_BAR);
+            jw_ui_text(v, 17, 2, 5, 0, JW_FILE_PATH);
+            sprintf(one, "(%dfiles)", s->file_n);
+            jw_ui_text(v, 70, 2, 5, 0, one);
+            sprintf(one, "%s%s bytes free   ", JW_FILE_SAVE, s->file_free);
+            jw_ui_text(v, 17, 3, 7, 0, one);
+            jw_ui_text(v, 51, 3, 7, 0, JW_FILE_EDIT);
+            jw_ui_text(v, 55, 3, 7, 0, JW_FILE_NAMED);
+            jw_ui_text(v, 65, 3, 7, 0, "=");
+            if (s->file_n) {
+                const int sel = s->file_sel;
+                char stem[9];
+
+                /* The box above the list: the file that is picked, with its
+                 * date, its size and its title spelled out. */
+                memcpy(stem, s->file_name[sel], 8);
+                stem[8] = 0;
+                for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
+                jw_ui_text(v, 66, 3, 7, 0, stem);
+                jw_ui_text(v, 17, 5, 7, 0, s->file_name[sel]);
+                jw_ui_text(v, 32, 5, 7, 0, s->file_date[sel]);
+                sprintf(one, "%8ld bytes   ", s->file_size[sel]);
+                jw_ui_text(v, 32, 6, 7, 0, one);
+                sprintf(one, "%-32.32s", s->file_title[sel]);
+                jw_ui_text(v, 47, 5, 7, 0, one);
+                jw_ui_text(v, 47, 6, 7, 0, "                                ");
+            }
+            for (k = 0; k < JW_FILE_ROWS; k++) {
+                const int i = s->file_top + k;
+                const int on = i == s->file_sel;
+
+                if (i >= s->file_n) {
+                    jw_ui_text(v, 17, 8 + k, 7, 0, "            ");
+                    jw_ui_text(v, 33, 8 + k, 7, 0,
+                               "                                             ");
+                    continue;
+                }
+                jw_ui_text(v, 17, 8 + k, on ? 6 : 7, on ? 1 : 0, s->file_name[i]);
+                sprintf(one, "%-45.45s", s->file_title[i]);
+                jw_ui_text(v, 33, 8 + k, on ? 6 : 7, on ? 1 : 0, one);
+            }
         } else if (s->io_stage == JW_IO_FILE) {
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_FILE_BAR);
             jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91\x4f\x8d\x80");

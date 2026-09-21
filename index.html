@@ -35,6 +35,17 @@
     border: 1px solid #343a42; border-radius: 4px; padding: 5px 10px;
   }
   .filebtn { cursor: pointer; }
+  /* The list and its buttons belong together -- they act on what the list
+     has -- so they are boxed as one control.  dosv_emu_cpp's page has the
+     same box. */
+  .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+           border: 1px solid #2a2e34; border-radius: 4px; padding: 4px 6px; }
+  .group label { color: #9aa0a8; font-size: 12px; }
+  /* A drawing's 図面名 can be long, and an option that long stretches the
+     select -- and the box round it -- across the page. */
+  select { max-width: min(100%, 22em); }
+  button:disabled { opacity: .45; cursor: default; }
+  button:disabled:hover { background: #22262c; }
   .filebtn input { display: none; }
   button:hover, select:hover, .filebtn:hover { background: #2a2f36; }
   code, .status { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
@@ -53,13 +64,21 @@
     画面と <b>640×480 全部が 1 画素も違いません</b>（残る 1 枚も 6 画素）。
   </p>
 
+  <!-- The page does one thing the program cannot: move files between the
+       visitor's machine and the module's own disk.  Opening a drawing is
+       ＪＷ＿ＣＡＤ's 入出力 and the page stays out of it -- picking a name
+       here would throw away whatever is being drawn.  dosv_emu_cpp's page
+       is the same page for the same reason. -->
   <div class="bar">
-    <select id="pick" aria-label="開く図面"></select>
     <label class="filebtn">アップロード<input type="file" id="up"
            accept=".jwc,.JWC" multiple></label>
-    <button id="save">ダウンロード</button>
-    <button id="pdf">PDF</button>
-    <button id="png">PNG</button>
+    <span class="group">
+      <label for="pick">ディスクの中</label>
+      <select id="pick"></select>
+      <button id="save" disabled>ダウンロード</button>
+      <button id="pdf">PDF</button>
+      <button id="png">PNG</button>
+    </span>
     <span class="status" id="status">読み込み中…</span>
   </div>
 
@@ -85,9 +104,15 @@
     （[F1]〜[F5] でもよく、そのあと上の行の ②連続 で何本でも。
     ①間隔取得 を押せば間隔を図面から測り取れます）。<br>
     画面下の帯（■拡大■・前倍率・倍率指定）も本物と同じように押せます。<br>
-    <b>アップロード</b>で手元の .JWC を開けます。<b>ダウンロード</b>は、いま画面に
-    ある図面をそのまま .JWC で書き出します——本物の ＪＷ＿ＣＡＤ がそれを開いて
-    同じ画面を描くところまで確かめてあります。<br>
+    <b>図面を開くのは ＪＷ＿ＣＡＤ の <code>入出力</code> です</b>——メニューの
+    いちばん下 <b>入出力</b> → 上の行の <b>①ﾌｧｲﾙ</b> → <b>②読込</b>（同じ所を
+    右ボタンで）→ 一覧から選んで <b>①選択確定</b>。上の 3 つは、手元の
+    パソコンとエミュレータの中のディスクとの間でファイルを出し入れするだけで、
+    開いたり閉じたりはしません。<br>
+    <b>アップロード</b>した .JWC はディスクに置かれ、上の <b>②読込</b> の一覧に
+    出ます。<b>ダウンロード</b>は一覧で選んだファイルをそのまま手元に渡します
+    ——本物の ＪＷ＿ＣＡＤ がそれを開いて同じ画面を描くところまで
+    確かめてあります。<br>
     <b>PDF</b> と <b>PNG</b> は<b>プロッタ出力</b>です。用紙は描かれた中身に
     合わせます（周囲 10mm）。出し方は 2 通りあります:<br>
     ・帯の <b>PDF</b> ／ <b>PNG</b> を押す（いちばん早い）<br>
@@ -102,35 +127,32 @@
 
 <script src="jwcad.js"></script>
 <script>
-/* **All fourteen** drawings that ship with JW_CAD, in the order the archive
-   has them, and what each one calls itself.
-
-   The labels are not ours: every .JWC carries its 図面名 at offset 40 of the
-   header, and this is that field, read out of the files (tmp/titles.txt).
-   The eight that used to be here were described from memory -- SAMPLE2 as
-   「集合住宅 平面図」 when the drawing says 「マンション 基準階平面図
-   １／１００」, SAMPLE3 as 「指定点」 when it is a 日影図 -- and six of the
-   fourteen were missing outright. dosv_emu_cpp's page lists the same
-   fourteen with the same words, so the two read alike. */
-const FILES = [
-  ['orig/SAMPLE0.JWC', '図面枠'],
-  ['orig/SAMPLE1.JWC', '木造平面図'],
-  ['orig/SAMPLE2.JWC', 'マンション 基準階平面図 １／１００'],
-  ['orig/SAMPLE3.JWC', 'マンション 日影図 １／２００'],
-  ['orig/SAMPLE4.JWC', 'マンション 南側立面図 １／１００'],
-  ['orig/SAMPLE5.JWC', 'マンション ２．５Ｄ'],
-  ['orig/SAMPLE6.JWC', '木造間取図＋設備図'],
-  ['orig/TEST1.JWC',   '日影図 ＴＥＳＴ用データ（陸屋根）'],
-  ['orig/TEST2.JWC',   '日影図 ＴＥＳＴ用データ（切妻屋根）'],
-  ['orig/TEST3.JWC',   '日影図ＴＥＳＴ用データ（ドーム屋根の概略日影図）'],
-  ['orig/TEST4.JWC',   '日影図ＴＥＳＴ用データ（かまぼこ屋根の概略日影図）'],
-  ['orig/TEST5.JWC',   '特殊な日影図'],
-  ['orig/TEST6.JWC',   '２．５用ＴＥＳＴデータ'],
-  ['orig/TEST7.JWC',   '壁面日影 サンプル'],
-];
-/* What the page opens with. SAMPLE2 rather than the first of the list: a
-   plan drawing shows what the port can do, and 図面枠 is an empty sheet. */
-const FIRST = 'orig/SAMPLE2.JWC';
+/* What each of the drawings that ship calls itself.  Not our words: every
+   .JWC carries its 図面名 at offset 40 of the header, and this is that
+   field, so this page, dosv_emu_cpp's page and ＪＷ＿ＣＡＤ's own ②読込
+   list all say the same thing about the same drawing.  Anything else on the
+   disk -- an upload -- is shown by its name alone. */
+const TITLES = {
+  'SAMPLE0.JWC': '図面枠',
+  'SAMPLE1.JWC': '木造平面図',
+  'SAMPLE2.JWC': 'マンション 基準階平面図 １／１００',
+  'SAMPLE3.JWC': 'マンション 日影図 １／２００',
+  'SAMPLE4.JWC': 'マンション 南側立面図 １／１００',
+  'SAMPLE5.JWC': 'マンション ２．５Ｄ',
+  'SAMPLE6.JWC': '木造間取図＋設備図',
+  'TEST1.JWC': '日影図 ＴＥＳＴ用データ（陸屋根）',
+  'TEST2.JWC': '日影図 ＴＥＳＴ用データ（切妻屋根）',
+  'TEST3.JWC': '日影図ＴＥＳＴ用データ（ドーム屋根の概略日影図）',
+  'TEST4.JWC': '日影図ＴＥＳＴ用データ（かまぼこ屋根の概略日影図）',
+  'TEST5.JWC': '特殊な日影図',
+  'TEST6.JWC': '２．５用ＴＥＳＴデータ',
+  'TEST7.JWC': '壁面日影 サンプル',
+};
+/* **The page opens no drawing.** That is what the original does: started
+   with no file on its command line it draws the menu, the counts, the bars
+   and an empty sheet, and waits. Opening one for the visitor made the list
+   at the top look like a statement about what was on the screen, which it
+   is not -- the list is for moving files, and the drawing is chosen here. */
 
 let Module = null;
 const canvas = document.getElementById('screen');
@@ -176,53 +198,74 @@ function open(path) {
 }
 
 const pick = document.getElementById('pick');
+const saveEl = document.getElementById('save');
+/* The module's disk, the same directory ②読込 lists (src/main_wasm.c). */
+const JW_DIR = 'orig';
+
+/* The drawings on the module's disk.
+ *
+ * **Picking one here opens nothing.**  The list is for moving files between
+ * the visitor's machine and the disk -- ダウンロード takes one off it,
+ * アップロード puts one on -- and opening a drawing is ＪＷ＿ＣＡＤ's
+ * 入出力 → ①ﾌｧｲﾙ → ②読込, which is where the program keeps it.  A page
+ * that opened a drawing when a name was picked would throw away whatever
+ * was being drawn, without asking; dosv_emu_cpp's page was changed for that
+ * reason and this one is now the same page. */
+function setFiles() {
+  const was = pick.value;
+
+  pick.textContent = '';
+  let names = [];
+  try {
+    names = Module.FS.readdir(JW_DIR).filter(n => /\.JWC$/i.test(n)).sort();
+  } catch (err) { /* no disk yet */ }
+  for (const name of names) {
+    const o = document.createElement('option');
+
+    o.value = JW_DIR + '/' + name;
+    o.textContent = name + (TITLES[name] ? '  ' + TITLES[name] : '');
+    pick.appendChild(o);
+  }
+  if (names.some(n => JW_DIR + '/' + n === was)) pick.value = was;
+  saveEl.disabled = !pick.value;
+}
 
 createJwcad().then(M => {
   Module = M;
   Module._jw_init();
-  for (const [path, label] of FILES) {
-    const o = document.createElement('option');
-    o.value = path;
-    /* The file name as well as the title. The two pages and every script in
-       the repo call these drawings SAMPLE2.JWC, so the list should too. */
-    o.textContent = path.replace(/^.*[/]/, '') + '  ' + label;
-    pick.appendChild(o);
-  }
-  pick.onchange = () => open(pick.value);
-  pick.value = FIRST;
-  open(FIRST);
+  setFiles();
+  pick.onchange = () => { saveEl.disabled = !pick.value; };
+  blit();
+  say();
 });
 
-/* アップロード -- a .JWC from the visitor's machine.
+/* アップロード -- a .JWC from the visitor's machine onto the module's disk.
  *
- * It is written into the module's own filesystem and then opened by name, so
- * it goes through `jwc_load` and `fopen` exactly as the drawings baked into
- * the build do.  Handing the bytes to a second entry point that parses from
- * memory would have been less code and a second path to keep right; this way
- * an uploaded drawing is read by the code the checks cover. */
+ * **It does not open it.**  It is put on the disk under a name DOS can
+ * spell, and ＪＷ＿ＣＡＤ's own 入出力 → ①ﾌｧｲﾙ → ②読込 lists it there and
+ * opens it -- through `jwc_load` and `fopen`, the code the checks cover. */
 document.getElementById('up').onchange = async e => {
   const chosen = [...e.target.files];
-  let last = '';
+  const done = [];
 
   e.target.value = '';                   // so the same file can be picked twice
   if (!Module || !chosen.length) return;
-  try {
-    Module.FS.mkdir('/up');
-  } catch (err) { /* already there */ }
   for (const f of chosen) {
-    const name = f.name.toUpperCase().replace(/[^A-Z0-9._-]/g, '_');
-    const path = '/up/' + name;
+    /* 8.3 and upper case: it has to be a name DOS could have written, or
+       ②読込 will not show it the way the original shows a file. */
+    const dot = f.name.replace(/^.*[/]/, '').replace(/\.[^.]*$/, '');
+    const name = dot.toUpperCase().replace(/[^A-Z0-9_-]/g, '_').slice(0, 8)
+                 + '.JWC';
 
-    Module.FS.writeFile(path, new Uint8Array(await f.arrayBuffer()));
-    if (![...pick.options].some(o => o.value === path)) {
-      const o = document.createElement('option');
-      o.value = path; o.textContent = name;
-      pick.appendChild(o);
-    }
-    last = path;
+    Module.FS.writeFile(JW_DIR + '/' + name,
+                        new Uint8Array(await f.arrayBuffer()));
+    done.push(name);
   }
-  pick.value = last;
-  open(last);
+  setFiles();
+  pick.value = JW_DIR + '/' + done[done.length - 1];
+  saveEl.disabled = false;
+  say(done.join('、') + ' を入れました — '
+      + '入出力 → ①ﾌｧｲﾙ → ②読込 で開けます');
 };
 
 /* Hand the visitor a file.
@@ -253,15 +296,16 @@ function handOver(name, bytes) {
 /* ダウンロード -- the port writes the .JWC itself (src/jwc.c's jwc_save), the
    same bytes tests/roundtrip.exe checks and the real JW_CAD opens in
    tools/savecheck.sh.  The page only wraps them in a Blob. */
-document.getElementById('save').onclick = () => {
-  if (!Module) return;
-  if (!Module._jw_save()) { say(); return; }
-  const p = Module._jw_saved(), n = Module._jw_saved_size();
-  const bytes = Module.HEAPU8.slice(p, p + n);
-  const name = loaded.replace(/^.*[/]/, '') || 'JW_CAD.JWC';
+/* ダウンロード -- the file the list has picked, off the module's disk and
+   onto the visitor's machine.  The same button on dosv_emu_cpp's page takes
+   the file off the guest's disk, and this is the same thing. */
+saveEl.onclick = () => {
+  if (!Module || !pick.value) return;
+  const bytes = Module.FS.readFile(pick.value);
+  const name = pick.value.replace(/^.*[/]/, '');
 
   handOver(name, bytes);
-  say(name + ' — ' + n + ' バイト');
+  say(name + ' — ' + bytes.length + ' バイト');
 };
 
 /* プロッタ出力 -- 入出力 → ②ﾌﾟﾛｯﾀ → ③ﾌｧｲﾙ出力 is where the original sends a

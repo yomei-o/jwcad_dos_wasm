@@ -69,12 +69,21 @@ globalThis.Blob = class { constructor(parts) { this.parts = parts; } };
    hand its bytes over. */
 const SAVED = 4321;
 const fs = {};
+for (const n of readdirSync('orig').filter(n => /^(SAMPLE|TEST)\d+\.JWC$/i.test(n))) {
+  fs['orig/' + n] = new Uint8Array(8);
+}
 const Module = {
   HEAPU8: new Uint8Array(640 * 480 * 4 + 65536),
   FS: {
     mkdir() { throw new Error('exists'); },
     writeFile(p, b) { fs[p] = b; },
     readFile(p) { return fs[p]; },
+    /* The disk the page lists: the drawings that ship are on it before the
+       page starts, the way --embed-file puts them there. */
+    readdir(dir) {
+      return Object.keys(fs).filter(k => k.startsWith(dir + '/'))
+                            .map(k => k.slice(dir.length + 1));
+    },
   },
   lengthBytesUTF8: sIn => sIn.length + 1,
   stringToUTF8() {},
@@ -104,26 +113,37 @@ const fire = (k, a) => listeners.get(k)(a);
    offered eight for a long time, which is not a bug anything would catch:
    the list is hand written, the six that were missing were simply never
    typed, and four of the eight labels described the wrong drawing. */
-const offered = els.pick.options.map(o => o.value);
+const offered = els.pick.options.map(o => o.value).filter(Boolean);
 const shipped = readdirSync('orig').filter(n => /^(SAMPLE|TEST)\d+\.JWC$/i.test(n))
                                    .map(n => 'orig/' + n).sort();
 
 ok(offered.length === 14, 'all fourteen drawings are offered (' + offered.length + ')');
 ok(String([...offered].sort()) === String(shipped),
-   'and they are exactly the ones that ship');
+   'and they are the disk, not a list written beside it');
 ok(offered.every(v => els.pick.options.find(o => o.value === v)
                         .textContent.startsWith(v.replace(/^orig[/]/, ''))),
    'each one is listed by its file name as well as its title');
-ok(els.pick.value === 'orig/SAMPLE2.JWC',
-   'and the list shows the drawing that is actually open');
 
-/* アップロード: into the module's own filesystem, then opened by name. */
-els.up.files = [{ name: 'mine.jwc', arrayBuffer: async () => new ArrayBuffer(6) }];
+/* **Picking a name opens nothing.**  The list moves files about; opening a
+   drawing is ＪＷ＿ＣＡＤ's 入出力 → ①ﾌｧｲﾙ → ②読込 (tools/loadcheck.mjs).
+   A page that opened one here would throw away what was being drawn, and
+   this page did exactly that until a visitor said so. */
+let opened = 0;
+Module._jw_open = () => { opened++; return 1; };
+els.pick.value = 'orig/TEST1.JWC';
+els.pick.onchange();
+ok(opened === 0, 'picking a name in the list opens nothing');
+
+/* アップロード: onto the disk, under a name DOS could have written, and it
+   does not open it either. */
+els.up.files = [{ name: 'my drawing.jwc', arrayBuffer: async () => new ArrayBuffer(6) }];
 await (els.up.onchange({ target: els.up }) || Promise.resolve());
 await new Promise(r => setTimeout(r, 10));
-ok(Object.keys(fs).some(k => k === '/up/MINE.JWC'),
-   'アップロード writes it into the module filesystem, upper case');
-ok(els.pick.value === '/up/MINE.JWC', 'and it becomes the drawing on show');
+ok(fs['orig/MY_DRAWI.JWC'] !== undefined,
+   'アップロード writes it onto the disk, 8.3 and upper case');
+ok(opened === 0, 'and does not open it either');
+ok(els.pick.options.some(o => o.value === 'orig/MY_DRAWI.JWC'),
+   'and it turns up in the list');
 
 /* ダウンロード. */
 anchors.length = 0;
@@ -131,7 +151,8 @@ body.children.length = 0;
 revoked = 0;
 els.save.onclick();
 ok(anchors.length === 1, 'ダウンロード makes an <a>');
-ok(anchors[0].download === 'MINE.JWC', 'named after the drawing');
+ok(anchors[0].download === 'MY_DRAWI.JWC',
+   'named after the file the list has picked (' + anchors[0].download + ')');
 ok(body.children[0] === anchors[0],
    'put in the document before clicking (a detached one does nothing)');
 ok(anchors[0].clicked === 1, 'and clicked');
@@ -144,8 +165,8 @@ for (const [id, ext] of [['pdf', '.pdf'], ['png', '.png']]) {
   anchors.length = 0;
   body.children.length = 0;
   els[id].onclick();
-  ok(anchors.length === 1 && anchors[0].download === 'MINE' + ext,
-     id.toUpperCase() + ' hands over MINE' + ext);
+  ok(anchors.length === 1 && /\.(pdf|png)$/.test(anchors[0].download),
+     id.toUpperCase() + ' hands over ' + anchors[0].download);
   ok(body.children[0] === anchors[0] && anchors[0].clicked === 1,
      '  in the document and clicked');
 }

@@ -21,9 +21,14 @@
 #include "view.h"
 
 #include <emscripten/emscripten.h>
+#include <emscripten/heap.h>
+#include <ctype.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <time.h>
 
 /* The drawing area, as the original hands it to its own clip (0def:12e8). */
 #define AREA_X0 122
@@ -46,6 +51,8 @@ EMSCRIPTEN_KEEPALIVE int jw_height(void) { return vga.height; }
 EMSCRIPTEN_KEEPALIVE unsigned char *jw_framebuffer(void) { return rgba; }
 EMSCRIPTEN_KEEPALIVE const char *jw_status(void) { return status; }
 
+static void present(void);
+
 EMSCRIPTEN_KEEPALIVE void jw_init(void)
 {
     vga_reset(&vga, 0x12);
@@ -53,6 +60,11 @@ EMSCRIPTEN_KEEPALIVE void jw_init(void)
     jw_ui_default(&ui);
     ui.guide = jw_ui_guide();
     strcpy(status, jw_view_fonts("font") ? "ready" : "ready (no font)");
+    /* The screen the original shows when it is started with no drawing:
+     * the menu, the counts, the bars and an empty sheet.  present() draws
+     * it, and without this the page had nothing to show until a drawing was
+     * opened -- which is why it used to open one for the visitor. */
+    present();
 }
 
 /* Everything the chrome shows that belongs to the command in hand.  Three
@@ -121,6 +133,169 @@ static void present(void)
     jw_view_rgba(&vga, pixels, rgba);
 }
 
+/* 入出力 → ①ﾌｧｲﾙ → ②読込 lists the drawings on the disk.  The original
+ * reads a directory; so does this -- `orig/` is the module's own, and it is
+ * where the drawings that ship live and where an upload is written, so the
+ * list is the disk itself and not a table kept beside it.
+ *
+ * The title shown is each drawing's own 図面名, out of the first 200 bytes
+ * of the file.  It is two fields with NULs between them ("マンション" and
+ * "基準階平面図　１／１００"), and the original prints the pair with the
+ * gaps as spaces -- so the NULs become spaces here rather than ending the
+ * string. */
+#define JW_DIR "orig"
+
+/* The drawing that is open, in the shape the list shows ("SAMPLE0 .JWC"),
+ * so that ②読込 can put it at the top the way the original does. */
+static char loaded_name[13];
+
+static void file_title_of(const char *path, char *out, int n)
+{
+    unsigned char head[200];
+    FILE *f = fopen(path, "rb");
+    size_t got;
+    int k, w = 0;
+
+    memset(out, 0, (size_t)n);
+    if (!f) return;
+    got = fread(head, 1, sizeof head, f);
+    fclose(f);
+    if (got < 100) return;
+    for (k = 40; k < (int)got && w < n - 1; k++) {
+        if (head[k] == 0x0d || head[k] == 0x0a) break;
+        out[w++] = head[k] ? (char)head[k] : ' ';
+    }
+    while (w > 0 && out[w - 1] == ' ') w--;
+    out[w] = 0;
+}
+
+/* 268,431,360 -- the original groups it in threes. */
+static void file_thousands(double v, char *out)
+{
+    char plain[32];
+    int n, k, w = 0;
+
+    sprintf(plain, "%.0f", v);
+    n = (int)strlen(plain);
+    for (k = 0; k < n; k++) {
+        if (k && (n - k) % 3 == 0) out[w++] = ',';
+        out[w++] = plain[k];
+    }
+    out[w] = 0;
+}
+
+static int file_cmp(const void *a, const void *b)
+{
+    return strcmp((const char *)a, (const char *)b);
+}
+
+static void file_list(void)
+{
+    char names[JW_FILE_MAX][13];
+    int n = 0, i;
+    DIR *dir = opendir(JW_DIR);
+    struct dirent *e;
+
+    ui.file_n = 0;
+    ui.file_sel = 0;
+    ui.file_top = 0;
+    if (dir) {
+        while ((e = readdir(dir)) != NULL && n < JW_FILE_MAX) {
+            const char *dot = strrchr(e->d_name, '.');
+            int k;
+
+            if (!dot || strcasecmp(dot, ".JWC") != 0) continue;
+            if (dot - e->d_name > 8 || dot == e->d_name) continue;
+            /* DOS spells it "SAMPLE0 .JWC": the stem padded to eight. */
+            memset(names[n], ' ', 8);
+            for (k = 0; k < (int)(dot - e->d_name); k++) {
+                names[n][k] = (char)toupper((unsigned char)e->d_name[k]);
+            }
+            memcpy(names[n] + 8, ".JWC", 5);
+            n++;
+        }
+        closedir(dir);
+    }
+    /* Alphabetical -- the order the original lists them in. */
+    qsort(names, (size_t)n, sizeof names[0], file_cmp);
+
+    for (i = 0; i < n; i++) {
+        char path[256];
+        char stem[9];
+        struct stat st;
+        struct tm *tm;
+        int k;
+
+        memcpy(stem, names[i], 8);
+        stem[8] = 0;
+        for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
+        sprintf(path, "%s/%s.JWC", JW_DIR, stem);
+        memcpy(ui.file_name[i], names[i], sizeof ui.file_name[0]);
+        file_title_of(path, ui.file_title[i], (int)sizeof ui.file_title[0]);
+        ui.file_size[i] = 0;
+        strcpy(ui.file_date[i], "                ");
+        if (stat(path, &st) == 0) {
+            ui.file_size[i] = (long)st.st_size;
+            tm = localtime(&st.st_mtime);
+            if (tm) {
+                sprintf(ui.file_date[i], "%02d/%02d/%02d %02d:%02d  ",
+                        (tm->tm_year + 1900) % 100, tm->tm_mon + 1,
+                        tm->tm_mday, tm->tm_hour, tm->tm_min);
+            }
+        }
+    }
+    ui.file_n = n;
+    /* **The drawing that is open comes first**, not in its alphabetical
+     * place.  Measured: with eighteen files on the disk and SAMPLE0 loaded,
+     * the original listed SAMPLE0, AUTO, ONE2, QBYTES, QPICK, SAMPLE1 ...
+     * -- alphabetical, with the one in hand lifted out and put on top. */
+    for (i = 0; i < n; i++) {
+        if (memcmp(ui.file_name[i], loaded_name, 12) != 0) continue;
+        while (i > 0) {
+            char name[13];
+            char title[sizeof ui.file_title[0]];
+            char date[sizeof ui.file_date[0]];
+            const long size = ui.file_size[i];
+
+            memcpy(name, ui.file_name[i], sizeof name);
+            memcpy(title, ui.file_title[i], sizeof title);
+            memcpy(date, ui.file_date[i], sizeof date);
+            memcpy(ui.file_name[i], ui.file_name[i - 1], sizeof name);
+            memcpy(ui.file_title[i], ui.file_title[i - 1], sizeof title);
+            memcpy(ui.file_date[i], ui.file_date[i - 1], sizeof date);
+            ui.file_size[i] = ui.file_size[i - 1];
+            i--;
+            memcpy(ui.file_name[i], name, sizeof name);
+            memcpy(ui.file_title[i], title, sizeof title);
+            memcpy(ui.file_date[i], date, sizeof date);
+            ui.file_size[i] = size;
+        }
+        break;
+    }
+    /* What the original puts beside 保存 is drive A's free space.  The port
+     * has no drive: its disk is the module's own memory, and what that has
+     * left is what is measured here.  A real number rather than one made up
+     * to fill the line -- it will not be the original's, and cannot be. */
+    file_thousands((double)emscripten_get_heap_max()
+                   - (double)emscripten_get_heap_size(), ui.file_free);
+}
+
+/* What ②読込's list holds, for tools/loadcheck.mjs.  The page does not use
+ * these: its own list is for moving files about, and opening a drawing is
+ * the program's business. */
+EMSCRIPTEN_KEEPALIVE int jw_file_count(void) { return ui.file_n; }
+EMSCRIPTEN_KEEPALIVE int jw_file_sel(void) { return ui.file_sel; }
+
+EMSCRIPTEN_KEEPALIVE const char *jw_file_name(int i)
+{
+    return i >= 0 && i < ui.file_n ? ui.file_name[i] : "";
+}
+
+EMSCRIPTEN_KEEPALIVE const char *jw_file_title(int i)
+{
+    return i >= 0 && i < ui.file_n ? ui.file_title[i] : "";
+}
+
 EMSCRIPTEN_KEEPALIVE int jw_open(const char *path)
 {
     const char *why;
@@ -132,6 +307,19 @@ EMSCRIPTEN_KEEPALIVE int jw_open(const char *path)
     }
     jwc_free(drawing);
     drawing = d;
+    {
+        const char *base = strrchr(path, '/');
+        const char *dot;
+        int k;
+
+        base = base ? base + 1 : path;
+        dot = strrchr(base, '.');
+        memset(loaded_name, ' ', 8);
+        memcpy(loaded_name + 8, ".JWC", 5);
+        for (k = 0; k < 8 && base + k != dot && base[k]; k++) {
+            loaded_name[k] = (char)toupper((unsigned char)base[k]);
+        }
+    }
     /* Where the original puts it: the .JWC holds screen units for the view it
      * was saved with, and JW_CAD puts them down where they are. */
     jw_view_original(&view);
@@ -634,11 +822,49 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     /* 入出力's top line is its own menu, and pressing an item there opens
      * another one.  Measured: ①ﾌｧｲﾙ and ②ﾌﾟﾛｯﾀ each replace the line; the
      * rest are not done yet, and pressing them leaves it as it was. */
+    /* A press on one of the rows of ②読込's list picks that drawing.  The
+     * rows are 8 to 28 and the list starts at column 17, both measured. */
+    if (ui.command == 30 && ui.io_stage == JW_IO_LOAD && x >= 128 && y >= 112) {
+        const int row = y / 16 - 7;
+
+        if (row >= 0 && row < JW_FILE_ROWS
+            && ui.file_top + row < ui.file_n) {
+            ui.file_sel = ui.file_top + row;
+        }
+        mouse_x = x;
+        mouse_y = y;
+        present();
+        return -1;
+    }
     if (ui.command == 30 && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
         const int item = jw_ui_top_item(x, y);
 
         if (ui.io_stage == 0 && (item == 1 || item == 2)) {
             ui.io_stage = item == 1 ? JW_IO_FILE : JW_IO_PLOT;
+        } else if (ui.io_stage == JW_IO_FILE && item == 1 && right) {
+            /* `|①保存(L)|②読込(R)|` -- one item, and the button says
+             * which.  The right button is 読込, and it puts up the list of
+             * what is on the disk. */
+            file_list();
+            ui.io_stage = JW_IO_LOAD;
+        } else if (ui.io_stage == JW_IO_LOAD && item == 1) {
+            /* ①選択確定: open the drawing the list has picked. */
+            if (ui.file_n) {
+                char path[256];
+                char stem[9];
+                int k;
+
+                memcpy(stem, ui.file_name[ui.file_sel], 8);
+                stem[8] = 0;
+                for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
+                sprintf(path, "%s/%s.JWC", JW_DIR, stem);
+                ui.io_stage = 0;
+                mouse_x = x;
+                mouse_y = y;
+                jw_open(path);
+                return -1;
+            }
+            ui.io_stage = 0;
         } else if (ui.io_stage == JW_IO_PLOT && item == 3) {
             /* ③ﾌｧｲﾙ出力.  The original asks which `*.JWP` to use first --
              * a plotter definition, which says what language the plotter

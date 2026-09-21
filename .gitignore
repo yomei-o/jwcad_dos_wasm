@@ -8,9 +8,15 @@ tmp/
 __pycache__/
 tests/*.exe
 
-# JW_CAD writes these into orig/ when it runs under dosv_emu_cpp: an empty
+# What JW_CAD leaves behind when it runs under dosv_emu_cpp: an empty
 # auto-save file at startup and a list of the drawings that were opened.
 # Neither is in jwcv222h.lzh -- orig/ is the distribution, unchanged.
+#
+# **They are kept in q/, not in orig/.**  A stray .JWC in orig/ is baked
+# into both .wasm builds by --embed-file and then listed on both pages, and
+# in ②読込's own list, as though it shipped with the program.  That is how
+# AUTO.JWC came to look like the drawing the page had opened.
+q/AUTO.JWC
 orig/AUTO.JWC
 orig/JW_FILE0.*
 
@@ -30,5 +36,7 @@ orig/T?POIN.JWC
 orig/ARCS*.JWC
 orig/ASK.JWC
 orig/QPICK.JWC
+q/QPICK.JWC
 orig/QLAYER.JWC
 orig/QBYTES.JWC
+q/QBYTES.JWC

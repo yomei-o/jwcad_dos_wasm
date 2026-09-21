@@ -18,6 +18,13 @@
 #define JW_UI_H
 
 #include "jwc.h"
+
+/* How many drawings the ファイル選択 list can hold.  The original shows
+ * twenty-one at a time (rows 8 to 28) and scrolls; this is the whole
+ * directory it has read. */
+#define JW_FILE_MAX 64
+/* How many of them are on the screen at once: rows 8 to 28. */
+#define JW_FILE_ROWS 21
 #include "vga.h"
 
 typedef struct {
@@ -105,6 +112,19 @@ typedef struct {
     /* The name ③ﾌｧｲﾙ出力 asks for, in the field at column 25. */
     char io_name[13];
     int io_name_n;
+    /* ②読込's ファイル選択 screen.  The names, each drawing's own 図面名,
+     * its date and its size, exactly as the original lists them: the name
+     * in DOS's 8.3 shape ("SAMPLE0 .JWC"), the title from the drawing's
+     * own header.  The list is alphabetical with the drawing that is open
+     * pulled to the top -- measured, not chosen. */
+    char file_name[JW_FILE_MAX][13];
+    char file_title[JW_FILE_MAX][46];
+    char file_date[JW_FILE_MAX][17];
+    long file_size[JW_FILE_MAX];
+    int file_n;
+    int file_sel;               /* which row is yellow on blue */
+    int file_top;               /* the first row shown, for long lists */
+    char file_free[24];         /* "268,431,360", what the disk has left */
 
 /* What JwUi.data_screen holds: 1 = the sixteen groups, 2 = the sixteen
  * layers of the group being written to. */
@@ -114,6 +134,7 @@ typedef struct {
 #define JW_IO_PNAME 3           /* ③ﾌｧｲﾙ出力 -> 出力ファイル名 ?      */
 #define JW_IO_PSET 4            /* -> |①確定(L)|②範囲変更(R)|…      */
 #define JW_IO_PGO 5             /* -> 作図開始|① 実行(L)|…           */
+#define JW_IO_LOAD 6            /* ②読込 -> ファイル選択の一覧        */
 
 #define JW_DATA_GROUP 1
 #define JW_DATA_LAYER 2
