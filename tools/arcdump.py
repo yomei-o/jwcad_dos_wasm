@@ -23,7 +23,10 @@ def arcs(path):
         flat = struct.unpack_from('<h', j.d, p + 12)[0]
         # 16.16 fixed degrees, as src/jwc.h explains.
         s, e = struct.unpack_from('<ii', j.d, p + 14)
-        tilt = struct.unpack_from('<h', j.d, p + 24)[0]
+        # 16.16 degrees at +22, like start and end.  Reading the high word
+        # alone -- which this did until 2026-09-21 -- turns the 12.5 degrees
+        # 複写 ⑥回転 writes into 12 and hides the fraction.
+        tilt = struct.unpack_from('<i', j.d, p + 22)[0] / 65536.0
         typ, pen = j.d[p + 26], j.d[p + 27]
         layer = j.d[p + 28]
         out.append(dict(k=k, cx=cx, cy=cy, r=r, flat=flat,
@@ -53,7 +56,7 @@ def main():
         rx = int(a['r'])
         ry = int(a['r'] * (a['flat'] / 10000.0 if a['flat'] > 0 else 1.0))
         print('%4d c=(%9.3f,%9.3f)->(%7.2f,%7.2f) r=%8.4f rx=%d ry=%d '
-              'flat=%5d ang=%9.4f..%9.4f tilt=%4d type=%d pen=%d lay=%02x '
+              'flat=%5d ang=%9.4f..%9.4f tilt=%8.4f type=%d pen=%d lay=%02x '
               'box=(%d,%d)-(%d,%d)'
               % (a['k'], a['cx'], a['cy'], a['cx'] + AX, AY - a['cy'], a['r'],
                  rx, ry, a['flat'], a['start'], a['end'], a['tilt'],

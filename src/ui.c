@@ -637,6 +637,17 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
         jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, num);
         return;
     }
+    /* ⑥回転 puts the angle that was typed in the band, where the capture has
+     * `  30.000゜` -- eight columns and three decimals, so a plain %8.3f with
+     * the ゜ after it.  put_numbers would drop to one decimal. */
+    if ((q->command == 1 || q->command == 16) && q->stage == 15
+        && q->row == 2) {
+        char num[32];
+
+        sprintf(num, "%8.3f\xdf", s->rot_deg);
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, num);
+        return;
+    }
     /* ハッチ's 残数 counts down from 100 as lines go into the frame, and its
      * angle and pitch are the command's own. */
     if (q->command == 18 && q->row == 2) {
@@ -1110,6 +1121,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
             for (q = JW_COPY; q->command; q++) {
+                if ((s->mirror || s->rotate)
+                    && q->stage >= 5 && q->stage <= 11) {
+                    continue;   /* ⑤反転 and ⑥回転 go their own way */
+                }
                 if (q->command == s->command && q->stage == i
                     && (q->row == 2 || q->row == 3) && q->col <= 15) {
                     own = 1;
@@ -1286,6 +1301,23 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                  * `20,30` typed -- x176..183, y7..15, which is column 23. */
                 n = s->typed_n < 8 ? s->typed_n : 8;
                 fill(v, 136 + n * 8, 7, 143 + n * 8, 15, 4);
+            }
+            /* ⑥回転's angle field starts at column 15: `[ESC]  角度 =`
+             * fills columns 1 to 13 and the digits go in one to a cell after
+             * the space. */
+            if ((s->command == 1 || s->command == 16) && i == 14) {
+                int n;
+
+                for (n = 0; n < s->typed_n && n < 8; n++) {
+                    char one[4];
+
+                    one[0] = s->typed[n];
+                    one[1] = one[2] = ' ';
+                    one[3] = 0;
+                    jw_ui_text(v, 15 + n, 1, 7, 0, one);
+                }
+                n = s->typed_n < 8 ? s->typed_n : 8;
+                fill(v, 112 + n * 8, 7, 119 + n * 8, 15, 4);
             }
             /* And the field itself: what has been typed, one character to a
              * cell from column 22, each of them clearing the two cells after

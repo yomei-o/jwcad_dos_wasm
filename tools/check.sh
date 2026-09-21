@@ -23,9 +23,16 @@ cd "$(dirname "$0")/.."
 mkdir -p tmp
 
 # A case that is only worth running when everything is being checked.
+#
+# `env` rather than a bare "$@": half the cases below are written
+# `full VERT=1 sh tools/textcheck.sh ...`, and a shell function cannot take a
+# `NAME=value` prefix that way -- it looks for a command called `VERT=1` and
+# `set -e` stops the whole run there.  (That is what FULL=1 did until
+# 2026-09-21: it died at the third 文字 case and everything after it was
+# never run.)
 full() {
     [ -n "$FULL" ] || return 0
-    "$@"
+    env "$@"
 }
 
 echo "=== building"
@@ -70,6 +77,8 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     DRAWING=SAMPLE6 sh tools/pressfull.sh 3 r 470 305
     echo "=== 文字: a point, then the keys, then [Enter] writes the text"
     full sh tools/textcheck.sh 250 200 ABC
+    VERT=1 sh tools/textcheck.sh 250 200 ABC
+    full VERT=1 ENTER=1 sh tools/textcheck.sh 250 200 ABC
     full sh tools/textcheck.sh 250 200 A
     full sh tools/textcheck.sh 200 157 ABC
     ENTER=1 sh tools/textcheck.sh 250 200 ABC
@@ -301,6 +310,19 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full ENTER=1 sh tools/editcheck.sh 190 152 ''
     full BS=1 sh tools/editcheck.sh 190 152 AB
     full DRAWING=SAMPLE6 BOOT=150000000 sh tools/editcheck.sh 459 70 ''
+    echo "=== 複写 ⑤反転: the range turned over in a line (RESUME 4.28)"
+    sh tools/mirrorcheck.sh 150 130 245 170 162 279
+    full TEXT=1 sh tools/mirrorcheck.sh 160 140 230 165 162 279
+    full TEXT=1 sh tools/mirrorcheck.sh 160 140 230 165 300 402
+    echo "=== 複写 ⑥回転: the range turned about a point (RESUME 4.30)"
+    sh tools/rotatecheck.sh 150 130 245 170 200 300 30 400 300
+    full STOP=angle sh tools/rotatecheck.sh 150 130 245 170 200 300
+    full TEXT=1 sh tools/rotatecheck.sh 160 140 230 165 200 300 150 400 300
+    full sh tools/rotatesave.sh 150 130 245 170 200 300 30 400 300
+    full DRAWING=TEST1 BOOT=60000000 sh tools/rotatesave.sh 235 218 340 320 300 350 12.5 400 350
+    echo "    ...and the records, where the order of a text's ends shows"
+    full sh tools/mirrorsave.sh 150 130 245 170 300 402
+    full DRAWING=TEST1 BOOT=60000000 sh tools/mirrorsave.sh 460 255 600 380 199 350
     echo "=== ズームバーの ■拡大■ と 用紙枠 (RESUME 4.27)"
     sh tools/zoomcheck.sh 200 100 300 400
     sh tools/barcheck.sh
@@ -414,6 +436,11 @@ for f in orig/SAMPLE1.JWC orig/SAMPLE2.JWC orig/SAMPLE3.JWC orig/SAMPLE5.JWC \
     fi
 done
 [ "$fail" = 0 ] || { echo "native and WASM disagree" >&2; exit 1; }
+
+# The page's アップロード: a drawing written into the module's own filesystem
+# and opened by name has to draw what the baked-in copy draws (RESUME 4.29).
+"$NODE" tests/upload_check.js orig/SAMPLE2.JWC
+full "$NODE" tests/upload_check.js orig/TEST7.JWC
 
 echo
 if [ -n "$FULL" ]; then

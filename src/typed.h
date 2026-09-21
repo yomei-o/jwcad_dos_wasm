@@ -258,6 +258,53 @@ static const JwStage JW_TYPED[] = {
     { 14, 5,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
     { 14, 5,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x95" "\xb6" "\x8e" "\x9a" "[F2]  \x90" "\xa1" "\x96" "@\x92" "l\x8e" "n\x93" "_\x8e" "w\x8e" "\xa6" " \xcf" "\xb3" "\xbd" "(L) \x98" "A\x91" "\xb1" "\x93" "\xfc" "\x97" "\xcd" "\x82" "\xcc" "\x8f" "I\x93" "_\xcf" "\xb3" "\xbd" "(R) |\x87" "@\x98" "A\x91" "\xb1" "|" },
     { 14, 5, 73, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[BS]\x91" "O\x8d" "\x80" },
+    /* 1 複写 ⑤反転, read off `python tools/steps_table.py 1 150 130 245 170
+     * 580 8 460 8 162 279`.  Stage 10 is the line it asks for and stage 12 is
+     * what is left once the copies are down; src/copy.h's 5 to 11 are the
+     * ①ﾏｳｽ位置 way of placing and src/ui.c skips them while this is on. */
+    {  1, 10,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    {  1, 10,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x94" "\xbd" "\x93" "]" "\x8a" "\xee" "\x8f" "\x80" "\x90" "\xfc" "\x81" "@" "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " " },
+    {  1, 12,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    {  1, 12,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
+    {  1, 12,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "|" "\x87" "@" "\x93" "\xaf" "\x8c" "`" "\x95" "\xca" "\x8f" "\x88" "\x97" "\x9d" "|" "\x87" "A" "\x91" "\xbc" "\x90" "}" "\x8c" "`" "\x8f" "\x88" "\x97" "\x9d" "|" },
+    /* 1 複写 ⑥回転 (and 16 移動), read off
+     *
+     *   python tools/steps_table.py 1 150 130 245 170 580 8 520 8 200 300 \
+     *          t 30 e 400 300
+     *
+     * Stages 13 to 16 are free in src/copy.h.  Three of the four lines are
+     * word for word copy.h's 5, 6 and 9 -- ⑥回転 is ①ﾏｳｽ位置 with the angle
+     * put in between -- but they are kept here rather than shared, because
+     * src/ui.c skips copy.h's 5 to 11 while this is running and because the
+     * band differs.
+     */
+    /*
+     * 13: after ⑥回転 -- the same line ①ﾏｳｽ位置 puts up (copy.h 5)
+     */
+    { 1, 13,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 1, 13,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x95" "\xa1" "\x8e" "\xca" "  \x8c" "\xb4" "\x90" "}\x8c" "`\x82" "\xcc" "\x8a" "\xee" "\x8f" "\x80" "\x93" "_\x88" "\xca" "\x92" "u \x83" "}\x83" "E\x83" "X\x8e" "w\x8e" "\xa6" " (L)free (R)Read  |\x87" "@\x81" "y\x94" "C\x88" "\xd3" "\x81" "z\x95" "\xfb" "\x8c" "\xfc" "|" },
+    /*
+     * 14: the angle.  The field is at column 15 and src/ui.c draws
+     *     what has been typed into it; `[  45.000゜]` in the band is
+     *     the 割付角度 and does not follow what is typed
+     */
+    { 1, 14,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]  " },
+    { 1, 14,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x8a" "p\x93" "x =" },
+    { 1, 14, 32, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "b0 \x93" "x \xcf" "\xb3" "\xbd" "(L)\x81" "b\x91" "O\x89" "\xf1" "\x82" "\xc6" "\x93" "\xaf" "\x82" "\xb6" " \xcf" "\xb3" "\xbd" "(R) \x81" "b[F1] \xcf" "\xb3" "\xbd" "\x8a" "p\x93" "x\x81" "b" },
+    { 1, 14, 50, 2, 7, 0xffff, 0, 0, { 0, 0 }, 0, "[  45.000\xdf" "]" },
+    { 1, 14, 15, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "        " },
+    /*
+     * 15: after [Enter] -- copy.h 6 again, with the angle in the band
+     *     at column 71 (the digits there are replaced, see ui.c)
+     */
+    { 1, 15, 71, 2, 7, 0xffff, 0, 0, { 0, 0 }, 0, "  30.000\xdf" },
+    { 1, 15,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]  \x95" "\xa1" "\x8e" "\xca" " \x88" "\xca" "\x92" "u \x83" "}\x83" "E\x83" "X\x8e" "w\x8e" "\xa6" " (L)free (R)Read  |\x87" "@\x81" "y\x94" "C\x88" "\xd3" "\x81" "z\x95" "\xfb" "\x8c" "\xfc" "|\x87" "A\x89" "\xbc" "\x95" "\\\x8e" "\xa6" "|\x87" "B\x89" "\xf1" "\x93" "]\x8a" "p|" },
+    /*
+     * 16: after the place press -- copy.h 9 again
+     */
+    { 1, 16,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 1, 16,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
+    { 1, 16,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x8d" "\xc4" "\x95" "\xa1" "\x8e" "\xca" " \x88" "\xca" "\x92" "u\x8e" "w\x8e" "\xa6" "(L)free (R)Read |\x87" "@\x93" "\xaf" "\x8c" "`\x95" "\xca" "\x8f" "\x88" "\x97" "\x9d" "|\x87" "A\x91" "\xbc" "\x90" "}\x8c" "`\x8f" "\x88" "\x97" "\x9d" "|\x87" "B\x98" "A\x91" "\xb1" "|" },
     { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0, 0 },
 };
 

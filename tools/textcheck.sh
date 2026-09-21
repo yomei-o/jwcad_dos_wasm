@@ -3,6 +3,7 @@
 #
 #   sh tools/textcheck.sh 250 200 ABC
 #   ENTER=1 sh tools/textcheck.sh 250 200 ABC     # [Enter] まで打って書かせる
+#   VERT=1 ENTER=1 sh tools/textcheck.sh 250 200 ABC   # ②垂直（縦書き）
 #   DRAWING=SAMPLE3 sh tools/textcheck.sh 300 250 XY
 #
 # **文字はオーバーレイの読み込みが長い**（6000 万命令ほど）ので、命令を
@@ -19,6 +20,9 @@ px="${1:-250}"; py="${2:-200}"; str="${3:-ABC}"
 
 {
     printf 'wait %s\nmouse 90 264\nwait 2000000\nclick left\nwait 60000000\n' "$BOOT"
+    if [ -n "$VERT" ]; then
+        printf 'mouse 290 8\nwait 3000000\ndown left\nwait 3000000\nup left\nwait 30000000\n'
+    fi
     printf 'mouse %s %s\nwait 3000000\ndown left\nwait 3000000\nup left\nwait 30000000\n' "$px" "$py"
     echo "$str" | fold -w1 | while read -r c; do
         printf 'type %s\nwait 10000000\n' "$c"
@@ -31,7 +35,8 @@ px="${1:-250}"; py="${2:-200}"; str="${3:-ABC}"
        --script tmp/tc/script.txt orig/JW_CADV.EXE "$DRAWING.JWC" > /dev/null 2>&1
 
 if [ -n "$ENTER" ]; then keys="-k $str"; else keys="-K $str"; fi
-./tests/drawing.exe -u -c 13 -p "$px" "$py" $keys -m "$px" "$py" \
+./tests/drawing.exe -u -c 13 ${VERT:+-t 290} -p "$px" "$py" $keys -m "$px" "$py" \
     "orig/$DRAWING.JWC" tmp/tc/port.raw > /dev/null
-printf '文字 %s "%s" at (%s,%s)%s  ' "$DRAWING" "$str" "$px" "$py" "${ENTER:+ +[Enter]}"
+printf '文字%s %s "%s" at (%s,%s)%s  ' "${VERT:+縦}" "$DRAWING" "$str" "$px" "$py" \
+    "${ENTER:+ +[Enter]}"
 python tools/fulldiff.py tmp/tc/orig.raw tmp/tc/port.raw

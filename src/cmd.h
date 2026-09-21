@@ -142,6 +142,20 @@ typedef struct {
      * as they come and [Enter] writes the text.  Measured -- the original
      * shows the whole string again at column 1 of row 2 after every key. */
     int typing_text;
+    /* 文字 ②垂直: the baseline goes **up** instead of along.  Measured on
+     * SAMPLE0 -- pressing ②垂直 (columns 34..39 of the item's line) and then
+     * (250,200) and `ABC` leaves (129,263)-(129,271.721), where ①水平 leaves
+     * (129,263)-(137.721,263).  Everything else about the record is the
+     * same. */
+    int text_vert;
+    /* 複写 ⑤反転: 1 while it asks for the 反転基準線, 2 once the copies are
+     * down.  See mirror_range. */
+    int mirror;
+    /* 複写/移動 ⑥回転: 1 while it asks for the 基準点, 2 while it asks for
+     * the angle, 3 once the angle is in and it wants the place, 4 once a copy
+     * is down.  rot_deg is what was typed.  See turn_range. */
+    int rotate;
+    double rot_deg;
     /* Where the next key goes in `typed`.  文字 always appends, so it is
      * `typed_n` there; 文編集 starts the field with the text it was pointed
      * at and the cursor at the **front** -- typing `ABC` on 「Ｈ７－Ａ００１」

@@ -3,7 +3,10 @@
 #
 # Output lands in the repository root because GitHub Pages serves main:/ .
 # The sample drawings are baked in with --embed-file so src/jwc.c keeps using
-# fopen() exactly as the native build does.
+# fopen() exactly as the native build does.  FS is exported for the same
+# reason: a drawing the visitor uploads is written into the module's own
+# filesystem and then opened by name, so it is read by jwc_load like any
+# other, rather than by a second entry point that parses from memory.
 set -e
 cd "$(dirname "$0")/.."
 EMSDK="${EMSDK:-/c/prog/emsdk/emsdk}"
@@ -35,7 +38,7 @@ sh tools/lowpri.sh "$EMCC" -O2 -Wall -Wextra -Isrc \
    -o jwcad.js \
    $SRC $EMBED \
    -s MODULARIZE=1 -s EXPORT_NAME=createJwcad \
-   -s EXPORTED_RUNTIME_METHODS=HEAPU8,UTF8ToString,lengthBytesUTF8,stringToUTF8 \
+   -s EXPORTED_RUNTIME_METHODS=HEAPU8,UTF8ToString,lengthBytesUTF8,stringToUTF8,FS \
    -s ALLOW_MEMORY_GROWTH=1 -s ENVIRONMENT=web,node \
    -s EXPORTED_FUNCTIONS="$EXPORTS"
 

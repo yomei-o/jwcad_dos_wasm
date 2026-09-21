@@ -406,6 +406,41 @@ static double text_step(const Jwc *d, const JwcText *t, double unit)
  * so the rectangle stands *on* the baseline and is `floor(height)` tall, and
  * the fifth line is one row above it.  (The old reading had the rectangle a row
  * higher and a row taller, and the fifth line on the baseline itself.) */
+/* One side of the box, cut to the window rather than dropped.
+ *
+ * FUN_1def_17bb takes a flag that says whether it is being handed a point or a
+ * line.  With it set it tests that one point against the four floats at DGROUP
+ * 0xb5aa/0xb5b2/0xb60e/0xb612 and returns if it falls outside -- that is the
+ * rule `inside` keeps.  With it **clear** it is a line, and then the function
+ * goes the other way: both ends inside hands the whole line straight to
+ * FUN_1def_0000, both ends outside on the same side returns, and anything
+ * between is cut against those same four floats before it draws.
+ *
+ * The box around an unreadably small string is five such lines.  Measured on
+ * SAMPLE0 with 複写 ⑤反転: the mirrored `Ｈ７－Ａ００１` starts at x=-11.084,
+ * which is screen column 109, and the original draws the box's horizontal
+ * sides from column 122 -- the window's own edge -- while dropping the
+ * vertical one at 109 altogether.  Dropping the whole box lost 75 pixels.
+ *
+ * draw_text_box_turned still drops: no drawing measured so far puts a turned
+ * box across the edge, so there is nothing to read the answer off. */
+static void box_line(VGA *v, const JwView *w, int x0, int y0, int x1, int y1,
+                     unsigned colour)
+{
+    double fx0 = x0, fy0 = y0, fx1 = x1, fy1 = y1;
+
+    if (!inside(w, x0, y0)) {
+        if (!inside(w, x1, y1)) {
+            return;
+        }
+        clip_far(w, fx1, fy1, &fx0, &fy0);
+    } else {
+        clip_far(w, fx0, fy0, &fx1, &fy1);
+    }
+    jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy1, colour, ROP_REPLACE,
+            JW_STYLE_SOLID);
+}
+
 static void draw_text_box(VGA *v, const JwView *w, int x0, int x1, int base,
                           int h, unsigned colour)
 {
@@ -414,24 +449,19 @@ static void draw_text_box(VGA *v, const JwView *w, int x0, int x1, int base,
     if (getenv("JW_TRACE")) {
         printf("flat %d..%d base=%d h=%d%c", x0, x1, base, h, 10);
     }
-    if (!inside(w, x0, top) || !inside(w, x1, base)) {
-        return;
-    }
-    jw_line(v, x0, base, x1, base, colour, ROP_REPLACE, JW_STYLE_SOLID);
-    jw_line(v, x1, base, x1, top, colour, ROP_REPLACE, JW_STYLE_SOLID);
-    jw_line(v, x1, top, x0, top, colour, ROP_REPLACE, JW_STYLE_SOLID);
-    jw_line(v, x0, top, x0, base, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    box_line(v, w, x0, base, x1, base, colour);
+    box_line(v, w, x1, base, x1, top, colour);
+    box_line(v, w, x1, top, x0, top, colour);
+    box_line(v, w, x0, top, x0, base, colour);
     /* The fifth line is the row above the baseline -- except for a box with no
      * height at all, which has no row above to use: there the original puts it
      * beside the baseline instead, one pixel along.  TEST6 has four of those
      * (strings whose height truncates to nothing) and draws them three pixels
      * wide in a single row. */
     if (h == 0) {
-        jw_line(v, x0 + 1, base, x1 + 1, base, colour, ROP_REPLACE,
-                JW_STYLE_SOLID);
+        box_line(v, w, x0 + 1, base, x1 + 1, base, colour);
     } else {
-        jw_line(v, x0, base - 1, x1, base - 1, colour, ROP_REPLACE,
-                JW_STYLE_SOLID);
+        box_line(v, w, x0, base - 1, x1, base - 1, colour);
     }
 }
 

@@ -356,11 +356,26 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
         int x1, y1;
 
         at_screen(w, c->x0, c->y0, &px, &py);
-        at_screen(w, c->x0 + c->text_wide, c->y0 + c->text_tall, &x1, &y1);
+        at_screen(w,
+                  c->x0 + (c->text_vert ? -c->text_tall : c->text_wide),
+                  c->y0 + (c->text_vert ? c->text_wide : c->text_tall),
+                  &x1, &y1);
         jw_line(v, px, py, px, y1, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, px, y1, x1, y1, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, x1, y1, x1, py, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, x1, py, px, py, 2, 0x18, JW_STYLE_SOLID);
+        if (c->text_vert) {
+            /* ②垂直 turns the whole thing a quarter: the box goes up and to
+             * the left of the point, and the two marks sit **above** its far
+             * end rather than past its right.  Measured on SAMPLE0 with
+             * `ABC` at (250,200): the box is x 244..250 by y 191..200 and the
+             * marks are at rows 188 and 190, columns 244-245 and 249-250. */
+            jw_line(v, x1, y1 - 1, x1 + 1, y1 - 1, 4, 0x18, JW_STYLE_SOLID);
+            jw_line(v, x1, y1 - 3, x1 + 1, y1 - 3, 4, 0x18, JW_STYLE_SOLID);
+            jw_line(v, px - 1, y1 - 1, px, y1 - 1, 4, 0x18, JW_STYLE_SOLID);
+            jw_line(v, px - 1, y1 - 3, px, y1 - 3, 4, 0x18, JW_STYLE_SOLID);
+            return;
+        }
         jw_line(v, x1 + 1, y1, x1 + 1, y1 + 1, 4, 0x18, JW_STYLE_SOLID);
         jw_line(v, x1 + 3, y1, x1 + 3, y1 + 1, 4, 0x18, JW_STYLE_SOLID);
         jw_line(v, x1 + 1, py - 1, x1 + 1, py, 4, 0x18, JW_STYLE_SOLID);
@@ -1024,6 +1039,306 @@ static int picked_text(const JwCmd *c, const Jwc *d, long k)
               != flipped(c, JW_FLIP_TEXT, k);
 }
 
+static void freeze(JwCmd *c, const Jwc *d);
+
+/* 複写 ⑤反転: the range again, turned over in the line that was pressed.
+ *
+ * Measured on SAMPLE0.  With the range (150,130)-(245,170) -- lines 5 and 6 --
+ * and line 0 (the vertical at x=40.973) as the 反転基準線:
+ *
+ *     (40.973,305.616)-(110.737,305.616) -> (40.973,305.616)-(-28.791,…)
+ *     (110.737,305.616)-(110.737,323.057) -> (-28.791,305.616)-(-28.791,…)
+ *
+ * so a line keeps the order of its ends.  A **text** does not: taking text 0
+ * in with a right press on the first corner turns
+ * (51.172,310.957)-(93.030,310.957) into (-11.084,310.957)-(30.774,310.957),
+ * which is the reflection of the *second* end first -- the baseline still
+ * runs left to right, so the string still reads the right way round.
+ *
+ * Arcs are **not measured**: neither SAMPLE0 nor the ranges tried on TEST1
+ * had one inside.  They are turned over the way the geometry says (the centre
+ * reflected, the two angles reflected and swapped), which is a guess.
+ */
+static void mirror_at(double ax, double ay, double ux, double uy,
+                      double x, double y, double *rx, double *ry)
+{
+    const double vx = x - ax, vy = y - ay;
+    const double t = 2.0 * (vx * ux + vy * uy);
+
+    *rx = ax + t * ux - vx;
+    *ry = ay + t * uy - vy;
+}
+
+static int mirror_range(JwCmd *c, Jwc *d, long m)
+{
+    const JwcLine *l;
+    double ax, ay, ux, uy, len, axis;
+    long k;
+    int n = 0;
+
+    if (m < 0 || m >= d->n_lines) {
+        return 0;
+    }
+    l = &d->lines[m];
+    ax = l->x0;
+    ay = l->y0;
+    ux = l->x1 - l->x0;
+    uy = l->y1 - l->y0;
+    len = sqrt(ux * ux + uy * uy);
+    if (len < 1e-9) {
+        return 0;
+    }
+    ux /= len;
+    uy /= len;
+    axis = atan2(uy, ux) * 180.0 / 3.14159265358979323846;
+    if (!c->sel_line) {
+        freeze(c, d);
+    }
+    for (k = 0; k < c->n0_lines; k++) {
+        double x0, y0, x1, y1;
+
+        if (!picked_line(c, d, k)) {
+            continue;
+        }
+        mirror_at(ax, ay, ux, uy, d->lines[k].x0, d->lines[k].y0, &x0, &y0);
+        mirror_at(ax, ay, ux, uy, d->lines[k].x1, d->lines[k].y1, &x1, &y1);
+        if (jwc_dup_line(d, k, 0.0f, 0.0f)) {
+            JwcLine *q = &d->lines[d->n_lines - 1];
+
+            q->x0 = (float)x0;
+            q->y0 = (float)y0;
+            q->x1 = (float)x1;
+            q->y1 = (float)y1;
+            n++;
+        }
+    }
+    for (k = 0; k < c->n0_arcs; k++) {
+        double cx, cy;
+
+        if (!picked_arc(c, d, k)) {
+            continue;
+        }
+        mirror_at(ax, ay, ux, uy, d->arcs[k].cx, d->arcs[k].cy, &cx, &cy);
+        if (jwc_dup_arc(d, k, 0.0f, 0.0f)) {
+            JwcArc *q = &d->arcs[d->n_arcs - 1];
+            const long twice = (long)(2.0 * axis * 65536.0);
+
+            q->cx = (float)cx;
+            q->cy = (float)cy;
+            q->start = twice - d->arcs[k].end;
+            q->end = twice - d->arcs[k].start;
+            n++;
+        }
+    }
+    for (k = 0; k < c->n0_texts && takes_text(c); k++) {
+        double x0, y0, x1, y1, th;
+
+        if (!picked_text(c, d, k)) {
+            continue;
+        }
+        mirror_at(ax, ay, ux, uy, d->texts[k].x0, d->texts[k].y0, &x0, &y0);
+        mirror_at(ax, ay, ux, uy, d->texts[k].x1, d->texts[k].y1, &x1, &y1);
+        /* The two ends come back in the other order when the reflection would
+         * leave the string reading backwards.  JW_CADV.HLP says exactly when,
+         * under 複写 5)反転:
+         *
+         *     文字方向を、横字は-90<θ<=90、縦字は-90<=θ<90 の方向に修正
+         *     します。
+         *
+         * -- so the baseline's angle is brought back into that half-turn, and
+         * the only way to move it by 180 degrees is to swap its ends.
+         *
+         * Three measurements, all agreeing with **the 横字 range alone**
+         * (`sh tools/mirrorsave.sh` drives the original and prints what it
+         * appended):
+         *
+         *   SAMPLE0  text 0 (51.172,310.957)-(93.030,310.957), axis the
+         *            vertical x=40.973 -- 0 degrees becomes 180, out of
+         *            range, and the original writes
+         *            (-11.084,310.957)-(30.774,310.957): the ends swapped
+         *   TEST1    text 10 at 0 degrees, axis line 39 at -38.05 -- becomes
+         *            -76.1, in range, and the ends do **not** swap
+         *   TEST1    text 7 `５ｍライン`, whose baseline runs straight up at
+         *            +90, axis the vertical line 13 -- stays +90, and the
+         *            ends do **not** swap
+         *
+         * The last one is the interesting one: +90 is in the 横字 range and
+         * out of the 縦字 one, so a baseline standing on end is still 横字 as
+         * far as this is concerned -- 縦字 must be JW_CAD's vertical-writing
+         * character type rather than any baseline pointing upward, and the
+         * port does not make those. */
+        th = atan2(y1 - y0, x1 - x0) * 180.0 / 3.14159265358979323846;
+        if (th > 90.0 + 1e-9 || th < -90.0 + 1e-9) {
+            double t = x0; x0 = x1; x1 = t;
+            t = y0; y0 = y1; y1 = t;
+        } else {
+            /* ...and when it does **not** swap, the baseline moves sideways
+             * by one character height.
+             *
+             * A record holds the baseline, and the glyphs always sit on one
+             * side of it -- the +90-degrees side, above a string running left
+             * to right.  A reflection turns that side over, so the picture it
+             * makes has the glyphs on the *other* side; putting the ends back
+             * in the other order turns it over again and nothing has to move,
+             * but leaving them alone means the baseline has to cross the
+             * string to keep the glyphs where the reflection put them.
+             *
+             * Height, not width: text_h / 10 x unit_mm, the same number
+             * text_height draws with.  Measured twice and then predicted once
+             * before measuring, which is what settled it:
+             *
+             *   TEST1    text 10 (size 2, unit_mm 0.872054, so 2.180),
+             *            axis line 39 at -38.05 degrees -- the whole string
+             *            moves (-2.106,-0.527), which is 2.180 along
+             *            (dy,-dx)/len
+             *   TEST1    text 7 standing at +90 (size 10, so 8.721), axis a
+             *            vertical line -- x moves +8.721 and y does not
+             *   SAMPLE0  text 0 (size 3, unit_mm 1.744108, so 5.232), axis
+             *            line 4, horizontal.  Predicted -188.075 - 5.232 =
+             *            **-193.307** before running it; the original wrote
+             *            -193.307
+             */
+            const double run = sqrt((x1 - x0) * (x1 - x0)
+                                    + (y1 - y0) * (y1 - y0));
+
+            if (run > 1e-9) {
+                const int sz = d->texts[k].size <= 10 ? d->texts[k].size : 0;
+                const double tall = d->text_h[sz] / 10.0 * d->unit_mm;
+                const double sx = tall * (y1 - y0) / run;
+                const double sy = tall * -(x1 - x0) / run;
+
+                x0 += sx;
+                y0 += sy;
+                x1 += sx;
+                y1 += sy;
+            }
+        }
+        if (jwc_dup_text(d, k, 0.0f, 0.0f)) {
+            JwcText *q = &d->texts[d->n_texts - 1];
+
+            q->x0 = (float)x0;
+            q->y0 = (float)y0;
+            q->x1 = (float)x1;
+            q->y1 = (float)y1;
+            n++;
+        }
+    }
+    return n;
+}
+
+/* 複写/移動 ⑥回転: the range again, turned about a point.
+ *
+ * The line after ⑥回転 is `複写  原図形の基準点位置 マウス指示` -- the same
+ * one ①ﾏｳｽ位置 puts up -- and then `角度 =` with a field, and then `複写 位置`
+ * again.  So there are three points in it: the 基準点 the figure turns about,
+ * the angle, and where the 基準点 ends up.
+ *
+ *     p' = R(theta) (p - base) + place
+ *
+ * and nothing else -- no correction of any kind, not even for a string that
+ * ends up reading backwards.  Measured on SAMPLE0 with the range
+ * (150,130)-(245,170), the base at screen (200,300) = record (79,163) and the
+ * place at (400,300) = (279,163):
+ *
+ *   3 degrees   line 5 (40.973,305.616)-(110.737,305.616)
+ *                 -> (233.561,303.431)-(303.230,307.082)   R gives .5605/.4302
+ *               text 0 (51.172,310.957)-(93.030,310.957)
+ *                 -> (243.466,309.298)-(285.268,311.489)
+ *
+ * The text is the interesting one: its two ends stay in order and its
+ * baseline does not move sideways, which is what ⑤反転 has to do (4.28).  A
+ * reflection turns the glyphs over and a rotation does not, so there is
+ * nothing to put right.
+ */
+static void turn_at(double ax, double ay, double co, double si,
+                    double dx, double dy, double x, double y,
+                    double *rx, double *ry)
+{
+    const double vx = x - ax, vy = y - ay;
+
+    *rx = vx * co - vy * si + dx;
+    *ry = vx * si + vy * co + dy;
+}
+
+static int turn_range(JwCmd *c, Jwc *d, double px, double py)
+{
+    const double rad = c->rot_deg * 3.14159265358979323846 / 180.0;
+    const double co = cos(rad), si = sin(rad);
+    /* 16.16 degrees, the way the record keeps every angle (src/jwc.h). */
+    const long twist = (long)(c->rot_deg * 65536.0);
+    long k;
+    int n = 0;
+
+    if (!c->sel_line) {
+        freeze(c, d);
+    }
+    for (k = 0; k < c->n0_lines; k++) {
+        double x0, y0, x1, y1;
+
+        if (!picked_line(c, d, k)) {
+            continue;
+        }
+        turn_at(c->base_x, c->base_y, co, si, px, py,
+                d->lines[k].x0, d->lines[k].y0, &x0, &y0);
+        turn_at(c->base_x, c->base_y, co, si, px, py,
+                d->lines[k].x1, d->lines[k].y1, &x1, &y1);
+        if (jwc_dup_line(d, k, 0.0f, 0.0f)) {
+            JwcLine *q = &d->lines[d->n_lines - 1];
+
+            q->x0 = (float)x0;
+            q->y0 = (float)y0;
+            q->x1 = (float)x1;
+            q->y1 = (float)y1;
+            n++;
+        }
+    }
+    for (k = 0; k < c->n0_arcs; k++) {
+        double cx, cy;
+
+        if (!picked_arc(c, d, k)) {
+            continue;
+        }
+        turn_at(c->base_x, c->base_y, co, si, px, py,
+                d->arcs[k].cx, d->arcs[k].cy, &cx, &cy);
+        if (jwc_dup_arc(d, k, 0.0f, 0.0f)) {
+            JwcArc *q = &d->arcs[d->n_arcs - 1];
+
+            q->cx = (float)cx;
+            q->cy = (float)cy;
+            /* **The tilt takes the turn, not the two angles.**  Measured on
+             * TEST1 with the range (235,218)-(340,320), the base at screen
+             * (300,350) and 30 degrees: arc 0 keeps 90..180 and its tilt goes
+             * from 0 to 30 (`sh tools/rotatesave.sh`).  Adding the turn to
+             * start and end would draw the same circle -- the difference only
+             * shows on an ellipse, where the tilt turns the axes too, and on
+             * the record, which has to match. */
+            q->tilt = d->arcs[k].tilt + twist;
+            n++;
+        }
+    }
+    for (k = 0; k < c->n0_texts && takes_text(c); k++) {
+        double x0, y0, x1, y1;
+
+        if (!picked_text(c, d, k)) {
+            continue;
+        }
+        turn_at(c->base_x, c->base_y, co, si, px, py,
+                d->texts[k].x0, d->texts[k].y0, &x0, &y0);
+        turn_at(c->base_x, c->base_y, co, si, px, py,
+                d->texts[k].x1, d->texts[k].y1, &x1, &y1);
+        if (jwc_dup_text(d, k, 0.0f, 0.0f)) {
+            JwcText *q = &d->texts[d->n_texts - 1];
+
+            q->x0 = (float)x0;
+            q->y0 = (float)y0;
+            q->x1 = (float)x1;
+            q->y1 = (float)y1;
+            n++;
+        }
+    }
+    return n;
+}
+
 static int copy_range(const JwCmd *c, Jwc *d, double dx, double dy)
 {
     const long lines = c->n0_lines, arcs = c->n0_arcs, texts = c->n0_texts;
@@ -1627,6 +1942,16 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
      * ①範囲内消去 reddens 224 in the box.
      *
      * ③指定範囲 is the data selection 複写 and 移動 use; it is not done. */
+    if (c->command == 13 && (item == 1 || item == 2)) {
+        /* `文字種類[F4] |①水平(L,R)|②垂直|③角度指定|④設定|…` -- ①水平 is
+         * what a press in the drawing takes, and ②垂直 turns the baseline
+         * upright.  ③角度指定 and ④設定 are not done.  Either way the line
+         * becomes the one the command shows once it has a point, which is
+         * stage 2. */
+        c->text_vert = item == 2;
+        c->stage = 2;
+        return 1;
+    }
     if (c->command == 14 && c->stage == 0 && (item == 1 || item == 2)) {
         /* `|①横方向|②縦方向|③任意方向|④円･角|…` -- ① is also what a
          * press in the drawing picks, and ② turns the whole thing on its
@@ -1775,6 +2100,20 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item)
              * ①ﾏｳｽ位置's own line (段 9) offers the same three items and its
              * ③連続 behaves the same way -- measured, 32|14 to 34|15. */
             copy_again(c, d);
+            return 1;
+        }
+        if (c->stage == 4 && item == 6) {
+            /* ⑥回転: the 基準点 first, on the same line ①ﾏｳｽ位置 puts up.
+             * Stages 13 to 16 are free in src/copy.h. */
+            c->rotate = 1;
+            c->stage = 13;
+            return 1;
+        }
+        if (c->stage == 4 && item == 5) {
+            /* ⑤反転: `反転基準線　マウス指示 ` and then a line to turn the
+             * range over in.  Stage 10 and 12 are free in src/copy.h. */
+            c->mirror = 1;
+            c->stage = 10;
             return 1;
         }
         if (c->stage == 4 && item == 2) {
@@ -2040,13 +2379,15 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->stage = 2;
             if (c->typed_n > 0 && d) {
                 /* The far end follows from the string and the character type
-                 * -- see jwc_text_length.  The baseline is horizontal, which
-                 * is what ①水平 means, and the line offers ②垂直 and
-                 * ③角度指定 for the others; those are not done. */
+                 * -- see jwc_text_length.  ①水平 lays the baseline along +x
+                 * and ②垂直 along **+y**, so a vertical string runs *up* from
+                 * the point that was pressed and jw_view draws it with the
+                 * turned routine.  ③角度指定 is not done. */
                 const double len = jwc_text_length(d, c->typed, size);
 
                 jwc_add_text(d, (float)c->x0, (float)c->y0,
-                             (float)(c->x0 + len), (float)c->y0,
+                             (float)(c->x0 + (c->text_vert ? 0.0 : len)),
+                             (float)(c->y0 + (c->text_vert ? len : 0.0)),
                              c->typed, size, layer);
             }
             c->typed[0] = 0;
@@ -2191,6 +2532,35 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (key >= '0' && key <= '9') {
+            if (c->typed_n < 8) {
+                c->typed[c->typed_n++] = (char)key;
+                c->typed[c->typed_n] = 0;
+            }
+            return 1;
+        }
+        return 1;
+    }
+    if (JW_MOVE_CMD(c->command) && c->rotate == 2) {
+        /* ⑥回転's angle, in degrees, counter-clockwise.  The line offers
+         * `│0 度 ﾏｳｽ(L)│前回と同じ ﾏｳｽ(R) │[F1] ﾏｳｽ角度│` as well; none of
+         * those three is done. */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                c->rot_deg = atof(c->typed);
+            }
+            c->typing = 0;
+            c->rotate = 3;
+            c->stage = 15;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if ((key >= '0' && key <= '9') || key == '.' || key == '-') {
             if (c->typed_n < 8) {
                 c->typed[c->typed_n++] = (char)key;
                 c->typed[c->typed_n] = 0;
@@ -3349,6 +3719,21 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         }
         return 0;
     }
+    if (JW_MOVE_CMD(c->command) && c->mirror == 1) {
+        /* ⑤反転 is waiting for the line to turn the range over in.  A press
+         * that finds none leaves everything as it is. */
+        const long m = jw_cmd_line_at(d, w, sx, sy);
+
+        if (m < 0) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        mirror_range(c, d, m);
+        c->mirror = 2;
+        c->stage = 12;
+        return 1;
+    }
     if (c->command == 26) {
         /* 円線接: the item's own line offers ①接 線 with the left button and
          * ②接円 with the right, and the first press in the drawing is what
@@ -3956,6 +4341,32 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
              * (L)free (R)Read, like every other point. */
             double px, py;
 
+            if (c->rotate) {
+                /* ⑥回転 runs the same two presses with the angle between
+                 * them: 基準点 (段 13), `角度 =` (段 14), 位置 (段 15), and
+                 * then 再複写 (段 16), where every further press puts another
+                 * one down. */
+                if (c->rotate == 2) {
+                    return 0;           /* the field has it */
+                }
+                if (!take(c, d, w, sx, sy, right, &px, &py)) {
+                    return 1;
+                }
+                if (c->rotate == 1) {
+                    c->base_x = px;
+                    c->base_y = py;
+                    c->rotate = 2;
+                    c->stage = 14;
+                    c->typing = 1;
+                    c->typed_n = 0;
+                    c->typed[0] = 0;
+                    return 1;
+                }
+                turn_range(c, d, px, py);
+                c->rotate = 4;
+                c->stage = 16;
+                return 1;
+            }
             if (c->stage != 5 && c->stage != 6 && c->stage != 9) {
                 return 0;
             }

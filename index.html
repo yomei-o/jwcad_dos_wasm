@@ -30,11 +30,13 @@
        opacity: 0; padding: 0; border: 0; }
   .screen.drag { cursor: none; }
   .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
-  select, button {
+  select, button, .filebtn {
     font: inherit; background: #22262c; color: #d8dbe0;
     border: 1px solid #343a42; border-radius: 4px; padding: 5px 10px;
   }
-  button:hover, select:hover { background: #2a2f36; }
+  .filebtn { cursor: pointer; }
+  .filebtn input { display: none; }
+  button:hover, select:hover, .filebtn:hover { background: #2a2f36; }
   code, .status { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
   .status { color: #7f868f; }
   footer { margin-top: 20px; color: #7f868f; font-size: 12px; }
@@ -52,12 +54,10 @@
   </p>
 
   <div class="bar">
-    <select id="pick"></select>
-    <button id="home">原寸</button>
-    <button id="fit">全体表示</button>
-    <button id="zin">＋</button>
-    <button id="zout">−</button>
-    <button id="save">保存</button>
+    <select id="pick" aria-label="開く図面"></select>
+    <label class="filebtn">アップロード<input type="file" id="up"
+           accept=".jwc,.JWC" multiple></label>
+    <button id="save">ダウンロード</button>
     <span class="status" id="status">読み込み中…</span>
   </div>
 
@@ -82,8 +82,10 @@
     複線（F）は線を押して間隔を打ち、[Enter] のあと逃がす側を押すと複製が引けます
     （[F1]〜[F5] でもよく、そのあと上の行の ②連続 で何本でも。
     ①間隔取得 を押せば間隔を図面から測り取れます）。<br>
-    保存を押すと、いま画面にある図面をそのまま .JWC で書き出します。本物の
-    ＪＷ＿ＣＡＤ がそれを開いて同じ画面を描くところまで確かめてあります。<br>
+    画面下の帯（■拡大■・前倍率・倍率指定）も本物と同じように押せます。<br>
+    <b>アップロード</b>で手元の .JWC を開けます。<b>ダウンロード</b>は、いま画面に
+    ある図面をそのまま .JWC で書き出します——本物の ＪＷ＿ＣＡＤ がそれを開いて
+    同じ画面を描くところまで確かめてあります。<br>
     ＪＷ＿ＣＡＤ の著作権は jw_software club にあります。
     <a href="https://github.com/yomei-o/jwcad_dos_wasm">解析と移植のソース</a>
   </footer>
@@ -145,10 +147,11 @@ function open(path) {
   say();
 }
 
+const pick = document.getElementById('pick');
+
 createJwcad().then(M => {
   Module = M;
   Module._jw_init();
-  const pick = document.getElementById('pick');
   for (const [path, label] of FILES) {
     const o = document.createElement('option');
     o.value = path; o.textContent = label;
@@ -158,8 +161,40 @@ createJwcad().then(M => {
   open(FILES[0][0]);
 });
 
-/* 保存 -- the port writes the .JWC itself (src/jwc.c's jwc_save), the same
-   bytes tests/roundtrip.exe checks and the real JW_CAD opens in
+/* アップロード -- a .JWC from the visitor's machine.
+ *
+ * It is written into the module's own filesystem and then opened by name, so
+ * it goes through `jwc_load` and `fopen` exactly as the drawings baked into
+ * the build do.  Handing the bytes to a second entry point that parses from
+ * memory would have been less code and a second path to keep right; this way
+ * an uploaded drawing is read by the code the checks cover. */
+document.getElementById('up').onchange = async e => {
+  const chosen = [...e.target.files];
+  let last = '';
+
+  e.target.value = '';                   // so the same file can be picked twice
+  if (!Module || !chosen.length) return;
+  try {
+    Module.FS.mkdir('/up');
+  } catch (err) { /* already there */ }
+  for (const f of chosen) {
+    const name = f.name.toUpperCase().replace(/[^A-Z0-9._-]/g, '_');
+    const path = '/up/' + name;
+
+    Module.FS.writeFile(path, new Uint8Array(await f.arrayBuffer()));
+    if (![...pick.options].some(o => o.value === path)) {
+      const o = document.createElement('option');
+      o.value = path; o.textContent = name;
+      pick.appendChild(o);
+    }
+    last = path;
+  }
+  pick.value = last;
+  open(last);
+};
+
+/* ダウンロード -- the port writes the .JWC itself (src/jwc.c's jwc_save), the
+   same bytes tests/roundtrip.exe checks and the real JW_CAD opens in
    tools/savecheck.sh.  The page only wraps them in a Blob. */
 document.getElementById('save').onclick = () => {
   if (!Module || !Module._jw_save()) { say(); return; }
@@ -174,19 +209,11 @@ document.getElementById('save').onclick = () => {
   say(name + ' — ' + n + ' バイト');
 };
 
-document.getElementById('home').onclick = () => { Module._jw_home(); blit(); };
-document.getElementById('fit').onclick = () => { Module._jw_fit(); blit(); };
-
 function at(e) {
   const r = canvas.getBoundingClientRect();
   return [Math.round((e.clientX - r.left) * canvas.width / r.width),
           Math.round((e.clientY - r.top) * canvas.height / r.height)];
 }
-document.getElementById('zin').onclick =
-  () => { Module._jw_zoom(1.4, 380, 240); blit(); };
-document.getElementById('zout').onclick =
-  () => { Module._jw_zoom(1 / 1.4, 380, 240); blit(); };
-
 canvas.addEventListener('wheel', e => {
   if (!Module) return;
   e.preventDefault();

@@ -47,6 +47,14 @@ typedef struct {
      * of ■拡大■ is running: 0 none, 1 asking for the 始点, 2 the 終点. */
     double view_scale;
     int zoom_stage;
+    /* 複写 ⑤反転 is running, so the copy table's stages 5 to 11 -- the
+     * ①ﾏｳｽ位置 way of placing -- are not what the top line says. */
+    int mirror;
+    /* 複写 ⑥回転 is running, which uses the copy table's stages 5 to 11 no
+     * more than ⑤反転 does -- it has its own 13 to 16 in src/typed.h.
+     * rot_deg is the angle that went in, which the band shows. */
+    int rotate;
+    double rot_deg;
     /* 寸法: the value it has just written, which the band shows. */
     double dim_value;
     /* and the three numbers in its box: how many texts there were when it
