@@ -10,6 +10,13 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/seq
+# **The guest runs in a copy, not in orig/.**  It drops an AUTO.JWC wherever
+# it runs, and orig/ is also where the drawings made while analysing land --
+# either one turns up in 入出力's file list and puts every row below it out
+# of step with the port.  -p keeps the dates, which that list shows.
+rm -rf tmp/seq/root
+cp -rp orig tmp/seq/root
+rm -f tmp/seq/root/QPICK.JWC tmp/seq/root/QBYTES.JWC tmp/seq/root/ONE2.JWC
 EMU=../dosv_emu_cpp/dosemu.exe
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 NODE="${NODE:-}"
@@ -35,15 +42,15 @@ printf 'shot ../jwcad_dos_wasm/tmp/seq/orig.raw\n' >> tmp/seq/s.txt
 
 if [ -n "$STR" ]; then
     DOSEMU_BP='+0DEF:23C5' DOSEMU_BPSTR=2 DOSEMU_BPN=20000 \
-        "$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
-        --script tmp/seq/s.txt orig/JW_CADV.EXE "$DRAWING.JWC" \
+        "$EMU" --root tmp/seq/root --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
+        --script tmp/seq/s.txt tmp/seq/root/JW_CADV.EXE "$DRAWING.JWC" \
         > tmp/seq/str.txt 2>/dev/null || true
     grep '\[bp\]' tmp/seq/str.txt \
         | sed 's/.*after \([0-9]*\) *args [0-9A-F]* [0-9A-F]* [0-9A-F]* \([0-9A-F]*\) \([0-9A-F]*\) \([0-9A-F]*\) \([0-9A-F]*\).*\("[^"]*"\)$/ \1 col=\2 row=\3 fg=\4 bg=\5 \6/' \
         | tail -40 | iconv -f CP932 -t UTF-8 2>/dev/null || true
 else
-    "$EMU" --root orig --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
-        --script tmp/seq/s.txt orig/JW_CADV.EXE "$DRAWING.JWC" > /dev/null 2>&1
+    "$EMU" --root tmp/seq/root --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
+        --script tmp/seq/s.txt tmp/seq/root/JW_CADV.EXE "$DRAWING.JWC" > /dev/null 2>&1
 fi
 
 "$NODE" tools/seqshot.mjs "orig/$DRAWING.JWC" tmp/seq/port.raw "$@"

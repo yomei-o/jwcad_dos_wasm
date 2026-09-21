@@ -52,16 +52,25 @@ def dates(data):
 if __name__ == '__main__':
     rows = dates(open('orig/jwcv222h.lzh', 'rb').read())
     if '--c' in sys.argv:
-        print('/* The dates jwcv222h.lzh carries.  Written by')
-        print(' * tools/lzhdates.py --c; the original shows these in ②読込. */')
-        print('static const struct { const char *name; const char *when; }')
-        print('JW_FILE_DATE[] = {')
-        for n, Y, M, D, h, m, s in rows:
+        print('/* The dates jwcv222h.lzh carries, for the port to show in')
+        print(' * the file list.  Written by tools/lzhdates.py --c.')
+        print(' *')
+        print(' * A drawing has no date of its own inside it, and the copies')
+        print(' * baked into the .wasm carry the time the build ran -- so the')
+        print(' * distribution is the only place the real ones are. */')
+        print('static const struct {')
+        print('    const char *name;')
+        print('    const char *when;    /* as the list shows it */')
+        print('    unsigned long stamp; /* DOS date<<16 | time, for the order */')
+        print('} JW_FILE_DATE[] = {')
+        for n, Y, M, D, h, m, sec in rows:
             if not n.upper().endswith('.JWC'):
                 continue
-            print('    { "%s", "%02d/%02d/%02d %02d:%02d" },'
-                  % (n.upper(), Y % 100, M, D, h, m))
-        print('    { 0, 0 },')
+            stamp = ((((Y - 1980) << 9) | (M << 5) | D) << 16) \
+                    | ((h << 11) | (m << 5) | (sec // 2))
+            print('    { "%s", "%02d/%02d/%02d %02d:%02d", 0x%08lXul },'
+                  % (n.upper(), Y % 100, M, D, h, m, stamp))
+        print('    { 0, 0, 0 },')
         print('};')
     else:
         for n, Y, M, D, h, m, s in rows:

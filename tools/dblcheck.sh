@@ -28,7 +28,9 @@ ROW="${ROW:-10}"                # a row of the list; 8 is the first
 # A copy, so the distribution directory is never written to: the guest drops
 # an AUTO.JWC wherever it runs.
 rm -rf tmp/dbl/root
-cp -r orig tmp/dbl/root
+# -p keeps the dates: the guest shows them, and the distribution carries
+# them (tools/restamp.py).
+cp -rp orig tmp/dbl/root
 # Only the distribution.  orig/ is also where the drawings written while
 # analysing land, and one of those in the list puts every row below it out
 # of step with the port, which has only the fourteen.

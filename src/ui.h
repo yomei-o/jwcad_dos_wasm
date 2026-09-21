@@ -128,6 +128,9 @@ typedef struct {
     char file_t2[JW_FILE_MAX][33];
     char file_date[JW_FILE_MAX][17];
     long file_size[JW_FILE_MAX];
+    /* The file's date and time as DOS keeps them, date<<16 | time -- what
+     * the list is ordered by, newest first. */
+    unsigned long file_stamp[JW_FILE_MAX];
     int file_n;
     int file_sel;               /* which row is yellow on blue */
     int file_top;               /* the first row shown, for long lists */

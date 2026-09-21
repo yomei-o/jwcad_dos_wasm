@@ -19,7 +19,9 @@ WAIT="${WAIT:-40000000}"
 STEPS="${STEPS:-99}"
 
 rm -rf tmp/save/root
-cp -r orig tmp/save/root
+# -p keeps the dates: the guest shows them, and the distribution carries
+# them (tools/restamp.py).
+cp -rp orig tmp/save/root
 # Only the distribution.  orig/ is also where the drawings written while
 # analysing land, and one of those in the list puts every row below it out
 # of step with the port, which has only the fourteen.

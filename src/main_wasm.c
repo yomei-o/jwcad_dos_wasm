@@ -20,6 +20,8 @@
 #include "ui.h"
 #include "view.h"
 
+#include "dates.h"
+
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
 #include <ctype.h>
@@ -273,6 +275,7 @@ static void file_list(int for_save)
         memcpy(ui.file_name[i], names[i], sizeof ui.file_name[0]);
         file_title_of(path, ui.file_t1[i], ui.file_t2[i]);
         ui.file_size[i] = 0;
+        ui.file_stamp[i] = 0;
         strcpy(ui.file_date[i], "                ");
         if (stat(path, &st) == 0) {
             ui.file_size[i] = (long)st.st_size;
@@ -281,10 +284,71 @@ static void file_list(int for_save)
                 sprintf(ui.file_date[i], "%02d/%02d/%02d %02d:%02d  ",
                         (tm->tm_year + 1900) % 100, tm->tm_mon + 1,
                         tm->tm_mday, tm->tm_hour, tm->tm_min);
+                ui.file_stamp[i] =
+                    ((unsigned long)(((tm->tm_year + 1900 - 1980) << 9)
+                                     | ((tm->tm_mon + 1) << 5) | tm->tm_mday)
+                     << 16)
+                    | (unsigned long)((tm->tm_hour << 11) | (tm->tm_min << 5)
+                                      | (tm->tm_sec / 2));
+            }
+        }
+        /* **The drawings that ship keep the distribution's date.**  Their
+         * copies in the .wasm carry the time the build ran, because that is
+         * when --embed-file wrote them, and a drawing has no date of its
+         * own inside it.  jwcv222h.lzh has them, a real lha puts them back
+         * on extraction (tools/lzh.py does now), and src/dates.h is that
+         * table.  Anything else -- an upload, a drawing just saved -- keeps
+         * the date the filesystem gives it. */
+        {
+            int d;
+
+            for (d = 0; JW_FILE_DATE[d].name; d++) {
+                char want[16];
+
+                sprintf(want, "%s.JWC", stem);
+                if (strcmp(want, JW_FILE_DATE[d].name) != 0) continue;
+                sprintf(ui.file_date[i], "%s  ", JW_FILE_DATE[d].when);
+                ui.file_stamp[i] = JW_FILE_DATE[d].stamp;
+                break;
             }
         }
     }
     ui.file_n = n;
+    /* **Newest first.**  The original sorts the list by date, not by name:
+     * with every file carrying the same date (which is what the emulator
+     * used to answer) the order fell back to the directory's and looked
+     * alphabetical, and the moment real dates arrived the two lists came
+     * apart -- TEST7, the newest drawing that ships, went to the top.
+     * Files of the same date keep their alphabetical order. */
+    {
+        int a, b;
+
+        for (a = 1; a < n; a++) {
+            for (b = a; b > 0 && ui.file_stamp[b] > ui.file_stamp[b - 1]; b--) {
+                char name[13], t1[33], t2[33];
+                char date[sizeof ui.file_date[0]];
+                const long size = ui.file_size[b];
+                const unsigned long stamp = ui.file_stamp[b];
+
+                memcpy(name, ui.file_name[b], sizeof name);
+                memcpy(t1, ui.file_t1[b], sizeof t1);
+                memcpy(t2, ui.file_t2[b], sizeof t2);
+                memcpy(date, ui.file_date[b], sizeof date);
+                memcpy(ui.file_name[b], ui.file_name[b - 1], sizeof name);
+                memcpy(ui.file_t1[b], ui.file_t1[b - 1], sizeof t1);
+                memcpy(ui.file_t2[b], ui.file_t2[b - 1], sizeof t2);
+                memcpy(ui.file_date[b], ui.file_date[b - 1], sizeof date);
+                ui.file_size[b] = ui.file_size[b - 1];
+                ui.file_stamp[b] = ui.file_stamp[b - 1];
+                memcpy(ui.file_name[b - 1], name, sizeof name);
+                memcpy(ui.file_t1[b - 1], t1, sizeof t1);
+                memcpy(ui.file_t2[b - 1], t2, sizeof t2);
+                memcpy(ui.file_date[b - 1], date, sizeof date);
+                ui.file_size[b - 1] = size;
+                ui.file_stamp[b - 1] = stamp;
+            }
+        }
+    }
     /* **保存 puts the drawing that is open first; 読込 does not.**  Both
      * were measured, and they are not the same list:
      *
@@ -323,12 +387,17 @@ static void file_list(int for_save)
         }
         break;
     }
-    /* What the original puts beside 保存 is drive A's free space.  The port
-     * has no drive: its disk is the module's own memory, and what that has
-     * left is what is measured here.  A real number rather than one made up
-     * to fill the line -- it will not be the original's, and cannot be. */
-    file_thousands((double)emscripten_get_heap_max()
-                   - (double)emscripten_get_heap_size(), ui.file_free);
+    /* What the original puts beside 保存 is drive A's free space, and it
+     * gets it from DOS.  The port has no drive of its own -- its disk is
+     * the module's memory, which has no size worth printing -- so it says
+     * what the A: drive of this pair of repositories says:
+     *
+     *     8 sectors a cluster x 512 bytes x 65535 free clusters
+     *
+     * That is dosv_emu_cpp's answer to INT 21h AH=36h (src/dos.cpp), and
+     * it is what the original prints when it runs there: 268,431,360.
+     * Measured, not chosen. */
+    file_thousands(8.0 * 512.0 * 65535.0, ui.file_free);
 }
 
 /* Open the drawing the list has picked.  Two things do it -- ①選択確定 on

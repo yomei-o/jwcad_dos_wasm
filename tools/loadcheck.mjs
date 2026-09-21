@@ -92,7 +92,7 @@ ok(status() !== before && /lines/.test(status()),
    + status() + ')');
 
 /* **The two lists are not in the same order**, and both were measured:
-     ②読込  plain alphabetical, the first row picked
+     ②読込  by date, newest first, and the first row picked
      ①保存  the same, but the drawing in hand lifted to the top -- it is the
              name that would be overwritten, so it is the one offered
    Reading one and assuming the other put the port's list in the wrong order
@@ -101,7 +101,7 @@ press(30, 296);
 press(110, 8);
 press(180, 8);
 ok(M.UTF8ToString(M._jw_file_name(0)) === 'AUTO    .JWC',
-   '②読込 stays alphabetical whatever is open ('
+   '②読込 keeps its own order whatever is open ('
    + M.UTF8ToString(M._jw_file_name(0)) + ')');
 ok(M._jw_file_sel() === 0, 'and the first row is the one picked');
 

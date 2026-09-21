@@ -105,6 +105,31 @@ int jw_ui_key_command(int key)
     return 0;
 }
 
+/* One band of a slider: filled, then outlined in white.  That is the shape
+ * the original's calls make -- a run of horizontal lines in the colour,
+ * then four more round the outside. */
+static void band(VGA *v, int x0, int y0, int x1, int y1, unsigned colour);
+
+/* A rectangle's four sides, the way the original draws one: four line
+ * calls, corner to corner. */
+static void frame(VGA *v, int x0, int y0, int x1, int y1, unsigned colour)
+{
+    jw_line(v, x0, y0, x1, y0, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, x1, y0, x1, y1, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, x1, y1, x0, y1, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, x0, y1, x0, y0, colour, ROP_REPLACE, JW_STYLE_SOLID);
+}
+
+static void band(VGA *v, int x0, int y0, int x1, int y1, unsigned colour)
+{
+    int y;
+
+    for (y = y0; y <= y1; y++) {
+        jw_line(v, x0, y, x1, y, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    }
+    frame(v, x0, y0, x1, y1, 7);
+}
+
 static void fill(VGA *v, int x0, int y0, int x1, int y1, unsigned colour)
 {
     int y;
@@ -1462,7 +1487,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * are the top line. */
             const int saving = s->io_stage != JW_IO_LOAD;
             char one[96];
-            int k;
+            int k, i;
 
             /* ②読込: the drawings on the disk, listed over the drawing
              * area.  Every column here was read off the original
@@ -1489,6 +1514,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             }
             fill(v, 122, 99, 638, 109, 6);
             fill(v, 122, 453, 638, 462, 6);
+            /* The screen's own right-hand border, which the clear above
+             * wiped: the chrome draws (639,16)-(639,479) and the file
+             * screen leaves it standing from the rule at the top to the
+             * one above the strip. */
+            fill(v, 639, 16, 639, 462, 7);
             /* a rule under the header, two rows thick */
             fill(v, 120, 56, 639, 57, 7);
             /* and a white rule above and below each of them */
@@ -1512,9 +1542,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             } else {
                 jw_ui_text(v, 1, 1, 7, 0, JW_FILE_BAR);
             }
-            jw_ui_text(v, 17, 2, 5, 0, JW_FILE_PATH);
-            sprintf(one, "(%dfiles)", s->file_n);
-            jw_ui_text(v, 70, 2, 5, 0, one);
+            if (!asking) {
+                /* The two questions clear this line as well as the one
+                 * below it -- measured: at 同名ﾌｧｲﾙが存在します the cyan
+                 * path and count are gone. */
+                jw_ui_text(v, 17, 2, 5, 0, JW_FILE_PATH);
+                sprintf(one, "(%dfiles)", s->file_n);
+                jw_ui_text(v, 70, 2, 5, 0, one);
+            }
             if (asking) {
                 /* 保存ﾌｧｲﾙ=A:\NAME.JWC, on white.  Measured off the
                  * original the moment the question goes up. */
@@ -1541,7 +1576,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 memcpy(stem, s->file_name[sel], 8);
                 stem[8] = 0;
                 for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
-                jw_ui_text(v, 66, 3, 7, 0, stem);
+                if (!asking) {
+                    jw_ui_text(v, 66, 3, 7, 0, stem);
+                }
                 jw_ui_text(v, 17, 5, 7, 0, s->file_name[sel]);
                 jw_ui_text(v, 32, 5, 7, 0, s->file_date[sel]);
                 sprintf(one, "%8ld bytes   ", s->file_size[sel]);
@@ -1567,8 +1604,90 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     }
                 }
                 k = s->memo_n[s->memo_row];
-                fill(v, 46 * 8 + k * 8, (4 + s->memo_row) * 16 + 7,
-                     46 * 8 + 7 + k * 8, (4 + s->memo_row) * 16 + 15, 4);
+                /* **Exclusive-or, not a plain block.**  The original leaves
+                 * the character under the cursor showing: white text under
+                 * green comes out magenta (7 ^ 4 = 3), which is what its
+                 * screen has there. */
+                for (i = 0; i < 9; i++) {
+                    jw_line(v, 46 * 8 + k * 8, (4 + s->memo_row) * 16 + 7 + i,
+                            46 * 8 + 7 + k * 8, (4 + s->memo_row) * 16 + 7 + i,
+                            4, ROP_XOR, JW_STYLE_SOLID);
+                }
+            }
+            /* **The two sliders**, one each side of the title column.
+             *
+             * Every number here was read off the original's own line calls
+             * (tools/sliderlines.sh: DOSEMU_WATCH said the pixels come from
+             * 12B5:094B, which is the line routine, so the slider is
+             * ordinary lines and its geometry is in the arguments).
+             *
+             * Each is a box y110..452 with an inner box y129..433, a
+             * triangle at each end, and four bands down the middle, each
+             * filled and then outlined in white:
+             *
+             *   yellow  the files above the page      (the scroll offset)
+             *   blue    the files the page is showing (up to 21)
+             *   yellow  the files below it
+             *   black   the rest of the track
+             *
+             * A band ends at floor(k * 302 / 62) from y130, where k counts
+             * files.  Measured at four counts: 16 files gave 77 pixels, 17
+             * gave 82, 36 gave 175, and a disk of 75 gave 292 -- which is
+             * sixty files' worth, so the original's list stops at sixty. */
+            {
+                static const int SLIDER_X[2] = {231, 623};
+                int w;
+
+                for (w = 0; w < 2; w++) {
+                    const int x0 = SLIDER_X[w];
+                    const int mid = x0 + 8;
+                    const int n = s->file_n < 60 ? s->file_n : 60;
+                    const int top = s->file_top;
+                    const int end = top + JW_FILE_ROWS < n
+                                        ? top + JW_FILE_ROWS : n;
+                    const int a = 130 + top * 302 / 62;
+                    const int b = 130 + end * 302 / 62;
+                    const int c = 130 + n * 302 / 62;
+                    int t;
+
+                    /* **The right-hand one is not the same box.**  Its
+                     * right edge would be at 639, and the original's own
+                     * calls stop short: the outer box is the single line
+                     * at x 623, and the inner one has a top, a bottom and
+                     * a left side but no right.  Drawing all four put a
+                     * white column down x 639 that the original has not
+                     * got. */
+                    if (w == 0) {
+                        frame(v, x0, 110, x0 + 16, 452, 7);
+                        frame(v, x0, 129, x0 + 16, 433, 7);
+                    } else {
+                        jw_line(v, x0, 110, x0, 452, 7, ROP_REPLACE,
+                                JW_STYLE_SOLID);
+                        jw_line(v, x0, 129, x0 + 15, 129, 7, ROP_REPLACE,
+                                JW_STYLE_SOLID);
+                        jw_line(v, x0, 433, x0 + 15, 433, 7, ROP_REPLACE,
+                                JW_STYLE_SOLID);
+                        jw_line(v, x0, 433, x0, 129, 7, ROP_REPLACE,
+                                JW_STYLE_SOLID);
+                    }
+                    for (t = x0 + 2; t <= x0 + 14; t++) {
+                        jw_line(v, t, 126, mid, 113, 7, ROP_REPLACE, 0xffffu);
+                        jw_line(v, t, 436, mid, 449, 7, ROP_REPLACE, 0xffffu);
+                    }
+                    band(v, x0 + 1, 130, x0 + 15, a, 6);
+                    band(v, x0 + 1, a, x0 + 15, b, 1);
+                    band(v, x0 + 1, b, x0 + 15, c, 6);
+                    band(v, x0 + 1, c, x0 + 15, 432, 0);
+                    /* the file that is picked, one file's worth, inset by
+                     * one more column and in its own colour */
+                    t = 130 + s->file_sel * 302 / 62;
+                    /* Filled and outlined in **its own** colour, not white:
+                     * the original's four outline calls for this one are
+                     * col=6 like the fill, so it is 13 columns wide and 5
+                     * rows tall with nothing round it. */
+                    fill(v, x0 + 2, t, x0 + 14,
+                         130 + (s->file_sel + 1) * 302 / 62, 6);
+                }
             }
             for (k = 0; k < JW_FILE_ROWS; k++) {
                 const int i = s->file_top + k;

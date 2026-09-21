@@ -11,6 +11,7 @@ second one for the match offsets, and a third that codes the first table's own
 code lengths.
 """
 import os
+import time
 import struct
 import sys
 
@@ -435,6 +436,55 @@ def entries(data):
             raise ValueError('header level %d' % level)
 
 
+def stamps(data):
+    """{name: unix time} out of the headers.
+
+    A real lha puts the archive's own date back on each file it writes, and
+    JW_CAD shows it: 入出力 → ①ﾌｧｲﾙ → ②読込 lists every drawing with its
+    date.  Extracting without it gives them all the date they were unpacked,
+    which is not what the distribution says.
+
+    MS-DOS keeps it as two words at offset 15 of a level-0/1 header: the
+    time in two-second steps, then the date counted from 1980.
+    """
+    out = {}
+    o = 0
+    while o < len(data):
+        hsize = data[o]
+        if hsize == 0:
+            break
+        packed, = struct.unpack_from('<I', data, o + 7)
+        raw, = struct.unpack_from('<I', data, o + 15)
+        level = data[o + 20]
+        if level not in (0, 1):
+            break
+        nlen = data[o + 21]
+        name = data[o + 22:o + 22 + nlen].decode('shift_jis', 'replace')
+        base_end = o + 2 + hsize
+        if level == 0:
+            body, skip = base_end, packed
+        else:
+            q = base_end
+            total = 0
+            while True:
+                nxt, = struct.unpack_from('<H', data, q - 2)
+                if nxt == 0:
+                    break
+                total += nxt
+                q += nxt
+            body, skip = q, packed - total
+        t, d = raw & 0xFFFF, raw >> 16
+        try:
+            key = os.path.basename(name.replace('\\', '/')).upper()
+            out[key] = time.mktime((1980 + (d >> 9), (d >> 5) & 15, d & 31,
+                                    t >> 11, (t >> 5) & 63, (t & 31) * 2,
+                                    0, 0, -1))
+        except (ValueError, OverflowError):
+            pass
+        o = body + skip
+    return out
+
+
 def main():
     path = sys.argv[1]
     outdir = sys.argv[2] if len(sys.argv) > 2 else None
@@ -442,6 +492,7 @@ def main():
 
     if outdir:
         os.makedirs(outdir, exist_ok=True)
+    when = stamps(data)
     print('%-16s %-7s %9s %9s  %s' % ('name', 'method', 'packed', 'size', 'crc'))
     for name, method, body, packed, original, crc in entries(data):
         raw = data[body:body + packed]
@@ -453,8 +504,11 @@ def main():
         print('%-16s %-7s %9d %9d  %04x %s' %
               (name, method.decode(), packed, original, crc, ok))
         if outdir:
-            out = os.path.join(outdir, os.path.basename(name.replace('\\', '/')))
+            base = os.path.basename(name.replace('\\', '/'))
+            out = os.path.join(outdir, base)
             open(out, 'wb').write(plain)
+            if base.upper() in when:
+                os.utime(out, (when[base.upper()], when[base.upper()]))
 
 
 if __name__ == '__main__':

@@ -20,7 +20,9 @@ WAIT="${WAIT:-40000000}"
 EXTRA="${EXTRA:-0}"
 
 rm -rf tmp/sb/root
-cp -r orig tmp/sb/root
+# -p keeps the dates: the guest shows them, and the distribution carries
+# them (tools/restamp.py).
+cp -rp orig tmp/sb/root
 # Only the distribution.  orig/ is also where the drawings written while
 # analysing land, and one of those in the list puts every row below it out
 # of step with the port, which has only the fourteen.
