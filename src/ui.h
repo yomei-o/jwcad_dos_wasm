@@ -91,6 +91,9 @@ typedef struct {
     int sub_screen;
     /* 入出力 (30) is a menu of menus.  0 is the one the item itself puts
      * up; JW_IO_* say which of its own the top line is showing. */
+    /* 範囲記憶 has been pressed: its button in the strip goes from green to
+     * cyan and stays there. */
+    int kept;
     int io_stage;
     /* The name ③ﾌｧｲﾙ出力 asks for, in the field at column 25. */
     char io_name[13];

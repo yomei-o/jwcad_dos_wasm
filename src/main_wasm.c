@@ -386,6 +386,18 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             view = before_zoom;
             have_before = 0;
             ui.view_scale = view.scale;
+        } else if ((bar == JW_BAR_KEEP || bar == JW_BAR_OFFSET) && drawing) {
+            /* 範囲記憶 and ｵﾌｾｯﾄ both leave the original **in 入出力**, the
+             * same way 紙, the scale and サブ画面表示 do -- the item's row
+             * goes yellow and its bar goes along the top.  Measured with
+             * tools/clickcheck.sh at (90,470) and (570,470). */
+            const int was_kept = ui.kept || bar == JW_BAR_KEEP;
+
+            jw_ui_from(&ui, drawing);
+            ui.command = 30;
+            ui.band_kept = 1;
+            ui.kept = was_kept;
+            jw_cmd_pick(&cmd, 30);
         }
         mouse_x = x;
         mouse_y = y;

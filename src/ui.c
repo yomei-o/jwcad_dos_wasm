@@ -1261,7 +1261,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     jw_ui_blit(v, 18, 463, 0x426E, 7);
     box(v, 51, 463, 121, 479, 7);
     fill(v, 52, 464, 120, 478, 4);
-    jw_ui_text(v, 8, 30, 4, 0xffff, "\x94\xcd\x88\xcd\x8b\x4c\x89\xaf");
+    jw_ui_text(v, 8, 30, s->kept ? 5 : 4, 0xffff, "\x94\xcd\x88\xcd\x8b\x4c\x89\xaf");
     jw_ui_text(v, 17, 30, 7, 0, "\x91\x4f\x94\x7b\x97\xa6[NFER]");
     fill(v, 224, 463, 438, 479, 6);
     sprintf(buf, "Zoom[\xbd\xcd\xdf\xb0\xbd] \x95\x5c\x8e\xa6\x94\x7b\x97\xa6 %4.2f ",
