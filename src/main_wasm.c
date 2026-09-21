@@ -369,12 +369,29 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         present();
         return -1;
     }
+    /* 図面名: the box left of ｸﾞﾙｰﾌﾟ on the same row.  It asks for the
+     * **layer's** name -- `レイヤ名を入力` along the top with a field at
+     * column 34 -- and takes the strip along the bottom away while it does.
+     */
+    if (x >= 1 && x <= 63 && y >= 337 && y <= 351 && drawing) {
+        mouse_x = x;
+        mouse_y = y;
+        jw_ui_from(&ui, drawing);
+        ui.ask = JW_ASK_LNAME;  /* after jw_ui_from, which memsets */
+        ui.ask_n = 0;
+        ui.ask_typed[0] = 0;
+        sync_ui();
+        present();
+        return -1;
+    }
     /* ｸﾞﾙｰﾌﾟ: the word between the drawing's name and the group number, on
      * the row at y 337..351.  It goes into a mode of its own, the same shape
      * as レイヤ変更's -- its line along the top, `ｸﾞﾙｰﾌﾟ 指示` in red over
      * this row and `全レイヤ 表示` over サブ画面表示, and the pointer back
-     * in the drawing ends it. */
-    if (x >= 65 && x <= 109 && y >= 337 && y <= 351 && drawing) {
+     * in the drawing ends it.  The group's number beside it (x 110..121)
+     * is the same target, with either button -- tools/pressstr.sh at
+     * (115,344) writes the same six strings left or right. */
+    if (x >= 65 && x <= 121 && y >= 337 && y <= 351 && drawing) {
         mouse_x = x;
         mouse_y = y;
         jw_ui_from(&ui, drawing);
@@ -486,7 +503,17 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
              * lit pixels to 1212, which is the ratio of the two unit_mm
              * exactly.  jwc_set_paper does the shrinking, on the geometry
              * rather than on the view; the view is left alone. */
-            if (ui.ask_n > 0 && what == JW_ASK_PAPER) {
+            if (what == JW_ASK_LNAME) {
+                /* The name goes on the layer being written to -- that is
+                 * the one the box shows. */
+                if (drawing) {
+                    char *to = drawing->layer_name[drawing->write_layer];
+                    int n = ui.ask_n < 8 ? ui.ask_n : 8;
+
+                    memcpy(to, ui.ask_typed, (size_t)n);
+                    to[n] = 0;
+                }
+            } else if (ui.ask_n > 0 && what == JW_ASK_PAPER) {
                 jwc_set_paper(drawing, ui.ask_typed[0] - '0');
             } else if (ui.ask_n > 0 && drawing) {
                 const double n = atof(ui.ask_typed);
@@ -509,7 +536,8 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
             if (ui.ask_n > 0) {
                 ui.ask_typed[--ui.ask_n] = 0;
             }
-        } else if (((key >= '0' && key <= '9') || key == '.')
+        } else if (((key >= ' ' && key < 127 && what == JW_ASK_LNAME)
+                    || (key >= '0' && key <= '9') || key == '.')
                    && ui.ask_n < (int)sizeof ui.ask_typed - 1) {
             ui.ask_typed[ui.ask_n++] = (char)key;
             ui.ask_typed[ui.ask_n] = 0;

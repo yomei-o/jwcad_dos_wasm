@@ -1133,7 +1133,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     /* -- the strip along the bottom ------------------------------------- */
     fill(v, 1, 464, 638, 478, 0);
     box(v, 0, 463, 639, 479, 7);
-    if (s->zoom_stage) {
+    if (s->ask == JW_ASK_LNAME) {
+        /* 図面名 empties the strip altogether -- y 464..479 is black right
+         * across, frame and all, while it is asking for the name. */
+        fill(v, 0, 464, 639, 479, 0);
+    } else if (s->zoom_stage) {
         /* ■拡大■ takes the whole strip: 電卓, 範囲記憶, 前倍率, 倍率指定,
          * ｵﾌｾｯﾄ and HELP all go black and only the Zoom bar is left, in
          * **green** while it waits for the first corner and back to its
@@ -1664,13 +1668,24 @@ void jw_ui_draw(VGA *v, const JwUi *s)
      * digit and [Enter] applies it -- SAMPLE0 goes from A-4 to A-2.
      */
     if (s->ask) {
-        const int at = s->ask == JW_ASK_PAPER ? 48 : 50;
+        const int at = s->ask == JW_ASK_PAPER ? 48
+                     : s->ask == JW_ASK_SCALE ? 50 : 34;
         int i;
 
         fill(v, 0, 0, 639, 15, 0);
         top_clear();
-        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
-        if (s->ask == JW_ASK_PAPER) {
+        if (s->ask != JW_ASK_LNAME) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        }
+        if (s->ask == JW_ASK_LNAME) {
+            /* 図面名 -- the box left of ｸﾞﾙｰﾌﾟ -- asks for the **layer's**
+             * name: `レイヤ名を入力` at column 18 and the field at 34, with
+             * no [ESC] in front of it.  Read off the original with
+             * tools/pressstr.sh 30 344 left. */
+            jw_ui_text(v, 18, 1, 7, 0,
+                   "\x83""\x8c""\x83""\x43""\x83""\x84""\x96""\xbc"
+                   "\x82""\xf0""\x93""\xfc""\x97""\xcd");
+        } else if (s->ask == JW_ASK_PAPER) {
             jw_ui_text(v, 18, 1, 7, 0,
                    "\x97""\x70""\x8e""\x86""\x20""\x83""\x54""\x83""\x43"
                    "\x83""\x59""\x20""\x28""\x41""\x30""\x81""\x60""\x41"

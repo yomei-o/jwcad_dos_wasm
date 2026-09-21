@@ -255,6 +255,7 @@ int jw_ui_menu_hit(int x, int y);
 /* Which question the left panel is asking (JwUi.ask). */
 #define JW_ASK_PAPER 1          /* 用紙 サイズ (A0～A4） 変更 */
 #define JW_ASK_SCALE 2          /* レイヤ グループ縮尺 変更 */
+#define JW_ASK_LNAME 3          /* レイヤ名を入力 */
 
 /* The mouse pointer.  0885:4f03 draws it with the same line routine as
  * everything else, but into planes 1 and 2 only and with the graphics
