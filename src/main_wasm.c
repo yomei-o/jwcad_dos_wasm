@@ -409,6 +409,79 @@ static void file_list(int for_save)
      * and what the original prints when it runs there.  Measured. */
 }
 
+/* The name the list has picked, as a path on the module's disk. */
+static void file_picked(char *path)
+{
+    char stem[9];
+    int k;
+
+    memcpy(stem, ui.file_name[ui.file_sel], 8);
+    stem[8] = 0;
+    for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
+    sprintf(path, "%s/%s.JWC", JW_DIR, stem);
+}
+
+/* ④削除: take the file off the disk. */
+static void file_kill(void)
+{
+    char path[256];
+
+    if (!ui.file_n) {
+        return;
+    }
+    file_picked(path);
+    if (remove(path) == 0) {
+        sprintf(status, "%s deleted", path);
+    } else {
+        sprintf(status, "%s: cannot delete", path);
+    }
+}
+
+/* ③合成: add another drawing's entities to the one in hand.
+ *
+ * What the original does with the two drawings' coordinates is not settled
+ * yet -- the screen is the same one ②読込 uses, and the road past
+ * ①選択確定 has still to be walked -- so this does the one thing that is
+ * certain from the name and says so. */
+static void file_merge(void)
+{
+    char path[256];
+    const char *why;
+    Jwc *other;
+    long k;
+
+    if (!ui.file_n || !drawing) {
+        return;
+    }
+    file_picked(path);
+    other = jwc_load(path, &why);
+    if (!other) {
+        sprintf(status, "%s: %s", path, why);
+        return;
+    }
+    for (k = 0; k < other->n_lines; k++) {
+        const JwcLine *l = &other->lines[k];
+
+        jwc_add_line(drawing, l->x0, l->y0, l->x1, l->y1, l->type, l->pen,
+                     l->layer);
+    }
+    for (k = 0; k < other->n_arcs; k++) {
+        const JwcArc *a = &other->arcs[k];
+
+        /* `rest[3]` is the byte jwc_add_arc_at calls `mark` -- the last of
+         * the four behind the coordinates, which the original writes
+         * differently for a circle and an arc (jwc.h). */
+        jwc_add_arc_at(drawing, a->cx, a->cy, a->r, a->start, a->end,
+                       a->type, a->pen, a->layer, a->rest[3]);
+    }
+    sprintf(status, "%ld lines  %ld arcs  %d texts  %d points",
+            drawing->n_lines, drawing->n_arcs, drawing->n_texts,
+            drawing->n_points);
+    jwc_free(other);
+    jw_ui_from(&ui, drawing);
+    ui.guide = jw_ui_guide();
+}
+
 /* Open the drawing the list has picked.  Two things do it -- ①選択確定 on
  * the top line, and a second press on the row that is already picked -- so
  * it is in one place. */
@@ -1042,7 +1115,9 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
      * rest are not done yet, and pressing them leaves it as it was. */
     /* A press on one of the rows of ②読込's list picks that drawing.  The
      * rows are 8 to 28 and the list starts at column 17, both measured. */
-    if (ui.command == 30 && (ui.io_stage == JW_IO_LOAD || ui.io_stage == JW_IO_SAVE)
+    if (ui.command == 30
+        && (ui.io_stage == JW_IO_LOAD || ui.io_stage == JW_IO_SAVE
+            || ui.io_stage == JW_IO_MERGE || ui.io_stage == JW_IO_KILL)
         && x >= 128 && y >= 112) {
         const int row = y / 16 - 7;
 
@@ -1065,6 +1140,8 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             if (ui.file_top + row == ui.file_sel) {
                 ui.io_stage = JW_IO_FILE;
                 if (was == JW_IO_LOAD) file_chosen();
+                else if (was == JW_IO_MERGE) file_merge();
+                else if (was == JW_IO_KILL) file_kill();
                 present();
                 return -1;
             }
@@ -1091,7 +1168,20 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
              * all, which is what a visitor hit. */
             file_list(item == 1);
             ui.io_stage = item == 1 ? JW_IO_SAVE : JW_IO_LOAD;
-        } else if ((ui.io_stage == JW_IO_LOAD || ui.io_stage == JW_IO_SAVE)
+        } else if (ui.io_stage == JW_IO_FILE && item >= 3 && item <= 7) {
+            /* The rest of the bar.  ③合成 and ④削除 put up the same list
+             * ②読込 does -- measured, the line is the same byte for byte
+             * (tools/ioroad.sh) -- and the other three have lines of their
+             * own. */
+            if (item == 3 || item == 4) {
+                file_list(0);
+                ui.io_stage = item == 3 ? JW_IO_MERGE : JW_IO_KILL;
+            } else {
+                ui.io_stage = item == 5 ? JW_IO_DRIVE
+                            : item == 6 ? JW_IO_DXF : JW_IO_INDEX;
+            }
+        } else if ((ui.io_stage == JW_IO_LOAD || ui.io_stage == JW_IO_SAVE
+                    || ui.io_stage == JW_IO_MERGE || ui.io_stage == JW_IO_KILL)
                    && item == 1) {
             /* ①選択確定.  読込 opens the drawing there and then; 保存 goes
              * on to ◆ｍｅｍｏ入力, the overwrite question and 書き込みます
@@ -1103,6 +1193,10 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             if (was == JW_IO_LOAD) {
                 ui.io_stage = JW_IO_FILE;
                 file_chosen();
+            } else if (was == JW_IO_MERGE || was == JW_IO_KILL) {
+                ui.io_stage = JW_IO_FILE;
+                if (was == JW_IO_KILL) file_kill();
+                else file_merge();
             } else {
                 ui.io_stage = JW_IO_MEMO;
                 ui.memo_row = 0;

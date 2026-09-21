@@ -160,6 +160,11 @@ typedef struct {
 #define JW_IO_MEMO 8            /* ①選択確定 -> ◆ｍｅｍｏ 入力        */
 #define JW_IO_OVER 9            /* -> 同名ﾌｧｲﾙが存在します            */
 #define JW_IO_WRITE 10          /* -> 書き込みます|① 実 行           */
+#define JW_IO_MERGE 11          /* ③合成  -> 同じ一覧                 */
+#define JW_IO_KILL 12           /* ④削除  -> 同じ一覧                 */
+#define JW_IO_DRIVE 13          /* ⑤ﾄﾞﾗｲﾌﾞ変更 -> |①【Ａ】|② Ｂ|…    */
+#define JW_IO_DXF 14            /* ⑥ＤＸＦ -> |① 保存|② 読込|③ 設定| */
+#define JW_IO_INDEX 15          /* ⑦INDEX -> 選択ファイル名 ﾏｳｽ指示    */
 
 #define JW_DATA_GROUP 1
 #define JW_DATA_LAYER 2

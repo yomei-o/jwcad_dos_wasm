@@ -194,6 +194,26 @@ static int is_lead(unsigned char c)
  * of the top line that goes with them. */
 #define JW_SAVE_FILE "\x95\xdb\x91\xb6\xcc\xa7\xb2\xd9" "=A:" "\x5c"
 #define JW_DOT "\x81" "E"
+/* The other four cells of ①ﾌｧｲﾙ's bar, each read off the original
+ * (tools/ioroad.sh presses one and logs the line it writes).  ③合成 and
+ * ④削除 put up the same ファイル選択 screen ②読込 does -- byte for byte the
+ * same line -- so only these three have lines of their own. */
+#define JW_DRIVE_BAR \
+    "\x83" "h" "\x83\x89\x83" "C" "\x83" "u" "\x95\xcf\x8d" "X |" \
+    "\x87" "@" "\x81" "y" "\x82" "`" "\x81" "z|" "\x87" "A " "\x82" \
+    "a|" "\x87" "B " "\x82" "b|" "\x87" "C " "\x82" "c|" "\x87" "D " \
+    "\x82" "d|" "\x87" "E " "\x82" "e|" "\x87" "F " "\x82" "f|" \
+    "\x87" "G" "\x94" "C" "\x88\xd3" "|"
+#define JW_DXF_BAR \
+    "|" "\x87" "@ " "\x95\xdb\x91\xb6" "|" "\x87" "A " \
+    "\x93\xc7\x8d\x9e" "|" "\x87" "B " "\x90\xdd\x92\xe8" "|"
+#define JW_INDEX_BAR \
+    "\x91" "I" "\x91\xf0\x83" "t" "\x83" "@" "\x83" "C" \
+    "\x83\x8b\x96\xbc" "  " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" \
+    "w" "\x8e\xa6" " (L) |" "\x87" "@" \
+    "\xb2\xdd\xc3\xde\xaf\xb8\xbd\x8d\xed\x8f\x9c" "|  " "\x91" "I" \
+    "\x91\xf0" ":[" "\xbd\xcd\xdf\xb0\xbd" "](R)"
+#define JW_BS_BACK "[BS]" "\x91" "O" "\x8d\x80"
 /* 入出力's own line.  The prompt table writes it while the command is
  * running; this copy is for the moment straight after ① 実 行, when the
  * original puts it back with the mark and the banner. */
@@ -1480,7 +1500,22 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_PSET_BAR);
         } else if (s->io_stage == JW_IO_PGO) {
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_PGO_BAR);
+        } else if (s->io_stage == JW_IO_DRIVE) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+            jw_ui_text(v, 8, 1, 7, 0, JW_DRIVE_BAR);
+        } else if (s->io_stage == JW_IO_DXF) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+            jw_ui_text(v, 8, 1, 7, 0, JW_DXF_BAR);
+            jw_ui_text(v, 73, 1, 7, 0, JW_BS_BACK);
+        } else if (s->io_stage == JW_IO_INDEX) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+            jw_ui_text(v, 8, 1, 7, 0, JW_INDEX_BAR);
+            jw_ui_text(v, 73, 1, 7, 0, JW_BS_BACK);
         } else if (s->io_stage == JW_IO_LOAD || s->io_stage == JW_IO_SAVE
+                   || s->io_stage == JW_IO_MERGE || s->io_stage == JW_IO_KILL
                    || s->io_stage == JW_IO_MEMO || s->io_stage == JW_IO_OVER
                    || s->io_stage == JW_IO_WRITE) {
             /* ①保存 keeps its list on the screen the whole way: ①選択確定,
@@ -1488,7 +1523,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * all change the top line and leave the rest where it is.
              * Measured -- ①選択確定 moves 8,815 pixels and 8,623 of them
              * are the top line. */
-            const int saving = s->io_stage != JW_IO_LOAD;
+            /* ③合成 and ④削除 wear ②読込's face: the same list, the same
+             * line.  Only ①保存 and its road look different. */
+            const int saving = s->io_stage == JW_IO_SAVE
+                               || s->io_stage == JW_IO_MEMO
+                               || s->io_stage == JW_IO_OVER
+                               || s->io_stage == JW_IO_WRITE;
             char one[96];
             int k, i;
 
