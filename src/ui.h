@@ -77,6 +77,12 @@ typedef struct {
      * [Enter]; JW_ASK_* says which.  Measured on SAMPLE0: 紙 then `2` and
      * [Enter] goes A-4 to A-2, and the scale then `2` goes S=1/1.0 to
      * S=1/2.0. */
+    /* Picking a menu item blacks out the two rows under the top line, but a
+     * command that redraws the whole drawing as it starts puts them back.
+     * 紙 and the scale do: after [Enter] the original is in 入出力 with its
+     * band **full of drawing** down to y=17, where a plain press on 入出力
+     * leaves it black.  Set after jw_ui_from, which zeroes the struct. */
+    int band_kept;
     int ask;
     char ask_typed[8];
     int ask_n;

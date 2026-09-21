@@ -1256,43 +1256,14 @@ int jwc_add_arc_at(Jwc *d, float cx, float cy, float r, long start, long end,
     return 1;
 }
 
-/* 紙: the paper box in the left panel.  Pressing it asks
- *
- *     用紙 サイズ (A0～A4） 変更
- *
- * and takes a digit into the field at column 48; [Enter] applies it.
- * Measured on SAMPLE0: it starts at A-4, and pressing the box then typing
- * `2` and [Enter] leaves the panel reading A-2.
- *
- * The width is what unit_mm is made of, so the whole drawing rescales -- the
- * same table jwc_read uses. */
-int jwc_set_paper(Jwc *d, int paper)
+/* Every coordinate the drawing holds, times k.  Both 紙 and the scale beside
+ * it work this way: the numbers in the file are millimetres of paper turned
+ * into units with 518/width, so changing either changes what a stored number
+ * is worth and the whole drawing follows. */
+static void scale_geometry(Jwc *d, double k)
 {
-    static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f, 297.0f };
-    double was, k;
     long i;
 
-    if (!d || paper < 0 || paper > 4) {
-        return 0;
-    }
-    was = d->unit_mm;
-    d->paper = (unsigned char)paper;
-    d->unit_mm = 518.0f / PAPER[paper];
-    if (was <= 0.0) {
-        return 1;
-    }
-
-    /* **The geometry moves, not the view.**  A-4 to A-2 on SAMPLE0 leaves the
-     * original's drawing at screen x 141..359, y 301..441 -- half the size
-     * it was, about the drawing's own origin -- and its 用紙枠 **stays
-     * invisible**.  Scaling the view instead puts the drawing in exactly the
-     * same place but brings the paper's edge on screen, 239 red pixels the
-     * original does not have: the frame is the rectangle (0,0)-(518,447) in
-     * drawing units, so it only stays off the right edge while the view is
-     * at scale 1.  So what the paper changes is what a stored coordinate is
-     * worth -- the drawing is held in millimetres of paper and 518/width
-     * turns them into units -- and every coordinate follows unit_mm. */
-    k = d->unit_mm / was;
     for (i = 0; i < d->n_lines; i++) {
         d->lines[i].x0 = (float)(d->lines[i].x0 * k);
         d->lines[i].y0 = (float)(d->lines[i].y0 * k);
@@ -1316,6 +1287,67 @@ int jwc_set_paper(Jwc *d, int paper)
     }
     d->grid_x *= k;
     d->grid_y *= k;
+}
+
+/* 紙: the paper box in the left panel.  Pressing it asks
+ *
+ *     用紙 サイズ (A0～A4） 変更
+ *
+ * and takes a digit into the field at column 48; [Enter] applies it.
+ * Measured on SAMPLE0: it starts at A-4, and pressing the box then typing
+ * `2` and [Enter] leaves the panel reading A-2.
+ *
+ * The width is what unit_mm is made of, so the whole drawing rescales -- the
+ * same table jwc_read uses. */
+int jwc_set_paper(Jwc *d, int paper)
+{
+    static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f, 297.0f };
+    double was, k;
+
+    if (!d || paper < 0 || paper > 4) {
+        return 0;
+    }
+    was = d->unit_mm;
+    d->paper = (unsigned char)paper;
+    d->unit_mm = 518.0f / PAPER[paper];
+    if (was <= 0.0) {
+        return 1;
+    }
+
+    /* **The geometry moves, not the view.**  A-4 to A-2 on SAMPLE0 leaves the
+     * original's drawing at screen x 141..359, y 301..441 -- half the size
+     * it was, about the drawing's own origin -- and its 用紙枠 **stays
+     * invisible**.  Scaling the view instead puts the drawing in exactly the
+     * same place but brings the paper's edge on screen, 239 red pixels the
+     * original does not have: the frame is the rectangle (0,0)-(518,447) in
+     * drawing units, so it only stays off the right edge while the view is
+     * at scale 1.  So what the paper changes is what a stored coordinate is
+     * worth -- the drawing is held in millimetres of paper and 518/width
+     * turns them into units -- and every coordinate follows unit_mm. */
+    k = d->unit_mm / was;
+    scale_geometry(d, k);
+    return 1;
+}
+
+/* The scale beside 紙.  **The field takes a 倍率, not a denominator**: on
+ * SAMPLE0 typing `2` leaves the panel reading `S=2.0/1`, which is denom 0.5,
+ * and puts the drawing's screen box from x 161..598, y 139..419 to x 201..,
+ * y ..375 with the rest off the top and the right -- **twice the size about
+ * the drawing's origin**.  So it is the paper's rule the other way up: a
+ * drawing at 2/1 has twice as many units to the millimetre, and the geometry
+ * goes by the old denominator over the new one. */
+int jwc_set_denom(Jwc *d, double denom)
+{
+    double was;
+
+    if (!d || denom <= 0.0) {
+        return 0;
+    }
+    was = d->denom;
+    d->denom = (float)denom;
+    if (was > 0.0) {
+        scale_geometry(d, was / denom);
+    }
     return 1;
 }
 

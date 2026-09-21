@@ -231,6 +231,10 @@ int jwc_visible(const Jwc *d, unsigned char layer);
  * -- so it cannot just be stored. */
 int jwc_set_paper(Jwc *d, int paper);
 
+/* The scale beside it, `S=1/n`.  The same rule the other way up: a drawing at
+ * 1/2 has twice as many units to the millimetre, so the geometry doubles. */
+int jwc_set_denom(Jwc *d, double denom);
+
 /* Add a line to the drawing, the way a drawing command does.  The arrays grow
  * by a block at a time; the counts the panel shows come straight off them.
  * Returns 0 if there was no memory for it. */

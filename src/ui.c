@@ -1135,7 +1135,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * which tools/menucheck.sh uses -- has none, which is why this went
          * unnoticed.  Rows 17 to 47, columns 122 to 638: text rows 2 and 3,
          * the same band the prompts write in. */
-        fill(v, 122, 17, 638, 47, 0);
+        if (!s->band_kept) {
+            fill(v, 122, 17, 638, 47, 0);
+        }
 
         /* A command that writes in the band under the top line clears the two
          * counts out of the way first -- the original fills (1,17)-(120,47)

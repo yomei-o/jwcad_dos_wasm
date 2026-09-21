@@ -477,11 +477,19 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
                 const double n = atof(ui.ask_typed);
 
                 if (n > 0.0) {
-                    drawing->denom = (float)n;
+                    jwc_set_denom(drawing, 1.0 / n);
                 }
             }
             jw_ui_from(&ui, drawing);
             ui.ask = 0;                 /* the question goes with the answer */
+            /* And the original comes out of it **in 入出力**: the menu's
+             * last row goes yellow and its bar
+             * (`|①ファイル(L)|②プロッタ(R)|…`) goes along the top.  That
+             * is the whole of the 3079 pixels tools/papercheck.sh had left
+             * -- 904 in the menu row, 2175 in the bar. */
+            ui.command = 30;
+            jw_cmd_pick(&cmd, 30);
+            ui.band_kept = 1;   /* it redraws, so the band is the drawing's */
         } else if (key == 8) {
             if (ui.ask_n > 0) {
                 ui.ask_typed[--ui.ask_n] = 0;
