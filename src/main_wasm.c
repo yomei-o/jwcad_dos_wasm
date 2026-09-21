@@ -476,6 +476,18 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         return -1;
     }
 
+    /* 目盛: the left cell of the panel that shows over the counts while the
+     * pointer is there (RESUME 4.38).  It asks for the grid's spacing. */
+    if (x >= 1 && x <= 55 && y >= 17 && y <= 31 && drawing) {
+        mouse_x = x;
+        mouse_y = y;
+        jw_ui_from(&ui, drawing);
+        ui.grid_mode = 1;       /* after jw_ui_from, which memsets */
+        sync_ui();
+        present();
+        return -1;
+    }
+
     /* ペン: the box above 紙, y 305..319.  It puts a board over the menu --
      * six pens and nine line types -- and the pointer back in the drawing
      * takes it away again. */

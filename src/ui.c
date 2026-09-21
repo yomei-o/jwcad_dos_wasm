@@ -154,6 +154,12 @@ static int is_lead(unsigned char c)
     "|\x87\x45\x82\x63\x82\x77\x82\x65|\x87\x46INDEX|"
 /* 電卓's four keypad rows, its own line and the white strip of function
  * keys under it -- byte for byte off the original. */
+/* 目盛's own line. */
+#define JW_GRID_BAR \
+    "|\x87\x40 \x8f\x49\x97\xb9|\x87\x41\x96\xda\x90\xb7   X , Y  " \
+    "\x8a\xd4\x8a\x75  |\x87\x42\x8a\xee\x93\x5f\x95\xcf\x8d\x58 " \
+    "|\x87\x43\x81\x79\x90\x7d\x90\xa1\x81\x7a|\x87\x44\x93\xc7\x8e\xe6|"
+
 #define JW_CALC_R1 " 7  8  9 \x81\x7c\x81\x80\x81\x7d"
 #define JW_CALC_R2 " 4  5  6 \x81\x7e \xdf" "AC"
 #define JW_CALC_R3 " 1  2  3  \x81\x7b \x82\x62"
@@ -476,6 +482,13 @@ void jw_ui_from(JwUi *s, const Jwc *d)
     s->paper = d->paper;
     s->denom = d->denom;
     s->layer = d->write_layer;
+    /* 目盛's two numbers, in millimetres of paper.  **Five when the drawing
+     * has none**: SAMPLE0 stores 0 and the original still offers 5.000,
+     * while SAMPLE1, which stores 15.697 units, shows its own 9.000. */
+    s->grid_x = d->grid_x > 0.0 && d->unit_mm > 0.0f
+                    ? d->grid_x / d->unit_mm : 5.0;
+    s->grid_y = d->grid_y > 0.0 && d->unit_mm > 0.0f
+                    ? d->grid_y / d->unit_mm : 5.0;
     s->group = d->write_layer >> 4;
     s->name = d->layer_name[(s->group << 4) | (s->layer & 15)];
     s->work_seconds = d->work_seconds;
@@ -856,7 +869,9 @@ static void gauge(VGA *v, const JwUi *s)
 {
     int i;
 
-    if (s->mouse_x < 0 || s->mouse_x > 120 ||
+    /* Pressing one of its cells takes the panel away again: 目盛 puts up
+     * its own line and the counts come back green underneath. */
+    if (s->grid_mode || s->mouse_x < 0 || s->mouse_x > 120 ||
         s->mouse_y < 17 || s->mouse_y > 48) {
         return;
     }
@@ -1908,6 +1923,23 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                    "\x81\x6d\x8f\x49\x97\xb9\x81\x6e\x83\x7d\x83\x45"
                    "\x83\x58\x82\xf0\x8d\xec\x90\x7d\x94\xcd\x88\xcd"
                    "\x82\xc9\x88\xda\x93\xae");
+    }
+    if (s->grid_mode) {
+        char one[64];
+
+        /* 目盛 asks for the grid's spacing.  Read off the original with
+         * tools/pressstr.sh 30 24 left: its own line, and the two numbers
+         * in a white field at column 17 of the band. */
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, JW_GRID_BAR);
+        /* The two rows under the top line go black first, the way picking
+         * a menu item clears them: SAMPLE1's grid dots reach up there and
+         * the original's are gone the moment 目盛 is pressed. */
+        fill(v, 122, 17, 638, 47, 0);
+        sprintf(one, "%10.3f ,%10.3f", s->grid_x, s->grid_y);
+        jw_ui_text(v, 17, 2, 7, 0xffffu, one);
     }
     if (s->calc) {
         fill(v, 0, 0, 639, 15, 0);

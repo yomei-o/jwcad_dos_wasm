@@ -95,6 +95,10 @@ typedef struct {
      * cyan and stays there. */
     /* 電卓, the button at the left end of the strip: a keypad over the
      * panel's bottom four rows, a display above it and its own top line. */
+    /* 目盛, the left cell of the panel that appears over the counts: it
+     * asks for the grid's X and Y spacing in millimetres of paper. */
+    int grid_mode;
+    double grid_x, grid_y;      /* its spacing, millimetres of paper */
     int calc;
     int kept;
     int io_stage;
