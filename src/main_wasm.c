@@ -305,6 +305,28 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     const int pick = jw_ui_menu_hit(x, y);
     const int bar = jw_ui_bar_item(x, y);
 
+    /* ペン's board answers presses of its own, and it is over the menu, so
+     * it has to come before the menu.  Rows 5..10 are the six pens and
+     * 11..19 the nine line types; the board stays up and the panel's pen
+     * row follows (the original writes `Pen.4` there in the pen's colour
+     * and moves the `#`). */
+    if (ui.pen_board && x >= 1 && x <= 120 && y >= 64 && y <= 303
+        && drawing) {
+        const int row = (y - 64) / 16;          /* 0..14 */
+
+        if (row < 6) {
+            drawing->pen = (unsigned char)(row + 1);
+        } else {
+            drawing->line_type = (unsigned char)(row - 5);
+        }
+        mouse_x = x;
+        mouse_y = y;
+        jw_ui_from(&ui, drawing);
+        ui.pen_board = 1;       /* after jw_ui_from, which memsets */
+        sync_ui();
+        present();
+        return -1;
+    }
     /* The strip along the bottom.  Only the two that move the view are done:
      * ■拡大■ (the Zoom bar) takes two corners and 前倍率 goes back to the
      * view before the last one.  電卓, 範囲記憶, 倍率指定, ｵﾌｾｯﾄ and HELP are
@@ -414,6 +436,29 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         sync_ui();
         present();
         return -1;
+    }
+    /* While ｸﾞﾙｰﾌﾟ is asking, the sixteen boxes are the **groups**: the
+     * right button picks the one to write to and the left turns one off
+     * and on, exactly as they do for layers.  The mode stays up. */
+    if (ui.group_mode && drawing) {
+        const int n = layer_at(x, y);
+
+        if (n >= 0) {
+            if (right) {
+                drawing->write_layer =
+                    (unsigned char)((n << 4) | (drawing->write_layer & 15));
+                drawing->group_on[n] = 1;
+            } else if (n != (drawing->write_layer >> 4)) {
+                drawing->group_on[n] = !drawing->group_on[n];
+            }
+            mouse_x = x;
+            mouse_y = y;
+            jw_ui_from(&ui, drawing);
+            ui.group_mode = 1;  /* after jw_ui_from, which memsets */
+            sync_ui();
+            present();
+            return -1;
+        }
     }
     {
         const int n = layer_at(x, y);

@@ -427,6 +427,7 @@ void jw_ui_from(JwUi *s, const Jwc *d)
     s->paper = d->paper;
     s->denom = d->denom;
     s->layer = d->write_layer;
+    s->group = d->write_layer >> 4;
     s->name = d->layer_name[(s->group << 4) | (s->layer & 15)];
     s->work_seconds = d->work_seconds;
     s->dec[0] = s->dec[1] = d->decimals;
@@ -467,6 +468,9 @@ void jw_ui_from(JwUi *s, const Jwc *d)
     }
     /* And the same two per group, which is what ｸﾞﾙｰﾌﾟ's sixteen boxes
      * show: the high nibble of the layer byte picks the group. */
+    for (i = 0; i < 16; i++) {
+        s->group_on[i] = d->group_on[i];
+    }
     for (i = 0; i < d->n_lines; i++) {
         s->group_geom[d->lines[i].layer >> 4] = 1;
     }
@@ -1143,6 +1147,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             const int cx = 14 * (i & 7), cy = 16 * (i >> 3);
             const unsigned digit = 0x100u | (i < 10 ? '0' + i : 'A' + i - 10);
 
+            if (!s->group_on[i]) {
+                continue;
+            }
             box(v, 11 + cx, 356 + cy, 20 + cx, 366 + cy, 7);
             jw_ui_blit(v, 12 + cx, 358 + cy, digit, i == s->group ? 0 : 5);
         }

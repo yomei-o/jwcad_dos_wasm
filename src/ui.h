@@ -198,6 +198,7 @@ typedef struct {
     /* The same two, per layer **group**, for ｸﾞﾙｰﾌﾟ's display. */
     unsigned char group_geom[16];
     unsigned char group_text[16];
+    unsigned char group_on[16];
     /* Whether the digit gets a ring round it.  A layer that is not shown has
      * neither digit nor ring (SAMPLE0's layer 1); one that is shown but off in
      * the drawing's first layer table gets the digit and no ring (TEST7's
