@@ -395,6 +395,25 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         present();
         return -1;
     }
+    /* サブ画面表示: the box at the bottom of the panel, y 385..399.  It
+     * turns the box under it into a miniature of the drawing, and leaves
+     * the original in 入出力 the way 紙 and the scale do. */
+    if (x >= 1 && x <= 120 && y >= 385 && y <= 399 && drawing) {
+        mouse_x = x;
+        mouse_y = y;
+        jw_ui_from(&ui, drawing);
+        /* It **turns it on**, it does not toggle: pressing twice leaves the
+         * original's miniature up, and the port that toggled came out 564
+         * pixels short. */
+        ui.sub_screen = 1;      /* after jw_ui_from, which memsets */
+        ui.command = 30;
+        ui.band_kept = 1;
+        jw_cmd_pick(&cmd, 30);
+        sync_ui();
+        present();
+        return -1;
+    }
+
     /* ペン: the box above 紙, y 305..319.  It puts a board over the menu --
      * six pens and nine line types -- and the pointer back in the drawing
      * takes it away again. */

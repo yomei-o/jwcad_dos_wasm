@@ -1068,13 +1068,16 @@ static void paper_frame(VGA *v, const JwView *w)
      * … from a left corner at 128, the same "start plus two" the main
      * view's lines have from the window's edge. */
     if (w->frame_box) {
+        const double bx1 = (517.0 - w->ox) * w->scale + w->ax;
+        const double by1 = w->ay - (446.0 - w->oy) * w->scale;
+
         jw_line(v, (int)fx0, (int)fy1, (int)fx0, (int)fy0, 2, ROP_REPLACE,
                 style);
-        jw_line(v, (int)fx1, (int)fy1, (int)fx1, (int)fy0, 2, ROP_REPLACE,
+        jw_line(v, (int)bx1, (int)by1, (int)bx1, (int)fy0, 2, ROP_REPLACE,
                 style);
-        jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy0, 2, ROP_REPLACE,
+        jw_line(v, (int)fx0, (int)fy0, (int)bx1, (int)fy0, 2, ROP_REPLACE,
                 style);
-        jw_line(v, (int)fx0, (int)fy1, (int)fx1, (int)fy1, 2, ROP_REPLACE,
+        jw_line(v, (int)fx0, (int)by1, (int)bx1, (int)by1, 2, ROP_REPLACE,
                 style);
         return;
     }

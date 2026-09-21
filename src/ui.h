@@ -86,6 +86,9 @@ typedef struct {
      * one per layer group.  The right button on the group being written to,
      * while ｸﾞﾙｰﾌﾟ is asking, opens it. */
     int data_screen;
+    /* サブ画面表示: a miniature of the whole drawing in the box at the
+     * bottom of the panel, with the paper's edge round it. */
+    int sub_screen;
     int layer_mode;
     /* The left panel's own questions.  Pressing 紙 or the scale beside it
      * puts a line along the top and takes a number in a field, ended with

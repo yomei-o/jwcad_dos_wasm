@@ -140,6 +140,12 @@ static int is_lead(unsigned char c)
  * by 92 pixels, which pins it between 0.204633 and 0.205817. */
 #define JW_DATA_SCALE 0.2058
 
+/* And サブ画面表示's, in the little box at the bottom of the panel: the
+ * paper's corners put it between 0.12934 and 0.12975. */
+#define JW_SUB_SCALE 0.1321
+#define JW_SUB_AX 26.3
+#define JW_SUB_AY 461.0
+
 static char top_line[82];
 
 static void top_clear(void)
@@ -1830,7 +1836,43 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
 {
     int k;
 
-    if (!s->data_screen || !d) {
+    if (!d) {
+        return;
+    }
+    if (s->sub_screen) {
+        /* サブ画面表示: the box under the sixteen layer boxes becomes a
+         * miniature of the whole drawing.  Read off the original after a
+         * press on it -- a yellow rectangle (27,401)-(94,461) with the
+         * paper's own edge inside it in red dashes, the drawing in white,
+         * and a green dashed line along the bottom. */
+        JwView w;
+
+        w.ox = 0.0f;
+        w.oy = 0.0f;
+        w.scale = (float)JW_SUB_SCALE;
+        w.ax = (float)JW_SUB_AX;
+        w.ay = (float)JW_SUB_AY;
+        w.x0 = 1;
+        w.y0 = 401;
+        w.x1 = 120;
+        w.y1 = 462;
+        w.group1 = 0;
+        w.frame_box = 1;
+        fill(v, 1, 401, 120, 462, 0);
+        jw_view_draw_into(v, d, &w);
+        v->clip_x0 = 0;
+        v->clip_y0 = 0;
+        v->clip_x1 = v->width - 1;
+        v->clip_y1 = v->height - 1;
+        /* The yellow border is four lines between the corners, not a
+         * closed box: (27,401) and (95,401) are empty. */
+        jw_line(v, 28, 401, 94, 401, 6, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_line(v, 28, 461, 94, 461, 6, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_line(v, 27, 402, 27, 460, 6, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_line(v, 95, 402, 95, 460, 6, ROP_REPLACE, JW_STYLE_SOLID);
+        jw_line(v, 26, 461, 94, 461, 4, ROP_REPLACE, jw_view_line_style(9));
+    }
+    if (!s->data_screen) {
         return;
     }
     fill(v, 0, 305, 121, 305, 7);
