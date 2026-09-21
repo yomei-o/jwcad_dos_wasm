@@ -229,9 +229,10 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
     mouse_y = y;
     /* レイヤ変更 ends by itself: its own line says
      * `［終了］マウスを作図範囲に移動`, and that is the whole of it. */
-    if (ui.layer_mode && x >= AREA_X0 && x <= AREA_X1
+    if ((ui.layer_mode || ui.group_mode) && x >= AREA_X0 && x <= AREA_X1
         && y >= AREA_Y0 && y <= AREA_Y1) {
         ui.layer_mode = 0;
+        ui.group_mode = 0;
     }
     /* a command with a point in hand keeps its reading up to date as the
      * pointer moves, the way the original does */
@@ -364,6 +365,20 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         ui.ask = x <= 47 ? JW_ASK_PAPER : JW_ASK_SCALE;
         ui.ask_n = 0;
         ui.ask_typed[0] = 0;
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* ｸﾞﾙｰﾌﾟ: the word between the drawing's name and the group number, on
+     * the row at y 337..351.  It goes into a mode of its own, the same shape
+     * as レイヤ変更's -- its line along the top, `ｸﾞﾙｰﾌﾟ 指示` in red over
+     * this row and `全レイヤ 表示` over サブ画面表示, and the pointer back
+     * in the drawing ends it. */
+    if (x >= 65 && x <= 109 && y >= 337 && y <= 351 && drawing) {
+        mouse_x = x;
+        mouse_y = y;
+        jw_ui_from(&ui, drawing);
+        ui.group_mode = 1;      /* after jw_ui_from, which memsets */
         sync_ui();
         present();
         return -1;

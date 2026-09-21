@@ -71,6 +71,12 @@ typedef struct {
      * so the left button turns a layer's drawing on and off, the right one
      * makes it the one written to, and moving the pointer into the drawing
      * area is how it ends. */
+    /* ｸﾞﾙｰﾌﾟ's own mode, the same shape as レイヤ変更's: its line along the
+     * top at column 20, `  ｸﾞﾙｰﾌﾟ 指示  ` in red where 図面名 and the group
+     * number were (row 22), and `全レイヤ 表示` where サブ画面表示 was
+     * (row 25).  It ends the same way -- the pointer back in the drawing.
+     * Read off the original with tools/pressstr.sh 80 344 left. */
+    int group_mode;
     int layer_mode;
     /* The left panel's own questions.  Pressing 紙 or the scale beside it
      * puts a line along the top and takes a number in a field, ended with
@@ -184,6 +190,9 @@ typedef struct {
      * bars are on. */
     unsigned char layer_geom[16];
     unsigned char layer_text[16];
+    /* The same two, per layer **group**, for ｸﾞﾙｰﾌﾟ's display. */
+    unsigned char group_geom[16];
+    unsigned char group_text[16];
     /* Whether the digit gets a ring round it.  A layer that is not shown has
      * neither digit nor ring (SAMPLE0's layer 1); one that is shown but off in
      * the drawing's first layer table gets the digit and no ring (TEST7's

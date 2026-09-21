@@ -130,6 +130,12 @@ static int is_lead(unsigned char c)
 /* The top line as characters, so that jw_ui_top_item can find the bars.  One
  * byte per cell, filled in as jw_ui_text writes row 1 and cleared when
  * jw_ui_draw paints that row black again. */
+/* ｸﾞﾙｰﾌﾟ mode puts these two over the panel: `  ｸﾞﾙｰﾌﾟ 指示  ` in red
+ * where 図面名 and the group number are, and `全レイヤ 表示` where
+ * サブ画面表示 is.  Both read off the original with tools/pressstr.sh. */
+#define GROUP_PICK "  \xb8\xde\xd9\xb0\xcc\xdf \x8e\x77\x8e\xa6  "
+#define GROUP_ALL  "\x91\x53\x83\x8c\x83\x43\x83\x84 \x95\x5c\x8e\xa6"
+
 static char top_line[82];
 
 static void top_clear(void)
@@ -458,6 +464,20 @@ void jw_ui_from(JwUi *s, const Jwc *d)
                 break;
             }
         }
+    }
+    /* And the same two per group, which is what ｸﾞﾙｰﾌﾟ's sixteen boxes
+     * show: the high nibble of the layer byte picks the group. */
+    for (i = 0; i < d->n_lines; i++) {
+        s->group_geom[d->lines[i].layer >> 4] = 1;
+    }
+    for (i = 0; i < d->n_arcs; i++) {
+        s->group_geom[d->arcs[i].layer >> 4] = 1;
+    }
+    for (i = 0; i < d->n_points; i++) {
+        s->group_geom[d->points[i].layer >> 4] = 1;
+    }
+    for (i = 0; i < d->n_texts; i++) {
+        s->group_text[d->texts[i].layer >> 4] = 1;
     }
 }
 
@@ -1007,6 +1027,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     box(v, 0, 320, 121, 336, 7);
 
     fill(v, 1, 306, 120, 318, 0);
+    if (s->group_mode) {
+        /* ｸﾞﾙｰﾌﾟ empties the pen's row: the original leaves y 305..319
+         * black, no `Pen.2` and no sample line. */
+        fill(v, 1, 305, 120, 319, 0);
+    } else {
     jw_ui_text(v, 1, 20, 7, 0, "               ");
     pen_name(buf, s->pen, s->line_type);
     jw_ui_text(v, 2, 20, jw_view_pen_colour((unsigned)s->pen), 0, buf);
@@ -1014,20 +1039,34 @@ void jw_ui_draw(VGA *v, const JwUi *s)
      * pattern (TEST7 writes with type 9 and the sample comes out dotted) */
     jw_line(v, 64, 312, 110, 312, jw_view_pen_colour((unsigned)s->pen),
             ROP_REPLACE, jw_view_line_style((unsigned)s->line_type));
-    fill(v, 0, 304, 121, 305, 7);
+    }
+    /* Two white rows under the menu -- but ｸﾞﾙｰﾌﾟ empties the pen's row and
+     * that takes the lower one with it: the original has y=304 white and
+     * y=305 black while it is asking. */
+    fill(v, 0, 304, 121, s->group_mode ? 304 : 305, 7);
     jw_line(v, 0, 16, 0, 463, 7, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, 121, 16, 121, 463, 7, ROP_REPLACE, JW_STYLE_SOLID);
 
-    jw_ui_text(v, 1, 22, 7, 0, "        ");
-    if (s->name && *s->name) {
-        jw_ui_text(v, 1, 22, 7, 0, s->name);
+    if (s->group_mode) {
+        /* ｸﾞﾙｰﾌﾟ takes this row over: red where 図面名 and the word were. */
+        jw_ui_text(v, 1, 22, 2, 0, GROUP_PICK);
+    } else {
+        jw_ui_text(v, 1, 22, 7, 0, "        ");
+        if (s->name && *s->name) {
+            jw_ui_text(v, 1, 22, 7, 0, s->name);
+        }
+        jw_ui_text(v, 9, 22, 6, 0, "\xb8\xde\xd9\xb0\xcc\xdf");
     }
-    jw_ui_text(v, 9, 22, 6, 0, "\xb8\xde\xd9\xb0\xcc\xdf");
-    fill(v, 110, 336, 121, 352, 5);
-    box(v, 110, 336, 121, 352, 7);
-    jw_line(v, 64, 336, 64, 352, 7, ROP_REPLACE, JW_STYLE_SOLID);
-    sprintf(buf, "%X", s->group & 15);
-    jw_ui_text(v, 15, 22, 0, 0, buf);
+    if (!s->group_mode) {
+        /* All of this goes while ｸﾞﾙｰﾌﾟ is asking: the original leaves the
+         * row with nothing on it but the red words -- no rule at x=64, no
+         * cyan box for the number and no number. */
+        fill(v, 110, 336, 121, 352, 5);
+        box(v, 110, 336, 121, 352, 7);
+        jw_line(v, 64, 336, 64, 352, 7, ROP_REPLACE, JW_STYLE_SOLID);
+        sprintf(buf, "%X", s->group & 15);
+        jw_ui_text(v, 15, 22, 0, 0, buf);
+    }
     box(v, 0, 320, 121, 336, 7);
 
     /* The sixteen layer buttons.  The original fills the box of the layer it
@@ -1036,6 +1075,29 @@ void jw_ui_draw(VGA *v, const JwUi *s)
      * everywhere else) and a ring round it (11B9:0AC5 with rx = ry = 5 at
      * (16 + 14k, 361) and (16 + 14k, 377), colour 6).  Both lists were read
      * off the running original. */
+    if (s->group_mode) {
+        /* The same sixteen boxes, but the **groups**: each one gets a white
+         * rectangle (11,356)-(20,366) of its cell with the digit in cyan
+         * inside it, and the group being written to is filled cyan with its
+         * digit in black -- the layer display's rule in another colour, with
+         * the rectangle added.  Read off the original after a press on
+         * ｸﾞﾙｰﾌﾟ (tools/clickcheck.sh 80 344 left). */
+        fill(v, 10 + 14 * (s->group & 7), 355 + 16 * ((s->group >> 3) & 1),
+             22 + 14 * (s->group & 7), 367 + 16 * ((s->group >> 3) & 1), 5);
+        for (i = 0; i < 16; i++) {
+            const int cx = 14 * (i & 7), cy = 16 * (i >> 3);
+            const unsigned digit = 0x100u | (i < 10 ? '0' + i : 'A' + i - 10);
+
+            box(v, 11 + cx, 356 + cy, 20 + cx, 366 + cy, 7);
+            jw_ui_blit(v, 12 + cx, 358 + cy, digit, i == s->group ? 0 : 5);
+        }
+        for (i = 0; i < 16; i++) {
+            const int bx = 10 + 14 * (i & 7), by = 353 + 16 * (i >> 3);
+
+            fill(v, bx, by, bx + 6, by + 1, s->group_geom[i] ? 3 : 0);
+            fill(v, bx + 7, by, bx + 12, by + 1, s->group_text[i] ? 3 : 0);
+        }
+    } else {
     fill(v, 10 + 14 * (s->layer & 7), 355 + 16 * ((s->layer >> 3) & 1),
          22 + 14 * (s->layer & 7), 367 + 16 * ((s->layer >> 3) & 1), 6);
     for (i = 0; i < 16; i++) {
@@ -1058,8 +1120,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         fill(v, bx, by, bx + 6, by + 1, s->layer_geom[i] ? 3 : 0);
         fill(v, bx + 7, by, bx + 12, by + 1, s->layer_text[i] ? 3 : 0);
     }
+    }
 
-    jw_ui_text(v, 1, 25, 7, 0, " \x83\x54\x83\x75\x89\xe6\x96\xca \x95\x5c\x8e\xa6 ");
+    if (s->group_mode) {
+        jw_ui_text(v, 2, 25, 6, 0, GROUP_ALL);
+    } else {
+        jw_ui_text(v, 1, 25, 7, 0, " \x83\x54\x83\x75\x89\xe6\x96\xca \x95\x5c\x8e\xa6 ");
+    }
     box(v, 0, 384, 121, 400, 7);
     jw_line(v, 0, 479, 0, 16, 7, ROP_REPLACE, JW_STYLE_SOLID);
 
@@ -1640,6 +1707,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                    "\x81\x6d\x8f\x49\x97\xb9\x81\x6e\x83\x7d\x83\x45"
                    "\x83\x58\x82\xf0\x8d\xec\x90\x7d\x94\xcd\x88\xcd"
                    "\x82\xc9\x88\xda\x93\xae");
+    }
+    if (s->group_mode) {
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 20, 1, 7, 0,
+                   "\x83\x8c\x83\x43\x83\x84 \x83\x4f\x83\x8b\x81\x5b"
+                   "\x83\x76 \x95\xcf\x8d\x58   \x81\x6d\x8f\x49\x97\xb9"
+                   "\x81\x6e\x83\x7d\x83\x45\x83\x58\x82\xf0\x8d\xec"
+                   "\x90\x7d\x94\xcd\x88\xcd\x82\xc9\x88\xda\x93\xae");
     }
     if (s->guide) {
         jw_ui_text(v, 17, 3, 7, 0, s->guide);
