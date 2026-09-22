@@ -89,6 +89,8 @@ def literal(raw, indent='      ', width=58):
         cur_hex = hexed
     if cur:
         chunks.append('"%s"' % cur)
+    if not chunks:
+        return '""'             # the original wrote an empty string
     lines, line = [], ''
     for c in chunks:
         if line and len(line) + 1 + len(c) > width:

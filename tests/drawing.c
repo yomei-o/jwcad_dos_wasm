@@ -306,7 +306,10 @@ int main(int argc, char **argv)
                 t.temp_left = JWC_TEMP_MAX - (d ? d->n_temp : 0);
                 t.typing_text = c.typing_text;
                 jw_ui_draw(&v, &t);
-                jw_cmd_top(&c, d, jw_ui_top_item(press[i][1], 8));
+                /* The left button: this checker's `-t` presses name a
+                 * column and nothing else, and the right button is `-T`
+                 * where a command wants it. */
+                jw_cmd_top(&c, d, jw_ui_top_item(press[i][1], 8), 0);
                 continue;
             }
             if (press[i][0] == -7) {            /* -M: the keys */
