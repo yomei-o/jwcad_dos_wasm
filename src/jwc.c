@@ -1274,7 +1274,9 @@ int jwc_zukei_read(JwcZukei *z, const unsigned char *raw, long len,
     }
     memcpy(line, raw + 0xc8, TEXT_LINE - 1);
     line[TEXT_LINE - 1] = '\0';
-    z->n_lines = (f = field(line, 0)) ? strtol(f, NULL, 10) : 0;
+    /* **field() counts commas**, so the first field is the line itself
+     * and field(line, 1) is the second one. */
+    z->n_lines = strtol(line, NULL, 10);
     z->n_arcs = (f = field(line, 1)) ? strtol(f, NULL, 10) : 0;
     z->n_points = (f = field(line, 2)) ? strtol(f, NULL, 10) : 0;
     z->n_texts = (f = field(line, 3)) ? strtol(f, NULL, 10) : 0;

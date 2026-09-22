@@ -150,6 +150,19 @@ typedef struct {
     int zukei;                  /* JwCmd.zukei -- 図形 ①登録's road */
     char zukei_name[16];        /* what has been typed into ◆図形名入力 */
     int zukei_name_n;
+    /* The figures in the group, for the list ①登録 and ②読込 both put up:
+     * fifty cells, five across and ten down, in the same grid ④ｸﾞﾙｰﾌﾟ変
+     * uses.  ①登録 has `新規登録` in the first cell and the figures after
+     * it; ②読込 has the figures from the first.  Alphabetical -- which is
+     * the order the original lists AAA and BOX in, whichever way round they
+     * were made (and also the order the host hands them over, so the two
+     * cannot be told apart here). */
+    char zukei_list[50][10];
+    int zukei_list_n;
+    /* Which cell is picked: the one the original writes black-on-white.  A
+     * press on another moves it, a press on this one takes it -- the same
+     * rule the drawing list has. */
+    int zukei_sel;
     int top_item;
     int top_right;
     int band_off;               /* JwCmd.band_off */

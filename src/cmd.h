@@ -234,6 +234,18 @@ typedef struct {
     double zukei_bx, zukei_by;  /* the base point, in drawing units */
     char zukei_name[16];        /* ◆図形名入力 */
     int zukei_name_n;
+    /* 図形 ②読込.  The group's figures are the host's business -- it reads
+     * the directory and the file -- so `zukei_n` is how many it found and
+     * `zukei_in` is the one in hand, in the millimetres the file keeps. */
+    int zukei_n;
+    const JwcZukei *zukei_in;
+    /* What jwc_zukei_bytes multiplied by, worked out when the file was read:
+     * millimetres in one of this drawing's units.  **The preview divides by
+     * it and the placing multiplies by its reciprocal** -- two different
+     * routines in the original, and they do not agree to the last bit: the
+     * string whose 4242.85693 millimetres is 37 units exactly comes out
+     * 36.999996 the other way, and a whole pixel lower on the screen. */
+    float zukei_scale;
     int top_item;
     int top_right;
     /* A press on the top line that landed outside every cell.  The command's
@@ -463,7 +475,8 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy);
  * else, like the pointer, and taken back by drawing it again.
  *
  * Nothing happens if no point has been taken yet. */
-void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy);
+void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
+                 int sx, int sy);
 
 /* Where a screen pixel is in the drawing.  The view puts a drawing point at
  * `(x - ox) * scale + ax`, so this is that read backwards. */

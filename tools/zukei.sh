@@ -60,7 +60,8 @@ press() {   # x y [right]
     printf 'shot ../jwcad_dos_wasm/tmp/zukei/s2.raw\n'
     press "$bx" "$by" right           # and the other, which fixes it
     printf 'shot ../jwcad_dos_wasm/tmp/zukei/s3.raw\n'
-    press 560 8                       # ①範囲 確定
+    press 560 8                       # nothing: the right corner above
+                                      # has already gone on to the base point
     printf 'shot ../jwcad_dos_wasm/tmp/zukei/s4.raw\n'
     press "$px" "$py" $BASEBTN        # the base point
     printf 'shot ../jwcad_dos_wasm/tmp/zukei/s5.raw\n'

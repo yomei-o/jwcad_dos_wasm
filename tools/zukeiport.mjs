@@ -62,17 +62,35 @@ press(30, 296); press(110, 8); press(180, 8);
   }
 }
 
+/* Whatever tools/zukei.sh was given to press after the registration, in the
+ * same shapes: `x y` presses, `r x y` presses the right button, `m x y` only
+ * moves the pointer and `t NAME` types a name and presses [Enter]. */
+function extraStep(step) {
+  const f = step.trim().split(/\s+/);
+  if (f[0] === 'm') return () => M._jw_mouse(Number(f[1]), Number(f[2]));
+  if (f[0] === 'r') return () => press(Number(f[1]), Number(f[2]), true);
+  if (f[0] === 't') return () => {
+    for (const c of f[1]) M._jw_key(c.charCodeAt(0));
+    M._jw_key(13);
+  };
+  return () => press(Number(f[0]), Number(f[1]));
+}
+
 const road = [
   ['図形', () => press(30, 248)],
   ['①登録', () => press(84, 8)],
   ['範囲の一隅', () => press(ax, ay, FIRST)],
   ['もう一隅 (右)', () => press(bx, by, true)],
-  ['①範囲 確定', () => press(560, 8)],
+  ['(nothing)', () => press(560, 8)],
   ['基準点', () => press(px, py, BASEBTN)],
   ['①選択確定', () => press(296, 8)],
   ['名前と [Enter]', () => { for (const c of NAME) M._jw_key(c.charCodeAt(0)); M._jw_key(13); }],
   ['① 実 行', () => press(210, 8)],
 ];
+
+for (const step of (env.EXTRA || '').split(';')) {
+  if (step.trim()) road.push([step.trim(), extraStep(step)]);
+}
 
 let worst = 0;
 road.forEach(([what, go], i) => {

@@ -1468,6 +1468,15 @@ static void menu(VGA *v)
     }
 }
 
+/* Is 図形's list of figures up?  ①登録 puts it up once the base point is
+ * down (stages 5 and 6) and ②読込 as soon as it is pressed (stage 9). */
+static int zukei_list_up(const JwUi *s)
+{
+    return s->command == 27
+           && ((s->zukei >= JW_ZUKEI_PICK && s->zukei < JW_ZUKEI_WRITE)
+               || s->zukei == JW_ZUKEI_LIST);
+}
+
 void jw_ui_draw(VGA *v, const JwUi *s)
 {
     char buf[64], name[32];
@@ -2439,9 +2448,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         }
         /* 図形 ④ｸﾞﾙｰﾌﾟ変 takes the whole drawing area, and so does the
          * list of figures 図形 ①登録 puts up once its base point is down. */
-        if ((s->command == 27 && s->top_item == 4)
-            || (s->command == 27 && s->zukei >= JW_ZUKEI_PICK
-                && s->zukei < JW_ZUKEI_WRITE)) {
+        if ((s->command == 27 && s->top_item == 4) || zukei_list_up(s)) {
             fill(v, 0, 464, 639, 479, 0);
             fill(v, 122, 16, 638, 462, 0);
         }
@@ -2453,19 +2460,49 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             sprintf(one, " A:ZUKEI_1_" "\x5c" "%s.JWK ", s->zukei_name);
             jw_ui_text(v, 18, 2, 7, 0xffffu, one);
         }
-        if (s->command == 27 && s->zukei >= JW_ZUKEI_PICK
-            && s->zukei < JW_ZUKEI_WRITE) {
-            /* the group's path, how many figures it holds, and the cell
-             * that makes a new one */
+        if (zukei_list_up(s)) {
+            /* The group's path, how many cells the list has, and the cells
+             * themselves.  ①登録's first cell makes a new figure; ②読込
+             * has only the figures.
+             *
+             * `数=` is the **number of cells**, not of figures: an empty
+             * group being registered into says 数=1 with only 新規登録 in
+             * it, the same group with one figure says 数=2, and ②読込 on
+             * that group says 数=1.  Measured on all four. */
+            const int newcell = s->zukei != JW_ZUKEI_LIST;
+            char one[48];
+            int i;
+
             jw_ui_text(v, 10, 30, 7, 0, "A:ZUKEI_1_");
-            /* **The two numbers are not understood yet.**  They are what
-             * the original wrote on the run tools/zukei.sh made; when the
-             * groups and their contents are real they will come from
-             * those. */
-            jw_ui_text(v, 60, 2, 7, 0,
-                       " " "\x90" "}" "\x8c" "` 1   " "\x90\x94" "=1");
-            jw_ui_text(v, 20, 5, 7, 0xffffu,
-                       " " "\x90" "V" "\x8b" "K" "\x93" "o" "\x98" "^ ");
+            sprintf(one, " " "\x90" "}" "\x8c" "` 1   " "\x90\x94" "=%d",
+                    s->zukei_list_n + (newcell ? 1 : 0));
+            jw_ui_text(v, 60, 2, 7, 0, one);
+            if (newcell) {
+                jw_ui_text(v, 20, 5, 7, s->zukei_sel == 0 ? 0xffffu : 0,
+                           " " "\x90" "V" "\x8b" "K" "\x93" "o" "\x98" "^ ");
+            }
+            for (i = 0; i < s->zukei_list_n; i++) {
+                const int at = i + (newcell ? 1 : 0);
+
+                if (at >= 50) {
+                    break;
+                }
+                sprintf(one, " %-9s", s->zukei_list[i]);
+                jw_ui_text(v, 20 + 12 * (at % 5), 5 + 2 * (at / 5), 7,
+                           s->zukei_sel == at ? 0xffffu : 0, one);
+            }
+        }
+        /* 図形 ②読込, with a figure in hand: the angle it goes in at, in the
+         * band beside the counts.  `   0.000` and a degree sign, nine cells
+         * at column 47, black on white. */
+        /* **Only until the first one is down.**  Putting a figure down
+         * writes the two counts back over the band, and the angle is not
+         * written again: the original's own writes at that step are the
+         * counts, their label, the new line and [BS]前項, and nothing at
+         * column 47. */
+        if (s->command == 27 && s->zukei == JW_ZUKEI_PUT) {
+            /* Always nought so far: ②角  度 and ④ﾏｳｽ角 are not done. */
+            jw_ui_text(v, 47, 2, 7, 0xffffu, "   0.000" "\xdf");
         }
         /* 寸法 ⑨設定's panel.  The box goes up first and the words over
          * it -- the rule at x 410 is broken where each value is written,
@@ -2616,9 +2653,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         /* 図形 ④ｸﾞﾙｰﾌﾟ変's grid, after the words for the same reason the
          * 文字種類 box is: the original's rules are whole.  ①登録's list of
          * figures is the same grid. */
-        if (s->command == 27
-            && (s->top_item == 4
-                || (s->zukei >= JW_ZUKEI_PICK && s->zukei < JW_ZUKEI_WRITE))) {
+        if ((s->command == 27 && s->top_item == 4) || zukei_list_up(s)) {
             int k;
 
             for (k = 0; k <= 10; k++) {

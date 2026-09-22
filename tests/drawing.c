@@ -449,7 +449,7 @@ int main(int argc, char **argv)
         jw_cmd_after(&c, &v, d, &w);
         /* the line a half-finished command drags, then the pointer -- both
          * exclusive-or, and both after everything else */
-        jw_cmd_band(&c, &v, &w, mx, my);
+        jw_cmd_band(&c, d, &v, &w, mx, my);
         if (zoom_stage == 2) {
             jw_ui_zoom_band(&v, zoom_at[0], zoom_at[1], mx, my);
         }

@@ -428,7 +428,7 @@ static double text_step(const Jwc *d, const JwcText *t, double unit)
  * draw_text_box_turned still drops: no drawing measured so far puts a turned
  * box across the edge, so there is nothing to read the answer off. */
 static void box_line(VGA *v, const JwView *w, int x0, int y0, int x1, int y1,
-                     unsigned colour)
+                     unsigned colour, unsigned rop)
 {
     double fx0 = x0, fy0 = y0, fx1 = x1, fy1 = y1;
 
@@ -440,31 +440,31 @@ static void box_line(VGA *v, const JwView *w, int x0, int y0, int x1, int y1,
     } else {
         clip_far(w, fx0, fy0, &fx1, &fy1);
     }
-    jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy1, colour, ROP_REPLACE,
+    jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy1, colour, rop,
             JW_STYLE_SOLID);
 }
 
 static void draw_text_box(VGA *v, const JwView *w, int x0, int x1, int base,
-                          int h, unsigned colour)
+                          int h, unsigned colour, unsigned rop)
 {
     const int top = base - h;
 
     if (getenv("JW_TRACE")) {
         printf("flat %d..%d base=%d h=%d%c", x0, x1, base, h, 10);
     }
-    box_line(v, w, x0, base, x1, base, colour);
-    box_line(v, w, x1, base, x1, top, colour);
-    box_line(v, w, x1, top, x0, top, colour);
-    box_line(v, w, x0, top, x0, base, colour);
+    box_line(v, w, x0, base, x1, base, colour, rop);
+    box_line(v, w, x1, base, x1, top, colour, rop);
+    box_line(v, w, x1, top, x0, top, colour, rop);
+    box_line(v, w, x0, top, x0, base, colour, rop);
     /* The fifth line is the row above the baseline -- except for a box with no
      * height at all, which has no row above to use: there the original puts it
      * beside the baseline instead, one pixel along.  TEST6 has four of those
      * (strings whose height truncates to nothing) and draws them three pixels
      * wide in a single row. */
     if (h == 0) {
-        box_line(v, w, x0 + 1, base, x1 + 1, base, colour);
+        box_line(v, w, x0 + 1, base, x1 + 1, base, colour, rop);
     } else {
-        box_line(v, w, x0, base - 1, x1, base - 1, colour);
+        box_line(v, w, x0, base - 1, x1, base - 1, colour, rop);
     }
 }
 
@@ -587,7 +587,8 @@ static void draw_text_turned(VGA *v, const JwcText *t, const JwView *w,
  * does the upright box, whose fifth line is the row above the baseline. */
 static void draw_text_box_turned(VGA *v, const JwView *w, double x0, double y0,
                                  double x1, double y1, double ux, double uy,
-                                 double rdx, double rdy, int h, unsigned colour)
+                                 double rdx, double rdy, int h, unsigned colour,
+                                 unsigned rop)
 {
     const double nx = uy, ny = -ux;
     const int ax = (int)floor(x0), ay = (int)ceil(y0);
@@ -604,10 +605,10 @@ static void draw_text_box_turned(VGA *v, const JwView *w, double x0, double y0,
         !inside(w, cx, cy) || !inside(w, dx, dy)) {
         return;
     }
-    jw_line(v, ax, ay, bx, by, colour, ROP_REPLACE, JW_STYLE_SOLID);
-    jw_line(v, bx, by, cx, cy, colour, ROP_REPLACE, JW_STYLE_SOLID);
-    jw_line(v, cx, cy, dx, dy, colour, ROP_REPLACE, JW_STYLE_SOLID);
-    jw_line(v, dx, dy, ax, ay, colour, ROP_REPLACE, JW_STYLE_SOLID);
+    jw_line(v, ax, ay, bx, by, colour, rop, JW_STYLE_SOLID);
+    jw_line(v, bx, by, cx, cy, colour, rop, JW_STYLE_SOLID);
+    jw_line(v, cx, cy, dx, dy, colour, rop, JW_STYLE_SOLID);
+    jw_line(v, dx, dy, ax, ay, colour, rop, JW_STYLE_SOLID);
     {
         /* Which way the extra line goes is the original's own comparison, at
          * 18B3:1A2C: it keeps the box's depth as a pair of 16.16 numbers, and
@@ -634,7 +635,7 @@ static void draw_text_box_turned(VGA *v, const JwView *w, double x0, double y0,
 
         if (inside(w, ax + ex, ay + ey) && inside(w, bx + ex, by + ey)) {
             jw_line(v, ax + ex, ay + ey, bx + ex, by + ey,
-                    colour, ROP_REPLACE, JW_STYLE_SOLID);
+                    colour, rop, JW_STYLE_SOLID);
         }
     }
 }
@@ -674,6 +675,42 @@ void jw_view_arc(VGA *v, const Jwc *d, const JwcArc *a, const JwView *w,
     } else {
         jw_arc_poly(v, cx, cy, r, a->flatten, a->start, a->end, a->tilt,
                     colour, ROP_REPLACE, jw_view_line_style(a->type));
+    }
+}
+
+/* The box a string shows as when it is too small to draw its letters -- and
+ * what 図形 ②読込's preview shows for **every** string, whatever its size:
+ * the original's 仮表示 puts boxes where the drawing itself has letters.
+ * That is why this is a routine of its own with a colour and a mode. */
+static void text_box(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
+                     double unit, unsigned colour, unsigned rop)
+{
+    const double dx = t->x1 - t->x0, dy = t->y1 - t->y0;
+    const double len0 = dx * dx + dy * dy;
+    const double len = len0 > 0.0 ? len0 : 1.0;
+    const int turned = dy != 0.0 || dx < 0.0;
+    const int y = (int)ceil((double)(w->ay - (t->y0 - w->oy) * w->scale));
+    const double height = text_height(d, t, unit);
+
+    if (turned) {
+        /* The length rounded to a float, which is where the original keeps
+         * it.  TEST7's `14.0` runs from x 327.00386 to 327.00403 -- a sixth
+         * of a thousandth of a pixel of slope -- and in double that is enough
+         * to make the unit vector 0.9999999997 instead of 1, and the far side
+         * of the box lands on 329 instead of 330.  A float cannot hold the
+         * difference and neither could the original. */
+        const double m = (float)sqrt(len);
+
+        draw_text_box_turned(v, w,
+                             ((double)t->x0 - w->ox) * w->scale + w->ax,
+                             w->ay - ((double)t->y0 - w->oy) * w->scale,
+                             ((double)t->x1 - w->ox) * w->scale + w->ax,
+                             w->ay - ((double)t->y1 - w->oy) * w->scale,
+                             dx / m, -dy / m, dx, dy,
+                             (int)height, colour, rop);
+    } else {
+        draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1), y, (int)height,
+                      colour, rop);
     }
 }
 
@@ -721,26 +758,7 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
 
     height = text_height(d, t, unit);
     if ((int)height < TEXT_GLYPH_MIN) {
-        if (turned) {
-            /* The length rounded to a float, which is where the original keeps
-             * it.  TEST7's `14.0` runs from x 327.00386 to 327.00403 -- a
-             * sixth of a thousandth of a pixel of slope -- and in double that
-             * is enough to make the unit vector 0.9999999997 instead of 1, and
-             * the far side of the box lands on 329 instead of 330.  A float
-             * cannot hold the difference and neither could the original. */
-            const double m = (float)sqrt(len);
-
-            draw_text_box_turned(v, w,
-                                 ((double)t->x0 - w->ox) * w->scale + w->ax,
-                                 w->ay - ((double)t->y0 - w->oy) * w->scale,
-                                 ((double)t->x1 - w->ox) * w->scale + w->ax,
-                                 w->ay - ((double)t->y1 - w->oy) * w->scale,
-                                 dx / m, -dy / m, dx, dy,
-                                 (int)height, colour);
-        } else {
-            draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1), y, (int)height,
-                          colour);
-        }
+        text_box(v, d, t, w, unit, colour, ROP_REPLACE);
         return;
     }
     /* Anything but a left-to-right baseline goes to the routine above, which is
@@ -1209,6 +1227,72 @@ void jw_view_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
                   unsigned colour)
 {
     draw_text(v, d, t, w, (double)d->unit_mm * w->scale, colour);
+}
+
+/* 図形 ②読込's preview draws every string as a box, and **not the same box**
+ * the drawing puts round a string too small to read.  Measured on a figure
+ * cut out of the whole of TEST1 and previewed at (190,72):
+ *
+ *   * the baseline is **truncated**, where the drawing's own box rounds it
+ *     up: the string whose baseline lands on screen y 118.0808 has its box
+ *     from 109 to 118, and the one on 362.7643 sits on 362.
+ *   * the height goes **up**: TEST1's size-10 strings are 8.72 tall and the
+ *     box is nine rows, 96 to 105 and 100 to 109.
+ *   * there are **four sides and no fifth**: rows 96 and 105 are the whole
+ *     width and the eight between them have only the two verticals.  The
+ *     drawing's box has a fifth line just above the baseline; this has none.
+ *
+ * The four corners come out **black**, because each is drawn twice and this
+ * is exclusive-or: the horizontal sides show from x0+1 to x1-1.
+ */
+void jw_view_text_ghost(VGA *v, const Jwc *d, const JwcText *t,
+                        const JwView *w, unsigned colour, unsigned rop)
+{
+    const double unit = (double)d->unit_mm * w->scale;
+    const double dx = t->x1 - t->x0, dy = t->y1 - t->y0;
+    const double len0 = dx * dx + dy * dy;
+    const double len = len0 > 0.0 ? len0 : 1.0;
+    const int h = (int)ceil(text_height(d, t, unit));
+
+    if (!t->text || !*t->text) {
+        return;
+    }
+    if (dy != 0.0 || dx < 0.0) {
+        const double m = (float)sqrt(len);
+
+        draw_text_box_turned(v, w,
+                             ((double)t->x0 - w->ox) * w->scale + w->ax,
+                             w->ay - ((double)t->y0 - w->oy) * w->scale,
+                             ((double)t->x1 - w->ox) * w->scale + w->ax,
+                             w->ay - ((double)t->y1 - w->oy) * w->scale,
+                             dx / m, -dy / m, dx, dy, h, colour, rop);
+        return;
+    }
+    {
+        /* **Both edges truncated from the float**, not the baseline and a
+         * whole number of rows: the string whose baseline lands on
+         * 217.999985 has its box from 209 to 217, and one on 105.0 exactly
+         * from 96 to 105 -- nine rows and eight, for the same 8.72-pixel
+         * character.  trunc(y) and trunc(y - height) give both. */
+        const double sy = w->ay - (t->y0 - w->oy) * w->scale;
+        const int base = (int)sy;
+        const int x0 = to_x(w, t->x0), x1 = to_x(w, t->x1);
+        const int top = (int)(sy - text_height(d, t, unit));
+
+        box_line(v, w, x0, base, x1, base, colour, rop);
+        box_line(v, w, x1, base, x1, top, colour, rop);
+        box_line(v, w, x1, top, x0, top, colour, rop);
+        box_line(v, w, x0, top, x0, base, colour, rop);
+    }
+}
+
+void jw_view_text_box(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
+                      unsigned colour, unsigned rop)
+{
+    if (!t->text || !*t->text) {
+        return;
+    }
+    text_box(v, d, t, w, (double)d->unit_mm * w->scale, colour, rop);
 }
 
 void jw_view_rgba(const VGA *v, const unsigned char *pixels, unsigned char *rgba)

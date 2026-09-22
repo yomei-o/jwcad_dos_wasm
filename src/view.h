@@ -87,6 +87,17 @@ void jw_view_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
  * of what it reddened. */
 unsigned jw_view_text_colour(const Jwc *d, unsigned size);
 
+/* The box a string shows as, in a colour and a mode of the caller's choosing.
+ * 図形 ②読込's preview draws every string this way whatever its size, which
+ * is what the original does. */
+void jw_view_text_box(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
+                      unsigned colour, unsigned rop);
+
+/* And the box 図形 ②読込's preview draws, which is not the same one -- see
+ * src/view.c for the three ways it differs. */
+void jw_view_text_ghost(VGA *v, const Jwc *d, const JwcText *t,
+                        const JwView *w, unsigned colour, unsigned rop);
+
 /* One line, clipped the way jw_view_draw clips it. */
 /* A line in drawing coordinates, cut to the window.  What the range marking
  * uses: jw_line itself does not clip. */

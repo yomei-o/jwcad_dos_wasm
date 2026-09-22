@@ -187,10 +187,113 @@ static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
                        double *ax, double *ay, double *bx, double *by,
                        double *side);
 
-void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
+/* 図形 ②読込's ⑤仮表示: the figure follows the pointer until a press puts
+ * it down.
+ *
+ * Colour 2 and exclusive-or, like every other band.  Measured -- with the
+ * pointer at (190,72) SAMPLE0's BOX shows as a red column at x=251 from y=81
+ * to 99, which is its base point at the pointer, and moved so that it crosses
+ * the drawing's white frame the pixel where they meet comes out 00ffff, which
+ * is 7 xor 2 and not 2. */
+static void zukei_ghost(const JwCmd *c, const Jwc *d, VGA *v,
+                        const JwView *w, int sx, int sy)
+{
+    const JwcZukei *z = c->zukei_in;
+    const float mmk = c->zukei_scale;
+    double px, py;
+    long k;
+
+    if (!z || mmk == 0.0f) {
+        return;
+    }
+    /* **Only while the pointer is over the drawing.**  Measured: ①選択確定
+     * takes the figure with the pointer still on the top line, and nothing
+     * is drawn until it comes back down -- where a press on the list's own
+     * cell, which is inside the drawing, shows it at once. */
+    if (sx < w->x0 || sx > w->x1 || sy < w->y0 || sy > w->y1) {
+        return;
+    }
+    /* The chrome leaves the clip wide open and jw_line does not clip. */
+    v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+    v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+    v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+    v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+    jw_cmd_at(w, sx, sy, &px, &py);
+    for (k = 0; k < z->n_lines; k++) {
+        const JwcLine *l = &z->lines[k];
+        int x0, y0, x1, y1;
+
+        at_screen(w, px + (double)(l->x0 / mmk), py + (double)(l->y0 / mmk),
+                  &x0, &y0);
+        at_screen(w, px + (double)(l->x1 / mmk), py + (double)(l->y1 / mmk),
+                  &x1, &y1);
+        jw_line(v, x0, y0, x1, y1, 2, 0x18, jw_view_line_style(l->type));
+    }
+    for (k = 0; k < z->n_arcs; k++) {
+        const JwcArc *a = &z->arcs[k];
+        const double cx = (px + (double)(a->cx / mmk) - w->ox) * w->scale
+                        + w->ax;
+        const double cy = w->ay
+                        - (py + (double)(a->cy / mmk) - w->oy) * w->scale;
+
+        jw_arc_poly(v, cx, cy, (double)(a->r / mmk) * w->scale, a->flatten,
+                    a->start, a->end, a->tilt, 2, 0x18,
+                    jw_view_line_style(a->type));
+    }
+    for (k = 0; k < z->n_points; k++) {
+        int x, y;
+
+        at_screen(w, px + (double)(z->points[k].x / mmk),
+                  py + (double)(z->points[k].y / mmk), &x, &y);
+        jw_point(v, x, y, 2, 0x18);
+    }
+    /* The strings show as **boxes, in colour 1**, not as letters.  Measured
+     * on a figure cut out of the whole of TEST1: where a box falls on black
+     * the pixel comes out 0000ff, over the drawing's magenta text f30000 and
+     * over a white line ffff00 -- which is 1 exclusive-or'd with 0, 3 and 7.
+     * Colour 2, which the lines and the arcs use, would have given 2, 1 and
+     * 5.  And they are boxes where the drawing itself has readable letters,
+     * so it is not the ordinary text routine deciding it is too small. */
+    for (k = 0; d && k < z->n_texts; k++) {
+        JwcText t = z->texts[k];
+        /* **The strings are turned into units the other way round**: times
+         * one over the factor, where the lines and the arcs above divide by
+         * it.  Two routines in the original and they do not agree to the
+         * last bit -- and it shows: the whole of TEST1 previewed at (190,72)
+         * comes out 39 pixels from the original's with the lines divided and
+         * 750 with them multiplied, and the strings' boxes 0 pixels out
+         * multiplied against 522 divided. */
+        const float inv = 1.0f / mmk;
+
+        t.x0 = (float)(px + (double)(z->texts[k].x0 * inv));
+        t.y0 = (float)(py + (double)(z->texts[k].y0 * inv));
+        t.x1 = (float)(px + (double)(z->texts[k].x1 * inv));
+        t.y1 = (float)(py + (double)(z->texts[k].y1 * inv));
+        jw_view_text_ghost(v, d, &t, w, 1, 0x18);
+    }
+}
+
+void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
+                 int sx, int sy)
 {
     int px, py;
 
+    /* 図形 ②読込, with a figure in hand: it is at the pointer from the
+     * moment it is picked, before anything has moved. */
+    if (c->command == 27
+        && (c->zukei == JW_ZUKEI_PUT || c->zukei == JW_ZUKEI_PUT2)) {
+        /* **Only until the first copy is down.**  Freshly picked it is at
+         * the pointer at once, before anything has moved, and it follows:
+         * (251,81), (361,209), (461,309) for the pointer at (190,72),
+         * (300,200) and (400,300).  Once a copy has been placed there is
+         * none at all -- not on the press, not after the pointer moves
+         * twice, not after a second copy goes down.  ⑤仮表示 is presumably
+         * what turns it back on, and that cell is not done. */
+        if (c->zukei == JW_ZUKEI_PUT) {
+            zukei_ghost(c, d, v, w, sx, sy);
+        }
+        return;
+    }
     /* Nothing is dragged until the pointer has moved off the point just taken.
      * Measured: ／ pressed at (300,200) and left there leaves that pixel black
      * in the original, where a band of no length would have put colour 2 on
@@ -2128,11 +2231,16 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * draws a new entity over the finished screen instead of redrawing, so
      * this puts them back afterwards.  ２線's pair reaches y=26 on SAMPLE0
      * and lost 201 pixels to that fill. */
+    /* 図形 ②読込 needs it too, and its road has no range in hand -- what it
+     * has is a figure.  The same difference shows: a placed line crossing one
+     * of the drawing's strings is on top in the original and was under it
+     * here (18 pixels of TEST1's figure placed at (300,300)). */
     if (!d || !(JW_RANGE_CMD(c->command) || c->command == 8
                 || c->command == 9 || c->command == 19 || c->command == 20
                 || c->command == 23 || c->command == 26
                 || c->command == 14)
-        || (JW_RANGE_CMD(c->command) && c->pressed != 2)) {
+        || (JW_RANGE_CMD(c->command) && c->pressed != 2
+            && !(c->command == 27 && c->zukei == JW_ZUKEI_PUT2))) {
         return;
     }
     /* The drawing window again: the chrome leaves the clip open to the
@@ -2401,8 +2509,31 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     }
     /* 図形 ①登録 -- the same range 複写 takes, and then a base point and a
      * name.  src/zukei.h holds the line at each step. */
-    if (c->command == 27 && c->pressed == 0 && c->stage == 0 && item == 1) {
+    if (c->command == 27 && c->pressed == 0 && c->stage == 0 && item == 1
+        && !c->zukei) {
         c->zukei = JW_ZUKEI_RANGE;
+        return 1;
+    }
+    /* 図形 ②読込 -- the same list, to read one back into the drawing.
+     *
+     * **Only when the group has something in it.**  An empty group answers
+     * `登録図形がありません（グループ変更）` instead, and that is still the
+     * line src/item.h holds, because the distribution ships no figures at
+     * all: `orig/` has no ZUKEI_1_ until something is registered. */
+    if (c->command == 27 && c->pressed == 0 && c->stage == 0 && item == 2
+        && c->zukei_n > 0) {
+        c->zukei = JW_ZUKEI_LIST;
+        return 1;
+    }
+    /* And on ②読込's list, ①選択確定 takes the figure that is picked.  The
+     * host has already read it -- that is what zukei_in is -- so if there is
+     * nothing in hand the press does nothing. */
+    if (c->command == 27 && c->zukei == JW_ZUKEI_LIST && item == 1
+        && c->zukei_in) {
+        c->zukei = JW_ZUKEI_PUT;
+        c->n0_lines = d ? d->n_lines : 0;
+        c->n0_arcs = d ? d->n_arcs : 0;
+        c->n0_texts = d ? d->n_texts : 0;
         return 1;
     }
     /* On the list of figures, ①選択確定 takes the cell that is picked --
@@ -3971,6 +4102,94 @@ static void poly_corner(JwCmd *c, Jwc *d, double bx, double by,
     c->poly_dy = vy;
 }
 
+/* 図形 ②読込 -- put the figure down with its base point at (px,py).
+ *
+ * Everything about this was measured by having the original place a figure
+ * and then save the drawing (tools/zukeiplace.sh), and reading the records
+ * it wrote:
+ *
+ *   * the coordinates are the file's millimetres **times the reciprocal** of
+ *     what jwc_zukei_bytes multiplied by, as a float.  Not divided by it:
+ *     TEST3's arc of 5000mm comes back 21.8013458 one way and 21.8013477 the
+ *     other, and the original's own file says 21.8013458.  The round trip is
+ *     not exact -- that arc started at 21.8013477 -- and the original's is
+ *     not either.
+ *   * every entity goes on the **drawing's write layer**, whatever layer it
+ *     had in the figure: SAMPLE0's 0, TEST1's 4 and TEST3's 1, against
+ *     figures whose own layers were 0, 1, 2 and 4.
+ *   * the spare bytes: a line and a text keep only bit 7 of the third one
+ *     (02, 03, 0a and 4a all come out 00; 82 comes out 80, which is what
+ *     makes a text vertical) and get 0x08 in the fourth.  An arc and a point
+ *     get 0x10 in the third and keep the fourth (an arc's 5f and 01, a
+ *     point's 26).
+ */
+static void zukei_place(JwCmd *c, Jwc *d, double px, double py)
+{
+    const JwcZukei *z = c->zukei_in;
+    const float inv = 1.0f / jwc_zukei_scale(d);
+    const unsigned char layer = (unsigned char)d->write_layer;
+    long k;
+
+    if (!z) {
+        return;
+    }
+    for (k = 0; k < z->n_lines; k++) {
+        JwcLine l = z->lines[k];
+
+        l.x0 = (float)(px + (double)(z->lines[k].x0 * inv));
+        l.y0 = (float)(py + (double)(z->lines[k].y0 * inv));
+        l.x1 = (float)(px + (double)(z->lines[k].x1 * inv));
+        l.y1 = (float)(py + (double)(z->lines[k].y1 * inv));
+        l.layer = layer;
+        l.rest[0] = layer;
+        l.rest[2] = (unsigned char)(z->lines[k].rest[2] & 0x80);
+        l.rest[3] = 0x08;
+        if (!jwc_put_line(d, &l)) {
+            return;
+        }
+    }
+    for (k = 0; k < z->n_arcs; k++) {
+        JwcArc a = z->arcs[k];
+
+        a.cx = (float)(px + (double)(z->arcs[k].cx * inv));
+        a.cy = (float)(py + (double)(z->arcs[k].cy * inv));
+        a.r = z->arcs[k].r * inv;
+        a.layer = layer;
+        a.rest[0] = layer;
+        a.rest[2] = 0x10;
+        if (!jwc_put_arc(d, &a)) {
+            return;
+        }
+    }
+    for (k = 0; k < z->n_points; k++) {
+        JwcPoint q = z->points[k];
+
+        q.x = (float)(px + (double)(z->points[k].x * inv));
+        q.y = (float)(py + (double)(z->points[k].y * inv));
+        q.layer = layer;
+        q.rest[0] = layer;
+        q.rest[2] = 0x10;
+        if (!jwc_put_point(d, &q)) {
+            return;
+        }
+    }
+    for (k = 0; k < z->n_texts; k++) {
+        JwcText t = z->texts[k];
+
+        t.x0 = (float)(px + (double)(z->texts[k].x0 * inv));
+        t.y0 = (float)(py + (double)(z->texts[k].y0 * inv));
+        t.x1 = (float)(px + (double)(z->texts[k].x1 * inv));
+        t.y1 = (float)(py + (double)(z->texts[k].y1 * inv));
+        t.layer = layer;
+        t.rest[1] = layer;
+        t.rest[2] = (unsigned char)(z->texts[k].rest[2] & 0x80);
+        t.rest[3] = 0x08;
+        if (!jwc_put_text(d, &t)) {
+            return;
+        }
+    }
+}
+
 int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
 {
     double x, y;
@@ -3994,6 +4213,16 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
      * base point -- `◇原図形の基準点位置 マウス指示 (L)free (R)Read` -- and
      * the figure is written out measured from it.  The screen then goes to
      * the list of figures in the group. */
+    /* 図形 ②読込, once a figure is in hand: every press puts a copy down
+     * with its base point there, and the line turns into ◆ 位置指示 with
+     * ①同図形別処理 and ②他図形読込 on it. */
+    if (c->command == 27
+        && (c->zukei == JW_ZUKEI_PUT || c->zukei == JW_ZUKEI_PUT2)) {
+        jw_cmd_at(w, sx, sy, &x, &y);
+        zukei_place(c, d, x, y);
+        c->zukei = JW_ZUKEI_PUT2;
+        return 1;
+    }
     if (c->command == 27 && c->zukei == JW_ZUKEI_RANGE && c->pressed == 2) {
         jw_cmd_at(w, sx, sy, &x, &y);
         c->zukei_bx = x;

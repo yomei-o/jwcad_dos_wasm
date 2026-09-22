@@ -60,6 +60,12 @@ static char status[256];
  * range and the 追加･除外 list do the picking, which is what 図形 used anyway. */
 static JwCmd zukei_left;
 static int zukei_left_on;
+/* **Outside the JwUi.**  jw_ui_from clears that whole struct after any press
+ * that changes the drawing, so the names and the pick are kept here and
+ * copied in by sync_ui, the way the drawing list is re-read. */
+static char zukei_names[50][10];
+static int zukei_names_n;
+static int zukei_pick;
 static int mouse_x = 200, mouse_y = 200;   /* where the original leaves it */
 
 EMSCRIPTEN_KEEPALIVE int jw_width(void)  { return vga.width; }
@@ -69,6 +75,10 @@ EMSCRIPTEN_KEEPALIVE const char *jw_status(void) { return status; }
 
 static void present(void);
 
+/* 図形 ②読込 reads the group when the module starts; the reader itself is
+ * further down, beside the rest of the disk. */
+static void zukei_list_read(void);
+
 EMSCRIPTEN_KEEPALIVE void jw_init(void)
 {
     vga_reset(&vga, 0x12);
@@ -76,6 +86,7 @@ EMSCRIPTEN_KEEPALIVE void jw_init(void)
     jw_ui_default(&ui);
     ui.guide = jw_ui_guide();
     strcpy(status, jw_view_fonts("font") ? "ready" : "ready (no font)");
+    zukei_list_read();
     /* **The original makes an empty AUTO.JWC at startup**, and it is in the
      * list ②読込 shows.  Traced on the real program: it opens A:\\AUTO.JWC,
      * gets "not found", and creates it (DOSEMU_FILE_TRACE=1 over the first
@@ -152,6 +163,9 @@ static void sync_ui(void)
      * the selection machinery counts in `pressed`; the rest are its own. */
     memcpy(ui.zukei_name, cmd.zukei_name, sizeof ui.zukei_name);
     ui.zukei_name_n = cmd.zukei_name_n;
+    memcpy(ui.zukei_list, zukei_names, sizeof ui.zukei_list);
+    ui.zukei_list_n = zukei_names_n;
+    ui.zukei_sel = zukei_pick;
     ui.zukei = cmd.zukei > JW_ZUKEI_BASE ? cmd.zukei
              : cmd.zukei ? (cmd.pressed == 0 ? 1 : cmd.pressed == 1 ? 2 : 3)
              : 0;
@@ -195,7 +209,8 @@ static int panel_up(void)
     }
     if (ui.command == 27
         && (ui.again || ui.top_item == 4
-            || (ui.zukei >= JW_ZUKEI_PICK && ui.zukei < JW_ZUKEI_WRITE))) {
+            || (ui.zukei >= JW_ZUKEI_PICK && ui.zukei < JW_ZUKEI_WRITE)
+            || ui.zukei == JW_ZUKEI_LIST)) {
         return 1;
     }
     if (ui.command == 29 && ui.top_item >= 1 && ui.top_item <= 3) {
@@ -226,10 +241,19 @@ static void present(void)
             jw_cmd_zukei_left(&zukei_left, &vga, drawing, &view);
         }
         jw_cmd_after(&cmd, &vga, drawing, &view);
+    } else {
+        /* **A panel loses what 図形 ①登録 left on top.**  The original does
+         * not repaint while the figure it wrote is still standing over the
+         * drawing -- 図形 and ①登録 pressed again leave it alone -- but the
+         * list of figures covers the drawing, and what comes back afterwards
+         * is a fresh painting with the drawing's own order.  Measured: with
+         * the whole of TEST1 registered and then ②読込 pressed, the string
+         * the registered line crosses is on top again (7 pixels). */
+        zukei_left_on = 0;
     }
     /* the line a half-finished command drags, then the pointer -- both
      * exclusive-or, and both after everything else */
-    jw_cmd_band(&cmd, &vga, &view, mouse_x, mouse_y);
+    jw_cmd_band(&cmd, drawing, &vga, &view, mouse_x, mouse_y);
     if (ui.zoom_stage == 2) {
         jw_ui_zoom_band(&vga, zoom_x, zoom_y, mouse_x, mouse_y);
     }
@@ -707,6 +731,103 @@ static int zukei_write(void)
     zukei_left.sel_arc = NULL;
     zukei_left.sel_text = NULL;
     zukei_left_on = 1;
+    zukei_list_read();          /* it is in the group now */
+    return 1;
+}
+
+/* 図形 ②読込 -- the group's own directory, and the figure in hand.
+ *
+ * `A:ZUKEI_1_` is group 1 of the fifty the HELP says there are, each holding
+ * fifty figures.  The port reads the directory whenever something could have
+ * changed it, which is at the start and after a figure is written.
+ */
+#define ZUKEI_DIR JW_DIR "/ZUKEI_1_"
+
+static JwcZukei zukei_in;
+static int zukei_in_on;
+
+static int zukei_cmp(const void *a, const void *b)
+{
+    return strcmp((const char *)a, (const char *)b);
+}
+
+static void zukei_list_read(void)
+{
+    DIR *dir = opendir(ZUKEI_DIR);
+    struct dirent *e;
+    int n = 0;
+
+    zukei_names_n = 0;
+    zukei_pick = 0;
+    if (dir) {
+        while ((e = readdir(dir)) != NULL && n < 50) {
+            const char *dot = strrchr(e->d_name, '.');
+            int k;
+
+            if (!dot || strcasecmp(dot, ".JWK") != 0) {
+                continue;
+            }
+            if (dot - e->d_name > 8 || dot == e->d_name) {
+                continue;
+            }
+            for (k = 0; k < (int)(dot - e->d_name); k++) {
+                zukei_names[n][k] =
+                    (char)toupper((unsigned char)e->d_name[k]);
+            }
+            zukei_names[n][dot - e->d_name] = 0;
+            n++;
+        }
+        closedir(dir);
+    }
+    qsort(zukei_names, (size_t)n, sizeof zukei_names[0], zukei_cmp);
+    zukei_names_n = n;
+    cmd.zukei_n = n;
+}
+
+/* Take the figure in cell `at` into hand: read the file and work out what a
+ * millimetre of it is in this drawing's units. */
+static int zukei_take(int at)
+{
+    char path[256];
+    const char *why;
+    unsigned char *raw;
+    long len;
+    FILE *f;
+
+    if (at < 0 || at >= zukei_names_n || !drawing) {
+        return 0;
+    }
+    sprintf(path, "%s/%s.JWK", ZUKEI_DIR, zukei_names[at]);
+    f = fopen(path, "rb");
+    if (!f) {
+        sprintf(status, "%s: cannot open", path);
+        return 0;
+    }
+    fseek(f, 0, SEEK_END);
+    len = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    raw = len > 0 ? (unsigned char *)malloc((size_t)len) : NULL;
+    if (!raw || fread(raw, 1, (size_t)len, f) != (size_t)len) {
+        free(raw);
+        fclose(f);
+        sprintf(status, "%s: cannot read", path);
+        return 0;
+    }
+    fclose(f);
+    if (zukei_in_on) {
+        jwc_zukei_free(&zukei_in);
+        zukei_in_on = 0;
+        cmd.zukei_in = NULL;
+    }
+    if (!jwc_zukei_read(&zukei_in, raw, len, &why)) {
+        free(raw);
+        sprintf(status, "%s", why ? why : "not a figure");
+        return 0;
+    }
+    free(raw);
+    zukei_in_on = 1;
+    cmd.zukei_in = &zukei_in;
+    cmd.zukei_scale = jwc_zukei_scale(drawing);
     return 1;
 }
 
@@ -1563,10 +1684,43 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             && jw_ui_top_item(x, y) == 1) {
             zukei_write();
         }
+        /* ②読込's ①選択確定 reads the file the list has picked; jw_cmd_top
+         * then moves the road on to 位置指示. */
+        if (cmd.command == 27 && cmd.zukei == JW_ZUKEI_LIST
+            && jw_ui_top_item(x, y) == 1) {
+            zukei_take(zukei_pick);
+        }
         if (jw_cmd_top(&cmd, drawing, jw_ui_top_item(x, y), right)) {
             jw_ui_from(&ui, drawing);       /* the counts move with it */
             ui.command = cmd.command;
             ui.guide = 0;
+        }
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* 図形 ②読込's list: a press on another cell moves the pick and leaves
+     * the list up, a press on the one already picked takes that figure.  The
+     * same rule the drawing list has, and measured the same way: with AAA and
+     * BOX in the group, one press on BOX's cell turns BOX black-on-white and
+     * AAA plain and nothing else, and a second press puts BOX in hand. */
+    if (cmd.command == 27 && cmd.zukei == JW_ZUKEI_LIST
+        && x >= 144 && x < 624 && y >= 56 && y < 376) {
+        const int at = (y - 56) / 32 * 5 + (x - 144) / 96;
+
+        if (at < zukei_names_n) {
+            if (at != zukei_pick) {
+                zukei_pick = at;
+            } else if (zukei_take(at)) {
+                cmd.zukei = JW_ZUKEI_PUT;
+                /* what the drawing had before any of it went down, so that
+                 * jw_cmd_after can put the copies back on top */
+                cmd.n0_lines = drawing->n_lines;
+                cmd.n0_arcs = drawing->n_arcs;
+                cmd.n0_texts = drawing->n_texts;
+            }
         }
         mouse_x = x;
         mouse_y = y;
