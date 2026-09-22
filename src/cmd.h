@@ -227,6 +227,9 @@ typedef struct {
      * entry goes out of the table. */
     int top_item;
     int top_right;
+    /* A press on the top line that landed outside every cell.  The command's
+     * band goes and the two counts come back; nothing else changes. */
+    int band_off;
     /* The menu item was picked while it was already the one in force -- see
      * JwUi.again.  It lives here because jw_ui_from starts from a cleared
      * JwUi, so anything kept only there is lost the moment a press makes the

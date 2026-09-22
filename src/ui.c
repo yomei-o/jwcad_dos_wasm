@@ -355,6 +355,29 @@ static void top_clear(void)
     top_line[sizeof top_line - 1] = 0;
 }
 
+/* Is this press on the top line and past the last of its cells?  A press on
+ * a bar is on the line's own furniture and is not this. */
+int jw_ui_past_cells(int x, int y)
+{
+    const int col = x / 8 + 1;
+    int i;
+
+    if (y < 0 || y > 15 || col < 1 || col > 80) {
+        return 0;
+    }
+    for (i = col - 1; i < 80; i++) {
+        if (top_line[i] == '|') {
+            return 0;
+        }
+    }
+    for (i = 0; i < col - 1; i++) {
+        if (top_line[i] == '|') {
+            return 1;           /* there were cells, and this is after them */
+        }
+    }
+    return 0;
+}
+
 int jw_ui_top_item(int x, int y)
 {
     const int col = x / 8 + 1;
@@ -376,7 +399,10 @@ int jw_ui_top_item(int x, int y)
             break;
         }
     }
-    if (i >= 80) {
+    if (i >= 80 && (top_line[col - 1] == ' ' || top_line[col - 1] == 0)) {
+        /* Past the last bar and on nothing: no cell.  What is written out
+         * there **is** one, though -- 文字's line ends `|⑥(横)字|  [BS]前項`
+         * and pressing 前項 puts the two counts back. */
         return 0;
     }
     for (i = 0; i < col - 1; i++) {
@@ -2041,7 +2067,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * (文字 does it at 43,996,047 instructions in).  Only when it writes
          * inside that box: ハッチ puts 残数 at column 70 and leaves the counts
          * alone. */
-        for (q = p; q->col; q++) {
+        for (q = p; !s->band_off && q->col; q++) {
+            /* Not when the band has been turned off: the box is cleared to
+             * make room for what the command writes there, and with the
+             * command's band gone the two counts stay where they are. */
             if (q->row != 1 && q->col <= 15) {
                 fill(v, 1, 17, 120, 47, 4);
                 break;
@@ -2090,7 +2119,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * row 2 empty; what the press writes there is in src/item.h
              * like everything else, so the prompt's own rows 2 and 3 are
              * skipped whenever a cell has been pressed. */
-            if (s->top_item && p->row != 1) {
+            if ((s->top_item || s->band_off) && p->row != 1) {
                 continue;
             }
             /* 面取's ① has gone round to another shape: the line is

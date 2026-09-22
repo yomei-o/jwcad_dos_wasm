@@ -141,6 +141,7 @@ static void sync_ui(void)
     ui.poly_deg = cmd.poly_deg;
     ui.again = cmd.again;
     ui.top_item = cmd.top_item;
+    ui.band_off = cmd.band_off;
     ui.top_right = cmd.top_right;
     ui.ask_kind = cmd.ask_kind;
     ui.gap = cmd.gap;
@@ -1468,6 +1469,18 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             cmd.top_item = item;
             cmd.top_right = right;
         }
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* The top line, but on none of its cells: the command's band goes and
+     * the two counts come back.  See JwCmd.band_off. */
+    if (cmd.command && y >= 0 && y <= 15 && !jw_ui_top_item(x, y)
+        && jw_ui_past_cells(x, y)) {
+        cmd.band_off = 1;
+        cmd.top_item = 0;
         mouse_x = x;
         mouse_y = y;
         sync_ui();

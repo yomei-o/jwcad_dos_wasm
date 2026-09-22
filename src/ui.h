@@ -149,6 +149,7 @@ typedef struct {
     int file_path_fg;
     int top_item;
     int top_right;
+    int band_off;               /* JwCmd.band_off */
     /* The menu item was picked while it was already the one in force.  Only
      * 変形 and 図形 do anything with it -- see jw_ui_draw. */
     int again;
@@ -405,6 +406,9 @@ const char *jw_ui_menu_label(int command);
 /* The one black pixel a range screen leaves at the counts box's corner.
  * Called last, after everything else has been drawn. */
 void jw_ui_range_notch(VGA *v);
+
+/* A press on the top line, past its last cell. */
+int jw_ui_past_cells(int x, int y);
 
 /* Which ファイル選択 screen this is: JW_PICK_IO for 入出力's own, and the
  * three others for the commands that borrow it.  Sets file_bar, file_path,
