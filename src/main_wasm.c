@@ -162,8 +162,16 @@ static void present(void)
         && mouse_y >= AREA_Y0 && mouse_y <= AREA_Y1;
     jw_ui_draw(&vga, &ui);
     jw_ui_data(&vga, &ui, drawing);
-    jw_cmd_marked(&cmd, &vga, drawing, &view);
-    jw_cmd_after(&cmd, &vga, drawing, &view);
+    /* **The file screen covers the drawing, and the command under it keeps
+     * quiet.**  jw_cmd_after puts back the entities a running command has
+     * made since it started -- which, with nothing made yet, is the whole
+     * drawing -- and that painted SAMPLE0 over 多角形 ④座標ファイル読込's
+     * list.  The original draws the list over everything and nothing comes
+     * back through it. */
+    if (!ui.io_stage) {
+        jw_cmd_marked(&cmd, &vga, drawing, &view);
+        jw_cmd_after(&cmd, &vga, drawing, &view);
+    }
     /* the line a half-finished command drags, then the pointer -- both
      * exclusive-or, and both after everything else */
     jw_cmd_band(&cmd, &vga, &view, mouse_x, mouse_y);
@@ -438,6 +446,18 @@ static void file_list_ext(int for_save, const char *ext)
 static void file_list(int for_save)
 {
     file_list_ext(for_save, "JWC");
+    jw_ui_pick_kind(&ui, JW_PICK_IO);
+}
+
+/* 図形, 多角形 and ｵﾌﾟｼｮﾝ borrow 入出力's ファイル選択 screen.  See
+ * jw_ui_pick_kind. */
+static void file_pick(int kind)
+{
+    static const char *const EXT[4] = { "JWC", "JWC", "TXT", "BAT" };
+
+    file_list_ext(0, EXT[kind]);
+    jw_ui_pick_kind(&ui, kind);
+    ui.io_stage = JW_IO_LOAD;
 }
 
 /* The name the list has picked, as a path on the module's disk. */
@@ -1206,6 +1226,31 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     /* 入出力's top line is its own menu, and pressing an item there opens
      * another one.  Measured: ①ﾌｧｲﾙ and ②ﾌﾟﾛｯﾀ each replace the line; the
      * rest are not done yet, and pressing them leaves it as it was. */
+    /* **Three other commands open 入出力's ファイル選択 screen.**  図形
+     * ⑦登録 and ⑧複写 list the drawings a figure can be taken out of,
+     * 多角形 ④座標ファイル読込 lists `*.txt` and ｵﾌﾟｼｮﾝ ⑦外部処理 lists
+     * `*.bat`.  The screen is the same one down to the bytes -- only the
+     * top line, the `path=` and the word beside the free space change, and
+     * `編集ファイル名=` is 入出力's alone.  See jw_ui_pick_kind. */
+    if (!ui.io_stage && y >= 0 && y <= 15) {
+        const int it = jw_ui_top_item(x, y);
+        int kind = 0;
+
+        if (ui.command == 27 && (it == 8 || it == 9)) {
+            kind = JW_PICK_ZUKEI;
+        } else if (ui.command == 19 && it == 4) {
+            kind = JW_PICK_COORD;
+        } else if (ui.command == 29 && it == 7) {
+            kind = JW_PICK_CHILD;
+        }
+        if (kind) {
+            file_pick(kind);
+            mouse_x = x;
+            mouse_y = y;
+            present();
+            return -1;
+        }
+    }
     /* A press on one of the rows of ②読込's list picks that drawing.  The
      * rows are 8 to 28 and the list starts at column 17, both measured. */
     if (ui.command == 30

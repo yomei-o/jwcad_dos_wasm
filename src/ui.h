@@ -140,6 +140,13 @@ typedef struct {
     const char *file_bar;
     const char *file_path;
     const char *file_word;
+    /* `編集ファイル名=` on row 3 -- the drawing in hand.  入出力 shows it;
+     * the three other screens do not. */
+    int file_named;
+    /* The colour of the `path=A:\*.xxx` line.  Cyan on three of the four
+     * screens and **green on ｵﾌﾟｼｮﾝ ⑦外部処理's**, which is the original's
+     * own doing: its call says colour 4 where the others say 5. */
+    int file_path_fg;
     int top_item;
     int top_right;
     int ask_kind;
@@ -378,6 +385,15 @@ void jw_ui_text(VGA *v, int col, int row, unsigned fg, unsigned bg,
  * the command number the original's own documentation uses -- USER_MNU.DAT
  * says "複写から測定が 1〜15、移動から入出力が16〜30". */
 const char *jw_ui_menu_label(int command);
+
+/* Which ファイル選択 screen this is: JW_PICK_IO for 入出力's own, and the
+ * three others for the commands that borrow it.  Sets file_bar, file_path,
+ * file_word and file_named. */
+#define JW_PICK_IO    0
+#define JW_PICK_ZUKEI 1         /* 図形 ⑦登録 ⑧複写 -- `*.jwc`, 読込 */
+#define JW_PICK_COORD 2         /* 多角形 ④座標ﾌｧｲﾙ読込 -- `*.txt`, 座標 */
+#define JW_PICK_CHILD 3         /* ｵﾌﾟｼｮﾝ ⑦外部処理 -- `*.bat`, 外部処理 */
+void jw_ui_pick_kind(JwUi *s, int kind);
 char jw_ui_menu_key(int command);
 
 /* And the other way: which command a key picks, or 0.  The capitals take the

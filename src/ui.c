@@ -263,6 +263,45 @@ static int is_lead(unsigned char c)
 #define JW_FILE_EDIT "\x95\xd2\x8f" "W"
 #define JW_FILE_NAMED "\x83" "t" "\x83" "@" "\x83" "C" "\x83\x8b\x96\xbc"
 
+/* The two bars the borrowed screens have that 入出力's has not: a third and
+ * a fourth cell.  Bytes from the original, branches 148 and 268. */
+#define JW_PICK_NAME_BAR \
+    JW_FILE_BAR "\x87" "B" "\xcc\xa7\xb2\xd9\x96\xbc\x8e" "w" \
+    "\x92\xe8" " |" "\x87" "C" "\x8a" "g" "\x92\xa3\x8e" "q" \
+    "\x95\xcf\x8d" "X |"
+#define JW_PICK_CHILD_BAR \
+    JW_FILE_BAR "\x87" "B" "\x8e" "q" "\x83" "v" "\x83\x8d\x83" "Z" \
+    "\x83" "X |" "\x87" "C" "\x8a" "g" "\x92\xa3\x8e" "q" \
+    "\x95\xcf\x8d" "X |"
+
+void jw_ui_pick_kind(JwUi *s, int kind)
+{
+    s->file_named = kind == JW_PICK_IO;
+    s->file_path_fg = kind == JW_PICK_CHILD ? 4 : 5;
+    switch (kind) {
+    case JW_PICK_ZUKEI:
+        s->file_bar = JW_FILE_BAR;
+        s->file_path = JW_FILE_PATH;
+        s->file_word = JW_FILE_LOAD;
+        break;
+    case JW_PICK_COORD:
+        s->file_bar = JW_PICK_NAME_BAR;
+        s->file_path = "path=A:" "\x5c" "*.txt";
+        s->file_word = " " "\x8d\xc0\x95" "W    ";
+        break;
+    case JW_PICK_CHILD:
+        s->file_bar = JW_PICK_CHILD_BAR;
+        s->file_path = "path=A:" "\x5c" "*.bat";
+        s->file_word = " " "\x8a" "O" "\x95\x94\x8f\x88\x97\x9d" "    ";
+        break;
+    default:
+        s->file_bar = 0;
+        s->file_path = 0;
+        s->file_word = 0;
+        break;
+    }
+}
+
 /* 入出力's two menus, byte for byte off the original. */
 #define JW_IO_FILE_BAR \
     "|\x87\x40\x95\xdb\x91\xb6(L)|\x87\x41\x93\xc7\x8d\x9e(R)" \
@@ -1717,8 +1756,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 /* The two questions clear this line as well as the one
                  * below it -- measured: at 同名ﾌｧｲﾙが存在します the cyan
                  * path and count are gone. */
-                jw_ui_text(v, 17, 2, 5, 0,
-                           s->file_path ? s->file_path : JW_FILE_PATH);
+                jw_ui_text(v, 17, 2,
+                           (unsigned)(s->file_path_fg ? s->file_path_fg : 5),
+                           0, s->file_path ? s->file_path : JW_FILE_PATH);
                 sprintf(one, "(%dfiles)", s->file_n);
                 jw_ui_text(v, 70, 2, 5, 0, one);
             }
@@ -1738,9 +1778,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                                      : (saving ? JW_FILE_SAVE : JW_FILE_LOAD),
                         s->file_free);
                 jw_ui_text(v, 17, 3, 7, 0, one);
-                jw_ui_text(v, 51, 3, 7, 0, JW_FILE_EDIT);
-                jw_ui_text(v, 55, 3, 7, 0, JW_FILE_NAMED);
-                jw_ui_text(v, 65, 3, 7, 0, "=");
+                if (s->file_named) {
+                    jw_ui_text(v, 51, 3, 7, 0, JW_FILE_EDIT);
+                    jw_ui_text(v, 55, 3, 7, 0, JW_FILE_NAMED);
+                    jw_ui_text(v, 65, 3, 7, 0, "=");
+                }
             }
             if (s->file_n) {
                 const int sel = s->file_sel;
@@ -1751,7 +1793,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 memcpy(stem, s->file_name[sel], 8);
                 stem[8] = 0;
                 for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
-                if (!asking) {
+                if (!asking && s->file_named) {
                     /* **編集ファイル名 is the drawing in hand**, not the row
                      * the list has picked: the original shows SAMPLE0 there
                      * while AUTO.JWC is the row under the bar. */
@@ -1858,12 +1900,23 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         jw_line(v, t, 126, mid, 113, 7, ROP_REPLACE, 0xffffu);
                         jw_line(v, t, 436, mid, 449, 7, ROP_REPLACE, 0xffffu);
                     }
+                    /* **An empty list has no bands at all.**  多角形
+                     * ④座標ファイル読込 finds no `*.txt`, and the
+                     * original's slider is then the outer box and the two
+                     * triangles and nothing else -- not even the black
+                     * `rest of the track`, which this drew the whole way
+                     * down with a white edge each side. */
+                    if (!s->file_n) {
+                        continue;
+                    }
                     band(v, x0 + 1, 130, x0 + 15, a, 6);
                     band(v, x0 + 1, a, x0 + 15, b, 1);
                     band(v, x0 + 1, b, x0 + 15, c, 6);
                     band(v, x0 + 1, c, x0 + 15, 432, 0);
                     /* the file that is picked, one file's worth, inset by
-                     * one more column and in its own colour */
+                     * one more column and in its own colour.  **Only when
+                     * there is one**: 多角形 ④座標ファイル読込 finds no
+                     * `*.txt` at all and the original's slider is empty. */
                     t = 130 + s->file_sel * 302 / 62;
                     /* Filled and outlined in **its own** colour, not white:
                      * the original's four outline calls for this one are
@@ -1982,6 +2035,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         if (s->top_item) {
             const JwItem *r;
 
+            /* **The row is cleared first.**  A fill leaves no string for
+             * the capture to record, so it is not in src/item.h and had to
+             * be measured: 面取 ①【丸面】 puts up a shorter line than the
+             * one 面取 came up with, and the original has nothing after it
+             * where writing over the prompt left `|④一括処理|` standing.
+             * Clearing took the table from 201 branches out to 131. */
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
             for (r = JW_ITEM; r->command; r++) {
                 if (r->command == s->command && r->item == s->top_item
                     && r->right == s->top_right) {

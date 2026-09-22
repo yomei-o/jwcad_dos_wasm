@@ -64,7 +64,9 @@ if __name__ == '__main__':
         print('    unsigned long stamp; /* DOS date<<16 | time, for the order */')
         print('} JW_FILE_DATE[] = {')
         for n, Y, M, D, h, m, sec in rows:
-            if not n.upper().endswith('.JWC'):
+            # The drawings, and the one `*.bat` ｵﾌﾟｼｮﾝ ⑦外部処理 lists --
+            # its screen shows `98/10/17 02:22` for JW_SAMPL.BAT.
+            if not n.upper().endswith(('.JWC', '.BAT')):
                 continue
             stamp = ((((Y - 1980) << 9) | (M << 5) | D) << 16) \
                     | ((h << 11) | (m << 5) | (sec // 2))

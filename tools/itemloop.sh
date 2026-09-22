@@ -3,10 +3,10 @@
 #
 #     sh tools/itemloop.sh [rounds]
 #
-# A round is: measure every branch, add the ones whose only difference is the
-# top line to the set src/item.h is generated from, rebuild, measure again.
-# The set only grows -- a branch the table already answers measures nought and
-# would otherwise drop out of the list and come straight back.
+# A round is: measure every branch, add the ones that still differ to the set
+# src/item.h is generated from, rebuild, measure again.  The set only grows --
+# a branch the table already answers measures nought and would otherwise drop
+# out of the list and come straight back.
 #
 # tmp/branch/keep.txt is that set.  Delete it to start over.
 set -e
@@ -18,8 +18,8 @@ touch tmp/branch/keep.txt
 i=0
 while [ "$i" -lt "$rounds" ]; do
     i=$((i + 1))
-    python tools/branchsplit.py
-    cat tmp/branch/keep.txt tmp/branch/line.txt | tr ' ' '\n' | grep -E '^[0-9]+$' \
+    awk 'NF>5 && $NF+0>0 {print $1}' tmp/branch/table.txt > tmp/branch/bad2.txt
+    cat tmp/branch/keep.txt tmp/branch/bad2.txt | tr ' ' '\n' | grep -E '^[0-9]+$' \
         | sort -n -u | tr '\n' ' ' > tmp/branch/keep2.txt
     mv tmp/branch/keep2.txt tmp/branch/keep.txt
     python tools/item_table.py $(cat tmp/branch/keep.txt) > src/item.h
