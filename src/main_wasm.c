@@ -78,6 +78,10 @@ EMSCRIPTEN_KEEPALIVE unsigned char *jw_framebuffer(void) { return rgba; }
 EMSCRIPTEN_KEEPALIVE const char *jw_status(void) { return status; }
 
 static void present(void);
+/* 寸法設定 の ペン は図面ごとに保存されています（盤行の 7 番・8 番）。
+ * SAMPLE0 は 1、SAMPLE2 と SAMPLE3 は 2 で、盤を開かずに寸法を引いても
+ * 本物はその値で引きます（SAMPLE2 の 3 本は `01 02 ...`）。 */
+static void dim_from_drawing(void);
 
 /* 図形 ②読込 reads the group when the module starts; the reader itself is
  * further down, beside the rest of the disk. */
@@ -118,6 +122,7 @@ EMSCRIPTEN_KEEPALIVE void jw_init(void)
     jw_view_original(&view);
     jw_cmd_pick(&cmd, 0);
     jw_ui_from(&ui, drawing);
+    dim_from_drawing();
     ui.guide = jw_ui_guide();
     memset(loaded_name, 0, sizeof loaded_name);
     /* The screen the original shows when it is started with no drawing:
@@ -207,8 +212,12 @@ static void sync_ui(void)
     ui.rot_deg = cmd.rot_deg;
     ui.dim_value = cmd.dim_value;
     ui.dim_texts = cmd.dim_texts;
-    ui.dim_w = drawing ? drawing->text_w[JW_DIM_SIZE] / 10.0 : 0.0;
-    ui.dim_h = drawing ? drawing->text_h[JW_DIM_SIZE] / 10.0 : 0.0;
+    ui.dim_w = drawing ? drawing->text_w[drawing->dim_size] / 10.0 : 0.0;
+    ui.dim_h = drawing ? drawing->text_h[drawing->dim_size] / 10.0 : 0.0;
+    ui.dim_text_pen = drawing ? drawing->text_pen[drawing->dim_size] : 0;
+    ui.dim_size = drawing ? drawing->dim_size : 0;
+    ui.dim_guide_n = jw_cmd_guide_pos(&cmd, &view, &ui.dim_guide_vert,
+                                      &ui.dim_guide_a, &ui.dim_guide_b);
     ui.hatch_n = cmd.hatch_n;
     ui.hatch_angle = cmd.hatch_angle;
     ui.hatch_pitch = cmd.hatch_pitch;
@@ -298,6 +307,7 @@ static void drawing_new(void)
     jw_view_original(&view);
     jw_cmd_pick(&cmd, 30);
     jw_ui_from(&ui, drawing);
+    dim_from_drawing();
     ui.command = 30;
     memset(loaded_name, 0, sizeof loaded_name);
     base_mark();
@@ -311,6 +321,14 @@ static int meas_unit, meas_dec = 3;
  * The numbers are the ones SAMPLE0 comes up with; where the drawing keeps
  * them is not found yet (src/jwc.h, JW_DIM_PEN). */
 static int dim_pen_line = 1, dim_pen_point = 1;
+
+static void dim_from_drawing(void)
+{
+    if (drawing) {
+        dim_pen_line = drawing->dim_pen_line;
+        dim_pen_point = drawing->dim_pen_point;
+    }
+}
 static double dim_gap = 0.5, dim_ext = 0.0, dim_arrow = 3.0, dim_angle = 15.0;
 static int dim_rphi, dim_comma, dim_zero, dim_end, dim_unit, dim_dec = 1;
 static int dim_edit;
@@ -340,6 +358,11 @@ static void present(void)
     cmd.dim_pen = dim_pen_line;
     cmd.dim_gap_mm = dim_gap;
     cmd.dim_end = dim_end;
+    cmd.dim_ext_mm = dim_ext;
+    cmd.dim_unit = dim_unit;
+    cmd.dim_dec = dim_dec;
+    cmd.dim_comma_on = !dim_comma;
+    cmd.dim_zero_on = dim_zero;
     cmd.dim_arrow_mm = dim_arrow;
     cmd.dim_angle_deg = dim_angle;
     ui.dim_pen_line = dim_pen_line;
@@ -1227,6 +1250,7 @@ EMSCRIPTEN_KEEPALIVE int jw_open(const char *path)
     jw_view_original(&view);
     jw_cmd_pick(&cmd, 0);
     jw_ui_from(&ui, drawing);
+    dim_from_drawing();
     ui.guide = jw_ui_guide();
     present();
     sprintf(status, "%ld lines  %ld arcs  %d texts  %d points",

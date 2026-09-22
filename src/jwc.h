@@ -168,6 +168,13 @@ typedef struct {
      * else: SAMPLE3 is type 8 and writes 8.0 with pen 4, TEST7 type 6 and
      * writes 6.0 with pen 3, SAMPLE0 type 3 and writes 3.0 with pen 2. */
     int char_type;
+    /* 寸法の三つ。盤行の 6 番が寸法値の文字種、7 番が 線のペン No.、
+     * 8 番が 点のペン No. です——寸法設定は図面ごとに保存されています。
+     * 帯の `ペンn` は盤のペンではなく `text_pen[dim_size]`です（SAMPLE3 は
+     * 盤が 2、帯が 4）。 */
+    int dim_size;
+    int dim_pen_line;
+    int dim_pen_point;
     /* How long the drawing has been worked on, in seconds -- field 18.  The
      * original does not keep it as a duration: at startup it sets its session
      * clock to `time() - this`, so that `time() - clock` gives the total back.
@@ -262,6 +269,21 @@ void jwc_zukei_free(JwcZukei *z);
  * jwc_zukei_bytes for why the order matters. */
 float jwc_zukei_scale(const Jwc *d);
 
+/* The 寸法値, written the way 寸法 ⑨設定 says to write it.  `mm` is the real
+ * size (units x jwc_zukei_scale), and the four settings are the panel's:
+ *
+ *   unit   0 = mm, 1 = ｍ, 2 = ｍ and an `m` after the number
+ *   dec    how many decimals, 0 to 3
+ *   comma  1 = put a comma every three digits (the panel's 有)
+ *   zero   1 = keep the trailing zeros (the panel's 有)
+ *
+ * Measured: 250mm at 1/1 is `250`; with 小数点以下(2) and ｍ it is `0.25`;
+ * with 0表示【有】 it is `250.0`; SAMPLE2 (1/100) writes `18,800`, and
+ * `18800` once the comma is turned off; 単位を二度押すと `0.3m`.
+ * The band in row 2 gets the same string, `m` and all. */
+void jwc_dim_text(char *out, long cap, double mm,
+                  int unit, int dec, int comma, int zero);
+
 /* Append a record as it stands, the way 図形 ②読込 puts a figure down: every
  * byte but the coordinates is the one that was read.  A text brings its
  * string, which goes on the end of the pool. */
@@ -332,10 +354,8 @@ void jwc_remove_text(Jwc *d, long k);
 /* Put one in, the way 文字 does: the record **and** the string, which is
  * appended to the pool the way the original appends it.  Returns 0 if there
  * was no memory for it. */
-/* 寸法 writes with pen 1 and character type 2 -- the 寸法設定 the band shows
- * as `ﾍﾟﾝ1` and `横 2.5 縦 2.5`.  Where the drawing keeps them is not found
- * yet, so SAMPLE0's are here; another drawing with different ones will show
- * this up. */
+/* What 寸法 falls back on when a drawing says nothing: SAMPLE0's.  The
+ * drawings that ship do say -- see dim_size / dim_pen_line above. */
 #define JW_DIM_PEN   1
 #define JW_DIM_SIZE  2
 

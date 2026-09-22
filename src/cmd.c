@@ -2134,9 +2134,46 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     }
 }
 
+/* 寸法 leaves two guides right across the drawing: a red one every four
+ * pixels at the 引出し線の始点's height and a white one every two at the
+ * 寸法線's.  Measured on SAMPLE0 -- row 140 is red at x = 124, 128, 132 …
+ * and row 110 white at the odd columns, both from the window's left edge to
+ * its right, and the white one is **over** the dimension line, which shows
+ * through cyan in between (exclusive-or: SAMPLE2 draws its dimension line
+ * with pen 2 and the crossing pixel is 00ffff = 7 xor 2).
+ *
+ * This only says **where** they go.  The chrome draws them, because the order
+ * is 図面 → 帯の黒塗り → 案内線 → 寸法値の白い升: the drawing area starts at
+ * y=17, so ②縦方向 sends one straight through the counts box, and the
+ * original's box covers it.  See jw_ui_draw. */
+int jw_cmd_guide_pos(const JwCmd *c, const JwView *w, int *vert, int *a, int *b)
+{
+    int gx, gy;
+
+    if (c->command != 14 || c->stage < 2) {
+        return 0;
+    }
+    *vert = c->dim_vert;
+    at_screen(w, c->dim_by, c->dim_by, &gx, &gy);
+    *a = c->dim_vert ? gx : gy;
+    if (c->stage < 3) {
+        return 1;
+    }
+    at_screen(w, c->dim_y, c->dim_y, &gx, &gy);
+    *b = c->dim_vert ? gx : gy;
+    return 2;
+}
+
 void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 {
     long k;
+
+    /* **寸法 は枠の上に描き直しません。** 案内線は寸法線の上（白い点）で、
+     * カウント箱は案内線の上です。つまり 線 → 案内線 → 枠 の順で、ここで
+     * 線を描き直すと案内線が消えます（y=110 の 219 画素）。 */
+    if (c->command == 14) {
+        return;
+    }
 
     /* ハッチ marks the lines it has taken in colour 2, each one **cut to the
      * ones beside it** -- the frame is a 連続線, so a side that runs the whole
@@ -2321,44 +2358,6 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     for (k = c->n0_texts; k < d->n_texts; k++) {
         if (jwc_visible(d, d->texts[k].layer)) {
             jw_view_text(v, d, &d->texts[k], w, jw_view_text_colour(d, d->texts[k].size));
-        }
-    }
-    /* 寸法 leaves two guides right across the drawing: a red one every four
-     * pixels at the 引出し線の始点's height and a white one every two at the
-     * 寸法線's.  Measured on SAMPLE0 -- row 140 is red at x = 124, 128, 132 …
-     * and row 110 white at the odd columns, both from the window's left edge
-     * to its right, and the white one is **over** the dimension line, which
-     * shows through cyan in between.
-     *
-     * They go down **OR**, not XOR.  ②縦方向 puts one of them through
-     * the counts box, where the background is white: OR leaves white,
-     * XOR turns it cyan, and the original leaves it white.  Over black
-     * the two are the same, which is why the horizontal road never
-     * showed it. */
-    if (c->command == 14 && c->stage >= 2) {
-        int gx, gy;
-
-        v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
-        v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
-        v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
-        v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
-        at_screen(w, c->dim_by, c->dim_by, &gx, &gy);
-        if (c->dim_vert) {
-            jw_line(v, gx, v->clip_y0, gx, v->clip_y1, 2, 0x10,
-                    jw_view_line_style(9));
-        } else {
-            jw_line(v, v->clip_x0, gy, v->clip_x1, gy, 2, 0x10,
-                    jw_view_line_style(9));
-        }
-        if (c->stage >= 3) {
-            at_screen(w, c->dim_y, c->dim_y, &gx, &gy);
-            if (c->dim_vert) {
-                jw_line(v, gx, v->clip_y0, gx, v->clip_y1, 2, 0x10,
-                        jw_view_line_style(0));
-            } else {
-                jw_line(v, v->clip_x0, gy, v->clip_x1, gy, 2, 0x10,
-                        jw_view_line_style(0));
-            }
         }
     }
 }
@@ -3761,23 +3760,6 @@ static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
 
 /* ------------------------------------------------------------- 寸法 ①横方向 */
 
-/* A dimension value, the way the original writes it: one decimal, then the
- * trailing zero and the point taken off.  Measured -- 250mm comes out `250`
- * and 29.8473mm comes out `29.8`. */
-static void dim_text(char *out, size_t cap, double mm)
-{
-    size_t n = (size_t)sprintf(out, "%.1f", mm);
-
-    (void)cap;
-    while (n > 0 && out[n - 1] == '0') {
-        n--;
-    }
-    if (n > 0 && out[n - 1] == '.') {
-        n--;
-    }
-    out[n] = 0;
-}
-
 /* ①横方向: the dimension line, its two extension lines and the value.
  *
  * Measured on SAMPLE0 with the 引出し線の始点 free at (162,140), the 寸法線
@@ -3804,6 +3786,12 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
     const double mid = (x0 + x1) / 2.0;
     const double off = (c->dim_gap_mm > 0.0 ? c->dim_gap_mm : 0.5)
                       * d->unit_mm;
+    /* 引出し線の突出: the two extension lines run **past** the dimension
+     * line by that many millimetres of paper.  Measured on SAMPLE0 with 5mm:
+     * the line that stopped at 353.000 now ends at 361.721, and
+     * 361.721 - 353.000 = 8.721 = 5 x unit_mm.  It goes on the far side from
+     * the 引出し線の始点, and the value stays where it was. */
+    const double ye = y + (y > b ? 1.0 : -1.0) * c->dim_ext_mm * d->unit_mm;
     char buf[32];
     double len;
 
@@ -3827,14 +3815,14 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
     if (jwc_add_line(d, (float)(up ? b : x0), (float)(up ? x0 : b),
-                     (float)(up ? y : x0), (float)(up ? x0 : y),
+                     (float)(up ? ye : x0), (float)(up ? x0 : ye),
                      type, (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN),
                      layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
     if (jwc_add_line(d, (float)(up ? b : x1), (float)(up ? x1 : b),
-                     (float)(up ? y : x1), (float)(up ? x1 : y),
+                     (float)(up ? ye : x1), (float)(up ? x1 : ye),
                      type, (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN),
                      layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
@@ -3878,15 +3866,19 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
             }
         }
     }
-    c->dim_value = (x1 > x0 ? x1 - x0 : x0 - x1) / d->unit_mm;
-    dim_text(buf, sizeof buf, c->dim_value);
-    len = jwc_text_length(d, buf, JW_DIM_SIZE);
+    /* The value is the **real** size: units x (紙 / 518) x 縮尺の分母.
+     * SAMPLE0 is 1/1 so the two are the same there; SAMPLE2 is 1/100 and its
+     * 188mm of paper is written `18,800`. */
+    c->dim_value = (x1 > x0 ? x1 - x0 : x0 - x1) * jwc_zukei_scale(d);
+    jwc_dim_text(buf, sizeof buf, c->dim_value, c->dim_unit, c->dim_dec,
+                 c->dim_comma_on, c->dim_zero_on);
+    len = jwc_text_length(d, buf, d->dim_size);
     if (jwc_add_text(d,
                      (float)(up ? y - off : mid - len / 2.0),
                      (float)(up ? mid - len / 2.0 : y + off),
                      (float)(up ? y - off : mid + len / 2.0),
                      (float)(up ? mid + len / 2.0 : y + off),
-                     buf, JW_DIM_SIZE, layer)) {
+                     buf, (unsigned char)d->dim_size, layer)) {
         d->texts[d->n_texts - 1].rest[2] = 0x10;
         d->texts[d->n_texts - 1].rest[3] = 0x40;
     }

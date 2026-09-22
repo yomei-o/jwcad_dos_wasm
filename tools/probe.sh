@@ -36,6 +36,8 @@ EMU=../dosv_emu_cpp/dosemu.exe
 DRAWING="${DRAWING:-SAMPLE0}"
 BOOT="${BOOT:-40000000}"
 PICK="${PICK:-40000000}"
+# 大きい図面は描き直しに時間がかかるので、押すたびの待ちも延ばせます。
+WAIT="${WAIT:-20000000}"
 
 n=$1; shift
 if [ "$n" -le 15 ]; then mx=90; row=$((n - 1)); else mx=30; row=$((n - 16)); fi
@@ -49,7 +51,7 @@ my=$((64 + 16 * row + 8))
         case "$1" in
         r) btn=right; shift; continue;;
         l) btn=left; shift; continue;;
-        d)  printf 'mouse 600 450\nwait 3000000\ndown left\nwait 3000000\nup left\nwait 20000000\n'
+        d)  printf 'mouse 600 450\nwait 3000000\ndown left\nwait 3000000\nup left\nwait %s\n' "$WAIT"
             shift; continue;;
         t)  shift
             echo "$1" | fold -w1 | while read -r ch; do
@@ -59,14 +61,14 @@ my=$((64 + 16 * row + 8))
             shift; continue;;
         e)  printf 'key enter\nwait 30000000\n'; shift; continue;;
         b)  printf 'key backspace\nwait 8000000\n'; shift; continue;;
-        f[0-9]*) printf 'key %s\nwait 20000000\n' "$1"; shift; continue;;
+        f[0-9]*) printf 'key %s\nwait %s\n' "$1" "$WAIT"; shift; continue;;
         esac
         [ $# -ge 2 ] || break
-        printf 'mouse %s %s\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait 20000000\n' \
-            "$1" "$2" "$btn" "$btn"
+        printf 'mouse %s %s\nwait 3000000\ndown %s\nwait 3000000\nup %s\nwait %s\n' \
+            "$1" "$2" "$btn" "$btn" "$WAIT"
         shift 2
     done
-    [ -n "$MOVE" ] && printf 'mouse %s\nwait 20000000\n' "$MOVE"
+    [ -n "$MOVE" ] && printf 'mouse %s\nwait %s\n' "$MOVE" "$WAIT"
     printf 'wait 8000000\nshot ../jwcad_dos_wasm/tmp/probe/after.raw\n'
 } > tmp/probe/script.txt
 

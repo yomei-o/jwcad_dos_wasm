@@ -282,8 +282,12 @@ int main(int argc, char **argv)
                 t.rot_deg = c.rot_deg;
                 t.dim_value = c.dim_value;
                 t.dim_texts = c.dim_texts;
-                t.dim_w = d ? d->text_w[JW_DIM_SIZE] / 10.0 : 0.0;
-                t.dim_h = d ? d->text_h[JW_DIM_SIZE] / 10.0 : 0.0;
+                t.dim_w = d ? d->text_w[d->dim_size] / 10.0 : 0.0;
+                t.dim_h = d ? d->text_h[d->dim_size] / 10.0 : 0.0;
+                t.dim_text_pen = d ? d->text_pen[d->dim_size] : 0;
+                t.dim_size = d ? d->dim_size : 0;
+                t.dim_guide_n = jw_cmd_guide_pos(&c, &w, &t.dim_guide_vert,
+                                                 &t.dim_guide_a, &t.dim_guide_b);
                 t.hatch_n = c.hatch_n;
                 t.hatch_angle = c.hatch_angle;
                 t.hatch_pitch = c.hatch_pitch;
@@ -410,8 +414,12 @@ int main(int argc, char **argv)
         s.rot_deg = c.rot_deg;
         s.dim_value = c.dim_value;
         s.dim_texts = c.dim_texts;
-        s.dim_w = d ? d->text_w[JW_DIM_SIZE] / 10.0 : 0.0;
-        s.dim_h = d ? d->text_h[JW_DIM_SIZE] / 10.0 : 0.0;
+        s.dim_w = d ? d->text_w[d->dim_size] / 10.0 : 0.0;
+        s.dim_h = d ? d->text_h[d->dim_size] / 10.0 : 0.0;
+        s.dim_text_pen = d ? d->text_pen[d->dim_size] : 0;
+        s.dim_size = d ? d->dim_size : 0;
+        s.dim_guide_n = jw_cmd_guide_pos(&c, &w, &s.dim_guide_vert,
+                                         &s.dim_guide_a, &s.dim_guide_b);
         s.hatch_n = c.hatch_n;
         s.hatch_angle = c.hatch_angle;
         s.hatch_pitch = c.hatch_pitch;

@@ -1058,6 +1058,21 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
     if (q->command == 24 && q->col == 20 && q->row == 2) {
         return;
     }
+    /* 寸法's `文字[F2]` is not a 2: it is **the 寸法値's character type**, the
+     * one the drawing keeps in field 6 of its panel line.  SAMPLE0 has 2 and
+     * writes [F2], SAMPLE2 has 3 and writes [F3], SAMPLE3 has 8 and writes
+     * [F8].  The recording is SAMPLE0's, so the digit is put back here. */
+    if (q->command == 14 && q->row == 1 && strstr(q->text, "[F2]")
+        && s->dim_size >= 1 && s->dim_size <= 9) {
+        char *at;
+
+        strncpy(out, q->text, sizeof out - 1);
+        out[sizeof out - 1] = 0;
+        at = strstr(out, "[F2]");
+        at[2] = (char)('0' + s->dim_size);
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, out);
+        return;
+    }
     /* And 文字's own numbers are the drawing's, not the capture's -- the
      * character type in its field and in its line, and that type's pen, width
      * and height in the panel.  Same as the prompt rows; see put_numbers. */
@@ -1100,7 +1115,7 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
         double n[2];
 
         if (q->row == 2) {
-            n[0] = JW_DIM_PEN;
+            n[0] = s->dim_text_pen ? s->dim_text_pen : JW_DIM_PEN;
             n[1] = (double)s->dim_texts;
             put_numbers(one, sizeof one, q->text, n, 2, 0);
         } else {
@@ -1118,19 +1133,14 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
         jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
         return;
     }
-    /* 寸法 puts the value it has just written in the band, one decimal with
-     * the trailing zero and point taken off -- `250`, not `250.0`. */
+    /* 寸法 puts the value it has just written in the band -- the **same
+     * string** the drawing got, `m` and all (measured: 単位 を二度押すと
+     * 桁 17 も `0.3m`). */
     if (q->command == 14 && q->row == 2 && q->col == 17) {
         char num[32];
-        size_t n = (size_t)sprintf(num, "%.1f", s->dim_value);
 
-        while (n > 0 && num[n - 1] == '0') {
-            n--;
-        }
-        if (n > 0 && num[n - 1] == '.') {
-            n--;
-        }
-        num[n] = 0;
+        jwc_dim_text(num, sizeof num, s->dim_value, s->dim_unit, s->dim_dec,
+                     !s->dim_comma, s->dim_zero);
         jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, num);
         return;
     }
@@ -3510,6 +3520,35 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 fill(v, 1, 17, 120, 47, 4);
             } else {
                 counts(v, s);
+            }
+            /* 寸法's two guides go **here**: after the black the band is
+             * wiped with and after the counts box, and before the stage's
+             * own cells.  ②縦方向 sends one through the counts box at
+             * column 17 and the original's white 寸法値 covers it; drawn
+             * after the cells it showed through as 00ffff (7 xor 2).
+             *
+             * **Once**, on the last turn of this loop.  The loop replays one
+             * stage per turn, and an exclusive-or line drawn an even number
+             * of times is not there at all. */
+            if (s->dim_guide_n && i == s->stage) {
+                const int x0 = 122, y0 = 17, x1 = 638, y1 = 462;
+
+                if (s->dim_guide_vert) {
+                    jw_line(v, s->dim_guide_a, y0, s->dim_guide_a, y1, 2,
+                            0x18, jw_view_line_style(9));
+                } else {
+                    jw_line(v, x0, s->dim_guide_a, x1, s->dim_guide_a, 2,
+                            0x18, jw_view_line_style(9));
+                }
+                if (s->dim_guide_n > 1) {
+                    if (s->dim_guide_vert) {
+                        jw_line(v, s->dim_guide_b, y0, s->dim_guide_b, y1, 2,
+                                0x18, jw_view_line_style(0));
+                    } else {
+                        jw_line(v, x0, s->dim_guide_b, x1, s->dim_guide_b, 2,
+                                0x18, jw_view_line_style(0));
+                    }
+                }
             }
             /* [ESC] replaces the stage it came from: the line is blacked
              * and the band's numbers go back to the two counts, so none of

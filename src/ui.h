@@ -410,6 +410,12 @@ typedef struct {
      * started, and the dimension character type's width and height. */
     long dim_texts;
     double dim_w, dim_h;
+    int dim_text_pen;           /* 帯の `ﾍﾟﾝn`: text_pen[dim_size] */
+    int dim_size;               /* 寸法値の文字種。上の行の `文字[Fn]` */
+    /* 寸法の案内線。本数（0/1/2）と、縦か、2 本の画面位置。 */
+    int dim_guide_n;
+    int dim_guide_vert;
+    int dim_guide_a, dim_guide_b;
     /* ハッチ: how many lines the frame has taken (the band counts down from
      * 100), and the angle and pitch it will fill with. */
     int hatch_n;

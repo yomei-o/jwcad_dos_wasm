@@ -219,6 +219,12 @@ typedef struct {
     double dim_gap_mm;
     /* ②寸法線端部 が【矢印】のときに使う 矢印長さ（mm）と 矢印角度。 */
     int dim_end;
+    double dim_ext_mm;
+    /* 寸法値の書き方。`_on` は盤の【有】を 1 に直したものです。 */
+    int dim_unit;
+    int dim_dec;
+    int dim_comma_on;
+    int dim_zero_on;
     double dim_arrow_mm;
     double dim_angle_deg;
     int tan_on;                 /* ①接線 is running */
@@ -458,6 +464,11 @@ void jw_cmd_zukei_left(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
  * and the two rows under the top line were cleared once, when the item was
  * picked.  Call it after jw_ui_draw. */
 void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
+/* 寸法 の 2 本の案内線が画面のどこに来るか。戻り値は本数（0/1/2）で、
+ * `*vert` が縦かどうか、`*a` が 引出し線の始点、`*b` が 寸法線 の位置。
+ * 引くのは枠（jw_ui_draw）です —— 順番のわけは cmd.c の注釈に。 */
+int jw_cmd_guide_pos(const JwCmd *c, const JwView *w, int *vert,
+                     int *a, int *b);
 
 /* A press on the top line, which is a menu of its own: the runs between the
  * `|` characters are the items, numbered from the left.  Measured on 消去's

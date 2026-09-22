@@ -321,6 +321,20 @@ static void panel(const char *line, Jwc *d)
     if (d->char_type < 1 || d->char_type > 10) {
         d->char_type = 1;
     }
+    /* 寸法設定 の三つ。SAMPLE0 は 2,1,1、SAMPLE2 は 3,2,2、SAMPLE3 は 8,2,2 で、
+     * どれも本物の盤と帯（`ﾍﾟﾝ4` `横 8.0`）に合います。 */
+    d->dim_size = (f = field(line, 6)) ? (int)strtol(f, NULL, 10) : JW_DIM_SIZE;
+    if (d->dim_size < 0 || d->dim_size > 10) {
+        d->dim_size = JW_DIM_SIZE;
+    }
+    d->dim_pen_line = (f = field(line, 7)) ? (int)strtol(f, NULL, 10) : JW_DIM_PEN;
+    if (d->dim_pen_line < 1 || d->dim_pen_line > 6) {
+        d->dim_pen_line = JW_DIM_PEN;
+    }
+    d->dim_pen_point = (f = field(line, 8)) ? (int)strtol(f, NULL, 10) : JW_DIM_PEN;
+    if (d->dim_pen_point < 1 || d->dim_pen_point > 6) {
+        d->dim_pen_point = JW_DIM_PEN;
+    }
 }
 
 /* How many decimals the panel shows a length to.  It is not stored: it comes
@@ -647,6 +661,9 @@ Jwc *jwc_new(void)
     d->paper = 3;
     d->denom = 100.0f;
     d->decimals = 3;
+    d->dim_size = JW_DIM_SIZE;
+    d->dim_pen_line = JW_DIM_PEN;
+    d->dim_pen_point = JW_DIM_PEN;
     d->scale = 1.0f;
     d->unit_mm = (float)(518.0 / PAPER[d->paper]);
     for (i = 0; i < 256; i++) {
@@ -1392,6 +1409,68 @@ void jwc_zukei_free(JwcZukei *z)
     free(z->texts);
     free(z->text);
     memset(z, 0, sizeof *z);
+}
+
+/* 寸法値。書き方は 寸法 ⑨設定 の 4 つで決まります —— 宣言の注釈に測った
+ * 値を並べてあります。 */
+void jwc_dim_text(char *out, long cap, double mm,
+                  int unit, int dec, int comma, int zero)
+{
+    char num[64];
+    size_t n, head, i;
+
+    if (!out || cap < 2) {
+        return;
+    }
+    if (unit) {
+        mm /= 1000.0;           /* ｍ */
+    }
+    n = (size_t)sprintf(num, "%.*f", dec < 0 ? 0 : dec > 9 ? 9 : dec, mm);
+    /* 0表示【無】: the trailing zeros and the point come off -- 250mm with
+     * one decimal is `250`, not `250.0`. */
+    if (!zero && strchr(num, '.')) {
+        while (n > 0 && num[n - 1] == '0') {
+            n--;
+        }
+        if (n > 0 && num[n - 1] == '.') {
+            n--;
+        }
+        num[n] = 0;
+    }
+    /* (,)表示【有】: a comma every three digits of the whole part. */
+    head = 0;
+    if (num[head] == '-') {
+        head++;
+    }
+    for (i = head; num[i] && num[i] != '.'; i++) {
+        ;
+    }
+    if (comma && i - head > 3) {
+        char with[80];
+        size_t k = 0, digits = i - head, j;
+
+        for (j = 0; j < head; j++) {
+            with[k++] = num[j];
+        }
+        for (j = 0; j < digits; j++) {
+            if (j && (digits - j) % 3 == 0) {
+                with[k++] = ',';
+            }
+            with[k++] = num[head + j];
+        }
+        strcpy(with + k, num + i);
+        strcpy(num, with);
+        n = strlen(num);
+    }
+    if (unit == 2) {            /* 【ｍ】をもう一度押すと `m` が付きます */
+        num[n++] = 'm';
+        num[n] = 0;
+    }
+    if (n >= (size_t)cap) {
+        n = (size_t)cap - 1;
+    }
+    memcpy(out, num, n);
+    out[n] = 0;
 }
 
 float jwc_zukei_scale(const Jwc *d)
