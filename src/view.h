@@ -41,6 +41,9 @@ void jw_view_zoom(JwView *w, int sx0, int sy0, int sx1, int sy1);
 
 /* 倍率指定[XFER] の右押し: 原寸（表示倍率 1.0）でその点を中心に。 */
 void jw_view_actual(JwView *w, const Jwc *d, int sx, int sy);
+/* 倍率指定 の左押し: 打った倍率で、押した点を中心に。表示倍率 n は
+ * 縮尺 n x 518 / (170 x unit_mm) です（帯の 表示倍率 の式の裏返し）。 */
+void jw_view_factor(JwView *w, const Jwc *d, int sx, int sy, double factor);
 
 /* The view the original uses.
  *

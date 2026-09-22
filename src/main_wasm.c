@@ -1501,8 +1501,10 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     if (bar) {
         if (bar == JW_BAR_ZOOM) {
             ui.zoom_stage = 1;
+            ui.guide = 0;   /* 起動の案内は消えます */
         } else if (bar == JW_BAR_SCALE) {
             ui.zoom_stage = 3;
+            ui.guide = 0;
         } else if (bar == JW_BAR_PREV && have_before) {
             view = before_zoom;
             have_before = 0;
@@ -1536,16 +1538,36 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     if (ui.zoom_stage && x >= AREA_X0 && x <= AREA_X1
         && y >= AREA_Y0 && y <= AREA_Y1) {
         if (ui.zoom_stage == 3) {
-            /* 倍率指定: the right button is 原寸, `倍率=1.0ﾏｳｽ(R)`.  The left
-             * one asks for a number first, which is not done. */
+            /* 倍率指定: the right button is 原寸, `倍率=1.0ﾏｳｽ(R)`; the left
+             * one takes that point as the centre and then asks for the
+             * factor -- `画 面 倍 率 (10000以下) ＝` with an eight cell field
+             * at column 35.  前倍率ﾏｳｽ(L) and 最小倍率ﾏｳｽ(R) on that line are
+             * not measured. */
             if (!right) {
+                zoom_x = x;
+                zoom_y = y;
+                ui.zoom_stage = 4;
+                ui.zoom_typed_n = 0;
+                ui.zoom_typed[0] = 0;
+                mouse_x = x;
+                mouse_y = y;
+                present();
                 return -1;
             }
-            before_zoom = view;
-            have_before = 1;
-            jw_view_actual(&view, drawing, x, y);
-            ui.view_scale = view.scale;
-            ui.zoom_stage = 0;
+            {
+                const int was_kept = ui.kept;
+
+                before_zoom = view;
+                have_before = 1;
+                jw_view_actual(&view, drawing, x, y);
+                /* and 入出力 again, the same as the typed factor */
+                jw_ui_from(&ui, drawing);
+                ui.command = 30;
+                ui.band_kept = 1;   /* 帯の下の図面は消えません */
+                ui.kept = was_kept;
+                ui.view_scale = view.scale;
+                jw_cmd_pick(&cmd, 30);
+            }
         } else if (ui.zoom_stage == 1) {
             zoom_x = x;
             zoom_y = y;
@@ -2888,6 +2910,45 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
             ui.zoom_stage = 0;
             present();
             return -1;
+        }
+        if (ui.zoom_stage == 4) {
+            /* 倍率指定's field: digits and a point, [Enter] sets the view. */
+            if (key == 13 || key == 10) {
+                const int was_kept = ui.kept;
+
+                if (ui.zoom_typed_n && drawing) {
+                    before_zoom = view;
+                    have_before = 1;
+                    jw_view_factor(&view, drawing, zoom_x, zoom_y,
+                                   atof(ui.zoom_typed));
+                }
+                /* **And it leaves the original in 入出力**, the way 紙, the
+                 * scale, 範囲記憶 and ｵﾌｾｯﾄ do: the item's row goes yellow
+                 * and `|①ファイル(L)|②プロッタ(R)|…` goes along the top. */
+                jw_ui_from(&ui, drawing);
+                ui.command = 30;
+                ui.band_kept = 1;   /* 帯の下の図面は消えません */
+                ui.kept = was_kept;
+                ui.view_scale = view.scale;
+                jw_cmd_pick(&cmd, 30);
+                present();
+                return -1;
+            }
+            if (key == 8) {
+                if (ui.zoom_typed_n > 0) {
+                    ui.zoom_typed[--ui.zoom_typed_n] = 0;
+                }
+                present();
+                return -1;
+            }
+            if (((key >= '0' && key <= '9') || key == '.')
+                && ui.zoom_typed_n < 8) {
+                ui.zoom_typed[ui.zoom_typed_n++] = (char)key;
+                ui.zoom_typed[ui.zoom_typed_n] = 0;
+                present();
+                return -1;
+            }
+            return 0;
         }
         if (key == ' ' && drawing) {
             before_zoom = view;

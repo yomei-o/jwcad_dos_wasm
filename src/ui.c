@@ -1999,7 +1999,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * **over** the frame's bottom row, so that goes on first.  RESUME
          * 4.27. */
         fill(v, 224, 464, 438, 478, s->zoom_stage == 1 ? 4 : 6);
-        if (s->zoom_stage == 1) {
+        if (s->zoom_stage == 4) {
+            /* 倍率指定 の欄を出しているあいだ、帯は `画 面 倍 率`（桁 37）。 */
+            jw_ui_text(v, 37, 30, 0, 0, "\x89\xe6" " " "\x96\xca" " " "\x94" "{" " " "\x97\xa6");
+        } else if (s->zoom_stage == 1) {
             jw_ui_text(v, 29, 30, 0, 0, " " "\x97" "p" "\x8e" "\x86" "\x91" "S" "\x91" "\xcc" "\x8d" "\xc4" "\x95" "\x5c" "\x8e" "\xa6" "  [" "\xbd" "\xcd" "\xdf" "\xb0" "\xbd" "\xb7" "\xb0" "] ");
         } else {
             jw_ui_text(v, 30, 30, 0, 0, "      " "\x82" "y" "\x81" "@" "\x82" "\x8f" "\x81" "@" "\x82" "\x8f" "\x81" "@" "\x82" "\x8d" "      ");
@@ -2039,7 +2042,25 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * row and writes nothing but the prompt.  倍率指定 keeps it. */
             jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
         }
-        if (s->zoom_stage == 3) {
+        if (s->zoom_stage == 4) {
+            /* 倍率指定 の左押しのあと: `画 面 倍 率 (10000以下) ＝` と
+             * 桁 35 の 8 マスの欄、桁 52 に `前倍率ﾏｳｽ(L) 最小倍率ﾏｳｽ(R) `。
+             * 欄の緑の四角は次の字が入るマスです。 */
+            int n;
+
+            jw_ui_text(v, 8, 1, 7, 0, "\x89\xe6" " " "\x96\xca" " " "\x94" "{" " " "\x97\xa6" " " "(10000\x88\xc8\x89\xba) " "\x81\x81");
+            jw_ui_text(v, 52, 1, 7, 0, "\x91" "O" "\x94" "{" "\x97\xa6\xcf\xb3\xbd" "(L) " "\x8d\xc5\x8f\xac\x94" "{" "\x97\xa6\xcf\xb3\xbd" "(R) ");
+            for (n = 0; n < s->zoom_typed_n && n < 8; n++) {
+                char one[4];
+
+                one[0] = s->zoom_typed[n];
+                one[1] = one[2] = ' ';
+                one[3] = 0;
+                jw_ui_text(v, 35 + n, 1, 7, 0, one);
+            }
+            n = s->zoom_typed_n < 8 ? s->zoom_typed_n : 8;
+            fill(v, 272 + n * 8, 7, 279 + n * 8, 15, 4);
+        } else if (s->zoom_stage == 3) {
             jw_ui_text(v, 12, 1, 7, 0, "\x95" "\x5c" "\x8e" "\xa6" "\x92" "\x86" "\x90" "S " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" "   " "\x94" "C" "\x88" "\xd3" "\x94" "{" "\x97" "\xa6" "\xcf" "\xb3" "\xbd" "(L) " "\x94" "{" "\x97" "\xa6" "=1.0" "\xcf" "\xb3" "\xbd" "(R)  " "\x8d" "\xc4" "\x95" "\x5c" "\x8e" "\xa6" "[XFER]");
         } else {
             jw_ui_text(v, 30, 1, 7, 0, s->zoom_stage == 1 ? "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "\x8e" "n" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " " : "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "    " "\x8f" "I" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " ");

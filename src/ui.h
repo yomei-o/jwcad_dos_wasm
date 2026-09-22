@@ -53,6 +53,8 @@ typedef struct {
      * the `表示倍率` the bar prints is the paper's times this), and which step
      * of ■拡大■ is running: 0 none, 1 asking for the 始点, 2 the 終点. */
     double view_scale;
+    char zoom_typed[16];        /* 倍率指定 の欄に打った数 */
+    int zoom_typed_n;
     int zoom_stage;
     /* 複写 ⑤反転 is running, so the copy table's stages 5 to 11 -- the
      * ①ﾏｳｽ位置 way of placing -- are not what the top line says. */

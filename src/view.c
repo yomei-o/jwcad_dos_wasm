@@ -52,6 +52,53 @@ static int inside(const JwView *w, int x, int y)
  *
  * Which end is kept matters for the dashes: the pattern starts at the line's
  * own beginning, so moving the far end leaves it alone. */
+/* Both ends outside: the original keeps a line that **crosses** the
+ * window -- its own test (FUN_1def_17bb) throws away only what is
+ * entirely elsewhere -- and the port dropped it.  At 表示倍率 2.00
+ * SAMPLE0's top edge has both ends off the screen and 517 pixels of it
+ * were missing.  Returns 0 when nothing of the line is in the window. */
+static int clip_both(const JwView *w, double *x0, double *y0,
+                     double *x1, double *y1)
+{
+    const double dx = *x1 - *x0, dy = *y1 - *y0;
+    const double p[4] = { -dx, dx, -dy, dy };
+    const double q[4] = { *x0 - w->x0, w->x1 - *x0,
+                          *y0 - w->y0, w->y1 - *y0 };
+    double t0 = 0.0, t1 = 1.0;
+    int i;
+
+    for (i = 0; i < 4; i++) {
+        if (p[i] == 0.0) {
+            if (q[i] < 0.0) {
+                return 0;
+            }
+        } else {
+            const double r = q[i] / p[i];
+
+            if (p[i] < 0.0) {
+                if (r > t1) {
+                    return 0;
+                }
+                if (r > t0) {
+                    t0 = r;
+                }
+            } else {
+                if (r < t0) {
+                    return 0;
+                }
+                if (r < t1) {
+                    t1 = r;
+                }
+            }
+        }
+    }
+    *x1 = *x0 + t1 * dx;
+    *y1 = *y0 + t1 * dy;
+    *x0 = *x0 + t0 * dx;
+    *y0 = *y0 + t0 * dy;
+    return 1;
+}
+
 static void clip_far(const JwView *w, double x0, double y0,
                      double *x1, double *y1)
 {
@@ -1010,9 +1057,12 @@ void jw_view_line(VGA *v, const Jwc *d, const JwcLine *l, const JwView *w,
     }
     if (!inside(w, (int)fx0, (int)fy0)) {
         if (!inside(w, (int)fx1, (int)fy1)) {
-        return;
+            if (!clip_both(w, &fx0, &fy0, &fx1, &fy1)) {
+                return;
+            }
+        } else {
+            clip_far(w, fx1, fy1, &fx0, &fy0);
         }
-        clip_far(w, fx1, fy1, &fx0, &fy0);
     } else {
         clip_far(w, fx0, fy0, &fx1, &fy1);
     }
@@ -1348,19 +1398,24 @@ void jw_view_rgba(const VGA *v, const unsigned char *pixels, unsigned char *rgba
  * (400,300) leaves (130.75083, 35.3569).  Both give **259 and 223** for the
  * half-window -- note the 223, where ■拡大■ uses 223.5.
  */
-void jw_view_actual(JwView *w, const Jwc *d, int sx, int sy)
+void jw_view_factor(JwView *w, const Jwc *d, int sx, int sy, double factor)
 {
     const double cx = (sx - w->ax) / w->scale + w->ox;
     const double cy = (w->ay - sy) / w->scale + w->oy;
 
-    if (!d || d->unit_mm <= 0.0f) {
+    if (!d || d->unit_mm <= 0.0f || factor <= 0.0) {
         return;
     }
-    w->scale = (float)(518.0 / (170.0 * d->unit_mm));
+    w->scale = (float)(factor * 518.0 / (170.0 * d->unit_mm));
     w->ox = (float)(cx - 259.0 / w->scale);
     w->oy = (float)(cy - 223.0 / w->scale);
     w->ax = 121.0f;
     w->ay = 463.0f;
+}
+
+void jw_view_actual(JwView *w, const Jwc *d, int sx, int sy)
+{
+    jw_view_factor(w, d, sx, sy, 1.0);
 }
 
 void jw_view_zoom(JwView *w, int sx0, int sy0, int sx1, int sy1)
