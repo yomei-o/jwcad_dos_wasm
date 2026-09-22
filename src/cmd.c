@@ -3796,7 +3796,8 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
     const int up = c->dim_vert;
     const double x0 = c->dim_x0, y = c->dim_y, b = c->dim_by;
     const double mid = (x0 + x1) / 2.0;
-    const double off = 0.5 * d->unit_mm;
+    const double off = (c->dim_gap_mm > 0.0 ? c->dim_gap_mm : 0.5)
+                      * d->unit_mm;
     char buf[32];
     double len;
 
@@ -3814,19 +3815,22 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
      * 0x80; everything else is the same. */
     if (jwc_add_line(d, (float)(up ? y : x0), (float)(up ? x0 : y),
                      (float)(up ? y : x1), (float)(up ? x1 : y),
-                     type, JW_DIM_PEN, layer)) {
+                     type, (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN),
+                     layer)) {
         d->lines[d->n_lines - 1].rest[1] = up ? 0x00 : 0x80;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
     if (jwc_add_line(d, (float)(up ? b : x0), (float)(up ? x0 : b),
                      (float)(up ? y : x0), (float)(up ? x0 : y),
-                     type, JW_DIM_PEN, layer)) {
+                     type, (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN),
+                     layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
     if (jwc_add_line(d, (float)(up ? b : x1), (float)(up ? x1 : b),
                      (float)(up ? y : x1), (float)(up ? x1 : y),
-                     type, JW_DIM_PEN, layer)) {
+                     type, (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN),
+                     layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }

@@ -318,6 +318,8 @@ static void present(void)
     memcpy(ui.auto_name, auto_name, sizeof ui.auto_name);
     memcpy(ui.auto_path, auto_path, sizeof ui.auto_path);
     memcpy(ui.auto_typed, auto_typed, sizeof ui.auto_typed);
+    cmd.dim_pen = dim_pen_line;
+    cmd.dim_gap_mm = dim_gap;
     ui.dim_pen_line = dim_pen_line;
     ui.dim_pen_point = dim_pen_point;
     ui.dim_gap = dim_gap;

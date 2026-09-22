@@ -211,6 +211,12 @@ typedef struct {
     double dim_value;           /* さっき書いた寸法値、帯に出るもの */
     long dim_texts;             /* 寸法値を聞きはじめたときの文字数 */
     int dim_vert;               /* ②縦方向。横と縦が入れ替わるだけ */
+    /* 寸法 ⑨設定's two that the drawing already uses: which pen the three
+     * lines are drawn with and how far the value sits off the dimension
+     * line, in millimetres of paper.  The front end fills them from the
+     * panel; 1 and 0.5 are what the original comes up with. */
+    int dim_pen;
+    double dim_gap_mm;
     int tan_on;                 /* ①接線 is running */
     double tan_x, tan_y;        /* the 指定点 it has in hand */
     int hatch_closed;           /* the start line has come round again */
