@@ -366,6 +366,19 @@ int jw_ui_top_item(int x, int y)
     if (top_line[col - 1] == '|') {
         return 0;               /* the bar itself does nothing */
     }
+    /* **A cell is between two bars.**  Past the last one there is no cell at
+     * all, and the original does nothing there: 面取 in 【Ｌ面】 has a line
+     * of three cells where 【角面】 has five, and pressing where ④ used to
+     * be leaves the screen exactly as it was.  Counting the bars in front
+     * alone made that press ② and put up another screen. */
+    for (i = col - 1; i < 80; i++) {
+        if (top_line[i] == '|') {
+            break;
+        }
+    }
+    if (i >= 80) {
+        return 0;
+    }
     for (i = 0; i < col - 1; i++) {
         if (top_line[i] == '|') {
             bars++;
@@ -1969,7 +1982,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         } else if (s->io_stage == JW_IO_FILE) {
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_FILE_BAR);
             jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91\x4f\x8d\x80");
-            jw_ui_text(v, 46, 2, 7, 0xffffu, "(A:/B:)");
+            /* `(A:)`, not `(A:/B:)` -- the original writes four characters
+             * there (branch 273).  A machine with two floppy drives may say
+             * the other thing; this one has one. */
+            jw_ui_text(v, 46, 2, 7, 0xffffu, "(A:)");
         } else {
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_PLOT_BAR);
         }
@@ -2057,6 +2073,35 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * like everything else, so the prompt's own rows 2 and 3 are
              * skipped whenever a cell has been pressed. */
             if (s->top_item && p->row != 1) {
+                continue;
+            }
+            /* 面取's ① has gone round to another shape: the line is
+             * that shape's, not the one the menu item came up with.  Bytes
+             * from tools/cycle.sh. */
+            if (s->command == 8 && s->chamfer && p->row == 1 && p->col == 8) {
+                static const char *const SHAPE[3] = {
+                    "\x91\xce\x8f\xdb\x90\xfc" "(" "\x82" "`)" "\x83" "}"
+                    "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e\xa6" " |" "\x87"
+                    "@" "\x81" "y" "\x8a\xdb\x96\xca\x81" "z|" "\x87" "A"
+                    "\x94\xbc\x8c" "a= 30.000|" "\x87" "B"
+                    "\x88\xea\x8a\x87\x8f\x88\x97\x9d" "|",
+                    "\x91\xce\x8f\xdb\x90\xfc" "(" "\x82" "`)" "\x83" "}"
+                    "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e\xa6" " |" "\x87"
+                    "@" "\x81" "y" "\x82" "k" "\x96\xca\x81" "z|" "\x87"
+                    "A(A),(B)" "\x95\xd3" "= 30.000, 30.000|",
+                    "\x91\xce\x8f\xdb\x90\xfc" "(" "\x82" "`)" "\x83" "}"
+                    "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e\xa6" " |" "\x87"
+                    "@" "\x81" "y" "\x91\xc8\x89" "~" "\x96\xca\x81" "z|"
+                    "\x87" "A" "\x94\xbc\x8c" "a= 30.000|" "\x87" "B"
+                    "\x95\xce\x95\xbd\x97\xa6" "=" "\x8e\xa9\x93\xae" "|",
+                };
+                double n[2];
+
+                n[0] = n[1] = s->gap_chamfer;
+                put_fixed(out, sizeof out, SHAPE[s->chamfer - 1], n,
+                          s->chamfer == 2 ? 2 : 1, s->dec_drawing);
+                jw_ui_text(v, p->col, p->row, (unsigned)p->fg,
+                           (unsigned)p->bg, out);
                 continue;
             }
             /* 複線, 面取 and ２線 carry a number of the program's own in
@@ -2205,12 +2250,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * original puts its green cursor in the first cell of it: the
              * lower nine rows, the same block ＋'s 寸法 and 複線's number
              * have.  A fill leaves no string, so which cell it is has to
-             * come from somewhere -- and the run of eight spaces the item
-             * writes is exactly the field it is in. */
+             * come from somewhere -- and the run of **eight** spaces the
+             * item writes is exactly the field it is in.  Eight and no
+             * other: 文編集 ⑤整理 writes seven at column 1 to take `[ESC]`
+             * off, and that is not a field. */
             for (r = JW_ITEM; r->command; r++) {
                 if (r->command == s->command && r->item == s->top_item
                     && r->right == s->top_right && r->row == 1
-                    && r->text[0] == ' ' && !r->text[strspn(r->text, " ")]) {
+                    && strspn(r->text, " ") == 8 && !r->text[8]) {
                     const int x = (r->col - 1) * 8;
 
                     fill(v, x, 7, x + 7, 15, 4);

@@ -285,6 +285,9 @@ typedef struct {
     /* 面取's chamfer length, in paper millimetres.  The top line offers it as
      * `③寸法= 30.000` and starts there. */
     double gap_chamfer;
+    /* Which of 面取's four shapes ① has come round to: 0 角面, 1 丸面,
+     * 2 Ｌ面, 3 楕円面.  See src/ui.c for the line each one writes. */
+    int chamfer;
     /* What 線変更 took: 1 a line, 2 an arc, 0 nothing yet.  The word it writes
      * beside the counts is `線` or `円` accordingly. */
     int hit_kind;

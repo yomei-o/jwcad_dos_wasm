@@ -2140,6 +2140,12 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
      *
      * It is on the command's line from the start, and again after a copy has
      * been drawn, so it is taken here whatever stage the command is at. */
+    /* 面取's ① goes round its four shapes, whichever button presses it.
+     * tools/cycle.sh walked it: 角面 → 丸面 → Ｌ面 → 楕円面 → 角面. */
+    if (c->command == 8 && item == 1) {
+        c->chamfer = (c->chamfer + 1) & 3;
+        return 1;
+    }
     if (c->command == 5 && item == 1
         && (c->stage == 0 || c->stage == 3 || c->stage == 6)) {
         c->stage = 4;

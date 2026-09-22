@@ -135,12 +135,17 @@ static void sync_ui(void)
     ui.typing_text = cmd.typing_text;
     ui.mods = cmd.mods;
     ui.snapping = cmd.snap;
+    /* 連線's band says which of 45度毎 / 90度毎 / free is in force, and it
+     * never got here -- ui.poly_deg stayed at nought, which reads as free,
+     * so ⑦連線 came up saying free where the original says 45度毎. */
+    ui.poly_deg = cmd.poly_deg;
     ui.again = cmd.again;
     ui.top_item = cmd.top_item;
     ui.top_right = cmd.top_right;
     ui.ask_kind = cmd.ask_kind;
     ui.gap = cmd.gap;
     ui.gap_chamfer = cmd.gap_chamfer;
+    ui.chamfer = cmd.chamfer;
     ui.gap_two[0] = cmd.gap_two[0];
     ui.gap_two[1] = cmd.gap_two[1];
     ui.ask_len = cmd.ask_len;
@@ -1226,10 +1231,18 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
          * command measured comes up the same way again.  See JwUi.again. */
         const int again = pick == ui.command && (pick == 17 || pick == 27);
 
+        /* **面取's shape is a setting, not the command's state.**  The
+         * original keeps 【角面】【丸面】【Ｌ面】【楕円面】 across picking
+         * the item again -- the branch table presses ① on one branch and
+         * again on the next and walks the ring -- while jw_cmd_pick clears
+         * everything the command holds.  So it is carried over by hand. */
+        const int chamfer = cmd.chamfer;
+
         ui.saved_done = 0;      /* the banner belongs to the save that made it */
         ui.command = pick;
         ui.guide = 0;
         jw_cmd_pick(&cmd, pick);
+        cmd.chamfer = chamfer;
         ui.stage = 0;
         /* Picking an item starts that command over, and 入出力 is a command
          * like any other: its own menus go with it.  Without this, pressing

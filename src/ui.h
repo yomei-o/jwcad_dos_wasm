@@ -164,6 +164,7 @@ typedef struct {
     int dec_drawing;
     double gap;
     double gap_chamfer;
+    int chamfer;                /* JwCmd.chamfer -- 面取's shape */
     double gap_two[2];
     double ask_len;
     double ask_ang;
