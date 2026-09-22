@@ -67,13 +67,25 @@ int jw_tategu_read(const char *path, JwTategu *out)
         }
         if (got >= 6 && shape->n < JW_TATEGU_LINES) {
             JwTateguLine *l = &shape->line[shape->n++];
+            const char *e = strchr(line, 'E');
 
+            memset(l, 0, sizeof(*l));
             l->a = v[0];
             l->b = v[1];
             l->x1 = v[2];
             l->y1 = v[3];
             l->x2 = v[4];
             l->y2 = v[5];
+            /* `... 3 1 1A` -- 線色, 線種, レイヤ.  Without them the line is
+             * pen 2, which is what the shapes that carry none come out as. */
+            l->pen = got >= 7 ? v[6] : 2;
+            /* `... 1 0 -1 E 90 12` -- the `E` turns the record into an arc
+             * and the two numbers after it are the sweep and the mode. */
+            if (e && numbers(e + 1, v, 2) == 2) {
+                l->arc = 1;
+                l->sweep = v[0];
+                l->mode = v[1];
+            }
         }
     }
     fclose(f);

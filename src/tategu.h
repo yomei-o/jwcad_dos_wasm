@@ -31,6 +31,14 @@
 typedef struct {
     int a, b;                   /* which part each end belongs to, 1-based */
     int x1, y1, x2, y2;         /* the two ends, in their own part's frame */
+    /* An arc, if the record had `E` after the three attribute numbers: the
+     * first pair is then the centre and the second the start, the radius is
+     * the distance between them, `sweep` is degrees anticlockwise and `mode`
+     * says what else to draw -- see the note at the top of the file. */
+    int pen;                    /* 線色, the 7th number.  2 when there is none */
+    int arc;
+    int sweep;
+    int mode;
 } JwTateguLine;
 
 typedef struct {

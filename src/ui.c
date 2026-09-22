@@ -18,6 +18,7 @@
 #include "item.h"
 #include "tategu.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -1077,6 +1078,54 @@ static int asks_range(void)
     return 0;
 }
 
+/* A line cut to a box before it is drawn.  jw_line does not clip -- it is the
+ * chrome's own routine and the chrome draws inside itself -- and the fittings
+ * library asks for lines that run out of the row they are shown in. */
+static void clip_line(VGA *v, double x0, double y0, double x1, double y1,
+                      int bx0, int by0, int bx1, int by1, unsigned colour)
+{
+    double t0 = 0.0, t1 = 1.0;
+    const double dx = x1 - x0, dy = y1 - y0;
+    int i;
+
+    for (i = 0; i < 4; i++) {
+        const double p = i == 0 ? -dx : i == 1 ? dx : i == 2 ? -dy : dy;
+        const double q = i == 0 ? x0 - bx0
+                       : i == 1 ? bx1 - x0
+                       : i == 2 ? y0 - by0
+                                : by1 - y0;
+
+        if (p == 0.0) {
+            if (q < 0.0) {
+                return;
+            }
+            continue;
+        }
+        if (p < 0.0) {
+            const double r = q / p;
+
+            if (r > t1) {
+                return;
+            }
+            if (r > t0) {
+                t0 = r;
+            }
+        } else {
+            const double r = q / p;
+
+            if (r < t0) {
+                return;
+            }
+            if (r < t1) {
+                t1 = r;
+            }
+        }
+    }
+    jw_line(v, (int)(x0 + t0 * dx), (int)(y0 + t0 * dy),
+            (int)(x0 + t1 * dx), (int)(y0 + t1 * dy), colour, ROP_REPLACE,
+            JW_STYLE_SOLID);
+}
+
 /* The sixteen shapes ｵﾌﾟｼｮﾝ ①建具平面 ②断面 ③立面 show, out of the library
  * files that ship with the program.  See src/tategu.h for the format and the
  * top of tmp/tatedraw.py's note for where the numbers came from.
@@ -1113,6 +1162,14 @@ static void tategu(VGA *v, int which)
          * draws it from 102 down to 84, which 54 + 48 gives with the same
          * truncation everything else here uses. */
         const double base = 54.0 + 48.0 * row;
+        /* The row this shape is shown in, between its two rules.  They are
+         * at y 16, 63, 111, 159 ... -- 47 apart once and 48 after that --
+         * and the divider down the middle is x 380.  **Everything is cut to
+         * it**: a shape taller than its row would otherwise write into the
+         * ones above and below. */
+        const int x0 = col ? 381 : 122, x1 = col ? 638 : 379;
+        const int y0 = (row ? 63 + (row - 1) * 48 : 16) + 1;
+        const int y1 = 63 + row * 48 - 1;
         int k;
 
         for (k = 0; k < sh->n; k++) {
@@ -1121,9 +1178,48 @@ static void tategu(VGA *v, int which)
             const double bx = left + (l->b - 1) * step + l->x2 * 0.25;
             const double ay = base - l->y1 * 0.25;
             const double by = base - l->y2 * 0.25;
+            const unsigned ink = jw_view_pen_colour((unsigned)l->pen);
 
-            jw_line(v, (int)ax, (int)ay, (int)bx, (int)by, 7, ROP_REPLACE,
-                    JW_STYLE_SOLID);
+            if (l->arc) {
+                /* The centre is the first pair and the start the second; the
+                 * radius is how far apart they come out on the screen.  The
+                 * sweep is anticlockwise in the shape's own sense, where y
+                 * grows upwards, so on the screen it runs the other way.
+                 * A 1 in the mode's tens place clips it to the row. */
+                const double dx = bx - ax, dy = by - ay;
+                const double r = sqrt(dx * dx + dy * dy);
+                const double a0 = atan2(-dy, dx) * 180.0 / 3.14159265358979323846;
+                const double a1 = a0 + l->sweep;
+                const int units = l->mode % 10;
+                const int cx0 = v->clip_x0, cy0 = v->clip_y0;
+                const int cx1 = v->clip_x1, cy1 = v->clip_y1;
+                const double rad = 3.14159265358979323846 / 180.0;
+
+                v->clip_x0 = x0;
+                v->clip_y0 = y0;
+                v->clip_x1 = x1;
+                v->clip_y1 = y1;
+                if (units <= 3) {
+                    jw_arc_poly(v, ax, ay, r, 10000,
+                                (long)(a0 * 65536.0), (long)(a1 * 65536.0), 0,
+                                ink, ROP_REPLACE, JW_STYLE_SOLID);
+                }
+                if (units == 1 || units == 3 || units == 5 || units == 7) {
+                    clip_line(v, ax, ay, bx, by, x0, y0, x1, y1, ink);
+                }
+                if (units == 2 || units == 3 || units == 6 || units == 7) {
+                    const double ex = ax + r * cos(a1 * rad);
+                    const double ey = ay - r * sin(a1 * rad);
+
+                    clip_line(v, ax, ay, ex, ey, x0, y0, x1, y1, ink);
+                }
+                v->clip_x0 = cx0;
+                v->clip_y0 = cy0;
+                v->clip_x1 = cx1;
+                v->clip_y1 = cy1;
+                continue;
+            }
+            clip_line(v, ax, ay, bx, by, x0, y0, x1, y1, ink);
         }
     }
 }
@@ -2262,7 +2358,6 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
             fill(v, 122, 17, 638, 462, 0);
             fill(v, 122, 463, 638, 478, 0);
-            tategu(v, s->top_item);
             if (s->top_item == 3) {
                 /* ③立面 lays them out four across and four down, 96 tall,
                  * with the rules at x 251, 381 and 511. */
@@ -2401,6 +2496,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     break;
                 }
             }
+        }
+        /* And the shapes themselves, **after** the labels: the `[7]` the
+         * original writes sits over the top-left of the cell and the arc in
+         * that one runs through it, cyan over the white of the label. */
+        if (s->command == 29 && s->top_item >= 1 && s->top_item <= 3) {
+            tategu(v, s->top_item);
         }
         /* 図形 ④ｸﾞﾙｰﾌﾟ変's grid, after the words for the same reason the
          * 文字種類 box is: the original's rules are whole. */
