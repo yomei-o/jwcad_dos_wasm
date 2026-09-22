@@ -2183,7 +2183,12 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
          * stage 2. */
         c->text_vert = item == 2;
         c->stage = 2;
-        return 1;
+        /* **Nought, not one.**  The state is set; the words the press wrote
+         * are the original's own and are in src/item.h, and they are not
+         * the ones src/stage.h holds for the same stage -- that one was
+         * captured by pressing a point in the drawing, and it starts with
+         * `[ESC]` where this does not. */
+        return 0;
     }
     if (c->command == 14 && c->stage == 0 && (item == 1 || item == 2)) {
         /* `|①横方向|②縦方向|③任意方向|④円･角|…` -- ① is also what a

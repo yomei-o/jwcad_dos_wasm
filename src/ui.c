@@ -2165,6 +2165,20 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * the stages, in the order the original wrote them.  src/item.h. */
         if (s->top_item) {
             const JwItem *r;
+            int own = 0;
+
+            /* The counts box is painted again before anything of the
+             * command's own goes in it -- see counts(). */
+            for (r = JW_ITEM; r->command; r++) {
+                if (r->command == s->command && r->item == s->top_item
+                    && r->right == s->top_right
+                    && (r->row == 2 || r->row == 3) && r->col <= 15) {
+                    own = 1;
+                }
+            }
+            if (own) {
+                fill(v, 1, 17, 120, 47, 4);
+            }
 
             /* **The row is cleared first.**  A fill leaves no string for
              * the capture to record, so it is not in src/item.h and had to
@@ -2242,7 +2256,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * later stage only writes over part of what an earlier one left -- and
          * the original puts the two counts back between them, which is why they
          * are not on the screen when a command has finished. */
-        for (i = 1; i <= s->stage; i++) {
+        for (i = 1; !s->top_item && i <= s->stage; i++) {
+            /* **A cell that was pressed has said everything already.**
+             * src/item.h holds every write that press made, so the stages
+             * are not replayed over the top of it -- 文字 ①基点変 puts the
+             * command at stage 2 and the stage's own line is not the one
+             * the original writes when it is reached that way. */
             const JwStage *q;
 
             /* The original clears the top line and paints the counts box
