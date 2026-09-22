@@ -2165,20 +2165,6 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * the stages, in the order the original wrote them.  src/item.h. */
         if (s->top_item) {
             const JwItem *r;
-            int own = 0;
-
-            /* The counts box is painted again before anything of the
-             * command's own goes in it -- see counts(). */
-            for (r = JW_ITEM; r->command; r++) {
-                if (r->command == s->command && r->item == s->top_item
-                    && r->right == s->top_right
-                    && (r->row == 2 || r->row == 3) && r->col <= 15) {
-                    own = 1;
-                }
-            }
-            if (own) {
-                fill(v, 1, 17, 120, 47, 4);
-            }
 
             /* **The row is cleared first.**  A fill leaves no string for
              * the capture to record, so it is not in src/item.h and had to
@@ -2201,6 +2187,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                  * two blitted characters of `電卓` with them. */
                 if (r->row == 25 || r->row == 30) {
                     continue;
+                }
+                /* **The counts box is painted before each thing that goes
+                 * in it.**  Both the counts and what a command puts in
+                 * their place are written transparently -- black letters on
+                 * the green the box is filled with -- so one over the other
+                 * leaves both readable.  The fill leaves no string and so
+                 * is not in the table; a group starts at row 2, which is
+                 * the top of the box.  See counts(). */
+                if (r->row == 2 && r->col <= 15) {
+                    fill(v, 1, 17, 120, 47, 4);
                 }
                 jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
                            (unsigned)r->bg, r->text);
