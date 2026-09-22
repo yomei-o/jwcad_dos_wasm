@@ -3051,6 +3051,19 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * the original -- the pixels src/item.h's text does not account
          * for: the top two rows thick, one under the header, the bottom
          * two, the sides two columns each and five single rules between. */
+        /* 測定's unit and decimals.  Drawn last, over whatever src/prompt.h
+         * or src/item.h put there, because they are state and those two are
+         * recordings. */
+        if (s->command == 15) {
+            static const char *const UNIT[3] = {
+                " " "\x82\x8d" " ", " cm ", " mm "
+            };
+            char one[16];
+
+            jw_ui_text(v, 53, 2, 7, 0xffffu, UNIT[s->meas_unit % 3]);
+            sprintf(one, "(%d)" "\x8c\x85" " ", s->meas_dec);
+            jw_ui_text(v, 61, 2, 7, 0xffffu, one);
+        }
         /* The ten rows of 文字 ④設定's table.  Every column was read off
          * the original's own writes (tools/origstr.sh "90 264 left"
          * "428 8 left"): the name and the pen at column 20, the width at

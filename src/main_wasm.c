@@ -286,12 +286,16 @@ static void drawing_new(void)
 /* And whether a DXF has just been written, for ` 登 録  完 了 `. */
 static int dxf_done;
 static long dxf_n[4];
+/* 測定's unit and decimals -- see JwUi. */
+static int meas_unit, meas_dec = 3;
 
 static void present(void)
 {
     memcpy(ui.dxf_set, dxf_set, sizeof dxf_set);
     ui.dxf_done = dxf_done;
     memcpy(ui.dxf_n, dxf_n, sizeof ui.dxf_n);
+    ui.meas_unit = meas_unit;
+    ui.meas_dec = meas_dec;
     if (!drawing) {
         memset(vga.plane, 0, sizeof vga.plane);
     } else {
@@ -1785,6 +1789,26 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             }
             ui.file_sel = ui.file_top + row;
         }
+        present();
+        return -1;
+    }
+    /* 測定 ⑥単位 and ⑦小数点以下.  ⑥ goes ｍ(3桁) → cm(1桁) → mm(0桁) and
+     * round again; ⑦ goes 3 → 0 → 1 → 2 → 3 and leaves the unit alone. */
+    if (ui.command == 15 && y >= 0 && y <= 15
+        && (jw_ui_top_item(x, y) == 6 || jw_ui_top_item(x, y) == 7)) {
+        static const int DEC[3] = { 3, 1, 0 };
+
+        if (jw_ui_top_item(x, y) == 6) {
+            meas_unit = (meas_unit + 1) % 3;
+            meas_dec = DEC[meas_unit];
+        } else {
+            meas_dec = (meas_dec + 1) % 4;
+        }
+        cmd.top_item = jw_ui_top_item(x, y);
+        cmd.top_right = right;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
         present();
         return -1;
     }

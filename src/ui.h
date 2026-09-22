@@ -261,6 +261,12 @@ typedef struct {
      * in one of those four columns blanks the cell, puts a green block in
      * it and writes its own line along the top; a press in the 文字種類
      * column picks the type instead and moves the ●. */
+    /* 測定's unit and how many decimals it shows: ⑥単位 goes ｍ(3桁) →
+     * cm(1桁) → mm(0桁) → ｍ and ⑦小数点以下 goes 3 → 0 → 1 → 2 → 3, both
+     * measured on the original.  The band writes them at row 2, columns 53
+     * and 61, on white. */
+    int meas_unit;
+    int meas_dec;
     int char_edit;
     int char_edit_row;
     char char_edit_typed[16];
