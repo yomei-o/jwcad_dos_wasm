@@ -402,6 +402,10 @@ void jw_ui_text(VGA *v, int col, int row, unsigned fg, unsigned bg,
  * says "複写から測定が 1〜15、移動から入出力が16〜30". */
 const char *jw_ui_menu_label(int command);
 
+/* The one black pixel a range screen leaves at the counts box's corner.
+ * Called last, after everything else has been drawn. */
+void jw_ui_range_notch(VGA *v);
+
 /* Which ファイル選択 screen this is: JW_PICK_IO for 入出力's own, and the
  * three others for the commands that borrow it.  Sets file_bar, file_path,
  * file_word and file_named. */

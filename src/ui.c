@@ -1032,6 +1032,24 @@ const char *jw_ui_guide(void)
     "\x82\xad\x82\xbe\x82\xb3\x82\xa2\xa1";
 }
 
+/* Does the line the chrome has just written offer `① 前 範 囲`?  That cell
+ * is what the twelve screens with the notch at (0,16) have in common; see
+ * notch() below. */
+static int asks_range(void)
+{
+    /* ` 前 範 囲`, the original's bytes. */
+    static const char WANT[] = " \x91" "O " "\x94\xcd" " " "\x88\xcd";
+    const int n = (int)sizeof WANT - 1;
+    int i;
+
+    for (i = 0; i + n <= 80; i++) {
+        if (memcmp(top_line + i, WANT, (size_t)n) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 /* The two counts and the label under them.  A command writes what it has
  * measured over them while it runs and the original puts them back the
  * moment it is finished, so this is called twice. */
@@ -3005,6 +3023,22 @@ static void cursor_line(VGA *v, int x0, int y, int x1)
         if (6 & (1 << plane)) {
             jw_line(v, x0, y, x1, y, 1u << plane, 0x18, JW_STYLE_SOLID);
         }
+    }
+}
+
+/* **The counts box loses its top-left pixel on a range screen.**  Measured
+ * over every branch: (0,16) is black in the original on the twelve whose line
+ * offers `① 前 範 囲` -- 複写 and 移動 as they come up, 線変更 ①③, 消去
+ * ③指定範囲, 図形 ①登録 and 文編集 ⑤整理 -- and white on all the rest.  The
+ * rest of the border is whole.
+ *
+ * What the original does to it is not known; a border drawn as four lines
+ * that miss the corner would do it.  This is the measurement, and it goes on
+ * last because everything else that touches the corner would paint over it. */
+void jw_ui_range_notch(VGA *v)
+{
+    if (asks_range()) {
+        fill(v, 0, 16, 0, 16, 0);
     }
 }
 

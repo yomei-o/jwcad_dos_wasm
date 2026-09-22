@@ -212,6 +212,7 @@ static void present(void)
     if (ui.zoom_stage == 2) {
         jw_ui_zoom_band(&vga, zoom_x, zoom_y, mouse_x, mouse_y);
     }
+    jw_ui_range_notch(&vga);
     jw_ui_cursor(&vga, mouse_x, mouse_y);
     vga_render(&vga, pixels);
     jw_view_rgba(&vga, pixels, rgba);
