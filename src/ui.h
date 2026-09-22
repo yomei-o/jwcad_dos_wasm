@@ -150,6 +150,18 @@ typedef struct {
     int top_item;
     int top_right;
     int ask_kind;
+    /* The three numbers src/prompt.h carries as digits: 複線's interval,
+     * 面取's offset and ２線's pair of them.  They belong to the program's
+     * state, and how many decimals they are shown to belongs to the
+     * drawing, so the line is written from these rather than from what was
+     * captured.  See put_fixed in src/ui.c. */
+    /* How many decimals the drawing shows a length to.  `dec` above is the
+     * running command's and is nought until it has taken a point; this one
+     * is the drawing's own and is what the lines below are written with. */
+    int dec_drawing;
+    double gap;
+    double gap_chamfer;
+    double gap_two[2];
     double ask_len;
     double ask_ang;
     int opt_stage;

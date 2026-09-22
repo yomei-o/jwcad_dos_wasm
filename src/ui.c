@@ -649,6 +649,7 @@ void jw_ui_from(JwUi *s, const Jwc *d)
     s->name = d->layer_name[(s->group << 4) | (s->layer & 15)];
     s->work_seconds = d->work_seconds;
     s->dec[0] = s->dec[1] = d->decimals;
+    s->dec_drawing = d->decimals;
     s->char_type = d->char_type;
     s->char_pen = d->text_pen[d->char_type];
     s->char_w = d->text_w[d->char_type];
@@ -731,6 +732,40 @@ static void put_numbers(char *out, size_t cap, const char *text,
             } else {
                 o += (size_t)sprintf(out + o, "%d", (int)n[k]);
             }
+            k++;
+            continue;
+        }
+        out[o++] = *text++;
+    }
+    out[o] = 0;
+}
+
+/* The same, but **the field keeps its width**.  put_numbers writes the number
+ * as short as it goes, which suits 文字's `横 4.0`; a number inside a fixed
+ * field has to stay in it, so the run of spaces and digits it was found in is
+ * measured and the value written back across the whole of it.  `[     1000.00]`
+ * at three decimals is `[    1000.000]`, not `[     1000.000]`. */
+static void put_fixed(char *out, size_t cap, const char *text,
+                      const double *n, int count, int dec)
+{
+    size_t o = 0;
+    int k = 0;
+
+    while (*text && o + 32 < cap) {
+        if (k < count && *text >= '0' && *text <= '9') {
+            size_t back = 0;
+            int w = 0;
+
+            while (back < o && out[o - back - 1] == ' ') {
+                back++;
+            }
+            while (*text && ((*text >= '0' && *text <= '9') || *text == '.')) {
+                text++;
+                w++;
+            }
+            o -= back;
+            w += (int)back;
+            o += (size_t)sprintf(out + o, "%*.*f", w, dec, n[k]);
             k++;
             continue;
         }
@@ -2025,6 +2060,25 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     text = out;
                 }
             }
+            /* 複線, 面取 and ２線 carry a number of the program's own in
+             * their line, and how many decimals it is shown to is the
+             * drawing's.  See put_fixed. */
+            if (p->row == 1 && p->col == 8
+                && (s->command == 5 || s->command == 8 || s->command == 9)) {
+                double n[2];
+                int k = 0;
+
+                if (s->command == 5) {
+                    n[k++] = s->gap;
+                } else if (s->command == 8) {
+                    n[k++] = s->gap_chamfer;
+                } else {
+                    n[k++] = s->gap_two[0];
+                    n[k++] = s->gap_two[1];
+                }
+                put_fixed(out, sizeof out, p->text, n, k, s->dec_drawing);
+                text = out;
+            }
             jw_ui_text(v, p->col, p->row, (unsigned)p->fg, (unsigned)p->bg,
                        text);
         }
@@ -2048,6 +2102,21 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     && r->right == s->top_right) {
                     jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
                                (unsigned)r->bg, r->text);
+                }
+            }
+            /* **A field of blanks on the top row is a field**, and the
+             * original puts its green cursor in the first cell of it: the
+             * lower nine rows, the same block ＋'s 寸法 and 複線's number
+             * have.  A fill leaves no string, so which cell it is has to
+             * come from somewhere -- and the run of eight spaces the item
+             * writes is exactly the field it is in. */
+            for (r = JW_ITEM; r->command; r++) {
+                if (r->command == s->command && r->item == s->top_item
+                    && r->right == s->top_right && r->row == 1
+                    && r->text[0] == ' ' && !r->text[strspn(r->text, " ")]) {
+                    const int x = (r->col - 1) * 8;
+
+                    fill(v, x, 7, x + 7, 15, 4);
                 }
             }
         }

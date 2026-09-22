@@ -138,6 +138,10 @@ static void sync_ui(void)
     ui.top_item = cmd.top_item;
     ui.top_right = cmd.top_right;
     ui.ask_kind = cmd.ask_kind;
+    ui.gap = cmd.gap;
+    ui.gap_chamfer = cmd.gap_chamfer;
+    ui.gap_two[0] = cmd.gap_two[0];
+    ui.gap_two[1] = cmd.gap_two[1];
     ui.ask_len = cmd.ask_len;
     ui.ask_ang = cmd.ask_ang;
 }
