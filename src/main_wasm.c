@@ -216,8 +216,7 @@ static void sync_ui(void)
     ui.dim_h = drawing ? drawing->text_h[drawing->dim_size] / 10.0 : 0.0;
     ui.dim_text_pen = drawing ? drawing->text_pen[drawing->dim_size] : 0;
     ui.dim_size = drawing ? drawing->dim_size : 0;
-    ui.dim_guide_n = jw_cmd_guide_pos(&cmd, &view, &ui.dim_guide_vert,
-                                      &ui.dim_guide_a, &ui.dim_guide_b);
+    ui.dim_guide_n = jw_cmd_guide_pos(&cmd, &view, ui.dim_guide);
     ui.dim_points = drawing ? drawing->n_points : 0;
     ui.dim_did = cmd.dim_did;
     ui.dim_lines0 = cmd.dim_lines0;
@@ -1925,6 +1924,17 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     /* 寸法 ⑨設定's panel.  The ten rows are 6 to 22 of the box, two rows
      * apart; the six with a number open a field and the three with 【】
      * change over where they stand.  Its own line has three more. */
+    /* 寸法 ③任意方向's `｜0 度 ﾏｳｽ(L)｜`: columns 34 to 44 of the top
+     * line.  前回と同じ ﾏｳｽ(R) and [F1] ﾏｳｽ角度 are not done. */
+    if (ui.command == 14 && ui.top_item == 3 && !right
+        && y >= 0 && y <= 15 && x / 8 + 1 >= 34 && x / 8 + 1 <= 44) {
+        jw_cmd_dim_angle(&cmd, 0.0);
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
     if (ui.command == 14 && ui.top_item == 9 && !dim_edit
         && x >= 239 && x <= 501 && y >= 72 && y < 362) {
         const int row = y / 16 + 1;

@@ -3217,8 +3217,26 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (r->command == s->command && r->item == s->top_item
                     && r->right == s->top_right && r->row == 1
                     && strspn(r->text, " ") == 8 && !r->text[8]) {
-                    const int x = (r->col - 1) * 8;
+                    /* **寸法 ③任意方向 types into that field.**  Each
+                     * character goes in its own cell with two spaces after
+                     * it, the way ⑥回転's angle does, and the green block
+                     * moves to the cell the next one will take. */
+                    int x = (r->col - 1) * 8;
 
+                    if (s->command == 14 && s->top_item == 3) {
+                        int n;
+
+                        for (n = 0; n < s->typed_n && n < 8; n++) {
+                            char one[4];
+
+                            one[0] = s->typed[n];
+                            one[1] = one[2] = ' ';
+                            one[3] = 0;
+                            jw_ui_text(v, r->col + n, 1, 7, 0, one);
+                        }
+                        n = s->typed_n < 8 ? s->typed_n : 8;
+                        x += n * 8;
+                    }
                     fill(v, x, 7, x + 7, 15, 4);
                 }
             }
@@ -3582,23 +3600,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * stage per turn, and an exclusive-or line drawn an even number
              * of times is not there at all. */
             if (s->dim_guide_n && i == s->stage) {
-                const int x0 = 122, y0 = 17, x1 = 638, y1 = 462;
+                int k;
 
-                if (s->dim_guide_vert) {
-                    jw_line(v, s->dim_guide_a, y0, s->dim_guide_a, y1, 2,
-                            0x18, jw_view_line_style(9));
-                } else {
-                    jw_line(v, x0, s->dim_guide_a, x1, s->dim_guide_a, 2,
-                            0x18, jw_view_line_style(9));
-                }
-                if (s->dim_guide_n > 1) {
-                    if (s->dim_guide_vert) {
-                        jw_line(v, s->dim_guide_b, y0, s->dim_guide_b, y1, 2,
-                                0x18, jw_view_line_style(0));
-                    } else {
-                        jw_line(v, x0, s->dim_guide_b, x1, s->dim_guide_b, 2,
-                                0x18, jw_view_line_style(0));
-                    }
+                for (k = 0; k < s->dim_guide_n; k++) {
+                    jw_line(v, s->dim_guide[k][0], s->dim_guide[k][1],
+                            s->dim_guide[k][2], s->dim_guide[k][3], 2, 0x18,
+                            jw_view_line_style(k ? 0 : 9));
                 }
             }
             /* [ESC] replaces the stage it came from: the line is blacked

@@ -211,6 +211,9 @@ typedef struct {
     double dim_value;           /* さっき書いた寸法値、帯に出るもの */
     long dim_texts;             /* 寸法値を聞きはじめたときの文字数 */
     int dim_vert;               /* ②縦方向。横と縦が入れ替わるだけ */
+    /* 寸法の向き。①横方向 は (1,0)、②縦方向 は (0,1)、③任意方向 は
+     * (cos,sin)。押した点はこの枠の座標で持ちます。 */
+    double dim_ux, dim_uy;
     /* 寸法 ⑨設定's two that the drawing already uses: which pen the three
      * lines are drawn with and how far the value sits off the dimension
      * line, in millimetres of paper.  The front end fills them from the
@@ -472,8 +475,7 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
 /* 寸法 の 2 本の案内線が画面のどこに来るか。戻り値は本数（0/1/2）で、
  * `*vert` が縦かどうか、`*a` が 引出し線の始点、`*b` が 寸法線 の位置。
  * 引くのは枠（jw_ui_draw）です —— 順番のわけは cmd.c の注釈に。 */
-int jw_cmd_guide_pos(const JwCmd *c, const JwView *w, int *vert,
-                     int *a, int *b);
+int jw_cmd_guide_pos(const JwCmd *c, const JwView *w, int seg[2][4]);
 
 /* A press on the top line, which is a menu of its own: the runs between the
  * `|` characters are the items, numbered from the left.  Measured on 消去's
@@ -507,6 +509,8 @@ int jw_ui_item_has(int command, int item, int right);
  * it, which is how [BS] can put the field back.  src/ui.c draws the field from
  * `typed` and gets the same picture. */
 int jw_cmd_key(JwCmd *c, Jwc *d, int key);
+/* 寸法 ③任意方向 の角度が決まったとき。度で渡します。 */
+void jw_cmd_dim_angle(JwCmd *c, double deg);
 
 /* The function keys, for jw_cmd_key.  They are not characters, so they are
  * numbered past the byte the rest of the keys come in as.  While 複線 is

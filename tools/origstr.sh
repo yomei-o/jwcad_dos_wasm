@@ -21,9 +21,14 @@ for step in "$@"; do
     [ -n "$step" ] || continue
     case "$step" in
     type\ *)
-        printf 'type %s
-wait %s
-' "${step#type }" "${WAIT:-26000000}"             >> tmp/ostr/s.txt
+        # **One character at a time** -- see tools/seqcheck.sh: the
+        # emulator pushes them all at once and the original keeps the
+        # first only.
+        echo "${step#type }" | fold -w1 | while read -r ch; do
+            [ -n "$ch" ] || continue
+            printf 'type %s\nwait 8000000\n' "$ch" >> tmp/ostr/s.txt
+        done
+        printf 'wait %s\n' "${WAIT:-26000000}" >> tmp/ostr/s.txt
         continue
         ;;
     key\ *)

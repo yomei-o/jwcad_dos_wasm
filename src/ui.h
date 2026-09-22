@@ -414,8 +414,7 @@ typedef struct {
     int dim_size;               /* 寸法値の文字種。上の行の `文字[Fn]` */
     /* 寸法の案内線。本数（0/1/2）と、縦か、2 本の画面位置。 */
     int dim_guide_n;
-    int dim_guide_vert;
-    int dim_guide_a, dim_guide_b;
+    int dim_guide[2][4];
     /* ⑥点 の行: 点(No.n) の n は 点のペン No.、点数 は図面の実点の数。
      * 1 つでも打つと桁 1 に [ESC] が出ます。 */
     long dim_points;

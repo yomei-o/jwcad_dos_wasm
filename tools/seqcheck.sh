@@ -34,7 +34,16 @@ printf 'wait %s\n' "$BOOT" > tmp/seq/s.txt
 for step in "$@"; do
     case "$step" in
     type\ *)
-        printf 'type %s\nwait %s\n' "${step#type }" "$WAIT" >> tmp/seq/s.txt
+        # **One character at a time.**  The emulator's `type` pushes every
+        # character of its argument into the keyboard with nothing in
+        # between, and the original keeps only the first: `type 30` set
+        # 寸法 ③任意方向 to 3 degrees, not 30, and the port was then
+        # compared against a different drawing.
+        echo "${step#type }" | fold -w1 | while read -r ch; do
+            [ -n "$ch" ] || continue
+            printf 'type %s\nwait 8000000\n' "$ch" >> tmp/seq/s.txt
+        done
+        printf 'wait %s\n' "$WAIT" >> tmp/seq/s.txt
         continue
         ;;
     key\ *)

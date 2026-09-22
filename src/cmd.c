@@ -2146,25 +2146,113 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
  * is 図面 → 帯の黒塗り → 案内線 → 寸法値の白い升: the drawing area starts at
  * y=17, so ②縦方向 sends one straight through the counts box, and the
  * original's box covers it.  See jw_ui_draw. */
-int jw_cmd_guide_pos(const JwCmd *c, const JwView *w, int *vert, int *a, int *b)
+/* Cut a line to the drawing window, Liang-Barsky, in screen pixels.  A
+ * horizontal one comes back as (122,y)-(638,y), which is what the two square
+ * directions drew before this took slanted ones too. */
+static int guide_cut(const JwView *w, double px, double py,
+                     double dx, double dy, int seg[4])
 {
-    int gx, gy;
+    /* **One row higher than the drawing area.**  ③任意方向's slanted
+     * guide reaches y=17 at x=374.9, and the original's topmost dot is
+     * at (376,17): it cuts the line at the white rule on row 16 --
+     * x=376.8 -- and then keeps that x while the drawing itself starts
+     * at 17.  Cut at 17 the whole line comes out a row shallow and 238
+     * pixels of dots move.  The two square directions are the same
+     * either way: a horizontal guide is not cut in y at all and a
+     * vertical one only has its endpoint moved back to 17. */
+    const double x0 = w->x0, y0 = w->y0 - 1.0, x1 = w->x1, y1 = w->y1;
+    double t0 = -1e9, t1 = 1e9;
+    const double p[4] = { -dx, dx, -dy, dy };
+    const double q[4] = { px - x0, x1 - px, py - y0, y1 - py };
+    int i;
 
-    /* ⑤寸法値 has none: it never takes a 引出し線の始点, and drawing one
-     * from the zero it has left put a yellow rule across the bottom of
-     * the drawing (387 pixels). */
+    for (i = 0; i < 4; i++) {
+        if (p[i] == 0.0) {
+            if (q[i] < 0.0) {
+                return 0;
+            }
+        } else {
+            const double r = q[i] / p[i];
+
+            if (p[i] < 0.0) {
+                if (r > t1) {
+                    return 0;
+                }
+                if (r > t0) {
+                    t0 = r;
+                }
+            } else {
+                if (r < t0) {
+                    return 0;
+                }
+                if (r < t1) {
+                    t1 = r;
+                }
+            }
+        }
+    }
+    /* **x truncated, y rounded.**  Both slanted guides come out on the
+     * original's dots that way and no other: the first one's left end is
+     * 163.1 and its far end 376.8 (17 and 376 -- rounding x gives 377), the
+     * second's left end is 212.8 and the original's dot there is on row 213.
+     * The two square directions take their guides off free presses, so
+     * their numbers are whole and either rule gives the same pixel. */
+    seg[0] = (int)(px + t0 * dx);
+    seg[1] = (int)(py + t0 * dy + 0.5);
+    seg[2] = (int)(px + t1 * dx);
+    seg[3] = (int)(py + t1 * dy + 0.5);
+    /* **Left to right, top to bottom.**  The dashes start at the line's
+     * first end, and ②縦方向's direction points up the screen: drawn from
+     * the bottom the gaps land on the other rows and 366 pixels move. */
+    if (seg[1] < w->y0) {
+        seg[1] = w->y0;
+    }
+    if (seg[3] < w->y0) {
+        seg[3] = w->y0;
+    }
+    if (seg[0] > seg[2] || (seg[0] == seg[2] && seg[1] > seg[3])) {
+        const int tx = seg[0], ty = seg[1];
+
+        seg[0] = seg[2];
+        seg[1] = seg[3];
+        seg[2] = tx;
+        seg[3] = ty;
+    }
+    return 1;
+}
+
+int jw_cmd_guide_pos(const JwCmd *c, const JwView *w, int seg[2][4])
+{
+    const double ux = c->dim_ux, uy = c->dim_uy;
+    const double vx = -uy, vy = ux;
+    double sx, sy;
+    int n = 0;
+
     if (c->command != 14 || c->stage < 2 || c->top_item || c->dim_only) {
         return 0;
     }
-    *vert = c->dim_vert;
-    at_screen(w, c->dim_by, c->dim_by, &gx, &gy);
-    *a = c->dim_vert ? gx : gy;
-    if (c->stage < 3) {
-        return 1;
+    /* The screen direction of the dimension's own axis: x grows with the
+     * drawing's x and y the other way.
+     *
+     * **In doubles, not through at_screen.**  That one truncates to whole
+     * pixels, and a guide drawn through a point a fraction out comes back
+     * with a slope of 13/24 where the original has 14/24 -- the dots then
+     * sit a row out along half the line. */
+    sx = ux * w->scale;
+    sy = -uy * w->scale;
+    if (!guide_cut(w, (c->dim_by * vx - w->ox) * w->scale + w->ax,
+                   w->ay - (c->dim_by * vy - w->oy) * w->scale,
+                   sx, sy, seg[0])) {
+        return 0;
     }
-    at_screen(w, c->dim_y, c->dim_y, &gx, &gy);
-    *b = c->dim_vert ? gx : gy;
-    return 2;
+    n = 1;
+    if (c->stage >= 3
+        && guide_cut(w, (c->dim_y * vx - w->ox) * w->scale + w->ax,
+                     w->ay - (c->dim_y * vy - w->oy) * w->scale,
+                     sx, sy, seg[1])) {
+        n = 2;
+    }
+    return n;
 }
 
 void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
@@ -2366,6 +2454,36 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 }
 
 
+/* ③任意方向 の角度が決まったところ。あとは ①横方向 と同じ道です。 */
+void jw_cmd_dim_angle(JwCmd *c, double deg)
+{
+    const double rad = deg * 3.14159265358979323846 / 180.0;
+
+    c->dim_vert = 0;
+    c->dim_ux = cos(rad);
+    c->dim_uy = sin(rad);
+    c->typing = 0;
+    c->typed[0] = 0;
+    c->typed_n = 0;
+    c->top_item = 0;
+    c->top_right = 0;
+    c->pressed = 1;
+    c->stage = 1;
+}
+
+static int cmd_top_dim3(JwCmd *c)
+{
+    /* ③任意方向 asks for an angle first: `[ESC]  角度 =` with an eight
+     * cell field at column 15 and `｜0 度 ﾏｳｽ(L)｜前回と同じ ﾏｳｽ(R)
+     * ｜[F1] ﾏｳｽ角度｜` after it.  Typed digits go in the field and
+     * [Enter] takes them; the 0 度 cell is a press.  前回と同じ and
+     * [F1] ﾏｳｽ角度 are not done. */
+    c->typing = 1;
+    c->typed[0] = 0;
+    c->typed_n = 0;
+    return 0;                   /* the line is the item's own recording */
+}
+
 static int cmd_top(JwCmd *c, Jwc *d, int item)
 {
     long k;
@@ -2480,11 +2598,16 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
          * `[ESC]` where this does not. */
         return 0;
     }
+    if (c->command == 14 && c->stage == 0 && item == 3) {
+        return cmd_top_dim3(c);
+    }
     if (c->command == 14 && c->stage == 0 && (item == 1 || item == 2)) {
         /* `|①横方向|②縦方向|③任意方向|④円･角|…` -- ① is also what a
          * press in the drawing picks, and ② turns the whole thing on its
          * side.  ③ and the rest are not done. */
         c->dim_vert = item == 2;
+        c->dim_ux = item == 2 ? 0.0 : 1.0;
+        c->dim_uy = item == 2 ? 1.0 : 0.0;
         c->pressed = 1;
         c->stage = 1;
         return 1;
@@ -3161,6 +3284,27 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->typed_n = (int)strlen(c->typed);
         key = 13;
     }
+    if (c->command == 14 && c->top_item == 3) {
+        /* ③任意方向's angle.  The field takes digits, a point and a
+         * minus, and [Enter] turns the road on. */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            jw_cmd_dim_angle(c, c->typed_n ? atof(c->typed) : 0.0);
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
     if (c->command == 19) {
         /* 正多角形's number of sides.  Three or more; the original's own
          * `[5]` is what it offers. */
@@ -3787,7 +3931,44 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
     const unsigned char layer =
         (unsigned char)((0 << 4) | (d->write_layer & 15));
     const unsigned char type = (unsigned char)d->line_type;
-    const int up = c->dim_vert;
+    const unsigned char pen =
+        (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN);
+    /* **Everything is in the dimension's own frame.**  `u` runs along the
+     * dimension line and `v` across it, a quarter turn anticlockwise; the
+     * four presses are kept as coordinates in that frame, so ①横方向,
+     * ②縦方向 and ③任意方向 are one piece of drawing.
+     *
+     * ①横方向 measured on SAMPLE0 with the 引出し線の始点 free at (162,140),
+     * the 寸法線 at (300,110) and the two ends read off the top edge:
+     *
+     *     line (40.973,353.000)-(477.000,353.000)  01 01 00 80 00 20
+     *     line (40.973,323.000)-( 40.973,353.000)  01 01 00 59 00 20
+     *     line (477.000,323.000)-(477.000,353.000) 01 01 00 59 00 20
+     *     text (255.716,353.872)-(262.257,353.872) 02 00 10 40  `250`
+     *
+     * ②縦方向 on the left edge -- u is (0,1), so v is (-1,0) and the value
+     * is written going up, half a millimetre to the left:
+     *
+     *     line (9.000,323.057)-(9.000,44.000)   01 01 00 00 00 20
+     *     line (41.000,323.057)-(9.000,323.057) 01 01 00 59 00 20
+     *     line (41.000,44.000)-(9.000,44.000)   01 01 00 59 00 20
+     *     text (8.128,180.258)-(8.128,186.799)  02 00 10 40  `160`
+     *
+     * and ③任意方向 at 30 degrees, the same four presses:
+     *
+     *     line (62.483,285.729)-(389.534,474.552)  01 01 00 15 00 20
+     *     line (40.973,322.984)-(62.483,285.729)   01 01 00 59 00 20
+     *     line (368.025,511.808)-(389.534,474.552) 01 01 00 59 00 20
+     *     text (220.852,378.170)-(230.293,383.621) 02 00 10 40  `216.5`
+     *
+     * -- the same drawing turned, to a thousandth.
+     *
+     * The dimension line's A byte is 0x80 when u is (1,0) and 0x00 for ②縦
+     * and for 45, 50, 60 degrees.  **20 and 30 degrees are not 0x00** (0xba
+     * and 0x15, the same in every run) and no rule has been found for them;
+     * nothing on the screen depends on the byte. */
+    const double ux = c->dim_ux, uy = c->dim_uy;
+    const double vx = -uy, vy = ux;
     const double x0 = c->dim_x0, y = c->dim_y, b = c->dim_by;
     const double mid = (x0 + x1) / 2.0;
     const double off = (c->dim_gap_mm > 0.0 ? c->dim_gap_mm : 0.5)
@@ -3795,42 +3976,26 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
     /* 引出し線の突出: the two extension lines run **past** the dimension
      * line by that many millimetres of paper.  Measured on SAMPLE0 with 5mm:
      * the line that stopped at 353.000 now ends at 361.721, and
-     * 361.721 - 353.000 = 8.721 = 5 x unit_mm.  It goes on the far side from
-     * the 引出し線の始点, and the value stays where it was. */
+     * 361.721 - 353.000 = 8.721 = 5 x unit_mm. */
     const double ye = y + (y > b ? 1.0 : -1.0) * c->dim_ext_mm * d->unit_mm;
     char buf[32];
     double len;
 
-    /* ②縦方向 is the same drawing turned on its side: the dimension line is
-     * vertical at `y` (which is then an x), the two extension lines run from
-     * the 引出し線の始点's x, and the value is written **going up** half a
-     * millimetre to the left of the line.  Measured on SAMPLE0's left edge:
-     *
-     *     line (9.000,323.057)-(9.000,44.000)   01 01 00 00 00 20
-     *     line (41.000,323.057)-(9.000,323.057) 01 01 00 59 00 20
-     *     line (41.000,44.000)-(9.000,44.000)   01 01 00 59 00 20
-     *     text (8.128,180.258)-(8.128,186.799)  02 00 10 40  `160`
-     *
-     * The dimension line's A byte is **0x00** where the horizontal one's is
-     * 0x80; everything else is the same. */
-    if (jwc_add_line(d, (float)(up ? y : x0), (float)(up ? x0 : y),
-                     (float)(up ? y : x1), (float)(up ? x1 : y),
-                     type, (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN),
-                     layer)) {
-        d->lines[d->n_lines - 1].rest[1] = up ? 0x00 : 0x80;
+#define DIM_X(a, bb) ((float)((a) * ux + (bb) * vx))
+#define DIM_Y(a, bb) ((float)((a) * uy + (bb) * vy))
+    if (jwc_add_line(d, DIM_X(x0, y), DIM_Y(x0, y),
+                     DIM_X(x1, y), DIM_Y(x1, y), type, pen, layer)) {
+        d->lines[d->n_lines - 1].rest[1] =
+            (unsigned char)(uy == 0.0 && ux > 0.0 ? 0x80 : 0x00);
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
-    if (jwc_add_line(d, (float)(up ? b : x0), (float)(up ? x0 : b),
-                     (float)(up ? ye : x0), (float)(up ? x0 : ye),
-                     type, (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN),
-                     layer)) {
+    if (jwc_add_line(d, DIM_X(x0, b), DIM_Y(x0, b),
+                     DIM_X(x0, ye), DIM_Y(x0, ye), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
-    if (jwc_add_line(d, (float)(up ? b : x1), (float)(up ? x1 : b),
-                     (float)(up ? ye : x1), (float)(up ? x1 : ye),
-                     type, (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN),
-                     layer)) {
+    if (jwc_add_line(d, DIM_X(x1, b), DIM_Y(x1, b),
+                     DIM_X(x1, ye), DIM_Y(x1, ye), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
@@ -3842,31 +4007,24 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
      *     line (477.000,353.000)-(471.946,354.354) 01 01 00 f2 00 20
      *     line (477.000,353.000)-(471.946,351.646) 01 01 00 f2 00 20
      *
-     * となり、長さ 5.232 は 3mm x unit_mm、傾きは 15 度。四本とも
-     * 向きは図面の向きではなく、**始点側は必ず +、終点側は必ず -**。
-     * 縦方向を測ると (9,323.057)-(7.646,328.111) で、始点（上）から
-     * 外側へ出ている—— sign(x1-x0) ではない。直覚は当てにならない。
-     * 横は (+, -) の順、縦は (-, +) の順。 */
+     * 長さ 5.232 は 3mm x unit_mm、傾きは 15 度。この枠の中では四本とも
+     * **始点側が a+、終点側が a-** で、垂直のずれは (+, -) の順です
+     * ——②縦方向 の (9,323.057)-(7.646,328.111) も同じになります。 */
     if (c->dim_end) {
         const double alen = (c->dim_arrow_mm > 0.0 ? c->dim_arrow_mm : 3.0)
                           * d->unit_mm;
         const double rad = c->dim_angle_deg * 3.14159265358979323846 / 180.0;
         const double ax = alen * cos(rad), ay = alen * sin(rad);
-        const double q = up ? -ay : ay;
         int i;
 
         for (i = 0; i < 4; i++) {
             const double on = (i < 2 ? x0 : x1);
             const double at = (i < 2 ? x0 + ax : x1 - ax);
-            const double per = (i & 1) ? -q : q;
+            const double per = (i & 1) ? y - ay : y + ay;
 
-            if (jwc_add_line(d, (float)(up ? y : on), (float)(up ? on : y),
-                             (float)(up ? y + per : at),
-                             (float)(up ? at : y + per),
-                             type,
-                             (unsigned char)(c->dim_pen ? c->dim_pen
-                                                        : JW_DIM_PEN),
-                             layer)) {
+            if (jwc_add_line(d, DIM_X(on, y), DIM_Y(on, y),
+                             DIM_X(at, per), DIM_Y(at, per),
+                             type, pen, layer)) {
                 d->lines[d->n_lines - 1].rest[1] = 0xf2;
                 d->lines[d->n_lines - 1].rest[3] = 0x20;
             }
@@ -3880,14 +4038,16 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
                  c->dim_comma_on, c->dim_zero_on);
     len = jwc_text_length(d, buf, d->dim_size);
     if (jwc_add_text(d,
-                     (float)(up ? y - off : mid - len / 2.0),
-                     (float)(up ? mid - len / 2.0 : y + off),
-                     (float)(up ? y - off : mid + len / 2.0),
-                     (float)(up ? mid + len / 2.0 : y + off),
+                     DIM_X(mid - len / 2.0, y + off),
+                     DIM_Y(mid - len / 2.0, y + off),
+                     DIM_X(mid + len / 2.0, y + off),
+                     DIM_Y(mid + len / 2.0, y + off),
                      buf, (unsigned char)d->dim_size, layer)) {
         d->texts[d->n_texts - 1].rest[2] = 0x10;
         d->texts[d->n_texts - 1].rest[3] = 0x40;
     }
+#undef DIM_X
+#undef DIM_Y
 }
 
 /* ------------------------------------------------------- 円線接 ①接線 */
@@ -4672,6 +4832,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
          * press on empty paper leaves the original saying サーチ and
          * 読取可能データ無.  JW_MNU.DOC has the whole tree. */
         if (c->stage == 0) {
+            c->dim_vert = 0;
+            c->dim_ux = 1.0;
+            c->dim_uy = 0.0;
             c->pressed = 1;
             c->stage = 1;
             return 1;
@@ -4683,7 +4846,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             }
             c->missed = 0;
             c->dim_bx = x;
-            c->dim_by = c->dim_vert ? x : y;
+            c->dim_by = -x * c->dim_uy + y * c->dim_ux;
             c->stage = 2;
             return 1;
         }
@@ -4693,7 +4856,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 return 0;
             }
             c->missed = 0;
-            c->dim_y = c->dim_vert ? x : y;
+            c->dim_y = -x * c->dim_uy + y * c->dim_ux;
             c->dim_texts = d->n_texts;
             c->stage = 3;
             return 1;
@@ -4704,7 +4867,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 return 0;
             }
             c->missed = 0;
-            c->dim_x0 = c->dim_vert ? y : x;
+            c->dim_x0 = x * c->dim_ux + y * c->dim_uy;
             c->stage = 4;
             return 1;
         }
@@ -4773,7 +4936,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->n0_lines = d->n_lines;
             c->n0_arcs = d->n_arcs;
             c->n0_texts = d->n_texts;
-            dimension(c, d, c->dim_vert ? y : x);
+            dimension(c, d, x * c->dim_ux + y * c->dim_uy);
             c->dim_texts = d->n_texts;      /* the band counts the new one */
             c->stage = 5;
             return 1;
