@@ -3,6 +3,11 @@
  *     sh   tools/zukei.sh            # the original: tmp/zukei/s0..s8.raw
  *     node tools/zukeiport.mjs       # the port, and the count of pixels apart
  *
+ * **Run the two together.**  tools/zukei.sh takes RANGE, BASE and NAME, and
+ * the shots it leaves are of whatever it was last asked for; this walks the
+ * road with the defaults, so a run with other numbers has to be followed by
+ * a plain one before the comparison means anything.
+ *
  * The presses are the ones tools/zukei.sh makes, in the same order, so the
  * two can be put side by side a step at a time.
  */
