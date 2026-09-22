@@ -225,6 +225,46 @@ static int is_lead(unsigned char c)
  * the top line is one of these three.  合成 asks twice: `① 実 行` on the
  * first puts up the second, and `① 実行` on that one merges. */
 #define JW_ASK_FILE "\xcc\xa7\xb2\xd9" "=A:" "\x5c"
+/* ⑥ＤＸＦ ③設定.  Measured with tools/origstr.sh
+ * "30 296 left" "110 8 left" "460 8 left" "220 8 left": two boxes of white
+ * rule over the drawing, x 244..545, the first y 39..200 with rules at 72,
+ * 104, 136 and 168, the second y 231..296 with one at 264.  The names are
+ * at column 32, the left choice at 47 with its ★ at 45 and the right at 60
+ * with its ★ at 58. */
+#define JW_DXFSET_BAR \
+    "\x95\xcf\x8d" "X" "\x8d\x80\x96\xda" " " "\x83" "}" "\x83" "E" \
+    "\x83" "X" "\x8e" "w" "\x8e\xa6" " |" "\x87" "@" "\x95\xcf\x8d" \
+    "X" "\x8a" "m" "\x92\xe8" "|"
+#define JW_DXF_STAR "\x81\x9a"
+/* ⑥ＤＸＦ ①保存's last question.  Measured: the list stays, the strip along
+ * the bottom comes back, the `path=` and the ` DXFOUT …` line are blanked
+ * and `A:\NAME.dxf` goes on row 2 at column 18 on white. */
+#define JW_DXFWRITE_BAR \
+    " " "\x8f\x91\x82\xab\x8d\x9e\x82\xdd\x82\xdc\x82\xb7" " |" \
+    "\x87" "@ " "\x8e\xc0" " " "\x8d" "s(L)|" "\x87" "A " \
+    "\x8d\xc4\x91" "I" "\x91\xf0" "(R)|"
+static const struct {
+    int row;
+    const char *name;
+    const char *left;
+    const char *right;
+} JW_DXFSET[5] = {
+    { 6, "\x93" "_" "\x82\xcc\x8f" "o" "\x97\xcd",
+         "\x93" "_" "\x82\xcc\x82\xdc\x82\xdc",
+         "\x89" "~" "\x82\xc9\x95\xcf\x8a\xb7" },
+    { 8, "\x89" "~" "\x82\xcc\x8f" "o" "\x97\xcd",
+         "\x89" "~" "\x82\xcc\x82\xdc\x82\xdc",
+         "\x90\xfc\x82\xc9\x95\xcf\x8a\xb7" },
+    { 10, "\x83\x8c\x83" "C" "\x83\x84\x96\xbc",
+          "\x91" "S" "\x8a" "p" "\x97" "L" "\x82\xe8",
+          "\x94\xbc\x8a" "p" "\x82\xcc\x82\xdd" },
+    { 12, "\x8b\xf3\x94\x92\x8f" "o" "\x97\xcd",
+          "\x95" "W" "\x81" "@" "\x81" "@" "\x8f\x80",
+          "\x8d\xc5" " " "\x8f\xac" " " "\x8c\xc0" },
+    { 18, "\x90" "}" "\x96\xca\x82\xcc\x94\xcd\x88\xcd",
+          "\x93\xc7\x82\xdd\x8e\xe6\x82\xe9",
+          "\x96\xb3\x8e\x8b\x82\xb7\x82\xe9" }
+};
 #define JW_MERGE1_BAR \
     "          " "\x8d\x87\x90\xac" "     |" "\x87" "@ " "\x8e\xc0" " " \
     "\x8d" "s(L)|" "\x87" "A " "\x8d\xc4\x91" "I" "\x91\xf0" "(R)|"
@@ -312,9 +352,24 @@ static int is_lead(unsigned char c)
 
 void jw_ui_pick_kind(JwUi *s, int kind)
 {
-    s->file_named = kind == JW_PICK_IO;
+    /* ⑥ＤＸＦ's two screens name the drawing in hand as 入出力's own do:
+     * `編集ファイル名=SAMPLE0`, only further along the line because their
+     * word is longer (tools/origstr.sh "30 296 left" "110 8 left"
+     * "460 8 left" "100 8 left"). */
+    s->file_named = kind == JW_PICK_IO || kind == JW_PICK_DXFOUT
+                    || kind == JW_PICK_DXFIN;
     s->file_path_fg = kind == JW_PICK_CHILD ? 4 : 5;
     switch (kind) {
+    case JW_PICK_DXFOUT:
+        s->file_bar = 0;                /* 保存's own, from `saving` */
+        s->file_path = "path=A:" "\x5c" "*.dxf";
+        s->file_word = " DXFOUT    ";
+        break;
+    case JW_PICK_DXFIN:
+        s->file_bar = 0;
+        s->file_path = "path=A:" "\x5c" "*.dxf";
+        s->file_word = " DXFIN    ";
+        break;
     case JW_PICK_ZUKEI:
         s->file_bar = JW_FILE_BAR;
         s->file_path = JW_FILE_PATH;
@@ -1959,6 +2014,58 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
             jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
             jw_ui_text(v, 8, 1, 7, 0, JW_MERGE2_BAR);
+        } else if (s->io_stage == JW_IO_DXFSET) {
+            int i;
+
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+            jw_ui_text(v, 8, 1, 7, 0, JW_DXFSET_BAR);
+            /* The black goes one pixel wider than the rule each side: a
+             * line of the drawing that crossed at y 139 showed at x 243 and
+             * 546 and nowhere else. */
+            fill(v, 243, 39, 546, 200, 0);
+            fill(v, 243, 231, 546, 296, 0);
+            fill(v, 244, 39, 545, 40, 7);
+            fill(v, 244, 199, 545, 200, 7);
+            fill(v, 244, 231, 545, 232, 7);
+            fill(v, 244, 295, 545, 296, 7);
+            fill(v, 244, 41, 245, 198, 7);
+            fill(v, 544, 41, 545, 198, 7);
+            fill(v, 244, 233, 245, 294, 7);
+            fill(v, 544, 233, 545, 294, 7);
+            fill(v, 244, 72, 545, 72, 7);
+            fill(v, 244, 104, 545, 104, 7);
+            fill(v, 244, 136, 545, 136, 7);
+            fill(v, 244, 168, 545, 168, 7);
+            fill(v, 244, 264, 545, 264, 7);
+            /* **One rule down the middle**, at x 344, from under each
+             * heading to the foot of its box.  The rows of text blank the
+             * bit of it they cross, because the original writes each name
+             * padded out to column 46 -- so the padding is written here
+             * too, and in that order. */
+            fill(v, 344, 72, 344, 200, 7);
+            fill(v, 344, 264, 344, 296, 7);
+            /* and the strip along the bottom goes while the panel is up */
+            fill(v, 0, 464, 639, 479, 0);
+            jw_ui_text(v, 32, 4, 7, 0,
+                       "\x8f" "o" "\x97\xcd\x8e\x9e\x82\xcc\x90\xdd\x92\xe8");
+            jw_ui_text(v, 32, 16, 7, 0,
+                       "\x93\xfc\x97\xcd\x8e\x9e\x82\xcc\x90\xdd\x92\xe8");
+            for (i = 0; i < 5; i++) {
+                const int row = JW_DXFSET[i].row;
+
+                char one[48];
+
+                sprintf(one, "%-15s", JW_DXFSET[i].name);
+                jw_ui_text(v, 32, row, 7, 0, one);
+                sprintf(one, "%-13s", JW_DXFSET[i].left);
+                jw_ui_text(v, 47, row, 7, 0, one);
+                jw_ui_text(v, 60, row, 7, 0, JW_DXFSET[i].right);
+                jw_ui_text(v, 45, row, 7, 0,
+                           s->dxf_set[i] ? "  " : JW_DXF_STAR);
+                jw_ui_text(v, 58, row, 7, 0,
+                           s->dxf_set[i] ? JW_DXF_STAR : "  ");
+            }
         } else if (s->io_stage == JW_IO_DRIVE) {
             jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
             jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
@@ -1968,6 +2075,24 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
             jw_ui_text(v, 8, 1, 7, 0, JW_DXF_BAR);
             jw_ui_text(v, 73, 1, 7, 0, JW_BS_BACK);
+            if (s->dxf_done) {
+                static const struct { int col; const char *word; } C[4] = {
+                    { 20, "\x90\xfc" }, { 35, "\x89" "~" },
+                    { 50, "\x95\xb6\x8e\x9a" }, { 65, "\x93" "_" }
+                };
+                char one[32];
+                int c;
+
+                jw_ui_text(v, 20, 2, 6, 1, JW_DONE);
+                for (c = 0; c < 4; c++) {
+                    if (!s->dxf_n[c]) {
+                        continue;
+                    }
+                    sprintf(one, "%s=%ld/%ld", C[c].word, s->dxf_n[c],
+                            s->dxf_n[c]);
+                    jw_ui_text(v, C[c].col, 3, 7, 0, one);
+                }
+            }
         } else if (s->io_stage == JW_IO_INDEX) {
             jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
             jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
@@ -2025,7 +2150,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                    || s->io_stage == JW_IO_MERGE || s->io_stage == JW_IO_KILL
                    || s->io_stage == JW_IO_MEMO || s->io_stage == JW_IO_OVER
                    || s->io_stage == JW_IO_WRITE || s->io_stage == JW_IO_MERGE1
-                   || s->io_stage == JW_IO_KILLASK) {
+                   || s->io_stage == JW_IO_KILLASK
+                   || s->io_stage == JW_IO_NEWNAME
+                   || s->io_stage == JW_IO_DXFNAME
+                   || s->io_stage == JW_IO_DXFWRITE) {
             /* ①保存 keeps its list on the screen the whole way: ①選択確定,
              * the two memo lines, the overwrite question and 書き込みます
              * all change the top line and leave the rest where it is.
@@ -2033,10 +2161,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * are the top line. */
             /* ③合成 and ④削除 wear ②読込's face: the same list, the same
              * line.  Only ①保存 and its road look different. */
+            /* ③ 新規 保存's own screen is still 保存's: the word beside
+             * the free space says 保存, not 読込 (measured). */
             const int saving = s->io_stage == JW_IO_SAVE
                                || s->io_stage == JW_IO_MEMO
                                || s->io_stage == JW_IO_OVER
-                               || s->io_stage == JW_IO_WRITE;
+                               || s->io_stage == JW_IO_WRITE
+                               || s->io_stage == JW_IO_NEWNAME;
             char one[96];
             int k, i;
 
@@ -2054,7 +2185,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             const int asking = s->io_stage == JW_IO_OVER
                                || s->io_stage == JW_IO_WRITE
                                || s->io_stage == JW_IO_MERGE1
-                               || s->io_stage == JW_IO_KILLASK;
+                               || s->io_stage == JW_IO_KILLASK
+                               || s->io_stage == JW_IO_DXFWRITE;
 
             fill(v, 122, 16, 639, 463, 0);
             /* The strip along the bottom goes as well -- all of it, the
@@ -2105,7 +2237,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (s->io_stage == JW_IO_KILLASK) {
                     jw_ui_text(v, 73, 1, 7, 0, JW_BS_BACK);
                 }
-            } else if (s->io_stage == JW_IO_NEWNAME) {
+            } else if (s->io_stage == JW_IO_DXFWRITE) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+                jw_ui_text(v, 8, 1, 7, 0, JW_DXFWRITE_BAR);
+            } else if (s->io_stage == JW_IO_NEWNAME
+                       || s->io_stage == JW_IO_DXFNAME) {
                 /* ③ 新規 保存 asks for a name.  Measured: the line is
                  * `[ESC]  ` and ` ◆ファイル名入力` at column 8, and the
                  * field is at row 5 column 17 with the drawing in hand
@@ -2132,7 +2269,18 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 sprintf(one, "(%dfiles)", s->file_n);
                 jw_ui_text(v, 70, 2, 5, 0, one);
             }
-            if (asking) {
+            if (s->io_stage == JW_IO_DXFWRITE) {
+                /* `A:\NAME.dxf` on row 2, not row 3, and with no word in
+                 * front of it. */
+                char stem[16];
+
+                memcpy(stem, s->save_name, sizeof stem - 1);
+                stem[sizeof stem - 1] = 0;
+                for (k = (int)strlen(stem) - 1;
+                     k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
+                sprintf(one, "A:" "\x5c" "%s.dxf", stem);
+                jw_ui_text(v, 18, 2, 7, 0xffffu, one);
+            } else if (asking) {
                 /* 保存ﾌｧｲﾙ=A:\NAME.JWC, on white.  Measured off the
                  * original the moment the question goes up.  合成 and 削除
                  * write `ﾌｧｲﾙ=` at column 20 instead, and 削除 in 6. */
@@ -2157,12 +2305,34 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         s->file_free);
                 jw_ui_text(v, 17, 3, 7, 0, one);
                 if (s->file_named) {
-                    jw_ui_text(v, 51, 3, 7, 0, JW_FILE_EDIT);
-                    jw_ui_text(v, 55, 3, 7, 0, JW_FILE_NAMED);
-                    jw_ui_text(v, 65, 3, 7, 0, "=");
+                    /* **Where 編集ファイル名 lands follows the word.**  The
+                     * original writes the word, the free space and the rest
+                     * as one string from column 17, so a longer word pushes
+                     * this along: ` 読込    ` puts it at 51, ` DXFIN    ` at
+                     * 52 and ` DXFOUT    ` at 53 -- all measured. */
+                    const char *w = s->file_word ? s->file_word
+                                    : saving ? JW_FILE_SAVE : JW_FILE_LOAD;
+                    int at = 42, j;
+
+                    for (j = 0; w[j]; j++) {
+                        at++;
+                        if ((unsigned char)w[j] >= 0x81) {
+                            j++;        /* a double-byte character is two */
+                            at++;
+                        }
+                    }
+                    jw_ui_text(v, at, 3, 7, 0, JW_FILE_EDIT);
+                    jw_ui_text(v, at + 4, 3, 7, 0, JW_FILE_NAMED);
+                    jw_ui_text(v, at + 14, 3, 7, 0, "=");
+                    jw_ui_text(v, at + 15, 3, 7, 0, s->open_name);
                 }
             }
-            if (s->file_n) {
+            /* **◆ファイル名入力 empties the box above the list.**  The
+             * original leaves the name field alone on row 5 and nothing at
+             * all on row 6 -- no date, no size, no title. */
+            if (s->file_n && s->io_stage != JW_IO_NEWNAME
+                && s->io_stage != JW_IO_DXFNAME
+                && s->io_stage != JW_IO_DXFWRITE) {
                 const int sel = s->file_sel;
                 char stem[9];
 
@@ -2171,12 +2341,6 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 memcpy(stem, s->file_name[sel], 8);
                 stem[8] = 0;
                 for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
-                if (!asking && s->file_named) {
-                    /* **編集ファイル名 is the drawing in hand**, not the row
-                     * the list has picked: the original shows SAMPLE0 there
-                     * while AUTO.JWC is the row under the bar. */
-                    jw_ui_text(v, 66, 3, 7, 0, s->open_name);
-                }
                 jw_ui_text(v, 17, 5, 7, 0, s->file_name[sel]);
                 jw_ui_text(v, 32, 5, 7, 0, s->file_date[sel]);
                 sprintf(one, "%8ld bytes   ", s->file_size[sel]);
@@ -2188,11 +2352,27 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 sprintf(one, "%-32.32s", s->file_t2[sel]);
                 jw_ui_text(v, 47, 6, 7, 0, one);
             }
-            if (s->io_stage == JW_IO_NEWNAME) {
+            if (s->io_stage == JW_IO_NEWNAME
+                || s->io_stage == JW_IO_DXFNAME
+                || s->io_stage == JW_IO_DXFWRITE) {
                 char field[16];
 
                 sprintf(field, "%-13.13s", s->save_name);
                 jw_ui_text(v, 17, 5, 7, 0, field);
+                /* and the green block where the next character goes, which
+                 * is in front of what is there: the same exclusive-or block
+                 * ◆ｍｅｍｏ入力 has, at column 17 and the cell's lower nine
+                 * rows. */
+                if (s->io_stage != JW_IO_DXFWRITE) {
+                    /* ◆ｍｅｍｏ入力's block, exclusive-or and all: the
+                     * letter under it comes out magenta (7 ^ 4 = 3), which
+                     * is what the original's `S` does. */
+                    for (i = 0; i < 9; i++) {
+                        jw_line(v, 16 * 8 + s->save_name_n * 8, 4 * 16 + 7 + i,
+                                16 * 8 + 7 + s->save_name_n * 8,
+                                4 * 16 + 7 + i, 4, ROP_XOR, JW_STYLE_SOLID);
+                    }
+                }
             }
             if (s->io_stage == JW_IO_MEMO) {
                 /* ◆ｍｅｍｏ入力 writes over the title field, two lines of

@@ -18,6 +18,7 @@
 #include "jwc.h"
 #include "plot.h"
 #include "ui.h"
+#include "dxf.h"
 #include "draw.h"
 #include "optplan.h"
 #include "tategu.h"
@@ -232,8 +233,22 @@ static int panel_up(void)
     return 0;
 }
 
+/* ⑥ＤＸＦ ③設定's five choices.  They are here rather than in JwUi because
+ * jw_ui_from clears that whole struct; present() copies them over. */
+static unsigned char dxf_set[5] = { 0, 0, 1, 0, 0 };
+/* Which of ⑥ＤＸＦ's two file screens is up: 1 for ① 保存 and 2 for ② 読込.
+ * ③ 新規 保存 and ①選択確定 mean different things on them than they do on
+ * 入出力's own. */
+static int dxf_mode;
+/* And whether a DXF has just been written, for ` 登 録  完 了 `. */
+static int dxf_done;
+static long dxf_n[4];
+
 static void present(void)
 {
+    memcpy(ui.dxf_set, dxf_set, sizeof dxf_set);
+    ui.dxf_done = dxf_done;
+    memcpy(ui.dxf_n, dxf_n, sizeof ui.dxf_n);
     if (!drawing) {
         memset(vga.plane, 0, sizeof vga.plane);
     } else {
@@ -1729,6 +1744,25 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         present();
         return -1;
     }
+    /* ⑥ＤＸＦ ③設定's rows.  A press takes the side it lands on -- the left
+     * one up to column 57 and the right one from 58 (measured at columns 38,
+     * 51, 57, 58 and 63) -- and a press between two rows does nothing. */
+    if (ui.command == 30 && ui.io_stage == JW_IO_DXFSET
+        && x >= 246 && x <= 543 && y >= 41 && y < 295) {
+        static const int ROW[5] = { 6, 8, 10, 12, 18 };
+        const int row = y / 16 + 1;
+        int i;
+
+        mouse_x = x;
+        mouse_y = y;
+        for (i = 0; i < 5; i++) {
+            if (ROW[i] == row) {
+                dxf_set[i] = (unsigned char)(x >= 464);
+            }
+        }
+        present();
+        return -1;
+    }
     /* ⑦INDEX's list.  Measured with made-up lists of four, twenty and
      * twenty-five names (tools/ixprobe.sh): the names are rows 4 to 23 and a
      * press picks the one it lands on, the right button picks it and turns
@@ -1850,7 +1884,27 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
             mouse_x = x;
             mouse_y = y;
-            if (was == JW_IO_LOAD) {
+            if (was == JW_IO_LOAD && dxf_mode == 2) {
+                /* ⑥ＤＸＦ ② 読込: the entities in the file join the drawing
+                 * in hand, the way ③合成 joins another drawing's. */
+                char path[256], stem[16];
+                const char *why;
+                int j;
+
+                memcpy(stem, ui.file_name[ui.file_sel], 8);
+                stem[8] = 0;
+                for (j = 7; j >= 0 && stem[j] == ' '; j--) stem[j] = 0;
+                sprintf(path, "%s/%s.dxf", JW_DIR, stem);
+                if (jwc_dxf_read(drawing, path, &why)) {
+                    sprintf(status, "%s read", path);
+                } else {
+                    sprintf(status, "%s: %s", path, why);
+                }
+                jw_ui_from(&ui, drawing);
+                ui.command = cmd.command;
+                ui.io_stage = JW_IO_DXF;
+                dxf_done = 0;
+            } else if (was == JW_IO_LOAD) {
                 ui.io_stage = JW_IO_FILE;
                 file_chosen();
             } else if (was == JW_IO_MERGE || was == JW_IO_KILL) {
@@ -1865,13 +1919,51 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             }
             present();
             return -1;
+        } else if (ui.io_stage == JW_IO_DXFWRITE && item == 1) {
+            /* ① 実 行 writes the DXF and comes back to ⑥ＤＸＦ's line with
+             * ` 登 録  完 了 ` over it. */
+            char path[256];
+            char stem[16];
+            int k;
+
+            memcpy(stem, ui.save_name, sizeof stem - 1);
+            stem[sizeof stem - 1] = 0;
+            for (k = (int)strlen(stem) - 1; k >= 0 && stem[k] == ' '; k--) {
+                stem[k] = 0;
+            }
+            sprintf(path, "%s/%s.dxf", JW_DIR, stem);
+            jwc_dxf_write(drawing, path, JW_DIR "/DXF_HDR.DAT");
+            dxf_n[0] = drawing ? drawing->n_lines : 0;
+            dxf_n[1] = drawing ? drawing->n_arcs : 0;
+            dxf_n[2] = drawing ? drawing->n_texts : 0;
+            dxf_n[3] = drawing ? drawing->n_points : 0;
+            dxf_done = 1;
+            ui.io_stage = JW_IO_DXF;
+        } else if (ui.io_stage == JW_IO_DXFWRITE && item == 2) {
+            ui.io_stage = JW_IO_SAVE;           /* ② 再選択 */
         } else if (ui.io_stage == JW_IO_SAVE && item == 3) {
             /* 3 shinki hozon: write under a name of your own rather than
              * over one from the list. */
-            ui.io_stage = JW_IO_NEWNAME;
+            ui.io_stage = dxf_mode == 1 ? JW_IO_DXFNAME : JW_IO_NEWNAME;
             memcpy(ui.save_name, ui.open_name, sizeof ui.open_name);
             ui.save_name[sizeof ui.open_name - 1] = 0;
-            ui.save_name_n = (int)strlen(ui.save_name);
+            /* **The cursor starts in front of the name**, not after it:
+             * the original's green block is at column 17, over the `S` of
+             * SAMPLE0, and a keystroke goes in before it. */
+            ui.save_name_n = 0;
+        } else if (ui.io_stage == JW_IO_DXF && (item == 1 || item == 2)) {
+            /* ① 保存 and ② 読込 wear 入出力's own ファイル選択 screen with
+             * `*.dxf` in it.  保存 is the yellow-on-white line, 読込 the
+             * plain one -- which is what JW_IO_SAVE and JW_IO_LOAD give. */
+            file_list_ext(item == 1, "DXF");
+            jw_ui_pick_kind(&ui, item == 1 ? JW_PICK_DXFOUT : JW_PICK_DXFIN);
+            ui.io_stage = item == 1 ? JW_IO_SAVE : JW_IO_LOAD;
+            dxf_mode = item;
+            dxf_done = 0;
+        } else if (ui.io_stage == JW_IO_DXF && item == 3) {
+            ui.io_stage = JW_IO_DXFSET;         /* ③ 設定 */
+        } else if (ui.io_stage == JW_IO_DXFSET && item == 1) {
+            ui.io_stage = JW_IO_DXF;            /* ①変更確定 */
         } else if (ui.io_stage == JW_IO_MERGE1 && item == 1) {
             /* ① 実 行 brings it in and asks again over the drawing it has
              * made; ② 中止 on that one takes it out again. */
@@ -2168,13 +2260,18 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         present();
         return -1;
     }
-    if (ui.command == 30 && ui.io_stage == JW_IO_NEWNAME) {
+    if (ui.command == 30
+        && (ui.io_stage == JW_IO_NEWNAME || ui.io_stage == JW_IO_DXFNAME)) {
+        const int dxf = ui.io_stage == JW_IO_DXFNAME;
+
         if (key == 27) {
             ui.io_stage = JW_IO_SAVE;
             ui.save_name_n = 0;
         } else if (key == 13 || key == 10) {
-            if (ui.save_name_n) {
-                ui.io_stage = JW_IO_MEMO;
+            if (ui.save_name[0]) {
+                /* ⑥ＤＸＦ has no ◆ｍｅｍｏ入力: [Enter] asks straight away
+                 * whether to write. */
+                ui.io_stage = dxf ? JW_IO_DXFWRITE : JW_IO_MEMO;
                 ui.memo_row = 0;
             }
         } else if (key == 8) {

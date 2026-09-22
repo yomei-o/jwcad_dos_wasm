@@ -241,6 +241,20 @@ typedef struct {
      * coming back to it after 合成 or 削除 has run has `・` there
      * (tools/origstr.sh, the two roads). */
     int io_done;
+    /* ⑥ＤＸＦ ③設定's five choices, 0 for the left one and 1 for the
+     * right: 点の出力, 円の出力, ﾚｲﾔ名, 空白出力, 図面の範囲.  The原作
+     * starts 0,0,1,0,0 and a press on a row takes the side it lands on
+     * (tools/origstr.sh).  They live in src/main_wasm.c, because
+     * jw_ui_from clears everything here. */
+    unsigned char dxf_set[5];
+    /* The DXF has just been written: ` 登 録  完 了 ` sits at row 2 column
+     * 20 over ⑥ＤＸＦ's own line (入出力's own 保存 puts the same words at
+     * column 34). */
+    int dxf_done;
+    /* What it wrote, for the four counters the original leaves on row 3:
+     * `線=` at column 20, `円=` at 35, `文字=` at 50 and `点=` at 65, each
+     * `n/n`.  A kind with none of them is not written at all. */
+    long dxf_n[4];
     /* The name ③ﾌｧｲﾙ出力 asks for, in the field at column 25. */
     char io_name[13];
     int io_name_n;
@@ -305,6 +319,9 @@ typedef struct {
 #define JW_IO_MERGE1 17         /* ③合成 ①選択確定 -> 合成|① 実 行(L)| */
 #define JW_IO_MERGE2 18         /* その ① 実 行 -> 合成ﾃﾞｰﾀを書き込みます */
 #define JW_IO_KILLASK 19        /* ④削除 ①選択確定 -> 削除します|① 削 除 */
+#define JW_IO_DXFSET 20         /* ⑥ＤＸＦ ③設定 -> 出力時の設定…      */
+#define JW_IO_DXFNAME 21        /* ③ 新規 保存 on ①保存 -> ◆ファイル名入力 */
+#define JW_IO_DXFWRITE 22       /* [Enter] -> 書き込みます|① 実 行(L)|    */
 
 /* ｵﾌﾟｼｮﾝ's own menus, JwUi.opt_stage. */
 #define JW_OPT_PLAN 1           /* ①建具平面 -> 建具選択 の一覧        */
@@ -482,6 +499,8 @@ int jw_ui_past_cells(int x, int y);
 #define JW_PICK_ZUKEI 1         /* 図形 ⑦登録 ⑧複写 -- `*.jwc`, 読込 */
 #define JW_PICK_COORD 2         /* 多角形 ④座標ﾌｧｲﾙ読込 -- `*.txt`, 座標 */
 #define JW_PICK_CHILD 3         /* ｵﾌﾟｼｮﾝ ⑦外部処理 -- `*.bat`, 外部処理 */
+#define JW_PICK_DXFOUT 4        /* ⑥ＤＸＦ ①保存 -- `*.dxf`, DXFOUT     */
+#define JW_PICK_DXFIN 5         /* ⑥ＤＸＦ ②読込 -- `*.dxf`, DXFIN      */
 void jw_ui_pick_kind(JwUi *s, int kind);
 char jw_ui_menu_key(int command);
 

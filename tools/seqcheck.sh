@@ -32,6 +32,12 @@ printf 'wait %s\n' "$BOOT" > tmp/seq/s.txt
 # so the port would then be handed the last step as its arguments and would
 # quietly compare the boot screen instead.  Read the words out another way.
 for step in "$@"; do
+    case "$step" in
+    key\ *)
+        printf 'key %s\nwait %s\n' "${step#key }" "$WAIT" >> tmp/seq/s.txt
+        continue
+        ;;
+    esac
     sx=$(echo "$step" | awk '{print $1}')
     sy=$(echo "$step" | awk '{print $2}')
     sb=$(echo "$step" | awk '{print ($3 == "") ? "left" : $3}')
