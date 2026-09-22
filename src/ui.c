@@ -1064,7 +1064,7 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
      * `(R)` where ①横方向 goes on with `|①連続|`. */
     if (q->command == 14 && q->col == 8
         && (q->stage == 3 || q->stage == 5)) {
-        int i;
+        int i, bars = 0;
 
         strncpy(out, q->text, sizeof out - 1);
         out[sizeof out - 1] = 0;
@@ -1079,6 +1079,11 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
             }
             if (out[i] == '|' && s->dim_only) {
                 out[i] = 0;
+                break;
+            }
+            /* ④累寸 leaves only `|②一括|` after the 小数点以下 cell. */
+            if (out[i] == '|' && s->dim_prog && q->stage == 3 && ++bars == 2) {
+                strcpy(out + i, "|\x87" "A" "\x88\xea\x8a\x87" "|");
                 break;
             }
         }
@@ -3634,6 +3639,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                             s->dim_guide[k][2], s->dim_guide[k][3], 2, 0x18,
                             jw_view_line_style(k ? 0 : 9));
                 }
+            }
+            /* ④累寸 keeps `[BS]前項` on the line while it asks for the
+             * next point; the plain road's stage 4 has nothing there. */
+            if (s->command == 14 && s->dim_prog && i == s->stage
+                && s->stage == 4) {
+                jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91" "O\x8d\x80");
             }
             /* [ESC] replaces the stage it came from: the line is blacked
              * and the band's numbers go back to the two counts, so none of

@@ -4010,6 +4010,92 @@ static void dimension_more(JwCmd *c, Jwc *d, double x1)
 #undef DIM_Y
 }
 
+/* ④累寸（累進寸法）: one 始点 and a dimension from it to every point read
+ * after that.  Measured on SAMPLE0 with the 始点 at the top edge's left
+ * corner and (598,140), (232,157), (380,401) read after it:
+ *
+ *     line (40.973,353.000)-(477.000,353.000)  01 01 00 80 00 20
+ *     line (477.000,323.000)-(477.000,353.000) 01 01 00 59 00 20
+ *     line (40.973,323.000)-(40.973,353.000)   01 01 00 59 00 20
+ *     line (477.000,353.000)-(471.946,351.646) 01 01 00 f5 00 20
+ *     line (477.000,353.000)-(471.946,354.354) 01 01 00 f5 00 20
+ *     text (479.180,353.872)-(479.180,360.412) 02 00 10 50  `250`
+ *
+ * and then, for each of the others, the dimension line, **one** extension
+ * line at the new end and two arrow legs -- with 0xf2 where the first had
+ * 0xf5.  The arrows are there whether or not 寸法線端部 is 【矢印】.
+ *
+ * The value is **turned**: its baseline runs across the dimension line
+ * (rest[3] is 0x50, not 0x40), starting half a character height past the
+ * end (2.181 = 2.5mm / 2 x unit_mm) and 寸法線と値の離れ above it. */
+static void dimension_prog(JwCmd *c, Jwc *d, double a)
+{
+    const unsigned char layer =
+        (unsigned char)((0 << 4) | (d->write_layer & 15));
+    const unsigned char type = (unsigned char)d->line_type;
+    const unsigned char pen =
+        (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN);
+    const double ux = c->dim_ux, uy = c->dim_uy;
+    const double vx = -uy, vy = ux;
+    const double a0 = c->dim_a0, y = c->dim_y, b = c->dim_by;
+    const double off = (c->dim_gap_mm > 0.0 ? c->dim_gap_mm : 0.5)
+                      * d->unit_mm;
+    const double ye = y + (y > b ? 1.0 : -1.0) * c->dim_ext_mm * d->unit_mm;
+    const double alen = (c->dim_arrow_mm > 0.0 ? c->dim_arrow_mm : 3.0)
+                      * d->unit_mm;
+    const double rad = c->dim_angle_deg * 3.14159265358979323846 / 180.0;
+    const double ax = alen * cos(rad), ay = alen * sin(rad);
+    const double half = d->text_h[d->dim_size] / 20.0 * d->unit_mm;
+    char buf[32];
+    double len;
+    int i;
+
+#define DIM_X(aa, bb) ((float)((aa) * ux + (bb) * vx))
+#define DIM_Y(aa, bb) ((float)((aa) * uy + (bb) * vy))
+    if (jwc_add_line(d, DIM_X(a0, y), DIM_Y(a0, y),
+                     DIM_X(a, y), DIM_Y(a, y), type, pen, layer)) {
+        d->lines[d->n_lines - 1].rest[1] = 0x80;
+        d->lines[d->n_lines - 1].rest[3] = 0x20;
+    }
+    if (jwc_add_line(d, DIM_X(a, b), DIM_Y(a, b),
+                     DIM_X(a, ye), DIM_Y(a, ye), type, pen, layer)) {
+        d->lines[d->n_lines - 1].rest[1] = 0x59;
+        d->lines[d->n_lines - 1].rest[3] = 0x20;
+    }
+    if (!c->dim_prog_n
+        && jwc_add_line(d, DIM_X(a0, b), DIM_Y(a0, b),
+                        DIM_X(a0, ye), DIM_Y(a0, ye), type, pen, layer)) {
+        d->lines[d->n_lines - 1].rest[1] = 0x59;
+        d->lines[d->n_lines - 1].rest[3] = 0x20;
+    }
+    for (i = 0; i < 2; i++) {
+        const double per = i ? y + ay : y - ay;
+
+        if (jwc_add_line(d, DIM_X(a, y), DIM_Y(a, y),
+                         DIM_X(a - ax, per), DIM_Y(a - ax, per),
+                         type, pen, layer)) {
+            d->lines[d->n_lines - 1].rest[1] =
+                (unsigned char)(c->dim_prog_n ? 0xf2 : 0xf5);
+            d->lines[d->n_lines - 1].rest[3] = 0x20;
+        }
+    }
+    c->dim_value = (a > a0 ? a - a0 : a0 - a) * jwc_zukei_scale(d);
+    jwc_dim_text(buf, sizeof buf, c->dim_value, c->dim_unit, c->dim_dec,
+                 c->dim_comma_on, c->dim_zero_on);
+    len = jwc_text_length(d, buf, d->dim_size);
+    if (jwc_add_text(d,
+                     DIM_X(a + half, y + off), DIM_Y(a + half, y + off),
+                     DIM_X(a + half, y + off + len),
+                     DIM_Y(a + half, y + off + len),
+                     buf, (unsigned char)d->dim_size, layer)) {
+        d->texts[d->n_texts - 1].rest[2] = 0x10;
+        d->texts[d->n_texts - 1].rest[3] = 0x50;
+    }
+    c->dim_prog_n++;
+#undef DIM_X
+#undef DIM_Y
+}
+
 static void dimension(JwCmd *c, Jwc *d, double x1)
 {
     const unsigned char layer =
@@ -4944,6 +5030,32 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->dim_y = -x * c->dim_uy + y * c->dim_ux;
             c->dim_texts = d->n_texts;
             c->stage = 3;
+            return 1;
+        }
+        if (c->dim_prog && (c->stage == 3 || c->stage == 5)) {
+            /* the one 始点 every later reading is measured from */
+            if (!take_point(c, d, w, sx, sy, 1, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->dim_a0 = x * c->dim_ux + y * c->dim_uy;
+            c->dim_prog_n = 0;
+            c->dim_texts = d->n_texts;
+            c->stage = 4;
+            return 1;
+        }
+        if (c->dim_prog && c->stage == 4) {
+            if (!take_point(c, d, w, sx, sy, 1, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
+            dimension_prog(c, d, x * c->dim_ux + y * c->dim_uy);
+            c->dim_texts = d->n_texts;
             return 1;
         }
         if (c->stage == 5 && right && !c->dim_only) {

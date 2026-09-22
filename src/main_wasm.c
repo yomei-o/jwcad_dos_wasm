@@ -221,6 +221,7 @@ static void sync_ui(void)
     ui.dim_did = cmd.dim_did;
     ui.dim_lines0 = cmd.dim_lines0;
     ui.dim_only = cmd.dim_only;
+    ui.dim_prog = cmd.dim_prog;
     ui.hatch_n = cmd.hatch_n;
     ui.hatch_angle = cmd.hatch_angle;
     ui.hatch_pitch = cmd.hatch_pitch;
@@ -1933,6 +1934,20 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             || ui.top_item == 5)
         && x / 8 + 1 >= 34 && x / 8 + 1 <= 52) {
         dim_dec = (dim_dec + 1) % 4;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* ④累寸 (columns 67 to 73) turns the progressive road on: the line
+     * becomes `|①小数点以下[1]桁 |②一括|` and every point read after the
+     * 始点 gets its own dimension from it. */
+    if (ui.command == 14 && !ui.top_item && !dxf_mode && !cmd.dim_prog
+        && (cmd.stage == 3 || cmd.stage == 5) && y >= 0 && y <= 15
+        && x / 8 + 1 >= 67 && x / 8 + 1 <= 73) {
+        cmd.dim_prog = 1;
+        cmd.stage = 3;
         mouse_x = x;
         mouse_y = y;
         sync_ui();

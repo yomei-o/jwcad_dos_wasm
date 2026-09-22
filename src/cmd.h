@@ -209,6 +209,10 @@ typedef struct {
     double dim_y;               /* 寸法線を書く位置（の y） */
     double dim_x0;              /* 寸法値の始点（の x） */
     double dim_x1;              /* さっき書いた寸法値の終点。①連続 が継ぐ */
+    /* ④累寸: 始点は一つで、読むたびにそこからの寸法が増えます。 */
+    int dim_prog;
+    int dim_prog_n;
+    double dim_a0;
     double dim_value;           /* さっき書いた寸法値、帯に出るもの */
     long dim_texts;             /* 寸法値を聞きはじめたときの文字数 */
     int dim_vert;               /* ②縦方向。横と縦が入れ替わるだけ */
