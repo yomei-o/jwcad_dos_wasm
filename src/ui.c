@@ -3099,6 +3099,25 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (r->row == 2 && r->col <= 15) {
                     fill(v, 1, 17, 120, 47, 4);
                 }
+                /* **寸法 ⑥点's line carries two numbers**: the 点のペン
+                 * No. in 点(No.n) and the drawing's own count of real
+                 * points.  And once one has been put down the original
+                 * writes [ESC] in column 1 (measured: after one press the
+                 * line reads `[ESC]  点(No.1) … 点数 17`). */
+                if (s->command == 14 && s->top_item == 6 && r->col == 8) {
+                    char one[160];
+                    double n[2];
+
+                    n[0] = s->dim_pen_point ? s->dim_pen_point : JW_DIM_PEN;
+                    n[1] = (double)s->dim_points;
+                    put_numbers(one, sizeof one, r->text, n, 2, 0);
+                    jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
+                               (unsigned)r->bg, one);
+                    if (s->dim_point_done) {
+                        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    }
+                    continue;
+                }
                 /* **寸法 ⑨設定's panel is state, not a recording.**  Its
                  * ten rows and the three cells of its own line all change
                  * when they are pressed, so the numbers and the words in

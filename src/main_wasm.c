@@ -218,6 +218,8 @@ static void sync_ui(void)
     ui.dim_size = drawing ? drawing->dim_size : 0;
     ui.dim_guide_n = jw_cmd_guide_pos(&cmd, &view, &ui.dim_guide_vert,
                                       &ui.dim_guide_a, &ui.dim_guide_b);
+    ui.dim_points = drawing ? drawing->n_points : 0;
+    ui.dim_point_done = cmd.dim_point_done;
     ui.hatch_n = cmd.hatch_n;
     ui.hatch_angle = cmd.hatch_angle;
     ui.hatch_pitch = cmd.hatch_pitch;
@@ -362,6 +364,7 @@ static void present(void)
     cmd.dim_unit = dim_unit;
     cmd.dim_dec = dim_dec;
     cmd.dim_comma_on = !dim_comma;
+    cmd.dim_pen_point = dim_pen_point;
     cmd.dim_zero_on = dim_zero;
     cmd.dim_arrow_mm = dim_arrow;
     cmd.dim_angle_deg = dim_angle;

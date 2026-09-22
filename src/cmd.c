@@ -2872,6 +2872,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
      * over the line the menu item came up with.  See src/ui.c. */
     c->top_item = 0;
     c->top_right = 0;
+    c->dim_point_done = 0;      /* ⑥点 を選び直すと [ESC] は消えます */
     changed = cmd_top(c, d, item);
     if (!changed && jw_ui_item_has(c->command, item, right)) {
         c->top_item = item;
@@ -4524,6 +4525,40 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typed_n = 0;
         c->typed_at = 0;
         text_box(c, d);
+        return 1;
+    }
+    if (c->command == 14 && c->top_item == 6) {
+        /* ⑥点: a press **reads** a point out of the drawing and leaves a
+         * real point record there.  Measured on SAMPLE0 -- the two top
+         * corners read and saved give
+         *
+         *     point (40.973,323.057) 00 01 40 1d
+         *     point (477.000,323.057) 00 01 40 1d
+         *
+         * -- the write layer, the 寸法設定's 点のペン No. (the line says
+         * 点(No.1), and SAMPLE3, whose panel says 2, says 点(No.2)), and two
+         * bytes that were the same in every run.  A press on empty paper
+         * leaves サーチ and 読取可能データ無, so it is a read even on the
+         * left button.  点種変更 (the right button) is not measured. */
+        JwcPoint p;
+
+        if (!take_point(c, d, w, sx, sy, 1, &x, &y)) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        memset(&p, 0, sizeof p);
+        p.x = (float)x;
+        p.y = (float)y;
+        p.layer = (unsigned char)((0 << 4) | (d->write_layer & 15));
+        p.rest[0] = p.layer;
+        p.rest[1] = (unsigned char)(c->dim_pen_point ? c->dim_pen_point
+                                                     : JW_DIM_PEN);
+        p.rest[2] = 0x40;
+        p.rest[3] = 0x1d;
+        if (jwc_put_point(d, &p)) {
+            c->dim_point_done = 1;
+        }
         return 1;
     }
     if (c->command == 14) {

@@ -224,6 +224,8 @@ typedef struct {
     int dim_unit;
     int dim_dec;
     int dim_comma_on;
+    int dim_pen_point;
+    int dim_point_done;         /* ⑥点 で 1 つ打った */
     int dim_zero_on;
     double dim_arrow_mm;
     double dim_angle_deg;
