@@ -29,7 +29,20 @@ for (const step of steps) {
         continue;
     }
     if (w[0] === 'key') {
-        const k = KEY[w[1]] ?? Number(w[1]);
+        /* **Only the words the emulator also knows.**  `key 13` reached the
+         * port as Enter and the emulator as nothing at all (its script takes
+         * `enter`, a single character or `xHH`), so a run that typed a value
+         * and pressed Enter compared a committed panel against one still
+         * being typed into -- 2078 pixels that were the check's fault. */
+        const k = KEY[w[1]]
+                ?? (w[1].length === 1 ? w[1].charCodeAt(0)
+                  : /^x[0-9a-fA-F]{2}$/.test(w[1]) ? parseInt(w[1].slice(1), 16)
+                  : undefined);
+        if (k === undefined) {
+            throw new Error('unknown key `' + w[1] + '` -- the emulator takes '
+                            + Object.keys(KEY).join(', ') + ', one character '
+                            + 'or xHH');
+        }
         M._jw_key(k);
         continue;
     }

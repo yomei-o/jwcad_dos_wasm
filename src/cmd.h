@@ -217,6 +217,10 @@ typedef struct {
      * panel; 1 and 0.5 are what the original comes up with. */
     int dim_pen;
     double dim_gap_mm;
+    /* ②寸法線端部 が【矢印】のときに使う 矢印長さ（mm）と 矢印角度。 */
+    int dim_end;
+    double dim_arrow_mm;
+    double dim_angle_deg;
     int tan_on;                 /* ①接線 is running */
     double tan_x, tan_y;        /* the 指定点 it has in hand */
     int hatch_closed;           /* the start line has come round again */

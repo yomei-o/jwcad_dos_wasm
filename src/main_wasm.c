@@ -193,6 +193,25 @@ static void sync_ui(void)
     ui.gap_two[1] = cmd.gap_two[1];
     ui.ask_len = cmd.ask_len;
     ui.ask_ang = cmd.ask_ang;
+    /* ページだけが落としていた 14 。tests/drawing.c は渡していたので
+     * 検査は通り、ブラウザだけが寸法の帯を `文数 0.0`、文編集の
+     * 種を 0、ハッチと複写の倍率・角度を 0 で出していた。 */
+    ui.typed_at = cmd.typed_at;
+    ui.edit_type = (cmd.command == 28 && drawing && cmd.edit_text >= 0
+                    && cmd.edit_text < drawing->n_texts)
+                 ? drawing->texts[cmd.edit_text].size : 0;
+    ui.mirror = cmd.mirror;
+    ui.rotate = cmd.rotate;
+    ui.scaling = cmd.scaling;
+    ui.mscale = cmd.mscale;
+    ui.rot_deg = cmd.rot_deg;
+    ui.dim_value = cmd.dim_value;
+    ui.dim_texts = cmd.dim_texts;
+    ui.dim_w = drawing ? drawing->text_w[JW_DIM_SIZE] / 10.0 : 0.0;
+    ui.dim_h = drawing ? drawing->text_h[JW_DIM_SIZE] / 10.0 : 0.0;
+    ui.hatch_n = cmd.hatch_n;
+    ui.hatch_angle = cmd.hatch_angle;
+    ui.hatch_pitch = cmd.hatch_pitch;
 }
 
 /* Redraw at the current view and unpack the planes for the canvas.  The order
@@ -320,6 +339,9 @@ static void present(void)
     memcpy(ui.auto_typed, auto_typed, sizeof ui.auto_typed);
     cmd.dim_pen = dim_pen_line;
     cmd.dim_gap_mm = dim_gap;
+    cmd.dim_end = dim_end;
+    cmd.dim_arrow_mm = dim_arrow;
+    cmd.dim_angle_deg = dim_angle;
     ui.dim_pen_line = dim_pen_line;
     ui.dim_pen_point = dim_pen_point;
     ui.dim_gap = dim_gap;

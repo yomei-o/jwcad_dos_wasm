@@ -2328,7 +2328,13 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * 寸法線's.  Measured on SAMPLE0 -- row 140 is red at x = 124, 128, 132 …
      * and row 110 white at the odd columns, both from the window's left edge
      * to its right, and the white one is **over** the dimension line, which
-     * shows through cyan in between. */
+     * shows through cyan in between.
+     *
+     * They go down **OR**, not XOR.  ②縦方向 puts one of them through
+     * the counts box, where the background is white: OR leaves white,
+     * XOR turns it cyan, and the original leaves it white.  Over black
+     * the two are the same, which is why the horizontal road never
+     * showed it. */
     if (c->command == 14 && c->stage >= 2) {
         int gx, gy;
 
@@ -2338,19 +2344,19 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
         at_screen(w, c->dim_by, c->dim_by, &gx, &gy);
         if (c->dim_vert) {
-            jw_line(v, gx, v->clip_y0, gx, v->clip_y1, 2, 0x18,
+            jw_line(v, gx, v->clip_y0, gx, v->clip_y1, 2, 0x10,
                     jw_view_line_style(9));
         } else {
-            jw_line(v, v->clip_x0, gy, v->clip_x1, gy, 2, 0x18,
+            jw_line(v, v->clip_x0, gy, v->clip_x1, gy, 2, 0x10,
                     jw_view_line_style(9));
         }
         if (c->stage >= 3) {
             at_screen(w, c->dim_y, c->dim_y, &gx, &gy);
             if (c->dim_vert) {
-                jw_line(v, gx, v->clip_y0, gx, v->clip_y1, 2, 0x18,
+                jw_line(v, gx, v->clip_y0, gx, v->clip_y1, 2, 0x10,
                         jw_view_line_style(0));
             } else {
-                jw_line(v, v->clip_x0, gy, v->clip_x1, gy, 2, 0x18,
+                jw_line(v, v->clip_x0, gy, v->clip_x1, gy, 2, 0x10,
                         jw_view_line_style(0));
             }
         }
@@ -3833,6 +3839,44 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
                      layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
+    }
+    /* 寸法設定 ②寸法線端部 が【矢印】なら、両端に 4 本。SAMPLE0 を
+     * 矢印長さ 3mm・角度 15 度のまま 250mm の寸法で測ると、
+     *
+     *     line (40.973,353.000)-(46.027,354.354)   01 01 00 f2 00 20
+     *     line (40.973,353.000)-(46.027,351.646)   01 01 00 f2 00 20
+     *     line (477.000,353.000)-(471.946,354.354) 01 01 00 f2 00 20
+     *     line (477.000,353.000)-(471.946,351.646) 01 01 00 f2 00 20
+     *
+     * となり、長さ 5.232 は 3mm x unit_mm、傾きは 15 度。四本とも
+     * 向きは図面の向きではなく、**始点側は必ず +、終点側は必ず -**。
+     * 縦方向を測ると (9,323.057)-(7.646,328.111) で、始点（上）から
+     * 外側へ出ている—— sign(x1-x0) ではない。直覚は当てにならない。
+     * 横は (+, -) の順、縦は (-, +) の順。 */
+    if (c->dim_end) {
+        const double alen = (c->dim_arrow_mm > 0.0 ? c->dim_arrow_mm : 3.0)
+                          * d->unit_mm;
+        const double rad = c->dim_angle_deg * 3.14159265358979323846 / 180.0;
+        const double ax = alen * cos(rad), ay = alen * sin(rad);
+        const double q = up ? -ay : ay;
+        int i;
+
+        for (i = 0; i < 4; i++) {
+            const double on = (i < 2 ? x0 : x1);
+            const double at = (i < 2 ? x0 + ax : x1 - ax);
+            const double per = (i & 1) ? -q : q;
+
+            if (jwc_add_line(d, (float)(up ? y : on), (float)(up ? on : y),
+                             (float)(up ? y + per : at),
+                             (float)(up ? at : y + per),
+                             type,
+                             (unsigned char)(c->dim_pen ? c->dim_pen
+                                                        : JW_DIM_PEN),
+                             layer)) {
+                d->lines[d->n_lines - 1].rest[1] = 0xf2;
+                d->lines[d->n_lines - 1].rest[3] = 0x20;
+            }
+        }
     }
     c->dim_value = (x1 > x0 ? x1 - x0 : x0 - x1) / d->unit_mm;
     dim_text(buf, sizeof buf, c->dim_value);
