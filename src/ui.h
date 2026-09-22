@@ -419,7 +419,8 @@ typedef struct {
     /* ⑥点 の行: 点(No.n) の n は 点のペン No.、点数 は図面の実点の数。
      * 1 つでも打つと桁 1 に [ESC] が出ます。 */
     long dim_points;
-    int dim_point_done;
+    int dim_did;
+    long dim_lines0;
     /* ハッチ: how many lines the frame has taken (the band counts down from
      * 100), and the angle and pitch it will fill with. */
     int hatch_n;

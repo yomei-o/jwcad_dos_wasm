@@ -2872,7 +2872,8 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
      * over the line the menu item came up with.  See src/ui.c. */
     c->top_item = 0;
     c->top_right = 0;
-    c->dim_point_done = 0;      /* ⑥点 を選び直すと [ESC] は消えます */
+    c->dim_did = 0;      /* 項目を選び直すと [ESC] は消えます */
+    c->dim_lines0 = d ? d->n_lines : 0;
     changed = cmd_top(c, d, item);
     if (!changed && jw_ui_item_has(c->command, item, right)) {
         c->top_item = item;
@@ -4557,7 +4558,76 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         p.rest[2] = 0x40;
         p.rest[3] = 0x1d;
         if (jwc_put_point(d, &p)) {
-            c->dim_point_done = 1;
+            c->dim_did = 1;
+        }
+        return 1;
+    }
+    if (c->command == 14 && c->top_item == 7) {
+        /* ⑦矢印: point at a line and the original puts an arrowhead on
+         * **the end nearer the press**, two lines of `01 01 00 f5 00 20`.
+         * Measured on SAMPLE0's top edge (40.973,323.057)-(477,323.057):
+         *
+         *     press (300,140)  ->  (40.973,323.057)-(46.027,324.411)
+         *                          (40.973,323.057)-(46.027,321.703)
+         *     press (550,140)  ->  (477,323.057)-(471.946,321.703)
+         *                          (477,323.057)-(471.946,324.411)
+         *
+         * -- so the first leg is the direction towards the other end
+         * turned **+矢印角度** and the second turned -矢印角度, both
+         * 矢印長さ long (6mm gives 10.108 and 2.709 instead of 5.054 and
+         * 1.354, so the panel's two numbers are the ones).  What a press
+         * on an **arc** does is not measured. */
+        const long k = jw_cmd_line_at(d, w, sx, sy);
+        const double alen = (c->dim_arrow_mm > 0.0 ? c->dim_arrow_mm : 3.0)
+                          * d->unit_mm;
+        const double rad = c->dim_angle_deg * 3.14159265358979323846
+                         / 180.0;
+        double ex, ey, ox, oy, dx, dy, far;
+        int i;
+
+        if (k < 0) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        jw_cmd_at(w, sx, sy, &x, &y);
+        {
+            const JwcLine *l = &d->lines[k];
+            const double d0 = (l->x0 - x) * (l->x0 - x)
+                            + (l->y0 - y) * (l->y0 - y);
+            const double d1 = (l->x1 - x) * (l->x1 - x)
+                            + (l->y1 - y) * (l->y1 - y);
+
+            ex = d0 <= d1 ? l->x0 : l->x1;
+            ey = d0 <= d1 ? l->y0 : l->y1;
+            ox = d0 <= d1 ? l->x1 : l->x0;
+            oy = d0 <= d1 ? l->y1 : l->y0;
+        }
+        dx = ox - ex;
+        dy = oy - ey;
+        far = sqrt(dx * dx + dy * dy);
+        if (far <= 0.0) {
+            return 0;
+        }
+        dx /= far;
+        dy /= far;
+        for (i = 0; i < 2; i++) {
+            const double t = i ? -rad : rad;
+            const double tx = dx * cos(t) - dy * sin(t);
+            const double ty = dx * sin(t) + dy * cos(t);
+
+            if (jwc_add_line(d, (float)ex, (float)ey,
+                             (float)(ex + alen * tx),
+                             (float)(ey + alen * ty),
+                             (unsigned char)d->line_type,
+                             (unsigned char)(c->dim_pen ? c->dim_pen
+                                                        : JW_DIM_PEN),
+                             (unsigned char)((0 << 4)
+                                             | (d->write_layer & 15)))) {
+                d->lines[d->n_lines - 1].rest[1] = 0xf5;
+                d->lines[d->n_lines - 1].rest[3] = 0x20;
+                c->dim_did = 1;
+            }
         }
         return 1;
     }

@@ -1458,7 +1458,12 @@ static void counts(VGA *v, const JwUi *s)
      * a command left there would leave both readable on top of each other.  The
      * original fills (1,17)-(120,47) line by line before it writes. */
     fill(v, 1, 17, 120, 47, 4);
-    sprintf(buf, "%7ld|%7ld ", s->n_lines, s->n_arcs);
+    /* **⑦矢印 の 2 本は箱に出ません。** 本物は矢印を引いたあと箱を
+     * 書き直さないので、選んだときの線数のままです（30 のまま）。 */
+    sprintf(buf, "%7ld|%7ld ",
+            (s->command == 14 && s->top_item == 7) ? s->dim_lines0
+                                                   : s->n_lines,
+            s->n_arcs);
     jw_ui_text(v, 1, 2, 0, 0, buf);
     jw_ui_text(v, 1, 3, 0, 0, " \x90\xfc  \x90\x94|\x89\x7e\xa5\x95\xb6\x90\x94");
 }
@@ -3113,10 +3118,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     put_numbers(one, sizeof one, r->text, n, 2, 0);
                     jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
                                (unsigned)r->bg, one);
-                    if (s->dim_point_done) {
+                    if (s->dim_did) {
                         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
                     }
                     continue;
+                }
+                /* ⑦矢印 puts the same [ESC] up once it has drawn one. */
+                if (s->command == 14 && s->top_item == 7 && s->dim_did
+                    && r->row == 1) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
                 }
                 /* **寸法 ⑨設定's panel is state, not a recording.**  Its
                  * ten rows and the three cells of its own line all change
