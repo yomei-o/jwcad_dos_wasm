@@ -2140,6 +2140,9 @@ static const JwItem JW_ITEM[] = {
     { 27,  1, 1, 68, 1, 7, 0x0000,
       "|" "\x87" "@ " "\x91" "O " "\x94\xcd" " " "\x88\xcd" "|" },
     /* branch 224: menu 27 item 2 left */
+    { 27,  2, 0,  1, 0, 7, 0x0000,
+      " " "\x95" "`" "\x89\xe6\x92\x86\x92" "f [" \
+      "\xbd\xcd\xdf\xb0\xbd\xb7\xb0" "]," "\xcf\xb3\xbd" "(R) " },
     { 27,  2, 0,  1, 2, 0, 0x0000,
       "     30|     13 " },
     { 27,  2, 0,  1, 3, 0, 0x0000,
@@ -2178,6 +2181,9 @@ static const JwItem JW_ITEM[] = {
       " |   <" "\x91\xbc\x90" "}" "\x96\xca" ">|" "\x87" "F" \
       "\x93" "o" "\x98" "^|" "\x87" "G" "\x95\xa1\x8e\xca" "|" },
     /* branch 225: menu 27 item 2 right */
+    { 27,  2, 1,  1, 0, 7, 0x0000,
+      " " "\x95" "`" "\x89\xe6\x92\x86\x92" "f [" \
+      "\xbd\xcd\xdf\xb0\xbd\xb7\xb0" "]," "\xcf\xb3\xbd" "(R) " },
     { 27,  2, 1,  1, 2, 0, 0x0000,
       "     30|     13 " },
     { 27,  2, 1,  1, 3, 0, 0x0000,
@@ -2486,6 +2492,9 @@ static const JwItem JW_ITEM[] = {
       "\x87" "C" "\xc3\xde\xa8\xda\xb8\xc4\xd8\x8e" "w" \
       "\x92\xe8" "|" },
     /* branch 230: menu 27 item 5 left */
+    { 27,  5, 0,  1, 0, 7, 0x0000,
+      " " "\x95" "`" "\x89\xe6\x92\x86\x92" "f [" \
+      "\xbd\xcd\xdf\xb0\xbd\xb7\xb0" "]," "\xcf\xb3\xbd" "(R) " },
     { 27,  5, 0,  1, 2, 0, 0x0000,
       "     30|     13 " },
     { 27,  5, 0,  1, 3, 0, 0x0000,
@@ -2524,6 +2533,9 @@ static const JwItem JW_ITEM[] = {
       " |   <" "\x91\xbc\x90" "}" "\x96\xca" ">|" "\x87" "F" \
       "\x93" "o" "\x98" "^|" "\x87" "G" "\x95\xa1\x8e\xca" "|" },
     /* branch 231: menu 27 item 5 right */
+    { 27,  5, 1,  1, 0, 7, 0x0000,
+      " " "\x95" "`" "\x89\xe6\x92\x86\x92" "f [" \
+      "\xbd\xcd\xdf\xb0\xbd\xb7\xb0" "]," "\xcf\xb3\xbd" "(R) " },
     { 27,  5, 1,  1, 2, 0, 0x0000,
       "     30|     13 " },
     { 27,  5, 1,  1, 3, 0, 0x0000,
@@ -2829,6 +2841,9 @@ static const JwItem JW_ITEM[] = {
       "m" "\x92\xe8" " |" "\x87" "A" "\x83" "h" "\x83\x89\x83" \
       "C" "\x83" "u(A:)" "\x95\xcf\x8d" "X |" },
     /* branch 237: menu 27 item 8 right */
+    { 27,  8, 1,  1, 0, 7, 0x0000,
+      " " "\x95" "`" "\x89\xe6\x92\x86\x92" "f [" \
+      "\xbd\xcd\xdf\xb0\xbd\xb7\xb0" "]," "\xcf\xb3\xbd" "(R) " },
     { 27,  8, 1,  1, 2, 0, 0x0000,
       "     30|     13 " },
     { 27,  8, 1,  1, 3, 0, 0x0000,
@@ -3237,6 +3252,9 @@ static const JwItem JW_ITEM[] = {
       "m" "\x92\xe8" " |" "\x87" "A" "\x83" "h" "\x83\x89\x83" \
       "C" "\x83" "u(A:)" "\x95\xcf\x8d" "X |" },
     /* branch 239: menu 27 item 9 right */
+    { 27,  9, 1,  1, 0, 7, 0x0000,
+      " " "\x95" "`" "\x89\xe6\x92\x86\x92" "f [" \
+      "\xbd\xcd\xdf\xb0\xbd\xb7\xb0" "]," "\xcf\xb3\xbd" "(R) " },
     { 27,  9, 1,  1, 2, 0, 0x0000,
       "     30|     13 " },
     { 27,  9, 1,  1, 3, 0, 0x0000,

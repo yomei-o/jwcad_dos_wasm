@@ -2248,7 +2248,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                  * everything else, but the chrome has already put them
                  * there, and replaying them takes the rule at y 384 and the
                  * two blitted characters of `電卓` with them. */
-                if (r->row == 25 || r->row == 30) {
+                if (r->row == 25 || r->row == 30 || r->row == 0) {
                     continue;
                 }
                 /* **The counts box is painted before each thing that goes
@@ -2299,6 +2299,25 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             fill(v, 611, 87, 612, 297, 7);
             for (k = 0; k < 5; k++) {
                 fill(v, RULE[k], 87, RULE[k], 297, 7);
+            }
+        }
+        /* **A press that redrew the drawing area wiped what it had just
+         * written there.**  図形 ②読込 and ⑤削除 say so in the strip along
+         * the bottom (`描画中断`, kept in src/item.h as a row-0 marker),
+         * and their screens have neither the full stop at row 24 nor the
+         * 登録図形がありません line that ③表示's keeps. */
+        if (s->command == 27 && s->again && s->top_item) {
+            const JwItem *r;
+
+            for (r = JW_ITEM; r->command; r++) {
+                if (r->command == 27 && r->item == s->top_item
+                    && r->right == s->top_right && r->row == 0) {
+                    /* The drawing area proper: the band under the top line
+                     * -- rows 2 and 3 -- is not part of it, and the
+                     * 登録図形がありません line there survives the redraw. */
+                    fill(v, 122, 48, 638, 383, 0);
+                    break;
+                }
             }
         }
         /* 図形 ④ｸﾞﾙｰﾌﾟ変's grid, after the words for the same reason the

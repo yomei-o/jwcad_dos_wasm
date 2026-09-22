@@ -71,9 +71,10 @@ def deltas():
 # The second one matters more than it looks: the strip that comes back is
 # painted as well as written, and only the writing is in the log, so replaying
 # the strings alone leaves the first cell of it standing.
+REDREW = b' \x95`\x89\xe6\x92\x86\x92f [\xbd\xcd\xdf\xb0\xbd\xb7\xb0],\xcf\xb3\xbd(R) '
 GONE = (
     b'\x81\x96\x82\xa8\x91\xd2\x82\xbf\x89\xba\x82\xb3\x82\xa2\x81\x96',
-    b' \x95`\x89\xe6\x92\x86\x92f [\xbd\xcd\xdf\xb0\xbd\xb7\xb0],\xcf\xb3\xbd(R) ',
+    REDREW,
 )
 
 
@@ -140,7 +141,11 @@ for i, line in enumerate(lines):
     menu, item, button = line.split()[:3]
     if item == '0':
         continue
-    rows = [r for r in log.get(n, []) if r[4] not in GONE]
+    got = log.get(n, [])
+    rows = [r for r in got if r[4] not in GONE]
+    if rows and any(r[4] == REDREW for r in got):
+        # row 0 is no row: the marker that this press redrew the drawing.
+        rows.insert(0, (1, 0, 7, 0, REDREW))
     if not rows:
         print('    /* branch %d (menu %s item %s %s): the press wrote nothing */'
               % (n, menu, item, button))
