@@ -166,6 +166,9 @@ static void sync_ui(void)
     memcpy(ui.zukei_list, zukei_names, sizeof ui.zukei_list);
     ui.zukei_list_n = zukei_names_n;
     ui.zukei_sel = zukei_pick;
+    ui.zukei_ang = cmd.zukei_ang;
+    ui.zukei_mouse = cmd.zukei_mouse;
+    ui.zukei_noghost = cmd.zukei_noghost;
     ui.zukei = cmd.zukei > JW_ZUKEI_BASE ? cmd.zukei
              : cmd.zukei ? (cmd.pressed == 0 ? 1 : cmd.pressed == 1 ? 2 : 3)
              : 0;

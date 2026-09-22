@@ -163,6 +163,11 @@ typedef struct {
      * press on another moves it, a press on this one takes it -- the same
      * rule the drawing list has. */
     int zukei_sel;
+    /* JwCmd.zukei_ang -- what the band beside the counts says while a figure
+     * is being placed. */
+    float zukei_ang;
+    int zukei_mouse;
+    int zukei_noghost;
     int top_item;
     int top_right;
     int band_off;               /* JwCmd.band_off */

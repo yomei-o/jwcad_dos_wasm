@@ -54,6 +54,9 @@ press() {   # x y [right]
     press 210 8                       # ① 実 行
     press 140 8                       # ②読込
     press 190 72                      # the figure's own cell in the list
+    # TURN presses of ③90ﾟ毎, each a quarter turn
+    i=0
+    while [ $i -lt ${TURN:-0} ]; do press 465 8; i=$((i + 1)); done
     IFS=';'
     for at in $AT; do
         unset IFS

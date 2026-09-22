@@ -49,6 +49,7 @@ M._jw_key(13);
 press(210, 8);                  /* ① 実 行 */
 press(140, 8);                  /* ②読込 */
 press(190, 72);                 /* the figure's cell */
+for (let i = 0; i < Number(env.TURN || 0); i++) press(465, 8);  /* ③90ﾟ毎 */
 for (const at of AT) {
   const [x, y] = at.trim().split(/\s+/).map(Number);
   press(x, y);

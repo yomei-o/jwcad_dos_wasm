@@ -2501,8 +2501,26 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * counts, their label, the new line and [BS]前項, and nothing at
          * column 47. */
         if (s->command == 27 && s->zukei == JW_ZUKEI_PUT) {
-            /* Always nought so far: ②角  度 and ④ﾏｳｽ角 are not done. */
-            jw_ui_text(v, 47, 2, 7, 0xffffu, "   0.000" "\xdf");
+            /* **One or the other, not both.**  With ④ﾏｳｽ角 up the angle is
+             * whatever the mouse will say, so the original takes the number
+             * away and writes `Ｘ 方向` or `Ｙ 方向` at column 64 instead:
+             * after that press row 24 has ink only from x 504 to 559, where
+             * before it had the number from 368 to 439.  ⑤仮表示's `無` at
+             * column 76 goes with either. */
+            if (s->zukei_mouse) {
+                jw_ui_text(v, 64, 2, 7, 0xffffu,
+                           s->zukei_mouse == 1
+                               ? "\x82" "w \x95\xfb\x8c\xfc"
+                               : "\x82" "x \x95\xfb\x8c\xfc");
+            } else {
+                char one[16];
+
+                sprintf(one, "%8.3f" "\xdf", (double)s->zukei_ang);
+                jw_ui_text(v, 47, 2, 7, 0xffffu, one);
+            }
+            if (s->zukei_noghost) {
+                jw_ui_text(v, 76, 2, 7, 0xffffu, "\x96\xb3");
+            }
         }
         /* 寸法 ⑨設定's panel.  The box goes up first and the words over
          * it -- the rule at x 410 is broken where each value is written,

@@ -246,6 +246,22 @@ typedef struct {
      * string whose 4242.85693 millimetres is 37 units exactly comes out
      * 36.999996 the other way, and a whole pixel lower on the screen. */
     float zukei_scale;
+    /* The angle the figure goes in at, in degrees anticlockwise about its
+     * base point.  ③90ﾟ毎 walks it 0, 90, 180, 270 and back to 0 -- the
+     * original writes each of the four into the band beside the counts, and
+     * the preview turns with it (SAMPLE0's upright BOX comes out lying
+     * along y=238 at 90). */
+    float zukei_ang;
+    /* ④ﾏｳｽ角 walks three ways round: nothing, `Ｘ 方向`, `Ｙ 方向` and back
+     * to nothing, each with its own word at column 64 of the band.  **What
+     * the two do is not measured yet** -- with Ｘ 方向 up the figure stays
+     * upright as the pointer moves, so the angle must be taken from a press
+     * and not from where the pointer is. */
+    int zukei_mouse;
+    /* ⑤仮表示 turns the preview off and on.  Off it writes `無` at column 76
+     * and nothing follows the pointer; on, the word goes and the figure is
+     * back.  Measured both ways. */
+    int zukei_noghost;
     int top_item;
     int top_right;
     /* A press on the top line that landed outside every cell.  The command's

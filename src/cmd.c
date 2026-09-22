@@ -195,6 +195,35 @@ static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
  * to 99, which is its base point at the pointer, and moved so that it crosses
  * the drawing's white frame the pixel where they meet comes out 00ffff, which
  * is 7 xor 2 and not 2. */
+/* A point of the figure, turned by the angle in hand about the base point.
+ *
+ * The four quarter turns are done by swapping the two coordinates rather than
+ * through a sine and a cosine, which for a quarter turn are 6.1e-17 and 1 and
+ * would leave the answer a hair off.  ③90ﾟ毎 only ever makes those four. */
+static void zukei_turn(const JwCmd *c, double x, double y,
+                       double *ox, double *oy)
+{
+    if (c->zukei_ang == 90.0f) {
+        *ox = -y;
+        *oy = x;
+    } else if (c->zukei_ang == 180.0f) {
+        *ox = -x;
+        *oy = -y;
+    } else if (c->zukei_ang == 270.0f) {
+        *ox = y;
+        *oy = -x;
+    } else if (c->zukei_ang == 0.0f) {
+        *ox = x;
+        *oy = y;
+    } else {
+        const double t = c->zukei_ang * (3.14159265358979323846 / 180.0);
+        const double cs = cos(t), sn = sin(t);
+
+        *ox = x * cs - y * sn;
+        *oy = x * sn + y * cs;
+    }
+}
+
 static void zukei_ghost(const JwCmd *c, const Jwc *d, VGA *v,
                         const JwView *w, int sx, int sy)
 {
@@ -223,28 +252,37 @@ static void zukei_ghost(const JwCmd *c, const Jwc *d, VGA *v,
         const JwcLine *l = &z->lines[k];
         int x0, y0, x1, y1;
 
-        at_screen(w, px + (double)(l->x0 / mmk), py + (double)(l->y0 / mmk),
-                  &x0, &y0);
-        at_screen(w, px + (double)(l->x1 / mmk), py + (double)(l->y1 / mmk),
-                  &x1, &y1);
+        double ax, ay, bx, by;
+
+        zukei_turn(c, (double)(l->x0 / mmk), (double)(l->y0 / mmk), &ax, &ay);
+        zukei_turn(c, (double)(l->x1 / mmk), (double)(l->y1 / mmk), &bx, &by);
+        at_screen(w, px + ax, py + ay, &x0, &y0);
+        at_screen(w, px + bx, py + by, &x1, &y1);
         jw_line(v, x0, y0, x1, y1, 2, 0x18, jw_view_line_style(l->type));
     }
     for (k = 0; k < z->n_arcs; k++) {
         const JwcArc *a = &z->arcs[k];
-        const double cx = (px + (double)(a->cx / mmk) - w->ox) * w->scale
-                        + w->ax;
-        const double cy = w->ay
-                        - (py + (double)(a->cy / mmk) - w->oy) * w->scale;
+        double ux, uy;
+        double cx, cy;
 
+        zukei_turn(c, (double)(a->cx / mmk), (double)(a->cy / mmk), &ux, &uy);
+        cx = (px + ux - w->ox) * w->scale + w->ax;
+        cy = w->ay - (py + uy - w->oy) * w->scale;
+        /* A turn goes into the tilt, which turns the whole shape rigidly --
+         * the sweep is in the shape's own frame and stays where it is. */
         jw_arc_poly(v, cx, cy, (double)(a->r / mmk) * w->scale, a->flatten,
-                    a->start, a->end, a->tilt, 2, 0x18,
+                    a->start, a->end,
+                    a->tilt + (long)(c->zukei_ang * 65536.0f), 2, 0x18,
                     jw_view_line_style(a->type));
     }
     for (k = 0; k < z->n_points; k++) {
         int x, y;
 
-        at_screen(w, px + (double)(z->points[k].x / mmk),
-                  py + (double)(z->points[k].y / mmk), &x, &y);
+        double ux, uy;
+
+        zukei_turn(c, (double)(z->points[k].x / mmk),
+                   (double)(z->points[k].y / mmk), &ux, &uy);
+        at_screen(w, px + ux, py + uy, &x, &y);
         jw_point(v, x, y, 2, 0x18);
     }
     /* The strings show as **boxes, in colour 1**, not as letters.  Measured
@@ -265,10 +303,16 @@ static void zukei_ghost(const JwCmd *c, const Jwc *d, VGA *v,
          * multiplied against 522 divided. */
         const float inv = 1.0f / mmk;
 
-        t.x0 = (float)(px + (double)(z->texts[k].x0 * inv));
-        t.y0 = (float)(py + (double)(z->texts[k].y0 * inv));
-        t.x1 = (float)(px + (double)(z->texts[k].x1 * inv));
-        t.y1 = (float)(py + (double)(z->texts[k].y1 * inv));
+        double ax, ay, bx, by;
+
+        zukei_turn(c, (double)(z->texts[k].x0 * inv),
+                   (double)(z->texts[k].y0 * inv), &ax, &ay);
+        zukei_turn(c, (double)(z->texts[k].x1 * inv),
+                   (double)(z->texts[k].y1 * inv), &bx, &by);
+        t.x0 = (float)(px + ax);
+        t.y0 = (float)(py + ay);
+        t.x1 = (float)(px + bx);
+        t.y1 = (float)(py + by);
         jw_view_text_ghost(v, d, &t, w, 1, 0x18);
     }
 }
@@ -289,7 +333,7 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
          * none at all -- not on the press, not after the pointer moves
          * twice, not after a second copy goes down.  ⑤仮表示 is presumably
          * what turns it back on, and that cell is not done. */
-        if (c->zukei == JW_ZUKEI_PUT) {
+        if (c->zukei == JW_ZUKEI_PUT && !c->zukei_noghost) {
             zukei_ghost(c, d, v, w, sx, sy);
         }
         return;
@@ -2525,12 +2569,38 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->zukei = JW_ZUKEI_LIST;
         return 1;
     }
+    /* 図形 ②読込's ④ﾏｳｽ角 and ⑤仮表示.  Both only change what the band
+     * says and whether the preview is drawn; the road stays where it is. */
+    if (c->command == 27 && item == 4
+        && (c->zukei == JW_ZUKEI_PUT || c->zukei == JW_ZUKEI_PUT2)) {
+        c->zukei_mouse = (c->zukei_mouse + 1) % 3;
+        return 1;
+    }
+    if (c->command == 27 && item == 5
+        && (c->zukei == JW_ZUKEI_PUT || c->zukei == JW_ZUKEI_PUT2)) {
+        c->zukei_noghost = !c->zukei_noghost;
+        return 1;
+    }
+    /* 図形 ②読込's ③90ﾟ毎: another quarter turn each press, and the band
+     * beside the counts says which -- 0.000, 90.000, 180.000, 270.000 and
+     * back to 0.000, with the 位置指示 line written again each time. */
+    if (c->command == 27 && item == 3
+        && (c->zukei == JW_ZUKEI_PUT || c->zukei == JW_ZUKEI_PUT2)) {
+        c->zukei_ang += 90.0f;
+        if (c->zukei_ang >= 360.0f) {
+            c->zukei_ang -= 360.0f;
+        }
+        return 1;
+    }
     /* And on ②読込's list, ①選択確定 takes the figure that is picked.  The
      * host has already read it -- that is what zukei_in is -- so if there is
      * nothing in hand the press does nothing. */
     if (c->command == 27 && c->zukei == JW_ZUKEI_LIST && item == 1
         && c->zukei_in) {
         c->zukei = JW_ZUKEI_PUT;
+        c->zukei_ang = 0.0f;
+        c->zukei_mouse = 0;
+        c->zukei_noghost = 0;
         c->n0_lines = d ? d->n_lines : 0;
         c->n0_arcs = d ? d->n_arcs : 0;
         c->n0_texts = d ? d->n_texts : 0;
@@ -4136,10 +4206,16 @@ static void zukei_place(JwCmd *c, Jwc *d, double px, double py)
     for (k = 0; k < z->n_lines; k++) {
         JwcLine l = z->lines[k];
 
-        l.x0 = (float)(px + (double)(z->lines[k].x0 * inv));
-        l.y0 = (float)(py + (double)(z->lines[k].y0 * inv));
-        l.x1 = (float)(px + (double)(z->lines[k].x1 * inv));
-        l.y1 = (float)(py + (double)(z->lines[k].y1 * inv));
+        double ax, ay, bx, by;
+
+        zukei_turn(c, (double)(z->lines[k].x0 * inv),
+                   (double)(z->lines[k].y0 * inv), &ax, &ay);
+        zukei_turn(c, (double)(z->lines[k].x1 * inv),
+                   (double)(z->lines[k].y1 * inv), &bx, &by);
+        l.x0 = (float)(px + ax);
+        l.y0 = (float)(py + ay);
+        l.x1 = (float)(px + bx);
+        l.y1 = (float)(py + by);
         l.layer = layer;
         l.rest[0] = layer;
         l.rest[2] = (unsigned char)(z->lines[k].rest[2] & 0x80);
@@ -4151,9 +4227,14 @@ static void zukei_place(JwCmd *c, Jwc *d, double px, double py)
     for (k = 0; k < z->n_arcs; k++) {
         JwcArc a = z->arcs[k];
 
-        a.cx = (float)(px + (double)(z->arcs[k].cx * inv));
-        a.cy = (float)(py + (double)(z->arcs[k].cy * inv));
+        double ux, uy;
+
+        zukei_turn(c, (double)(z->arcs[k].cx * inv),
+                   (double)(z->arcs[k].cy * inv), &ux, &uy);
+        a.cx = (float)(px + ux);
+        a.cy = (float)(py + uy);
         a.r = z->arcs[k].r * inv;
+        a.tilt = z->arcs[k].tilt + (long)(c->zukei_ang * 65536.0f);
         a.layer = layer;
         a.rest[0] = layer;
         a.rest[2] = 0x10;
@@ -4164,8 +4245,12 @@ static void zukei_place(JwCmd *c, Jwc *d, double px, double py)
     for (k = 0; k < z->n_points; k++) {
         JwcPoint q = z->points[k];
 
-        q.x = (float)(px + (double)(z->points[k].x * inv));
-        q.y = (float)(py + (double)(z->points[k].y * inv));
+        double ux, uy;
+
+        zukei_turn(c, (double)(z->points[k].x * inv),
+                   (double)(z->points[k].y * inv), &ux, &uy);
+        q.x = (float)(px + ux);
+        q.y = (float)(py + uy);
         q.layer = layer;
         q.rest[0] = layer;
         q.rest[2] = 0x10;
@@ -4176,10 +4261,16 @@ static void zukei_place(JwCmd *c, Jwc *d, double px, double py)
     for (k = 0; k < z->n_texts; k++) {
         JwcText t = z->texts[k];
 
-        t.x0 = (float)(px + (double)(z->texts[k].x0 * inv));
-        t.y0 = (float)(py + (double)(z->texts[k].y0 * inv));
-        t.x1 = (float)(px + (double)(z->texts[k].x1 * inv));
-        t.y1 = (float)(py + (double)(z->texts[k].y1 * inv));
+        double ax, ay, bx, by;
+
+        zukei_turn(c, (double)(z->texts[k].x0 * inv),
+                   (double)(z->texts[k].y0 * inv), &ax, &ay);
+        zukei_turn(c, (double)(z->texts[k].x1 * inv),
+                   (double)(z->texts[k].y1 * inv), &bx, &by);
+        t.x0 = (float)(px + ax);
+        t.y0 = (float)(py + ay);
+        t.x1 = (float)(px + bx);
+        t.y1 = (float)(py + by);
         t.layer = layer;
         t.rest[1] = layer;
         t.rest[2] = (unsigned char)(z->texts[k].rest[2] & 0x80);
