@@ -71,7 +71,7 @@
        is the same page for the same reason. -->
   <div class="bar">
     <label class="filebtn">アップロード<input type="file" id="up"
-           accept=".jwc,.JWC" multiple></label>
+           accept=".jwc,.JWC,.dxf,.DXF" multiple></label>
     <span class="group">
       <label for="pick">ディスクの中</label>
       <select id="pick"></select>
@@ -110,8 +110,10 @@
     パソコンとエミュレータの中のディスクとの間でファイルを出し入れするだけで、
     開いたり閉じたりはしません。<br>
     <b>アップロード</b>した .JWC はディスクに置かれ、上の <b>②読込</b> の一覧に
-    出ます。<b>ダウンロード</b>は一覧で選んだファイルをそのまま手元に渡します
-    ——本物の ＪＷ＿ＣＡＤ がそれを開いて同じ画面を描くところまで
+    出ます。<b>.DXF</b> も同じように置けて、<b>①ﾌｧｲﾙ</b> → <b>⑥ＤＸＦ</b> →
+    <b>② 読込</b> の一覧に出ます（<b>① 保存</b> で書き出した .dxf も同じ所と
+    上の一覧に出ます）。<b>ダウンロード</b>は一覧で選んだファイルをそのまま
+    手元に渡します——本物の ＪＷ＿ＣＡＤ がそれを開いて同じ画面を描くところまで
     確かめてあります。<br>
     <b>PDF</b> と <b>PNG</b> は<b>プロッタ出力</b>です。用紙は描かれた中身に
     合わせます（周囲 10mm）。出し方は 2 通りあります:<br>
@@ -130,8 +132,8 @@
      once does not go and look again -- a push lands and the page is still
      the old one, which is what happened on 2026-09-21.  The stamp below is
      written by tools/build_wasm.sh on every build. -->
-<script>const JW_BUILD = '20260922211612';</script>
-<script src="jwcad.js?v=20260922211612"></script>
+<script>const JW_BUILD = '20260922221843';</script>
+<script src="jwcad.js?v=20260922221843"></script>
 <script>
 /* What each of the drawings that ship calls itself.  Not our words: every
    .JWC carries its 図面名 at offset 40 of the header, and this is that
@@ -223,7 +225,11 @@ function setFiles() {
   pick.textContent = '';
   let names = [];
   try {
-    names = Module.FS.readdir(JW_DIR).filter(n => /\.JWC$/i.test(n)).sort();
+    /* **The DXF files belong here too.**  入出力 → ①ﾌｧｲﾙ → ⑥ＤＸＦ →
+       ① 保存 writes `NAME.dxf`, and a list of `.JWC` alone left the file the
+       visitor had just written with no way off the disk. */
+    names = Module.FS.readdir(JW_DIR)
+              .filter(n => /\.(JWC|DXF)$/i.test(n)).sort();
   } catch (err) { /* no disk yet */ }
   for (const name of names) {
     const o = document.createElement('option');
@@ -261,8 +267,12 @@ document.getElementById('up').onchange = async e => {
     /* 8.3 and upper case: it has to be a name DOS could have written, or
        ②読込 will not show it the way the original shows a file. */
     const dot = f.name.replace(/^.*[/]/, '').replace(/\.[^.]*$/, '');
+    /* A `.dxf` keeps its own kind -- and its **lower case** extension, which
+       is how ⑥ＤＸＦ → ① 保存 writes one, so the two are the same file to
+       everything that opens them. */
+    const kind = /\.dxf$/i.test(f.name) ? '.dxf' : '.JWC';
     const name = dot.toUpperCase().replace(/[^A-Z0-9_-]/g, '_').slice(0, 8)
-                 + '.JWC';
+                 + kind;
 
     Module.FS.writeFile(JW_DIR + '/' + name,
                         new Uint8Array(await f.arrayBuffer()));
@@ -272,7 +282,9 @@ document.getElementById('up').onchange = async e => {
   pick.value = JW_DIR + '/' + done[done.length - 1];
   saveEl.disabled = false;
   say(done.join('、') + ' を入れました — '
-      + '入出力 → ①ﾌｧｲﾙ → ②読込 で開けます');
+      + (done.every(n => /\.dxf$/i.test(n))
+         ? '入出力 → ①ﾌｧｲﾙ → ⑥ＤＸＦ → ② 読込 で読めます'
+         : '入出力 → ①ﾌｧｲﾙ → ②読込 で開けます'));
 };
 
 /* Hand the visitor a file.

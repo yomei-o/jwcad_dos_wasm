@@ -150,7 +150,29 @@ ok(opened === 0, 'and does not open it either');
 ok(els.pick.options.some(o => o.value === 'orig/MY_DRAWI.JWC'),
    'and it turns up in the list');
 
+/* **A .DXF keeps its own kind.**  入出力 → ①ﾌｧｲﾙ → ⑥ＤＸＦ → ① 保存 writes
+   `NAME.dxf` and ② 読込 reads one, so an uploaded DXF has to stay a DXF --
+   and has to be in the list, or ダウンロード cannot reach the one the
+   program has just written.  Both were wrong until 2026-09-23: the list
+   matched `.JWC` alone and the upload put `.JWC` on everything. */
+els.up.files = [{ name: 'plan.DXF', arrayBuffer: async () => new ArrayBuffer(8) }];
+await (els.up.onchange({ target: els.up }) || Promise.resolve());
+await new Promise(r => setTimeout(r, 10));
+ok(fs['orig/PLAN.dxf'] !== undefined,
+   'アップロード keeps a .dxf a .dxf (' + Object.keys(fs).join(' ') + ')');
+ok(els.pick.options.some(o => o.value === 'orig/PLAN.dxf'),
+   'and the list shows it, so ダウンロード can reach it');
+
+/* and it comes back off the disk under its own name */
+els.pick.value = 'orig/PLAN.dxf';
+anchors.length = 0;
+body.children.length = 0;
+els.save.onclick();
+ok(anchors.length === 1 && anchors[0].download === 'PLAN.dxf',
+   'ダウンロード hands over the DXF (' + (anchors[0] || {}).download + ')');
+
 /* ダウンロード. */
+els.pick.value = 'orig/MY_DRAWI.JWC';
 anchors.length = 0;
 body.children.length = 0;
 revoked = 0;

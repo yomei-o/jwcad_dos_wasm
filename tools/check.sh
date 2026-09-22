@@ -510,6 +510,9 @@ echo "=== ③ 新規 保存: 名前を打って書く"
 echo "=== 入出力 → ①ﾌｧｲﾙ の残り: ③合成 ④削除 ⑤ﾄﾞﾗｲﾌﾞ変更 ⑥ＤＸＦ ⑦INDEX"
 "$NODE" tools/iocheck2.mjs
 
+echo "=== ⑥ＤＸＦ: 書いて、一覧に出て、読み戻せるか"
+"$NODE" tools/dxfcheck.mjs
+
 echo "=== ひととおり: 図面を開く → 線を引く → 保存 → 開き直す → プロッタ出力 → PDF/PNG"
 "$NODE" tools/flowcheck.mjs orig/SAMPLE1.JWC
 full "$NODE" tools/flowcheck.mjs orig/SAMPLE6.JWC

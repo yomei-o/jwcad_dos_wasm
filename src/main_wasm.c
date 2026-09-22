@@ -2139,7 +2139,25 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
                 memcpy(stem, ui.file_name[ui.file_sel], 8);
                 stem[8] = 0;
                 for (j = 7; j >= 0 && stem[j] == ' '; j--) stem[j] = 0;
+                /* **The list spells it `.DXF` and the disk may not.**  The
+                 * names in the list are DOS's -- the stem upper case and the
+                 * extension the one that was asked for -- while the file the
+                 * program wrote is `NAME.dxf`.  Try what it writes first and
+                 * the upper case after, so a file put there by hand opens
+                 * too. */
                 sprintf(path, "%s/%s.dxf", JW_DIR, stem);
+                {
+                    /* **Look, do not read**: jwc_dxf_read adds what it finds
+                     * to the drawing, so trying it twice would bring the
+                     * entities in twice. */
+                    FILE *probe = fopen(path, "rb");
+
+                    if (probe) {
+                        fclose(probe);
+                    } else {
+                        sprintf(path, "%s/%s.DXF", JW_DIR, stem);
+                    }
+                }
                 if (jwc_dxf_read(drawing, path, &why)) {
                     sprintf(status, "%s read", path);
                 } else {
