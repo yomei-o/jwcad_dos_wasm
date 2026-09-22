@@ -175,6 +175,9 @@ static int panel_up(void)
     if (ui.command == 27 && (ui.again || ui.top_item == 4)) {
         return 1;
     }
+    if (ui.command == 29 && ui.top_item >= 1 && ui.top_item <= 3) {
+        return 1;
+    }
     return 0;
 }
 
@@ -1328,15 +1331,20 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         cmd.top_item = 0;
         cmd.top_right = 0;
         if (ui.opt_stage == 0 && item == 1) {
+            /* The screen is up; what is on it comes from src/item.h like
+             * ②断面's and ③立面's. */
             ui.opt_stage = JW_OPT_PLAN;
             ui.opt_depth = 70.0;
             ui.opt_width = 35.0;
             ui.opt_kind = 'A';
-        } else if (ui.opt_stage == 0 && jw_ui_item_has(29, item, right)) {
+        }
+        if (ui.opt_stage == 0 || item == 1) {
+            if (jw_ui_item_has(29, item, right)) {
             /* The rest of ｵﾌﾟｼｮﾝ's bar is not built, but the original
              * still writes something when it is pressed -- src/item.h. */
-            cmd.top_item = item;
-            cmd.top_right = right;
+                cmd.top_item = item;
+                cmd.top_right = right;
+            }
         }
         mouse_x = x;
         mouse_y = y;

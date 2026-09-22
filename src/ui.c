@@ -1631,26 +1631,6 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * with nothing typed. */
         fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
         }
-    } else if (s->command == 29 && s->opt_stage == JW_OPT_PLAN) {
-        /* ｵﾌﾟｼｮﾝ → ①建具平面.  The sixteen shapes in the library file, two
-         * to a row, and the three sizes on the top line.  Measured: the
-         * labels sit at columns 17 and 49, on rows 2, 5, 8, 11, 14, 17, 20
-         * and 23. */
-        char one[64];
-        int k;
-
-        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
-        sprintf(one, "\x8c\x9a\x8b\xef\x91" "I" "\x91\xf0"
-                " |" "\x87" "@" "\x8c\xa9\x8d\x9e" " %.1fmm|"
-                "\x87" "A" "\x98" "g" "\x95\x9d" " %.1fmm|"
-                "\x87" "B" "\x8e\xed\x97\xde\x81" "y%c" "\x81" "z"
-                "\x95\xcf\x8d" "X|",
-                s->opt_depth, s->opt_width, s->opt_kind);
-        jw_ui_text(v, 8, 1, 7, 0, one);
-        for (k = 0; k < 16; k++) {
-            sprintf(one, "[%d]", k + 1);
-            jw_ui_text(v, k % 2 ? 49 : 17, 2 + 3 * (k / 2), 7, 0, one);
-        }
     } else if (s->command == 30 && s->saved_done) {
         /* Straight after ① 実 行: the original goes back to 入出力's own
          * line with the mark at column 6, and leaves ` 登 録  完 了 ` on
@@ -2128,6 +2108,33 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         if ((s->command == 13 || s->command == 28) && s->top_item == 4) {
             fill(v, 0, 464, 639, 479, 0);
             fill(v, 147, 87, 612, 298, 0);
+        }
+        /* ｵﾌﾟｼｮﾝ ①建具平面 ②断面 ③立面: sixteen shapes, two to a row,
+         * eight rows 48 pixels tall, with a rule between each pair and one
+         * down the middle at x 380.  All of the strip along the bottom goes
+         * but `電卓[Z 範囲記憶`, which the original leaves standing. */
+        if (s->command == 29 && s->top_item >= 1 && s->top_item <= 3) {
+            int k;
+
+            fill(v, 122, 17, 638, 462, 0);
+            fill(v, 122, 464, 638, 478, 0);
+            if (s->top_item == 3) {
+                /* ③立面 lays them out four across and four down, 96 tall,
+                 * with the rules at x 251, 381 and 511. */
+                for (k = 0; k < 5; k++) {
+                    fill(v, 122, 16 + k * 96, 638, 16 + k * 96, 7);
+                }
+                fill(v, 251, 16, 251, 400, 7);
+                fill(v, 381, 16, 381, 400, 7);
+                fill(v, 511, 16, 511, 400, 7);
+            } else {
+                for (k = 0; k < 9; k++) {
+                    const int y = k ? 63 + (k - 1) * 48 : 16;
+
+                    fill(v, 122, y, 638, y, 7);
+                }
+                fill(v, 380, 16, 380, 399, 7);
+            }
         }
         /* 図形 ④ｸﾞﾙｰﾌﾟ変 takes the whole drawing area. */
         if (s->command == 27 && s->top_item == 4) {
