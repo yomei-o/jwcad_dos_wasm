@@ -1032,7 +1032,8 @@ void jw_view_line(VGA *v, const Jwc *d, const JwcLine *l, const JwView *w,
  * pixels landed across the top line.
  */
 void jw_view_mark(VGA *v, const JwView *w, double ax, double ay,
-                  double bx, double by, unsigned colour, int style)
+                  double bx, double by, unsigned colour, int style,
+                  unsigned rop)
 {
     double fx0 = (ax - w->ox) * w->scale + w->ax;
     double fy0 = w->ay - (ay - w->oy) * w->scale;
@@ -1047,7 +1048,7 @@ void jw_view_mark(VGA *v, const JwView *w, double ax, double ay,
     } else {
         clip_far(w, fx0, fy0, &fx1, &fy1);
     }
-    jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy1, colour, ROP_REPLACE,
+    jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy1, colour, rop,
             style);
 }
 

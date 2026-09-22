@@ -18,6 +18,9 @@
 #include "jwc.h"
 #include "plot.h"
 #include "ui.h"
+#include "draw.h"
+#include "optplan.h"
+#include "tategu.h"
 #include "view.h"
 
 #include "dates.h"
@@ -169,6 +172,12 @@ static void sync_ui(void)
     ui.zukei_ang = cmd.zukei_ang;
     ui.zukei_mouse = cmd.zukei_mouse;
     ui.zukei_noghost = cmd.zukei_noghost;
+    ui.zukei_ask = cmd.zukei_ask;
+    memcpy(ui.zukei_typed, cmd.zukei_typed, sizeof ui.zukei_typed);
+    ui.zukei_typed_n = cmd.zukei_typed_n;
+    ui.zukei_prev_ang = cmd.zukei_prev_ang;
+    ui.zukei_mx = cmd.zukei_mx;
+    ui.zukei_my = cmd.zukei_my;
     ui.zukei = cmd.zukei > JW_ZUKEI_BASE ? cmd.zukei
              : cmd.zukei ? (cmd.pressed == 0 ? 1 : cmd.pressed == 1 ? 2 : 3)
              : 0;
@@ -216,7 +225,8 @@ static int panel_up(void)
             || ui.zukei == JW_ZUKEI_LIST)) {
         return 1;
     }
-    if (ui.command == 29 && ui.top_item >= 1 && ui.top_item <= 3) {
+    if (ui.command == 29 && ui.top_item >= 1 && ui.top_item <= 3
+        && ui.opt_stage == JW_OPT_PLAN) {
         return 1;
     }
     return 0;
@@ -244,6 +254,42 @@ static void present(void)
             jw_cmd_zukei_left(&zukei_left, &vga, drawing, &view);
         }
         jw_cmd_after(&cmd, &vga, drawing, &view);
+        /* ｵﾌﾟｼｮﾝ ①建具平面 reddens the line the fitting is going into while
+         * it asks where along it.  Measured: the line goes colour 2 the
+         * moment it is picked and back to white once the fitting is in. */
+        if (ui.command == 29 && ui.opt_stage == JW_OPT_WHERE && drawing
+            && ui.opt_line >= 0 && ui.opt_line < drawing->n_lines) {
+            const JwTategu *lib = jw_tategu_lib(1);
+            JwTateguPut f;
+
+            jw_view_line(&vga, drawing, &drawing->lines[ui.opt_line], &view, 2);
+            /* And the fitting itself, at the pointer, in colour 2 and
+             * **exclusive-or**: where the preview crosses the drawing's white
+             * frame the original's pixel comes out 00ffff, which is 7 xor 2. */
+            if (lib && ui.opt_shape >= 0 && ui.opt_shape < lib->n
+                && mouse_x >= AREA_X0 && mouse_x <= AREA_X1
+                && mouse_y >= AREA_Y0 && mouse_y <= AREA_Y1) {
+                const JwTateguShape *sh = &lib->shape[ui.opt_shape];
+                double px, py;
+                int i;
+
+                jw_cmd_at(&view, mouse_x, mouse_y, &px, &py);
+                if (jw_tategu_frame(drawing, &drawing->lines[ui.opt_line],
+                                    px, py, ui.opt_inner, ui.opt_depth,
+                                    ui.opt_width, sh, &f)) {
+                    for (i = 0; i < sh->n; i++) {
+                        double ax, ay, bx, by;
+
+                        if (sh->line[i].arc) {
+                            continue;
+                        }
+                        jw_tategu_ends(&sh->line[i], &f, &ax, &ay, &bx, &by);
+                        jw_view_mark(&vga, &view, ax, ay, bx, by, 2,
+                                     JW_STYLE_SOLID, 0x18);
+                    }
+                }
+            }
+        }
     } else {
         /* **A panel loses what 図形 ①登録 left on top.**  The original does
          * not repaint while the figure it wrote is still standing over the
@@ -1545,6 +1591,12 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             ui.opt_depth = 70.0;
             ui.opt_width = 35.0;
             ui.opt_kind = 'A';
+            /* The two the band shows once a shape is picked.  1800 and 0 are
+             * what the original starts with. */
+            ui.opt_shape = -1;
+            ui.opt_inner = 1800.0;
+            ui.opt_gap = 0.0;
+            ui.opt_line = -1;
         }
         if (ui.opt_stage == 0 || item == 1) {
             if (jw_ui_item_has(29, item, right)) {
@@ -1704,6 +1756,75 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         present();
         return -1;
     }
+    /* ｵﾌﾟｼｮﾝ ①建具平面's road, once the sixteen are up:
+     *
+     *   * a press on one of them takes that shape.  The cells are two across
+     *     and eight down, the rules at y 16 and then every 48 from 63, and
+     *     the divider at x 380 -- the same grid the shapes are drawn in.
+     *   * a press on a line of the drawing takes it as the 基準線;
+     *   * a press then says where along it the fitting goes, and it goes in.
+     *
+     * Measured with tools/optpick.sh and tools/tateguplace.sh: the counts go
+     * 30 to 33 on the third press, which is the first shape's three members.
+     */
+    if (cmd.command == 29 && ui.opt_stage == JW_OPT_PLAN && ui.top_item == 1
+        && x >= AREA_X0 && x <= AREA_X1 && y >= 16 && y < 400) {
+        const int col = x >= 380 ? 1 : 0;
+        const int row = y < 63 ? 0 : (y - 63) / 48 + 1;
+        const JwTategu *lib = jw_tategu_lib(1);
+
+        if (row < 8 && lib && row * 2 + col < lib->n) {
+            ui.opt_shape = row * 2 + col;
+            ui.opt_stage = JW_OPT_BASE;
+        }
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    if (cmd.command == 29
+        && (ui.opt_stage == JW_OPT_BASE || ui.opt_stage == JW_OPT_BASE2)
+        && drawing
+        && x >= AREA_X0 && x <= AREA_X1 && y >= AREA_Y0 && y <= AREA_Y1) {
+        const long at = jw_cmd_line_at(drawing, &view, x, y);
+
+        if (at >= 0) {
+            ui.opt_line = at;
+            ui.opt_stage = JW_OPT_WHERE;
+        }
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    if (cmd.command == 29 && ui.opt_stage == JW_OPT_WHERE && drawing
+        && x >= AREA_X0 && x <= AREA_X1 && y >= AREA_Y0 && y <= AREA_Y1) {
+        const JwTategu *lib = jw_tategu_lib(1);
+        double px, py;
+
+        jw_cmd_at(&view, x, y, &px, &py);
+        if (lib && ui.opt_shape >= 0 && ui.opt_shape < lib->n
+            && ui.opt_line >= 0 && ui.opt_line < drawing->n_lines) {
+            jw_tategu_place(drawing, &lib->shape[ui.opt_shape],
+                            &drawing->lines[ui.opt_line], px, py,
+                            ui.opt_inner, ui.opt_depth, ui.opt_width);
+        }
+        ui.opt_stage = JW_OPT_BASE2;
+        ui.opt_line = -1;
+        mouse_x = x;
+        mouse_y = y;
+        /* **Not jw_ui_from.**  That clears the whole JwUi, and ｵﾌﾟｼｮﾝ's own
+         * state lives in it: the road would go back to nothing and the top
+         * line to the version banner.  The counts are the only thing that
+         * has changed. */
+        ui.n_lines = drawing->n_lines;
+        ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+        sync_ui();
+        present();
+        return -1;
+    }
     /* 図形 ②読込's list: a press on another cell moves the pick and leaves
      * the list up, a press on the one already picked takes that figure.  The
      * same rule the drawing list has, and measured the same way: with AAA and
@@ -1768,6 +1889,39 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * the rest of the road; [ESC] goes back to the list. */
     /* 図形 ①登録's ◆図形名入力.  The name is what the figure is written
      * under, and [Enter] goes on to `書き込みます`. */
+    /* ②角  度 and ①倍率指定X,Y's fields.  Digits, a dot and a comma go in,
+     * [Enter] takes what is there and [ESC] gives it up; either way the road
+     * goes back to 位置指示. */
+    if (cmd.command == 27 && cmd.zukei_ask) {
+        if (key == 27) {
+            cmd.zukei_ask = 0;
+        } else if (key == 13 || key == 10) {
+            if (cmd.zukei_typed_n) {
+                if (cmd.zukei_ask == JW_ZUKEI_ANG) {
+                    cmd.zukei_ang = (float)atof(cmd.zukei_typed);
+                    cmd.zukei_prev_ang = cmd.zukei_ang;
+                } else {
+                    const char *comma = strchr(cmd.zukei_typed, ',');
+
+                    cmd.zukei_mx = (float)atof(cmd.zukei_typed);
+                    cmd.zukei_my = comma ? (float)atof(comma + 1) : cmd.zukei_mx;
+                }
+            }
+            cmd.zukei_ask = 0;
+        } else if (key == 8) {
+            if (cmd.zukei_typed_n > 0) {
+                cmd.zukei_typed[--cmd.zukei_typed_n] = 0;
+            }
+        } else if (((key >= '0' && key <= '9') || key == '.' || key == ','
+                    || key == '-')
+                   && cmd.zukei_typed_n < (int)sizeof cmd.zukei_typed - 1) {
+            cmd.zukei_typed[cmd.zukei_typed_n++] = (char)key;
+            cmd.zukei_typed[cmd.zukei_typed_n] = 0;
+        }
+        sync_ui();
+        present();
+        return -1;
+    }
     if (cmd.command == 27 && cmd.zukei == JW_ZUKEI_NAME) {
         if (key == 27) {
             cmd.zukei = JW_ZUKEI_PICK;

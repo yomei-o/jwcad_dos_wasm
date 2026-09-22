@@ -102,7 +102,8 @@ void jw_view_text_ghost(VGA *v, const Jwc *d, const JwcText *t,
 /* A line in drawing coordinates, cut to the window.  What the range marking
  * uses: jw_line itself does not clip. */
 void jw_view_mark(VGA *v, const JwView *w, double ax, double ay,
-                  double bx, double by, unsigned colour, int style);
+                  double bx, double by, unsigned colour, int style,
+                  unsigned rop);
 
 void jw_view_line(VGA *v, const Jwc *d, const JwcLine *l, const JwView *w,
                   unsigned colour);

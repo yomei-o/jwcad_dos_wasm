@@ -3,6 +3,10 @@
 
     FIRST=right sh tools/zukei.sh          # the first corner's other button
     cp tmp/zukei/raw.txt tmp/zukei/raw_right.txt
+    EXTRA="140 8;190 72;400 8" sh tools/zukei.sh      # ②角  度's field
+    cp tmp/zukei/raw.txt tmp/zukei/raw_ang.txt
+    EXTRA="140 8;190 72;300 8" sh tools/zukei.sh      # ①倍率's field
+    cp tmp/zukei/raw.txt tmp/zukei/raw_mag.txt
     sh tools/zukeiread.sh                  # ①登録 and on into ②読込
     python tools/zukei_table.py > src/zukei.h
 
@@ -50,6 +54,8 @@ sys.stdout.reconfigure(encoding='utf-8', newline='\n')
 
 LOG = os.environ.get('ZUKEILOG', 'tmp/zukei/raw.txt')
 RIGHT = os.environ.get('ZUKEIRIGHT', 'tmp/zukei/raw_right.txt')
+ANG = os.environ.get('ZUKEIANG', 'tmp/zukei/raw_ang.txt')
+MAG = os.environ.get('ZUKEIMAG', 'tmp/zukei/raw_mag.txt')
 WAIT = b'\x81\x96\x82\xa8\x91\xd2\x82\xbf\x89\xba\x82\xb3\x82\xa2\x81\x96'
 
 
@@ -103,10 +109,14 @@ def collect(path):
 
 
 stages = collect(LOG)
-try:
-    stages[12] = collect(RIGHT)[2]
-except (OSError, KeyError):
-    sys.stderr.write('no right-button run in %s; stage 12 left out\n' % RIGHT)
+for path, press, stage, what in ((RIGHT, 2, 12, 'right-button'),
+                                 (ANG, 11, 13, 'angle'),
+                                 (MAG, 11, 14, 'scale')):
+    try:
+        stages[stage] = collect(path)[press]
+    except (OSError, KeyError):
+        sys.stderr.write('no %s run in %s; stage %d left out\n'
+                         % (what, path, stage))
 
 print('''/* src/zukei.h -- 図形's registration road, as the original writes it.
  *
@@ -135,6 +145,10 @@ print('''/* src/zukei.h -- 図形's registration road, as the original writes it
 #define JW_ZUKEI_LIST   9       /* ②読込: the figures in the group */
 #define JW_ZUKEI_PUT   10       /* one picked: 位置指示 … |①倍率指定X,Y|… */
 #define JW_ZUKEI_PUT2  11       /* one down: ◆ 位置指示 … |①同図形別処理 |… */
+/* The two the road asks a number in.  Each takes the field at its own column
+ * -- 15 for the angle and 22 for the scale -- and [Enter] ends it. */
+#define JW_ZUKEI_ANG   13       /* ②角  度: `角度 =` and 0度/前回/[F1] */
+#define JW_ZUKEI_MAG   14       /* ①倍率指定X,Y: `.図形倍率 X,Y =` */
 
 typedef struct {
     int stage;                  /* which press, 1 to 8; 0 ends the table */

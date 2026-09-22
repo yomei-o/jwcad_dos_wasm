@@ -16,6 +16,7 @@
 #include "move.h"
 #include "esc.h"
 #include "zukei.h"
+#include "optplan.h"
 #include "item.h"
 #include "tategu.h"
 
@@ -1161,22 +1162,12 @@ static double across(int v, double unit, double step)
  * to end whatever their number -- eight hundred units, a door's width. */
 static void tategu(VGA *v, int which)
 {
-    static const char *const FILES[4] = {
-        0, "orig/JW_OPT1.DAT", "orig/JW_OPT2.DAT", "orig/JW_OPT3.DAT"
-    };
-    static JwTategu lib[4];
-    static int read[4];
-    const JwTategu *t;
+    const JwTategu *t = jw_tategu_lib(which);
     int i;
 
-    if (which < 1 || which > 3) {
+    if (!t) {
         return;
     }
-    if (!read[which]) {
-        read[which] = 1;
-        jw_tategu_read(FILES[which], &lib[which]);
-    }
-    t = &lib[which];
     for (i = 0; i < t->n && i < 16; i++) {
         const JwTateguShape *sh = &t->shape[i];
         /* ③立面 is a front view and is laid out four across and four down;
@@ -2276,10 +2267,55 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 break;
             }
         }
+        /* 図形 ②読込's ②角  度 and ①倍率指定X,Y.  Both take the top line
+         * over while they ask, and src/zukei.h holds what the original
+         * writes.  Two of the scale line's pieces are **numbers**, so they
+         * are written from the state instead of replayed:
+         *
+         *     角度   `[  90.000ﾟ]` at column 50 of row 2, and the field at
+         *            column 15 of row 1
+         *     倍率   `[     1.000` at column 56 and `,     1.000` at 67, and
+         *            the field at column 22
+         *
+         * The brackets hold what 前回と同じ would use -- 90 degrees and 1,1
+         * until something has been entered -- and not the angle in force. */
+        if (s->command == 27 && s->zukei_ask) {
+            const JwZukei *z;
+            char one[32];
+
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
+            for (z = JW_ZUKEI; z->stage; z++) {
+                if (z->stage != s->zukei_ask) {
+                    continue;
+                }
+                if (s->zukei_ask == JW_ZUKEI_MAG
+                    && (z->col == 56 || z->col == 67)) {
+                    continue;   /* written below, from the state */
+                }
+                jw_ui_text(v, z->col, 1, (unsigned)z->fg, (unsigned)z->bg,
+                           z->text);
+            }
+            if (s->zukei_ask == JW_ZUKEI_ANG) {
+                sprintf(one, "[%8.3f" "\xdf" "]", (double)s->zukei_prev_ang);
+                jw_ui_text(v, 50, 2, 7, 0xffffu, one);
+                if (s->zukei_typed_n) {
+                    jw_ui_text(v, 15, 1, 7, 0, s->zukei_typed);
+                }
+            } else {
+                sprintf(one, "[%10.3f", (double)s->zukei_mx);
+                jw_ui_text(v, 56, 1, 7, 0, one);
+                sprintf(one, ",%10.3f", (double)s->zukei_my);
+                jw_ui_text(v, 67, 1, 7, 0, one);
+                if (s->zukei_typed_n) {
+                    jw_ui_text(v, 22, 1, 7, 0, s->zukei_typed);
+                }
+            }
+        }
         /* 図形 ①登録 replaces the line 図形 came up with, and keeps
          * replacing it the whole way to `書き込みます`.  src/zukei.h holds
          * what the original writes at each step. */
-        if (s->zukei && s->command == 27) {
+        if (s->zukei && s->command == 27 && !s->zukei_ask) {
             const JwZukei *z;
             /* The first corner taken with the **right** button says
              * `線･円･文字` and offers ③文字種; with the left one it says
@@ -2442,7 +2478,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * eight rows 48 pixels tall, with a rule between each pair and one
          * down the middle at x 380.  All of the strip along the bottom goes
          * but `電卓[Z 範囲記憶`, which the original leaves standing. */
-        if (s->command == 29 && s->top_item >= 1 && s->top_item <= 3) {
+        if (s->command == 29 && s->top_item >= 1 && s->top_item <= 3
+            && s->opt_stage == JW_OPT_PLAN) {
             fill(v, 122, 17, 638, 462, 0);
             fill(v, 122, 463, 638, 478, 0);
         }
@@ -2544,7 +2581,45 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * original does not clear the row for these -- it writes over part of
          * what is already there -- so these go on after the prompt and before
          * the stages, in the order the original wrote them.  src/item.h. */
-        if (s->top_item) {
+        /* ｵﾌﾟｼｮﾝ ①建具平面, once one of the sixteen has been pressed: the
+         * shapes go, the drawing comes back, and the line asks for a 基準線.
+         * src/optplan.h holds what the original writes at each step, and the
+         * band's numbers are written here because they are values:
+         *
+         *   基準線 waiting  内法寸法 at column 29 and 基準線との間隔 at 42,
+         *                   both eight wide and black on white
+         *   位置 waiting    the 間隔 again at column 32, then ` 中心 ` at 44
+         *                   and ` 内法 ` at 55, and two pairs of spaces in
+         *                   colour 6 at 68 and 77
+         */
+        if (s->command == 29 && s->opt_stage >= JW_OPT_BASE) {
+            const JwOptPlan *q;
+            char one[32];
+
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
+            for (q = JW_OPTPLAN; q->stage; q++) {
+                if (q->stage == s->opt_stage) {
+                    jw_ui_text(v, q->col, 1, (unsigned)q->fg,
+                               (unsigned)q->bg, q->text);
+                }
+            }
+            if (s->opt_stage != JW_OPT_WHERE) {
+                sprintf(one, "%8.2f", s->opt_inner);
+                jw_ui_text(v, 29, 2, 7, 0xffffu, one);
+                sprintf(one, "%8.2f", s->opt_gap);
+                jw_ui_text(v, 42, 2, 7, 0xffffu, one);
+            } else {
+                sprintf(one, "%7.2f ", s->opt_gap);
+                jw_ui_text(v, 32, 2, 7, 0xffffu, one);
+                jw_ui_text(v, 44, 2, 7, 0xffffu, " \x92\x86\x90S ");
+                jw_ui_text(v, 55, 2, 7, 0xffffu, " \x93\xe0\x96@ ");
+                jw_ui_text(v, 68, 2, 6, 0, "  ");
+                jw_ui_text(v, 77, 2, 6, 0, "  ");
+            }
+        }
+        if (s->top_item && !(s->command == 29
+                             && s->opt_stage >= JW_OPT_BASE)) {
             const JwItem *r;
 
             /* **The row is cleared first.**  A fill leaves no string for
@@ -2641,7 +2716,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         /* The rules go **after** the labels: ③立面's names sit on the same
          * text row as the rule above their cell, and the original's rule is
          * whole underneath them. */
-        if (s->command == 29 && s->top_item >= 1 && s->top_item <= 3) {
+        if (s->command == 29 && s->top_item >= 1 && s->top_item <= 3
+            && s->opt_stage == JW_OPT_PLAN) {
             int k;
 
             if (s->top_item == 3) {
@@ -2665,7 +2741,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         /* And the shapes themselves, **after** the labels: the `[7]` the
          * original writes sits over the top-left of the cell and the arc in
          * that one runs through it, cyan over the white of the label. */
-        if (s->command == 29 && s->top_item >= 1 && s->top_item <= 3) {
+        if (s->command == 29 && s->top_item >= 1 && s->top_item <= 3
+            && s->opt_stage == JW_OPT_PLAN) {
             tategu(v, s->top_item);
         }
         /* 図形 ④ｸﾞﾙｰﾌﾟ変's grid, after the words for the same reason the

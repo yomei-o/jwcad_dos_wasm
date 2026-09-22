@@ -100,9 +100,16 @@ press() {   # x y [right]
         t*)
             # `t NAME` types it and presses [Enter], which is what
             # ◆図形名入力 wants.
+            #
+            # **One key at a time.**  `type 30` puts both characters in the
+            # BIOS buffer at once and the original's number fields take only
+            # the first: ②角  度 came out 3.000 and not 30.000.  The name
+            # field does take a burst, but one at a time works for both.
             set -- $step
-            printf 'type %s\nwait %s\nkey enter\nwait %s\n' \
-                "$2" "$WAIT" "$WAIT"
+            printf %s "$2" | fold -w1 | while read -r ch || [ -n "$ch" ]; do
+                printf 'key %s\nwait 8000000\n' "$ch"
+            done
+            printf 'key enter\nwait %s\n' "$WAIT"
             ;;
         *)
             press $step

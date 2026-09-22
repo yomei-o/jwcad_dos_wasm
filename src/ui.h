@@ -168,6 +168,11 @@ typedef struct {
     float zukei_ang;
     int zukei_mouse;
     int zukei_noghost;
+    int zukei_ask;
+    char zukei_typed[16];
+    int zukei_typed_n;
+    float zukei_prev_ang;
+    float zukei_mx, zukei_my;
     int top_item;
     int top_right;
     int band_off;               /* JwCmd.band_off */
@@ -201,6 +206,14 @@ typedef struct {
     /* What is in that file: up to sixteen shapes, each with a name. */
     char opt_name[16][32];
     int opt_n;
+    /* Once one of the sixteen has been pressed: which it is, the two numbers
+     * the band then shows -- 内法寸法 1800.00 at column 29 and 基準線との間隔
+     * 0.00 at column 42 -- and which line of the drawing is the 基準線, or -1
+     * while it is still being asked for. */
+    int opt_shape;
+    double opt_inner;
+    double opt_gap;
+    long opt_line;
     int io_stage;
     /* The name ③ﾌｧｲﾙ出力 asks for, in the field at column 25. */
     char io_name[13];
@@ -266,6 +279,8 @@ typedef struct {
 
 /* ｵﾌﾟｼｮﾝ's own menus, JwUi.opt_stage. */
 #define JW_OPT_PLAN 1           /* ①建具平面 -> 建具選択 の一覧        */
+/* JW_OPT_BASE and JW_OPT_WHERE are in src/optplan.h, beside the lines they
+ * put up. */
 
 #define JW_DATA_GROUP 1
 #define JW_DATA_LAYER 2

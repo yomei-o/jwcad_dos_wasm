@@ -25,6 +25,10 @@
 #define JW_ZUKEI_LIST   9       /* ②読込: the figures in the group */
 #define JW_ZUKEI_PUT   10       /* one picked: 位置指示 … |①倍率指定X,Y|… */
 #define JW_ZUKEI_PUT2  11       /* one down: ◆ 位置指示 … |①同図形別処理 |… */
+/* The two the road asks a number in.  Each takes the field at its own column
+ * -- 15 for the angle and 22 for the scale -- and [Enter] ends it. */
+#define JW_ZUKEI_ANG   13       /* ②角  度: `角度 =` and 0度/前回/[F1] */
+#define JW_ZUKEI_MAG   14       /* ①倍率指定X,Y: `.図形倍率 X,Y =` */
 
 typedef struct {
     int stage;                  /* which press, 1 to 8; 0 ends the table */
@@ -214,6 +218,33 @@ static const JwZukei JW_ZUKEI[] = {
       "\x95\xb6\x8e\x9a\x8e\xed" },
     { 12, 80, 7, 0x0000,
       "|" },
+    /* press 13 */
+    { 13,  1, 7, 0x0000,
+      "[ESC]  " },
+    { 13,  8, 7, 0x0000,
+      "\x8a" "p" "\x93" "x =" },
+    { 13, 32, 7, 0x0000,
+      "\x81" "b0 " "\x93" "x " "\xcf\xb3\xbd" "(L)" "\x81" "b" \
+      "\x91" "O" "\x89\xf1\x82\xc6\x93\xaf\x82\xb6" " " \
+      "\xcf\xb3\xbd" "(R) " "\x81" "b[F1] " "\xcf\xb3\xbd\x8a" \
+      "p" "\x93" "x" "\x81" "b" },
+    { 13, 15, 7, 0x0000,
+      "        " },
+    /* press 14 */
+    { 14,  1, 7, 0x0000,
+      "[ESC]." "\x90" "}" "\x8c" "`" "\x94" "{" "\x97\xa6" \
+      " X,Y =" },
+    { 14, 38, 7, 0x0000,
+      "\x91" "O" "\x89\xf1\x82\xc6\x93\xaf\x82\xb6" " " \
+      "\xcf\xb3\xbd" "(R) " },
+    { 14, 56, 7, 0x0000,
+      "[     1.000" },
+    { 14, 67, 7, 0x0000,
+      ",     1.000" },
+    { 14, 78, 7, 0x0000,
+      "]" },
+    { 14, 22, 7, 0x0000,
+      "        " },
     { 0, 0, 0, 0, 0 }
 };
 

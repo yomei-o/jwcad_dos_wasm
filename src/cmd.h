@@ -262,6 +262,18 @@ typedef struct {
      * and nothing follows the pointer; on, the word goes and the figure is
      * back.  Measured both ways. */
     int zukei_noghost;
+    /* ②角  度 and ①倍率指定X,Y both ask for a number in a field along the
+     * top: JW_ZUKEI_ANG or JW_ZUKEI_MAG while one is open, 0 otherwise.
+     *
+     * The value in brackets is **what 前回と同じ would use**, not the one in
+     * force: the first time ②角  度 is pressed the band says 0.000 and the
+     * brackets say 90.000, and after 30 has been entered they say 30.000.
+     * It starts at 90 degrees and at 1,1. */
+    int zukei_ask;
+    char zukei_typed[16];
+    int zukei_typed_n;
+    float zukei_prev_ang;
+    float zukei_mx, zukei_my;
     int top_item;
     int top_right;
     /* A press on the top line that landed outside every cell.  The command's

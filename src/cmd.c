@@ -200,9 +200,16 @@ static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
  * The four quarter turns are done by swapping the two coordinates rather than
  * through a sine and a cosine, which for a quarter turn are 6.1e-17 and 1 and
  * would leave the answer a hair off.  ③90ﾟ毎 only ever makes those four. */
-static void zukei_turn(const JwCmd *c, double x, double y,
+static void zukei_turn(const JwCmd *c, double x0, double y0,
                        double *ox, double *oy)
 {
+    /* ①倍率指定X,Y first, in the figure's own frame, and the turn after it.
+     * **The screen is what was measured**, not this: the field and what it
+     * says were read off the original, and a figure has not yet been placed
+     * with a scale other than 1 to see which way round the two go. */
+    const double x = x0 * c->zukei_mx;
+    const double y = y0 * c->zukei_my;
+
     if (c->zukei_ang == 90.0f) {
         *ox = -y;
         *oy = x;
@@ -2083,9 +2090,10 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
              * and not the white that was there.  Measured -- the gaps are
              * 000000 in the original's screen, not ffffff. */
             jw_view_mark(v, w, l->x0, l->y0, l->x1, l->y1, 0,
-                         JW_STYLE_SOLID);
+                         JW_STYLE_SOLID, ROP_REPLACE);
         }
-        jw_view_mark(v, w, l->x0, l->y0, l->x1, l->y1, mark, style);
+        jw_view_mark(v, w, l->x0, l->y0, l->x1, l->y1, mark, style,
+                     ROP_REPLACE);
     }
     for (k = 0; k < c->n0_arcs; k++) {
         const JwcArc *a = &d->arcs[k];
@@ -2569,6 +2577,15 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->zukei = JW_ZUKEI_LIST;
         return 1;
     }
+    /* 図形 ②読込's ①倍率指定X,Y and ②角  度 open a field along the top.
+     * The road stays where it is; what changes is what the line says. */
+    if (c->command == 27 && (item == 1 || item == 2)
+        && (c->zukei == JW_ZUKEI_PUT || c->zukei == JW_ZUKEI_PUT2)) {
+        c->zukei_ask = item == 2 ? JW_ZUKEI_ANG : JW_ZUKEI_MAG;
+        c->zukei_typed[0] = 0;
+        c->zukei_typed_n = 0;
+        return 1;
+    }
     /* 図形 ②読込's ④ﾏｳｽ角 and ⑤仮表示.  Both only change what the band
      * says and whether the preview is drawn; the road stays where it is. */
     if (c->command == 27 && item == 4
@@ -2601,6 +2618,11 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->zukei_ang = 0.0f;
         c->zukei_mouse = 0;
         c->zukei_noghost = 0;
+        c->zukei_ask = 0;
+        c->zukei_typed_n = 0;
+        c->zukei_prev_ang = 90.0f;
+        c->zukei_mx = 1.0f;
+        c->zukei_my = 1.0f;
         c->n0_lines = d ? d->n_lines : 0;
         c->n0_arcs = d ? d->n_arcs : 0;
         c->n0_texts = d ? d->n_texts : 0;
