@@ -2150,7 +2150,10 @@ int jw_cmd_guide_pos(const JwCmd *c, const JwView *w, int *vert, int *a, int *b)
 {
     int gx, gy;
 
-    if (c->command != 14 || c->stage < 2) {
+    /* ⑤寸法値 has none: it never takes a 引出し線の始点, and drawing one
+     * from the zero it has left put a yellow rule across the bottom of
+     * the drawing (387 pixels). */
+    if (c->command != 14 || c->stage < 2 || c->top_item || c->dim_only) {
         return 0;
     }
     *vert = c->dim_vert;
@@ -2874,6 +2877,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     c->top_right = 0;
     c->dim_did = 0;      /* 項目を選び直すと [ESC] は消えます */
     c->dim_lines0 = d ? d->n_lines : 0;
+    c->dim_only = 0;
     changed = cmd_top(c, d, item);
     if (!changed && jw_ui_item_has(c->command, item, right)) {
         c->top_item = item;
@@ -4562,6 +4566,34 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         }
         return 1;
     }
+    if (c->command == 14 && c->top_item == 5) {
+        /* ⑤寸法値: two reads and **the value alone** -- no lines.
+         * Measured on SAMPLE0: the top edge's two corners give
+         *
+         *     text (255.716,323.929)-(262.257,323.929) 02 00 10 40 `250`
+         *
+         * and the left edge's, read top to bottom,
+         *
+         *     text (41.845,186.799)-(41.845,180.258)  02 00 10 40 `160`
+         *
+         * -- the baseline runs **along the two points, in the order they
+         * were read**, centred between them and pushed 寸法線と値の離れ
+         * to the left of that direction (the horizontal pair goes up,
+         * the downward pair goes right: both are the direction turned a
+         * quarter turn anticlockwise). */
+        if (!take_point(c, d, w, sx, sy, 1, &x, &y)) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        c->dim_vx = x;
+        c->dim_vy = y;
+        c->dim_only = 1;
+        c->dim_texts = d->n_texts;
+        c->top_item = 0;    /* from here the road is 寸法値終点指示 */
+        c->stage = 4;
+        return 1;
+    }
     if (c->command == 14 && c->top_item == 7) {
         /* ⑦矢印: point at a line and the original puts an arrowhead on
          * **the end nearer the press**, two lines of `01 01 00 f5 00 20`.
@@ -4673,6 +4705,62 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             }
             c->missed = 0;
             c->dim_x0 = c->dim_vert ? y : x;
+            c->stage = 4;
+            return 1;
+        }
+        if (c->stage == 4 && c->dim_only) {
+            char buf[32];
+            double dx, dy, far, len, ux, uy, mx, my, gap;
+
+            if (!take_point(c, d, w, sx, sy, 1, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            dx = x - c->dim_vx;
+            dy = y - c->dim_vy;
+            far = sqrt(dx * dx + dy * dy);
+            if (far <= 0.0) {
+                return 0;
+            }
+            ux = dx / far;
+            uy = dy / far;
+            mx = (c->dim_vx + x) / 2.0;
+            my = (c->dim_vy + y) / 2.0;
+            gap = (c->dim_gap_mm > 0.0 ? c->dim_gap_mm : 0.5) * d->unit_mm;
+            mx += -uy * gap;
+            my += ux * gap;
+            c->dim_value = far * jwc_zukei_scale(d);
+            jwc_dim_text(buf, sizeof buf, c->dim_value, c->dim_unit,
+                         c->dim_dec, c->dim_comma_on, c->dim_zero_on);
+            len = jwc_text_length(d, buf, d->dim_size);
+            c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
+            if (jwc_add_text(d,
+                             (float)(mx - ux * len / 2.0),
+                             (float)(my - uy * len / 2.0),
+                             (float)(mx + ux * len / 2.0),
+                             (float)(my + uy * len / 2.0),
+                             buf, (unsigned char)d->dim_size,
+                             (unsigned char)((0 << 4)
+                                             | (d->write_layer & 15)))) {
+                d->texts[d->n_texts - 1].rest[2] = 0x10;
+                d->texts[d->n_texts - 1].rest[3] = 0x40;
+            }
+            c->dim_texts = d->n_texts;
+            c->stage = 5;
+            return 1;
+        }
+        if (c->stage == 5 && c->dim_only) {
+            /* and round again for the next value */
+            if (!take_point(c, d, w, sx, sy, 1, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->dim_vx = x;
+            c->dim_vy = y;
             c->stage = 4;
             return 1;
         }

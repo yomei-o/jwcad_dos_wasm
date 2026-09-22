@@ -1058,6 +1058,28 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
     if (q->command == 24 && q->col == 20 && q->row == 2) {
         return;
     }
+    /* ⑤寸法値's line stops at the `(R)`: where ①横方向 goes on with
+     * `|①連続|`, the value-only road has nothing after it (measured). */
+    if (q->command == 14 && q->stage == 5 && q->col == 8 && s->dim_only) {
+        char one[160];
+        int i;
+
+        strncpy(out, q->text, sizeof out - 1);
+        out[sizeof out - 1] = 0;
+        for (i = 0; out[i]; i++) {
+            if (is_lead((unsigned char)out[i]) && out[i + 1]) {
+                i++;
+                continue;
+            }
+            if (out[i] == '|') {
+                out[i] = 0;
+                break;
+            }
+        }
+        strcpy(one, out);
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+        return;
+    }
     /* 寸法's `文字[F2]` is not a 2: it is **the 寸法値's character type**, the
      * one the drawing keeps in field 6 of its panel line.  SAMPLE0 has 2 and
      * writes [F2], SAMPLE2 has 3 and writes [F3], SAMPLE3 has 8 and writes

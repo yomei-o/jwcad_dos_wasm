@@ -227,6 +227,8 @@ typedef struct {
     int dim_pen_point;
     int dim_did;         /* ⑥点・⑦矢印 が一つ作った（桁 1 の [ESC]） */
     long dim_lines0;     /* ⑦矢印 を選んだときの線数。箱はそれを出し続けます */
+    int dim_only;        /* ⑤寸法値: 線を引かず、値だけ書く */
+    double dim_vx, dim_vy;      /* その始点 */
     int dim_zero_on;
     double dim_arrow_mm;
     double dim_angle_deg;

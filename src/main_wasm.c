@@ -221,6 +221,7 @@ static void sync_ui(void)
     ui.dim_points = drawing ? drawing->n_points : 0;
     ui.dim_did = cmd.dim_did;
     ui.dim_lines0 = cmd.dim_lines0;
+    ui.dim_only = cmd.dim_only;
     ui.hatch_n = cmd.hatch_n;
     ui.hatch_angle = cmd.hatch_angle;
     ui.hatch_pitch = cmd.hatch_pitch;
