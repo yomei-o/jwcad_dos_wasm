@@ -3967,6 +3967,31 @@ static void dimension_more(JwCmd *c, Jwc *d, double x1)
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
+    /* 【矢印】 puts the same four on this piece too, and the same way
+     * round: +矢印長さ at the end it started from, - at the new one.
+     * Measured on the 210 above, where the start is the **bigger** a:
+     * (477,353)-(482.054,354.354) and (110.737,353)-(105.683,354.354). */
+    if (c->dim_end) {
+        const double alen = (c->dim_arrow_mm > 0.0 ? c->dim_arrow_mm : 3.0)
+                          * d->unit_mm;
+        const double rad = c->dim_angle_deg * 3.14159265358979323846
+                         / 180.0;
+        const double ax = alen * cos(rad), ay = alen * sin(rad);
+        int i;
+
+        for (i = 0; i < 4; i++) {
+            const double on = (i < 2 ? x0 : x1);
+            const double at = (i < 2 ? x0 + ax : x1 - ax);
+            const double per = (i & 1) ? y - ay : y + ay;
+
+            if (jwc_add_line(d, DIM_X(on, y), DIM_Y(on, y),
+                             DIM_X(at, per), DIM_Y(at, per),
+                             type, pen, layer)) {
+                d->lines[d->n_lines - 1].rest[1] = 0xf2;
+                d->lines[d->n_lines - 1].rest[3] = 0x20;
+            }
+        }
+    }
     c->dim_value = (x1 > x0 ? x1 - x0 : x0 - x1) * jwc_zukei_scale(d);
     jwc_dim_text(buf, sizeof buf, c->dim_value, c->dim_unit, c->dim_dec,
                  c->dim_comma_on, c->dim_zero_on);
