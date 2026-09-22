@@ -2121,6 +2121,32 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                            "\x95\xcf\x8d" "X" "\x81" "j");
             }
         }
+        /* 文字 ④設定 and 文編集 ④ put up the 文字種類 table, and it hides
+         * what is under it: SAMPLE0's frame runs down x 161 from y 139 to
+         * y 419 and the original shows it again only from y 299.  The strip
+         * along the bottom of the screen goes with it. */
+        if ((s->command == 13 || s->command == 28) && s->top_item == 4) {
+            fill(v, 0, 464, 639, 479, 0);
+            fill(v, 147, 87, 612, 298, 0);
+        }
+        /* 寸法 ⑨設定's panel.  The box goes up first and the words over
+         * it -- the rule at x 410 is broken where each value is written,
+         * which is the original telling us the order. */
+        if (s->command == 14 && s->top_item == 9) {
+            static const int RULE[8] = { 104, 136, 168, 200, 232, 264, 296, 328 };
+            int k;
+
+            fill(v, 0, 464, 639, 479, 0);
+            fill(v, 238, 71, 502, 362, 0);
+            fill(v, 239, 71, 501, 72, 7);
+            fill(v, 239, 361, 501, 362, 7);
+            fill(v, 239, 71, 240, 362, 7);
+            fill(v, 500, 71, 501, 362, 7);
+            fill(v, 410, 71, 410, 362, 7);
+            for (k = 0; k < 8; k++) {
+                fill(v, 239, RULE[k], 501, RULE[k], 7);
+            }
+        }
         /* A press on the top row that the command has no answer for yet.  The
          * original does not clear the row for these -- it writes over part of
          * what is already there -- so these go on after the prompt and before
@@ -2157,6 +2183,25 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
                     fill(v, x, 7, x + 7, 15, 4);
                 }
+            }
+        }
+        /* And the box's rules, **after** the words: each one crosses a
+         * column the words are written in, and a write paints its own cell
+         * black, so a rule drawn first comes out in pieces.  Measured off
+         * the original -- the pixels src/item.h's text does not account
+         * for: the top two rows thick, one under the header, the bottom
+         * two, the sides two columns each and five single rules between. */
+        if ((s->command == 13 || s->command == 28) && s->top_item == 4) {
+            static const int RULE[5] = { 236, 308, 396, 484, 556 };
+            int k;
+
+            fill(v, 147, 87, 612, 88, 7);
+            fill(v, 147, 120, 612, 120, 7);
+            fill(v, 147, 296, 612, 297, 7);
+            fill(v, 147, 87, 148, 297, 7);
+            fill(v, 611, 87, 612, 297, 7);
+            for (k = 0; k < 5; k++) {
+                fill(v, RULE[k], 87, RULE[k], 297, 7);
             }
         }
         /* Then what the command has written since, stage by stage, because a

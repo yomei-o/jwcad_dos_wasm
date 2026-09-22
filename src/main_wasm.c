@@ -156,6 +156,28 @@ static int zoom_x, zoom_y;
 static JwView before_zoom;
 static int have_before;
 
+/* Is one of the screens that cover the drawing up?  jw_cmd_after puts back
+ * the entities the running command has made since it started -- and, with
+ * nothing made yet, that is the whole drawing, which then comes up through
+ * the panel.  The file screen, 文字種類's table, 寸法's settings and 図形's
+ * own screen are all of them. */
+static int panel_up(void)
+{
+    if (ui.io_stage) {
+        return 1;
+    }
+    if ((ui.command == 13 || ui.command == 28) && ui.top_item == 4) {
+        return 1;
+    }
+    if (ui.command == 14 && ui.top_item == 9) {
+        return 1;
+    }
+    if (ui.command == 27 && ui.again) {
+        return 1;
+    }
+    return 0;
+}
+
 static void present(void)
 {
     if (!drawing) {
@@ -167,13 +189,12 @@ static void present(void)
         && mouse_y >= AREA_Y0 && mouse_y <= AREA_Y1;
     jw_ui_draw(&vga, &ui);
     jw_ui_data(&vga, &ui, drawing);
-    /* **The file screen covers the drawing, and the command under it keeps
-     * quiet.**  jw_cmd_after puts back the entities a running command has
+    /* **A panel that covers the drawing keeps the command under it quiet.**  jw_cmd_after puts back the entities a running command has
      * made since it started -- which, with nothing made yet, is the whole
      * drawing -- and that painted SAMPLE0 over 多角形 ④座標ファイル読込's
      * list.  The original draws the list over everything and nothing comes
      * back through it. */
-    if (!ui.io_stage) {
+    if (!panel_up()) {
         jw_cmd_marked(&cmd, &vga, drawing, &view);
         jw_cmd_after(&cmd, &vga, drawing, &view);
     }
