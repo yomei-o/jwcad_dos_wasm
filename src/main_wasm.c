@@ -1295,20 +1295,36 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     /* ｵﾌﾟｼｮﾝ's top line.  ①建具平面 puts up the library's sixteen shapes;
      * the rest are not built yet and leave the line as it was. */
     if (ui.command == 29 && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
-        if (ui.opt_stage == 0 && jw_ui_top_item(x, y) == 1) {
+        const int item = jw_ui_top_item(x, y);
+
+        cmd.top_item = 0;
+        cmd.top_right = 0;
+        if (ui.opt_stage == 0 && item == 1) {
             ui.opt_stage = JW_OPT_PLAN;
             ui.opt_depth = 70.0;
             ui.opt_width = 35.0;
             ui.opt_kind = 'A';
+        } else if (ui.opt_stage == 0 && jw_ui_item_has(29, item, right)) {
+            /* The rest of ｵﾌﾟｼｮﾝ's bar is not built, but the original
+             * still writes something when it is pressed -- src/item.h. */
+            cmd.top_item = item;
+            cmd.top_right = right;
         }
         mouse_x = x;
         mouse_y = y;
+        sync_ui();
         present();
         return -1;
     }
     if (ui.command == 30 && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
         const int item = jw_ui_top_item(x, y);
+        /* What the chain below answers, it answers by moving 入出力 on.  If
+         * it does not move, nothing here knew the cell -- and src/item.h may
+         * still know what the original writes on it. */
+        const int was = ui.io_stage;
 
+        cmd.top_item = 0;
+        cmd.top_right = 0;
         if (ui.io_stage == 0 && (item == 1 || item == 2)) {
             ui.io_stage = item == 1 ? JW_IO_FILE : JW_IO_PLOT;
         } else if (ui.io_stage == JW_IO_FILE && (item == 1 || item == 2)) {
@@ -1397,8 +1413,14 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         } else if (ui.io_stage == JW_IO_PGO && item == 2) {
             ui.io_stage = 0;                    /* ② 中止 */
         }
+        if (ui.io_stage == was && !plot_wanted
+            && jw_ui_item_has(30, item, right)) {
+            cmd.top_item = item;
+            cmd.top_right = right;
+        }
         mouse_x = x;
         mouse_y = y;
+        sync_ui();
         present();
         return -1;
     }
