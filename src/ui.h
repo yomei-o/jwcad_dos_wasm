@@ -265,6 +265,40 @@ typedef struct {
      * cm(1桁) → mm(0桁) → ｍ and ⑦小数点以下 goes 3 → 0 → 1 → 2 → 3, both
      * measured on the original.  The band writes them at row 2, columns 53
      * and 61, on white. */
+    /* 寸法 ⑨設定's ten rows and the three cells of its line that carry a
+     * state.  Measured on the original (tools/origstr.sh "90 280 left"
+     * "604 8 left" …): the six numbers open a field at column 54 of their
+     * row, the three 【】 rows change over where they stand, ②寸法線端部
+     * goes 点 ↔ 矢印, ④小数点以下 goes 1 → 2 → 3 → 0, and ③単位 goes round
+     * three states that print `mm`, `ｍ` and `ｍ`. */
+    /* ④自動保存's band: how often it writes, what it writes to, where, and
+     * how long it waits.  Measured -- `0秒` at column 20, `[AUTO.JWC]` at
+     * 28, `[A:\]` at 43 and `10秒` at 66, all on white, and each of the
+     * four cells of its line opens a field in its own place. */
+    int auto_interval;
+    char auto_name[16];
+    char auto_path[16];
+    int auto_wait;
+    int auto_edit;              /* 1..4, which cell is being typed into */
+    char auto_typed[16];
+    int auto_typed_n;
+    int dim_pen_line;           /* 線のペン No. */
+    int dim_pen_point;          /* 点のペン No. */
+    double dim_gap;             /* 寸法線と値の離れ */
+    double dim_ext;             /* 引出し線の突出 */
+    double dim_arrow;           /* 矢印長さ */
+    double dim_angle;           /* 矢印角度 */
+    int dim_rphi;               /* 0 前付け, 1 後付け */
+    int dim_comma;              /* 0 有, 1 無 */
+    int dim_zero;               /* 0 無, 1 有 */
+    int dim_end;                /* 0 点, 1 矢印 */
+    int dim_unit;               /* 0 mm, 1 and 2 both print ｍ */
+    int dim_dec;                /* 小数点以下 (n) 桁 */
+    /* Which row is being typed into, 6/8/10/12/14/16, and what has been
+     * typed. */
+    int dim_edit;
+    char dim_typed[16];
+    int dim_typed_n;
     int meas_unit;
     int meas_dec;
     int char_edit;

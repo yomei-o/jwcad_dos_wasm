@@ -236,6 +236,16 @@ static int is_lead(unsigned char c)
     "\x83" "X" "\x8e" "w" "\x8e\xa6" " |" "\x87" "@" "\x95\xcf\x8d" \
     "X" "\x8a" "m" "\x92\xe8" "|"
 #define JW_DXF_STAR "\x81\x9a"
+/* 寸法 ⑨設定's own line, in four pieces with the three states between
+ * them: `|①変更確定 |②寸法線端部【` X `】|③単位【` Y `】|④小数点以下(` Z
+ * `)桁表示|`. */
+#define JW_DIMSET_BAR1 \
+    "|" "\x87" "@" "\x95\xcf\x8d" "X" "\x8a" "m" "\x92\xe8" " |" \
+    "\x87" "A" "\x90\xa1\x96" "@" "\x90\xfc\x92" "[" "\x95\x94\x81" "y"
+#define JW_DIMSET_BAR2 "\x81" "z|" "\x87" "B" "\x92" "P" "\x88\xca\x81" "y"
+#define JW_DIMSET_BAR3 \
+    "\x81" "z|" "\x87" "C" "\x8f\xac\x90\x94\x93" "_" "\x88\xc8\x89\xba" "("
+#define JW_DIMSET_BAR4 ")" "\x8c\x85\x95\x5c\x8e\xa6" "|"
 /* ⑤新規図面 asks first when there is work on the drawing in hand.  The line
  * is src/item.h's for that cell, which is where the original's bytes were
  * captured (branch 281). */
@@ -933,12 +943,66 @@ static void put_fixed(char *out, size_t cap, const char *text,
 /* A length in metres, the way 測定 writes it: three decimals, then the
  * trailing zeros and a trailing point taken off.  Measured -- 0 comes out
  * `0`, a tenth of a metre `0.1`, 128.2mm `0.128`. */
-static void put_metres(char *out, size_t cap, const char *text, double m)
+/* 測定's lengths.  **The unit is the one ⑥単位 has**: metres as the file
+ * keeps them, times a hundred for cm and a thousand for mm, shown to as many
+ * decimals as ⑦小数点以下 says, with the trailing zeros and the point taken
+ * off.  The word at the end of the recorded line is `ｍ`, and cm and mm are
+ * written in its place -- measured: 0.081 ｍ comes out `8.1 cm`. */
+/* The last run of digits in a recorded line, put back.  寸法 ⑨設定's rows
+ * carry their range in brackets -- `線のペン No.(1〜6)        1` -- so the
+ * number that belongs to the setting is the last one, not the first. */
+static void put_last(char *out, size_t cap, const char *text, const char *num)
 {
+    const char *at = 0, *p = text;
+    size_t o;
+
+    while (*p) {
+        if ((*p >= '0' && *p <= '9') || *p == '.') {
+            const char *start = p;
+
+            while (*p && ((*p >= '0' && *p <= '9') || *p == '.')) {
+                p++;
+            }
+            at = start;
+        } else if ((unsigned char)*p >= 0x81) {
+            p += 2;                     /* a double-byte character */
+        } else {
+            p++;
+        }
+    }
+    if (!at) {
+        snprintf(out, cap, "%s", text);
+        return;
+    }
+    o = (size_t)(at - text);
+    if (o >= cap) {
+        o = cap - 1;
+    }
+    memcpy(out, text, o);
+    out[o] = 0;
+    strncat(out, num, cap - o - 1);
+    p = at;
+    while (*p && ((*p >= '0' && *p <= '9') || *p == '.')) {
+        p++;
+    }
+    strncat(out, p, cap - strlen(out) - 1);
+}
+
+static void put_metres(char *out, size_t cap, const char *text, double m,
+                       int unit, int dec)
+{
+    static const double MUL[3] = { 1.0, 100.0, 1000.0 };
     size_t o = 0;
     int done = 0;
 
+    m *= MUL[unit % 3];
     while (*text && o + 24 < cap) {
+        if ((unsigned char)*text == 0x82 && (unsigned char)text[1] == 0x8d
+            && unit % 3) {
+            o += (size_t)sprintf(out + o, "%s", unit % 3 == 1 ? "cm" : "mm");
+            text += 2;
+            continue;
+        }
         if (!done && ((*text >= '0' && *text <= '9') || *text == '.')) {
             char num[32];
             size_t n;
@@ -946,7 +1010,7 @@ static void put_metres(char *out, size_t cap, const char *text, double m)
             while (*text && ((*text >= '0' && *text <= '9') || *text == '.')) {
                 text++;
             }
-            n = (size_t)sprintf(num, "%.3f", m);
+            n = (size_t)sprintf(num, "%.*f", dec, m);
             while (n > 0 && num[n - 1] == '0') {
                 n--;
             }
@@ -1119,7 +1183,8 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 
         if (q->row == 3 && (q->col == 20 || q->col == 55)) {
             put_metres(one, sizeof one, q->text,
-                       q->col == 20 ? s->meas_total : s->meas_last);
+                       q->col == 20 ? s->meas_total : s->meas_last,
+                       s->meas_unit, s->meas_dec);
             jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
             return;
         }
@@ -3024,6 +3089,58 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (r->row == 2 && r->col <= 15) {
                     fill(v, 1, 17, 120, 47, 4);
                 }
+                /* **寸法 ⑨設定's panel is state, not a recording.**  Its
+                 * ten rows and the three cells of its own line all change
+                 * when they are pressed, so the numbers and the words in
+                 * 【】 are written from what they are now. */
+                if (s->command == 14 && s->top_item == 9) {
+                    char one[128], num[24];
+                    const char *word = 0;
+
+                    if (r->row == 1 && r->col == 8) {
+                        sprintf(one, "%s%s%s%s%s%d%s",
+                                JW_DIMSET_BAR1,
+                                s->dim_end ? "\x96\xee\x88\xf3"
+                                           : " " "\x93" "_ ",
+                                JW_DIMSET_BAR2,
+                                s->dim_unit % 3 ? "\x82\x8d" : "mm",
+                                JW_DIMSET_BAR3, s->dim_dec, JW_DIMSET_BAR4);
+                        jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
+                                   (unsigned)r->bg, one);
+                        continue;
+                    }
+                    if (r->col == 32 && (r->row == 6 || r->row == 8)) {
+                        sprintf(num, "%d", r->row == 6 ? s->dim_pen_line
+                                                       : s->dim_pen_point);
+                        put_last(one, sizeof one, r->text, num);
+                        jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
+                                   (unsigned)r->bg, one);
+                        continue;
+                    }
+                    if (r->col == 32 && (r->row == 10 || r->row == 12
+                                         || r->row == 14 || r->row == 16)) {
+                        sprintf(num, "%.1f",
+                                r->row == 10 ? s->dim_gap
+                                : r->row == 12 ? s->dim_ext
+                                : r->row == 14 ? s->dim_arrow : s->dim_angle);
+                        put_last(one, sizeof one, r->text, num);
+                        jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
+                                   (unsigned)r->bg, one);
+                        continue;
+                    }
+                    if (r->row == 18 && r->col == 55) {
+                        word = s->dim_rphi ? "\x8c\xe3" : "\x91" "O";
+                    } else if (r->row == 20 && r->col == 57) {
+                        word = s->dim_comma ? "\x96\xb3" : "\x97" "L";
+                    } else if (r->row == 22 && r->col == 57) {
+                        word = s->dim_zero ? "\x97" "L" : "\x96\xb3";
+                    }
+                    if (word) {
+                        jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
+                                   (unsigned)r->bg, word);
+                        continue;
+                    }
+                }
                 jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
                            (unsigned)r->bg, r->text);
             }
@@ -3051,6 +3168,73 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * the original -- the pixels src/item.h's text does not account
          * for: the top two rows thick, one under the header, the bottom
          * two, the sides two columns each and five single rules between. */
+        /* 寸法 ⑨設定's field, **after** src/item.h has been replayed:
+         * the line it writes is its own, not the panel's. */
+        if (s->command == 14 && s->top_item == 9 && s->dim_edit) {
+            const int row = s->dim_edit;
+            int j;
+
+            jw_ui_text(v, 54, row, 7, 0, "        ");
+            if (s->dim_typed_n) {
+                jw_ui_text(v, 54, row, 7, 0, s->dim_typed);
+            }
+            j = (53 + s->dim_typed_n) * 8;
+            fill(v, j, (row - 1) * 16 + 7, j + 7, (row - 1) * 16 + 15, 4);
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+            jw_ui_text(v, 8, 1, 7, 0,
+                       "     " "\x95\xcf\x8d" "X" "\x92" "l"
+                       "\x82\xf0\x93\xfc\x97\xcd");
+        }
+        /* ④自動保存's band.  Drawn over src/item.h's recording, because the
+         * four are state now. */
+        if (s->command == 30 && s->top_item == 4 && !s->io_stage) {
+            char one[32];
+            int i;
+
+            if (s->auto_edit != 1) {
+                sprintf(one, "%d" "\x95" "b", s->auto_interval);
+                jw_ui_text(v, 20, 2, 7, 0xffffu, one);
+            }
+            if (s->auto_edit != 2) {
+                /* the name is kept as its stem; `.JWC` is the original's
+                 * own and does not change (measured: `X` typed over it
+                 * gives `[XAUTO.JWC]`) */
+                sprintf(one, "[%s.JWC]", s->auto_name);
+                jw_ui_text(v, 28, 2, 7, 0xffffu, one);
+            }
+            if (s->auto_edit != 3) {
+                sprintf(one, "[%s]", s->auto_path);
+                jw_ui_text(v, 43, 2, 7, 0xffffu, one);
+            }
+            if (s->auto_edit != 4) {
+                sprintf(one, "%d" "\x95" "b", s->auto_wait);
+                jw_ui_text(v, 66, 2, 7, 0xffffu, one);
+            }
+            if (s->auto_edit) {
+                static const int AT[5] = { 0, 20, 28, 43, 66 };
+                const int at = AT[s->auto_edit];
+                int j;
+
+                /* **The whole band goes**, not just the cell: the original
+                 * leaves row 2 black from the drawing area's left edge with
+                 * nothing on it but the green block. */
+                /* The screen's own right-hand border stays: x 639 is
+                 * white from the rule at the top down. */
+                fill(v, 122, 16, 638, 31, 0);
+                if (s->auto_typed[0]) {
+                    jw_ui_text(v, at, 2, 7, 0, s->auto_typed);
+                }
+                /* the block is exclusive-or, so the letter under it shows
+                 * through -- `A` under it comes out magenta */
+                j = (at - 1 + s->auto_typed_n) * 8;
+                for (i = 0; i < 9; i++) {
+                    jw_line(v, j, 16 + 7 + i, j + 7, 16 + 7 + i, 4,
+                            ROP_XOR, JW_STYLE_SOLID);
+                }
+            }
+        }
         /* 測定's unit and decimals.  Drawn last, over whatever src/prompt.h
          * or src/item.h put there, because they are state and those two are
          * recordings. */

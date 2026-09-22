@@ -288,6 +288,21 @@ static int dxf_done;
 static long dxf_n[4];
 /* 測定's unit and decimals -- see JwUi. */
 static int meas_unit, meas_dec = 3;
+/* 寸法 ⑨設定's ten rows and the three cells of its line that carry a state.
+ * The numbers are the ones SAMPLE0 comes up with; where the drawing keeps
+ * them is not found yet (src/jwc.h, JW_DIM_PEN). */
+static int dim_pen_line = 1, dim_pen_point = 1;
+static double dim_gap = 0.5, dim_ext = 0.0, dim_arrow = 3.0, dim_angle = 15.0;
+static int dim_rphi, dim_comma, dim_zero, dim_end, dim_unit, dim_dec = 1;
+static int dim_edit;
+/* ④自動保存's four.  The original comes up with 0 seconds, AUTO.JWC on the
+ * A: drive and a ten-second wait. */
+static int auto_interval, auto_wait = 10, auto_edit, auto_typed_n;
+static char auto_name[16] = "AUTO";
+static char auto_path[16] = "A:" "\x5c";
+static char auto_typed[16];
+static char dim_typed[16];
+static int dim_typed_n;
 
 static void present(void)
 {
@@ -296,6 +311,28 @@ static void present(void)
     memcpy(ui.dxf_n, dxf_n, sizeof ui.dxf_n);
     ui.meas_unit = meas_unit;
     ui.meas_dec = meas_dec;
+    ui.auto_interval = auto_interval;
+    ui.auto_wait = auto_wait;
+    ui.auto_edit = auto_edit;
+    ui.auto_typed_n = auto_typed_n;
+    memcpy(ui.auto_name, auto_name, sizeof ui.auto_name);
+    memcpy(ui.auto_path, auto_path, sizeof ui.auto_path);
+    memcpy(ui.auto_typed, auto_typed, sizeof ui.auto_typed);
+    ui.dim_pen_line = dim_pen_line;
+    ui.dim_pen_point = dim_pen_point;
+    ui.dim_gap = dim_gap;
+    ui.dim_ext = dim_ext;
+    ui.dim_arrow = dim_arrow;
+    ui.dim_angle = dim_angle;
+    ui.dim_rphi = dim_rphi;
+    ui.dim_comma = dim_comma;
+    ui.dim_zero = dim_zero;
+    ui.dim_end = dim_end;
+    ui.dim_unit = dim_unit;
+    ui.dim_dec = dim_dec;
+    ui.dim_edit = dim_edit;
+    ui.dim_typed_n = dim_typed_n;
+    memcpy(ui.dim_typed, dim_typed, sizeof ui.dim_typed);
     if (!drawing) {
         memset(vga.plane, 0, sizeof vga.plane);
     } else {
@@ -1792,6 +1829,99 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         present();
         return -1;
     }
+    /* ④自動保存's four cells, each opening a field in its own place on the
+     * band: ①保存間隔 at column 20, ②ファイル名 at 28, ③保存パス at 43 and
+     * ④ＷＡＩＴ at 66. */
+    if (ui.command == 30 && ui.top_item == 4 && !ui.io_stage
+        && y >= 0 && y <= 15) {
+        const int it = jw_ui_top_item(x, y);
+
+        if (it >= 1 && it <= 4) {
+            /* **②ファイル名 and ③保存パス come up with what they hold**,
+             * the name without its `.JWC` and the path as it stands, and
+             * the green block in front of it; ①保存間隔 and ④ＷＡＩＴ come
+             * up empty (measured). */
+            auto_edit = it;
+            auto_typed_n = 0;
+            auto_typed[0] = 0;
+            if (it == 2 || it == 3) {
+                char *dot;
+
+                memcpy(auto_typed, it == 2 ? auto_name : auto_path,
+                       sizeof auto_typed - 1);
+                auto_typed[sizeof auto_typed - 1] = 0;
+                dot = strchr(auto_typed, '.');
+                if (it == 2 && dot) {
+                    *dot = 0;               /* it is kept as the stem */
+                }
+                if (it == 3) {
+                    /* and the path without its backslash: `A:` */
+                    const size_t n = strlen(auto_typed);
+
+                    if (n && auto_typed[n - 1] == 0x5c) {
+                        auto_typed[n - 1] = 0;
+                    }
+                }
+            }
+            mouse_x = x;
+            mouse_y = y;
+            present();
+            return -1;
+        }
+    }
+    /* 寸法 ⑨設定's panel.  The ten rows are 6 to 22 of the box, two rows
+     * apart; the six with a number open a field and the three with 【】
+     * change over where they stand.  Its own line has three more. */
+    if (ui.command == 14 && ui.top_item == 9 && !dim_edit
+        && x >= 239 && x <= 501 && y >= 72 && y < 362) {
+        const int row = y / 16 + 1;
+
+        mouse_x = x;
+        mouse_y = y;
+        if (row == 18) {
+            dim_rphi = !dim_rphi;
+        } else if (row == 20) {
+            dim_comma = !dim_comma;
+        } else if (row == 22) {
+            dim_zero = !dim_zero;
+        } else if (row == 6 || row == 8 || row == 10 || row == 12
+                   || row == 14 || row == 16) {
+            dim_edit = row;
+            dim_typed_n = 0;
+            dim_typed[0] = 0;
+        }
+        present();
+        return -1;
+    }
+    if (ui.command == 14 && ui.top_item == 9 && y >= 0 && y <= 15) {
+        const int it = jw_ui_top_item(x, y);
+
+        if (it == 1) {
+            /* ①変更確定 takes the panel down and puts 寸法's own line back
+             * (measured: `|①横方向|②縦方向|…|⑨設定|`). */
+            cmd.top_item = 0;
+            cmd.top_right = 0;
+            dim_edit = 0;
+            mouse_x = x;
+            mouse_y = y;
+            sync_ui();
+            present();
+            return -1;
+        }
+        if (it >= 2 && it <= 4) {
+            if (it == 2) {
+                dim_end = !dim_end;
+            } else if (it == 3) {
+                dim_unit = (dim_unit + 1) % 3;
+            } else {
+                dim_dec = (dim_dec + 1) % 4;
+            }
+            mouse_x = x;
+            mouse_y = y;
+            present();
+            return -1;
+        }
+    }
     /* 測定 ⑥単位 and ⑦小数点以下.  ⑥ goes ｍ(3桁) → cm(1桁) → mm(0桁) and
      * round again; ⑦ goes 3 → 0 → 1 → 2 → 3 and leaves the unit alone. */
     if (ui.command == 15 && y >= 0 && y <= 15
@@ -1804,8 +1934,11 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         } else {
             meas_dec = (meas_dec + 1) % 4;
         }
-        cmd.top_item = jw_ui_top_item(x, y);
-        cmd.top_right = right;
+        /* **The cell writes nothing on the top line**, so it is not a
+         * `top_item` press: leaving one set would make the chrome skip the
+         * band, and the two lengths would go off the screen. */
+        cmd.top_item = 0;
+        cmd.top_right = 0;
         mouse_x = x;
         mouse_y = y;
         sync_ui();
@@ -2390,19 +2523,24 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
             }
         } else if (key == 8) {
             if (ui.save_name_n > 0) ui.save_name[--ui.save_name_n] = 0;
-        } else if (key > ' ' && key < 127
-                   && (int)strlen(ui.save_name) < (int)sizeof ui.save_name - 1) {
+        } else if (key > ' ' && key < 127) {
             /* **The cursor is at the front.**  The field comes up with the
              * drawing in hand in it and a keystroke goes in before that,
              * not after: measured on the original, `X` over `SAMPLE0` gives
              * `XSAMPLE0` and `ABC` gives `ABCSAMPLE0` -- ten characters,
              * so it does not stop at eight either. */
-            char rest[13];
+            /* **The field holds twelve and the last one falls off**, not
+             * the one being typed: MYWORK over SAMPLE0 comes out
+             * `MYWORKSAMPLE` on the original, with the `0` gone. */
+            char rest[16];
             const int n = ui.save_name_n;
 
-            strcpy(rest, ui.save_name + n);
+            memcpy(rest, ui.save_name + n, sizeof rest - 1);
+            rest[sizeof rest - 1] = 0;
             ui.save_name[n] = (char)toupper(key);
-            strcpy(ui.save_name + n + 1, rest);
+            memcpy(ui.save_name + n + 1, rest,
+                   sizeof ui.save_name - (size_t)n - 2);
+            ui.save_name[sizeof ui.save_name - 1] = 0;
             ui.save_name_n = n + 1;
         }
         present();
@@ -2449,6 +2587,68 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* [ESC] on ⑦INDEX.  Measured (tools/ixprobe.sh): from the list it goes
      * back to ①ﾌｱｲﾙ's line, and from ①ｲﾝﾃﾞｯｸｽ削除's question it goes back to
      * the list with the pick and the marks as they were. */
+    /* ④自動保存's field. */
+    if (auto_edit) {
+        if (key == 27) {
+            auto_edit = 0;
+        } else if (key == 13 || key == 10) {
+            if (auto_typed[0]) {
+                if (auto_edit == 1) auto_interval = atoi(auto_typed);
+                else if (auto_edit == 4) auto_wait = atoi(auto_typed);
+                else if (auto_edit == 2) {
+                    memcpy(auto_name, auto_typed, sizeof auto_name - 1);
+                    auto_name[sizeof auto_name - 1] = 0;
+                } else {
+                    memcpy(auto_path, auto_typed, sizeof auto_path - 1);
+                    auto_path[sizeof auto_path - 1] = 0;
+                }
+            }
+            auto_edit = 0;
+        } else if (key == 8) {
+            if (auto_typed_n > 0) auto_typed[--auto_typed_n] = 0;
+        } else if (key > ' ' && key < 127
+                   && auto_typed_n < (int)sizeof auto_typed - 2) {
+            /* in front of what is there, the way the name field does it */
+            char rest[16];
+            const int n = auto_typed_n;
+
+            memcpy(rest, auto_typed + n, sizeof rest - 1);
+            rest[sizeof rest - 1] = 0;
+            auto_typed[n] = (char)toupper(key);
+            memcpy(auto_typed + n + 1, rest,
+                   sizeof auto_typed - (size_t)n - 2);
+            auto_typed[sizeof auto_typed - 1] = 0;
+            auto_typed_n = n + 1;
+        }
+        present();
+        return -1;
+    }
+    /* 寸法 ⑨設定's field. */
+    if (dim_edit) {
+        if (key == 27) {
+            dim_edit = 0;
+        } else if (key == 13 || key == 10) {
+            if (dim_typed_n) {
+                const double val = atof(dim_typed);
+
+                if (dim_edit == 6) dim_pen_line = (int)val;
+                else if (dim_edit == 8) dim_pen_point = (int)val;
+                else if (dim_edit == 10) dim_gap = val;
+                else if (dim_edit == 12) dim_ext = val;
+                else if (dim_edit == 14) dim_arrow = val;
+                else dim_angle = val;
+            }
+            dim_edit = 0;
+        } else if (key == 8) {
+            if (dim_typed_n > 0) dim_typed[--dim_typed_n] = 0;
+        } else if (key > ' ' && key < 127
+                   && dim_typed_n < (int)sizeof dim_typed - 1) {
+            dim_typed[dim_typed_n++] = (char)key;
+            dim_typed[dim_typed_n] = 0;
+        }
+        present();
+        return -1;
+    }
     /* 文字 ④設定's field: digits, [Enter] to put it in the drawing and
      * [ESC] to give it up. */
     if (ui.char_edit) {

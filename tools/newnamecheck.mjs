@@ -43,22 +43,24 @@ ok(M._jw_count(0) === 763, 'SAMPLE1 with a line drawn on it (' + M._jw_count(0) 
 press(30, 296); press(110, 8); press(100, 8);   // 入出力 ①ﾌｧｲﾙ ①保存
 press(470, 8);                                   // ③ 新規 保存
 /* The field comes up with the drawing in hand in it and the cursor at the
-   **front** -- measured on the original, `X` over `SAMPLE0` gives
-   `XSAMPLE0`.  So a name of one's own means erasing that first. */
-for (let i = 0; i < 12; i++) M._jw_key(8);
+   **front**: `X` over `SAMPLE0` gives `XSAMPLE0`, `MYWORK` gives
+   `MYWORKSAMPLE` -- twelve, with the last character falling off the end --
+   and **[BS] does nothing at all** (tools/namefield.sh, and the same road
+   with `key bs` under tools/origstr.sh).  So the name that gets written is
+   the first eight of what is in the field. */
 for (const ch of 'MYWORK') M._jw_key(ch.charCodeAt(0));
 M._jw_key(13);                                   // the name
 M._jw_key(13);                                   // the two memo lines
 M._jw_key(13);
 press(210, 8);                                   // ① 実 行 (no overwrite question)
-ok(M.FS.analyzePath('orig/MYWORK.JWC').exists,
+ok(M.FS.analyzePath('orig/MYWORKSA.JWC').exists,
    '③ 新規 保存 writes it under the name that was typed (' + status() + ')');
-ok(!M.FS.analyzePath('orig/MYWORK.bak').exists,
+ok(!M.FS.analyzePath('orig/MYWORKSA.bak').exists,
    'and makes no .bak, because there was nothing to back up');
 
 /* And it is in the list, and opening it gives the drawing back. */
 press(30, 296); press(110, 8); press(180, 8);
-const back = rowOf('MYWORK  .JWC');
+const back = rowOf('MYWORKSA.JWC');
 ok(back >= 0, 'the list has it (' + back + ')');
 press(300, 112 + back * 16);
 press(300, 112 + back * 16);
