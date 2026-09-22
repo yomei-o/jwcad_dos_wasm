@@ -1993,6 +1993,17 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         } else {
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_PLOT_BAR);
         }
+    } else if (s->command == 17 && s->again) {
+        /* 変形 picked a second time: it goes on to its range.  Bytes from
+         * tools/escroad.sh. */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0,
+                   "\x95\xcf\x8c" "`" "\x94\xcd\x88\xcd" "  " "\x8e" "n"
+                   "\x93" "_" "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w"
+                   "\x8e\xa6" " ");
+        jw_ui_text(v, 33, 1, 7, 0, "(L)" "\x90\xfc\xa5\x89" "~ ");
+        jw_ui_text(v, 42, 1, 7, 0, " (R)");
+        jw_ui_text(v, 46, 1, 7, 0, "\x90\xfc\xa5\x89" "~" "\xa5\x95\xb6\x8e\x9a");
     } else if (s->command >= 1 && s->command <= 30) {
         /* what the original writes there once an item is picked, piece by
          * piece and in its own order -- see src/prompt.h */
@@ -2089,6 +2100,26 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             }
             jw_ui_text(v, p->col, p->row, (unsigned)p->fg, (unsigned)p->bg,
                        text);
+        }
+        /* **図形 picked a second time puts up its own screen.**  The
+         * drawing area from row 2 to row 24 goes and row 2 says what there
+         * is to show.  Measured with tools/escroad.sh on SAMPLE2, where
+         * every pixel of y 32..383 from x 122 to x 638 is black afterwards;
+         * the strip below it -- the drawing's title block -- is left alone.
+         * The bar along the top is the one 図形 came up with, so this goes
+         * after the prompt and before whatever cell was pressed. */
+        if (s->command == 27 && s->again) {
+            fill(v, 122, 16, 638, 383, 0);
+            /* `登録図形がありません（グループ変更）`, the original's bytes.
+             * It goes only while nothing on the bar has been pressed: the
+             * press puts the band's own labels back over it. */
+            if (!s->top_item) {
+                jw_ui_text(v, 22, 2, 7, 0,
+                           "\x93" "o" "\x98" "^" "\x90" "}" "\x8c" "`"
+                           "\x82\xaa\x82\xa0\x82\xe8\x82\xdc\x82\xb9\x82\xf1\x81" "i"
+                           "\x83" "O" "\x83\x8b\x81" "[" "\x83" "v"
+                           "\x95\xcf\x8d" "X" "\x81" "j");
+            }
         }
         /* A press on the top row that the command has no answer for yet.  The
          * original does not clear the row for these -- it writes over part of

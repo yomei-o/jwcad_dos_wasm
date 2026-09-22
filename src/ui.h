@@ -149,6 +149,9 @@ typedef struct {
     int file_path_fg;
     int top_item;
     int top_right;
+    /* The menu item was picked while it was already the one in force.  Only
+     * 変形 and 図形 do anything with it -- see jw_ui_draw. */
+    int again;
     int ask_kind;
     /* The three numbers src/prompt.h carries as digits: 複線's interval,
      * 面取's offset and ２線's pair of them.  They belong to the program's

@@ -135,6 +135,7 @@ static void sync_ui(void)
     ui.typing_text = cmd.typing_text;
     ui.mods = cmd.mods;
     ui.snapping = cmd.snap;
+    ui.again = cmd.again;
     ui.top_item = cmd.top_item;
     ui.top_right = cmd.top_right;
     ui.ask_kind = cmd.ask_kind;
@@ -1196,6 +1197,11 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         }
     }
     if (pick) {
+        /* **Picking the item already in force is not a re-pick.**  変形 goes
+         * on to 変形範囲 and 図形 puts up its own empty screen; every other
+         * command measured comes up the same way again.  See JwUi.again. */
+        const int again = pick == ui.command && (pick == 17 || pick == 27);
+
         ui.saved_done = 0;      /* the banner belongs to the save that made it */
         ui.command = pick;
         ui.guide = 0;
@@ -1208,6 +1214,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         ui.io_stage = 0;
         ui.opt_stage = 0;       /* and ｵﾌﾟｼｮﾝ's, for the same reason */
         ui.missed = 0;          /* picking an item clears the band */
+        cmd.again = again;      /* after jw_cmd_pick, which clears it */
         mouse_x = x;
         mouse_y = y;
         /* **And everything else the command was in the middle of.**
