@@ -629,6 +629,23 @@ static void file_kill(void)
     }
 }
 
+/* How big the drawing was before ③合成 brought the other one in, so that
+ * ② 中止 on the second question can put it back.  Measured: the first
+ * ① 実 行 draws the merged drawing and asks again over it. */
+static long merge_n0_lines, merge_n0_arcs;
+static int merge_n0_texts, merge_n0_points;
+
+static void merge_undo(void)
+{
+    if (!drawing) {
+        return;
+    }
+    drawing->n_lines = merge_n0_lines;
+    drawing->n_arcs = merge_n0_arcs;
+    drawing->n_texts = merge_n0_texts;
+    drawing->n_points = merge_n0_points;
+}
+
 /* ③合成: add another drawing's entities to the one in hand.
  *
  * What the original does with the two drawings' coordinates is not settled
@@ -645,33 +662,39 @@ static void file_merge(void)
     if (!ui.file_n || !drawing) {
         return;
     }
+    merge_n0_lines = drawing->n_lines;
+    merge_n0_arcs = drawing->n_arcs;
+    merge_n0_texts = drawing->n_texts;
+    merge_n0_points = drawing->n_points;
     file_picked(path);
     other = jwc_load(path, &why);
     if (!other) {
         sprintf(status, "%s: %s", path, why);
         return;
     }
+    /* **The records go over as they stand.**  Going through jwc_add_line
+     * and jwc_add_arc_at instead left 447 pixels of the merged drawing
+     * different from the original's: they build a record rather than copy
+     * one, and the spare bytes and the rounding are not the file's. */
     for (k = 0; k < other->n_lines; k++) {
-        const JwcLine *l = &other->lines[k];
-
-        jwc_add_line(drawing, l->x0, l->y0, l->x1, l->y1, l->type, l->pen,
-                     l->layer);
+        jwc_put_line(drawing, &other->lines[k]);
     }
     for (k = 0; k < other->n_arcs; k++) {
-        const JwcArc *a = &other->arcs[k];
-
-        /* `rest[3]` is the byte jwc_add_arc_at calls `mark` -- the last of
-         * the four behind the coordinates, which the original writes
-         * differently for a circle and an arc (jwc.h). */
-        jwc_add_arc_at(drawing, a->cx, a->cy, a->r, a->start, a->end,
-                       a->type, a->pen, a->layer, a->rest[3]);
+        jwc_put_arc(drawing, &other->arcs[k]);
+    }
+    /* **The texts and the指定点 come too.**  Without them the counts stopped
+     * at 1219|77 where the original says 1219|90 -- 円･文数 counts the arcs
+     * and the texts together. */
+    for (k = 0; k < other->n_points; k++) {
+        jwc_put_point(drawing, &other->points[k]);
+    }
+    for (k = 0; k < other->n_texts; k++) {
+        jwc_put_text(drawing, &other->texts[k]);
     }
     sprintf(status, "%ld lines  %ld arcs  %d texts  %d points",
             drawing->n_lines, drawing->n_arcs, drawing->n_texts,
             drawing->n_points);
     jwc_free(other);
-    jw_ui_from(&ui, drawing);
-    ui.guide = jw_ui_guide();
 }
 
 /* Open the drawing the list has picked.  Two things do it -- ①選択確定 on
@@ -880,6 +903,131 @@ static int zukei_take(int at)
     return 1;
 }
 
+/* ⑦INDEX's list.  The original keeps it in `JW_FILE0.000`, one `A:\NAME` a
+ * line with CRLF between, and rewrites it as drawings are opened -- the names
+ * on the screen are that file's and not the disk's.  The port reads it when
+ * the item is pressed and leaves it alone otherwise. */
+/* **The list holds twenty and no more.**  A JW_FILE0.000 of twenty-five
+ * names comes up cut to twenty, one of five still says `Max:20`, and twenty
+ * rows is exactly what the screen has -- so the window never scrolls past
+ * what one press of the lower band does (tools/ixprobe.sh). */
+#define JW_IX_MAX 20
+
+static int index_lines(char name[][16])
+{
+    char line[64];
+    FILE *f = fopen(JW_DIR "/JW_FILE0.000", "rb");
+    int n = 0, k = 0, c;
+
+    if (!f) {
+        return 0;
+    }
+    while ((c = fgetc(f)) != EOF && n < JW_IX_MAX) {
+        if (c == '\r') {
+            continue;
+        }
+        if (c == '\n') {
+            line[k] = 0;
+            if (k) {
+                memcpy(name[n], line, (size_t)(k < 15 ? k : 15));
+                name[n][k < 15 ? k : 15] = 0;
+                n++;
+            }
+            k = 0;
+            continue;
+        }
+        if (k < (int)sizeof line - 1) {
+            line[k++] = (char)c;
+        }
+    }
+    if (k && n < JW_IX_MAX) {
+        line[k] = 0;
+        memcpy(name[n], line, (size_t)(k < 15 ? k : 15));
+        name[n][k < 15 ? k : 15] = 0;
+        n++;
+    }
+    fclose(f);
+    return n;
+}
+
+static void index_write(char name[][16], int n)
+{
+    FILE *f = fopen(JW_DIR "/JW_FILE0.000", "wb");
+    int i;
+
+    if (!f) {
+        return;
+    }
+    for (i = 0; i < n; i++) {
+        fprintf(f, "%s\r\n", name[i]);
+    }
+    fclose(f);
+}
+
+/* **The drawing just opened goes to the head of the list**, and any line it
+ * already had goes.  Measured: a file of `F01 F02 SAMPLE0 F03 F04` comes
+ * back `SAMPLE0 F01 F02 F03 F04` once the program has SAMPLE0 open, and one
+ * with no SAMPLE0 in it comes back with SAMPLE0 written in front. */
+static void index_touch(void)
+{
+    char name[JW_IX_MAX][16], one[16];
+    int n = index_lines(name), i, j, k;
+
+    strcpy(one, "A:\\");
+    for (k = 0; k < 8 && loaded_name[k] && loaded_name[k] != ' '; k++) {
+        one[3 + k] = loaded_name[k];
+    }
+    one[3 + k] = 0;
+    for (i = 0; i < n; i++) {
+        if (!strcmp(name[i], one)) {
+            break;
+        }
+    }
+    if (i == n) {               /* a name the list did not have */
+        if (n < JW_IX_MAX) {
+            n++;
+        }
+        i = n - 1;              /* and the last one falls off the end */
+    }
+    for (j = i; j > 0; j--) {
+        memcpy(name[j], name[j - 1], sizeof name[0]);
+    }
+    memcpy(name[0], one, sizeof name[0]);
+    index_write(name, n);
+}
+
+static void index_read(void)
+{
+    ui.ix_n = index_lines(ui.ix_name);
+    ui.ix_sel = 0;
+    ui.ix_top = 0;
+    ui.ix_del = 0;
+    memset(ui.ix_mark, 0, sizeof ui.ix_mark);
+}
+
+/* ①ｲﾝﾃﾞｯｸｽ削除 |① 削 除: the marked lines go, the file is written back and
+ * the list comes up at the first name with nothing marked. */
+static void index_delete(void)
+{
+    int i, n = 0;
+
+    for (i = 0; i < ui.ix_n; i++) {
+        if (ui.ix_mark[i]) {
+            continue;
+        }
+        if (n != i) {
+            memcpy(ui.ix_name[n], ui.ix_name[i], sizeof ui.ix_name[0]);
+        }
+        n++;
+    }
+    ui.ix_n = n;
+    ui.ix_sel = 0;
+    ui.ix_top = 0;
+    ui.ix_del = 0;
+    memset(ui.ix_mark, 0, sizeof ui.ix_mark);
+    index_write(ui.ix_name, n);
+}
+
 static void file_chosen(void)
 {
     char path[256];
@@ -960,6 +1108,7 @@ EMSCRIPTEN_KEEPALIVE int jw_open(const char *path)
     present();
     sprintf(status, "%ld lines  %ld arcs  %d texts  %d points",
             d->n_lines, d->n_arcs, d->n_texts, d->n_points);
+    index_touch();
     return 1;
 }
 
@@ -1565,14 +1714,53 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             const int was = ui.io_stage;
 
             if (ui.file_top + row == ui.file_sel) {
-                ui.io_stage = JW_IO_FILE;
-                if (was == JW_IO_LOAD) file_chosen();
-                else if (was == JW_IO_MERGE) file_merge();
-                else if (was == JW_IO_KILL) file_kill();
+                if (was == JW_IO_MERGE || was == JW_IO_KILL) {
+                    ui.io_stage = was == JW_IO_KILL ? JW_IO_KILLASK
+                                                    : JW_IO_MERGE1;
+                } else {
+                    ui.io_stage = JW_IO_FILE;
+                    if (was == JW_IO_LOAD) file_chosen();
+                }
                 present();
                 return -1;
             }
             ui.file_sel = ui.file_top + row;
+        }
+        present();
+        return -1;
+    }
+    /* ⑦INDEX's list.  Measured with made-up lists of four, twenty and
+     * twenty-five names (tools/ixprobe.sh): the names are rows 4 to 23 and a
+     * press picks the one it lands on, the right button picks it and turns
+     * its mark on or off, a press below the last name picks the last name,
+     * the upper yellow band (row 3) puts the list back at the first name and
+     * the lower one (row 29) jumps to the last -- which then stands alone at
+     * the top, because the window keeps its twenty rows. */
+    if (ui.command == 30 && ui.io_stage == JW_IO_INDEX && !ui.ix_del
+        && ui.ix_n > 0 && x >= 122 && y >= 32 && y < 464) {
+        const int row = y / 16;
+
+        mouse_x = x;
+        mouse_y = y;
+        if (row == 2) {
+            ui.ix_top = 0;
+            ui.ix_sel = 0;
+        } else if (row == 28) {
+            ui.ix_top = ui.ix_n - 1;
+            ui.ix_sel = ui.ix_n - 1;
+        } else {
+            int at = ui.ix_top + row - 3;
+
+            if (at > ui.ix_n - 1) {
+                at = ui.ix_n - 1;
+            }
+            if (at < 0) {
+                at = 0;
+            }
+            ui.ix_sel = at;
+            if (right) {
+                ui.ix_mark[at] = (unsigned char)!ui.ix_mark[at];
+            }
         }
         present();
         return -1;
@@ -1618,6 +1806,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
          * it does not move, nothing here knew the cell -- and src/item.h may
          * still know what the original writes on it. */
         const int was = ui.io_stage;
+        const int ixwas = ui.ix_del;
 
         cmd.top_item = 0;
         cmd.top_right = 0;
@@ -1647,6 +1836,9 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             } else {
                 ui.io_stage = item == 5 ? JW_IO_DRIVE
                             : item == 6 ? JW_IO_DXF : JW_IO_INDEX;
+                if (ui.io_stage == JW_IO_INDEX) {
+                    index_read();
+                }
             }
         } else if ((ui.io_stage == JW_IO_LOAD || ui.io_stage == JW_IO_SAVE
                     || ui.io_stage == JW_IO_MERGE || ui.io_stage == JW_IO_KILL)
@@ -1662,9 +1854,11 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
                 ui.io_stage = JW_IO_FILE;
                 file_chosen();
             } else if (was == JW_IO_MERGE || was == JW_IO_KILL) {
-                ui.io_stage = JW_IO_FILE;
-                if (was == JW_IO_KILL) file_kill();
-                else file_merge();
+                /* **Neither does it yet.**  The original takes the list
+                 * down, puts the drawing back and asks -- 合成 twice,
+                 * 削除 once (RESUME 4.44c). */
+                ui.io_stage = was == JW_IO_KILL ? JW_IO_KILLASK
+                                                : JW_IO_MERGE1;
             } else {
                 ui.io_stage = JW_IO_MEMO;
                 ui.memo_row = 0;
@@ -1678,6 +1872,45 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             memcpy(ui.save_name, ui.open_name, sizeof ui.open_name);
             ui.save_name[sizeof ui.open_name - 1] = 0;
             ui.save_name_n = (int)strlen(ui.save_name);
+        } else if (ui.io_stage == JW_IO_MERGE1 && item == 1) {
+            /* ① 実 行 brings it in and asks again over the drawing it has
+             * made; ② 中止 on that one takes it out again. */
+            /* **The counts wait.**  The original draws the merged
+             * drawing and still says 30|13 until the second question is
+             * answered, so jw_ui_from is not called here. */
+            file_merge();
+            ui.io_stage = JW_IO_MERGE2;
+        } else if (ui.io_stage == JW_IO_MERGE1 && item == 2) {
+            file_list(0);
+            ui.io_stage = JW_IO_MERGE;          /* ② 再選択 */
+        } else if (ui.io_stage == JW_IO_MERGE2 && item == 1) {
+            /* **jw_ui_from clears the whole JwUi**, so what 入出力 was
+             * in the middle of has to be put back after it. */
+            jw_ui_from(&ui, drawing);           /* ① 実行 keeps it */
+            ui.command = cmd.command;
+            ui.io_done = 1;
+            /* and the road comes back to ①ﾌｧｲﾙ's line, not to 入出力's */
+            ui.io_stage = JW_IO_FILE;
+        } else if (ui.io_stage == JW_IO_MERGE2 && item == 2) {
+            merge_undo();                       /* ② 中止 */
+            jw_ui_from(&ui, drawing);
+            ui.command = cmd.command;
+            ui.io_done = 1;
+            ui.io_stage = JW_IO_FILE;
+        } else if (ui.io_stage == JW_IO_KILLASK && item == 1) {
+            file_kill();                        /* ① 削 除 */
+            file_list(0);
+            ui.io_stage = JW_IO_KILL;
+            ui.io_done = 1;
+        } else if (ui.io_stage == JW_IO_KILLASK && item == 2) {
+            file_list(0);
+            ui.io_stage = JW_IO_KILL;           /* ② 再選択 */
+        } else if (ui.io_stage == JW_IO_INDEX && item == 1 && !ui.ix_del) {
+            ui.ix_del = 1;          /* ①ｲﾝﾃﾞｯｸｽ削除 asks first */
+        } else if (ui.io_stage == JW_IO_INDEX && ui.ix_del && item == 1) {
+            index_delete();         /* ① 削 除 */
+        } else if (ui.io_stage == JW_IO_INDEX && ui.ix_del && item == 2) {
+            ui.ix_del = 0;          /* ② 再選択 */
         } else if (ui.io_stage == JW_IO_OVER && item == 1) {
             ui.io_stage = JW_IO_WRITE;      /* ①上書きする */
         } else if (ui.io_stage == JW_IO_OVER && item == 2) {
@@ -1709,7 +1942,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         } else if (ui.io_stage == JW_IO_PGO && item == 2) {
             ui.io_stage = 0;                    /* ② 中止 */
         }
-        if (ui.io_stage == was && !plot_wanted
+        if (ui.io_stage == was && ui.ix_del == ixwas && !plot_wanted
             && jw_ui_item_has(30, item, right)) {
             cmd.top_item = item;
             cmd.top_right = right;
@@ -1838,12 +2071,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             if (at != zukei_pick) {
                 zukei_pick = at;
             } else if (zukei_take(at)) {
-                cmd.zukei = JW_ZUKEI_PUT;
-                /* what the drawing had before any of it went down, so that
-                 * jw_cmd_after can put the copies back on top */
-                cmd.n0_lines = drawing->n_lines;
-                cmd.n0_arcs = drawing->n_arcs;
-                cmd.n0_texts = drawing->n_texts;
+                jw_cmd_zukei_put(&cmd, drawing);
             }
         }
         mouse_x = x;
@@ -2006,6 +2234,18 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         }
         present();
         return 1;
+    }
+    /* [ESC] on ⑦INDEX.  Measured (tools/ixprobe.sh): from the list it goes
+     * back to ①ﾌｱｲﾙ's line, and from ①ｲﾝﾃﾞｯｸｽ削除's question it goes back to
+     * the list with the pick and the marks as they were. */
+    if (ui.command == 30 && ui.io_stage == JW_IO_INDEX && key == 27) {
+        if (ui.ix_del) {
+            ui.ix_del = 0;
+        } else {
+            ui.io_stage = JW_IO_FILE;
+        }
+        present();
+        return -1;
     }
     if (ui.command == 30 && ui.io_stage == JW_IO_PNAME) {
         if (key == 27) {

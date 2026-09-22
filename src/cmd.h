@@ -463,6 +463,10 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right);
 unsigned char *jw_cmd_zukei_bytes(const JwCmd *c, const Jwc *d,
                                   long *out_len, const char **why);
 
+/* 図形 ②読込: a figure has been taken in hand, so the road goes to 位置指示
+ * and everything that steers the placing starts again. */
+void jw_cmd_zukei_put(JwCmd *c, const Jwc *d);
+
 /* Has src/item.h anything to say about this press?  Defined in src/ui.c,
  * which is where the table lives. */
 int jw_ui_item_has(int command, int item, int right);

@@ -201,6 +201,14 @@ static int is_lead(unsigned char c)
     "\x91\xf0" " |" "\x87" "@" "\x91" "I" "\x91\xf0\x8a" "m" \
     "\x92\xe8" " |" "\x87" "A" "\x83" "h" "\x83\x89\x83" "C" "\x83" \
     "u(A:)" "\x95\xcf\x8d" "X |"
+/* **④削除 has two cells ②読込 has not**: `③ﾌｧｲﾙ名指定` and `④拡張子変更`.
+ * Measured -- the original's last write to row 1 is the whole line at column
+ * 1, and ②読込's and ③合成's stop after `②ﾄﾞﾗｲﾌﾞ(A:)変更 |`
+ * (tools/origstr.sh "30 296 left" "110 8 left" "305 8 left"). */
+#define JW_KILL_BAR \
+    JW_FILE_BAR "\x87" "B" "\xcc\xa7\xb2\xd9\x96\xbc\x8e" "w" \
+    "\x92\xe8" " |" "\x87" "C" "\x8a" "g" "\x92\xa3\x8e" "q" \
+    "\x95\xcf\x8d" "X |"
 #define JW_SAVE_BAR \
     JW_FILE_BAR "\x87" "B " "\x90" "V" "\x8b" "K " \
     "\x95\xdb\x91\xb6" " |" "\x87" "C" \
@@ -210,6 +218,20 @@ static int is_lead(unsigned char c)
  * the name about to be written, on white.  And the mark at column 6
  * of the top line that goes with them. */
 #define JW_SAVE_FILE "\x95\xdb\x91\xb6\xcc\xa7\xb2\xd9" "=A:" "\x5c"
+/* ③合成 and ④削除 ask before they do it.  Measured (tools/origstr.sh
+ * "30 296 left" "110 8 left" "250 8 left" "200 152 left" "200 8 left"): the
+ * list goes and the drawing comes back, the drawing that was picked is named
+ * on row 3 at column 20 on white -- in 7 for 合成 and in 6 for 削除 -- and
+ * the top line is one of these three.  合成 asks twice: `① 実 行` on the
+ * first puts up the second, and `① 実行` on that one merges. */
+#define JW_ASK_FILE "\xcc\xa7\xb2\xd9" "=A:" "\x5c"
+#define JW_MERGE1_BAR \
+    "          " "\x8d\x87\x90\xac" "     |" "\x87" "@ " "\x8e\xc0" " " \
+    "\x8d" "s(L)|" "\x87" "A " "\x8d\xc4\x91" "I" "\x91\xf0" "(R)|"
+#define JW_MERGE2_BAR \
+    "\x8d\x87\x90\xac" "\xc3\xde\xb0\xc0" "\x82\xf0" \
+    "\x8f\x91\x82\xab\x8d\x9e\x82\xdd\x82\xdc\x82\xb7" "  |" "\x87" "@ " \
+    "\x8e\xc0\x8d" "s(L)|" "\x87" "A " "\x92\x86\x8e" "~" "(R)|"
 #define JW_DOT "\x81" "E"
 /* The other four cells of ①ﾌｧｲﾙ's bar, each read off the original
  * (tools/ioroad.sh presses one and logs the line it writes).  ③合成 and
@@ -231,6 +253,12 @@ static int is_lead(unsigned char c)
     "\xb2\xdd\xc3\xde\xaf\xb8\xbd\x8d\xed\x8f\x9c" "|  " "\x91" "I" \
     "\x91\xf0" ":[" "\xbd\xcd\xdf\xb0\xbd" "](R)"
 #define JW_BS_BACK "[BS]" "\x91" "O" "\x8d\x80"
+/* ①ｲﾝﾃﾞｯｸｽ削除's question.  Measured: `[ESC]` at column 1, `・` at 6 and
+ * this at 8, with no `[BS]前項` after it. */
+#define JW_IXDEL_BAR \
+    "\x8d\xed\x8f\x9c\x82\xb5\x82\xdc\x82\xb7 |" "\x87" "@ " \
+    "\x8d\xed" " " "\x8f\x9c" " |" "\x87" "A " "\x8d\xc4\x91" "I" "\x91\xf0" \
+    " |"
 /* 入出力's own line.  The prompt table writes it while the command is
  * running; this copy is for the moment straight after ① 実 行, when the
  * original puts it back with the mark and the banner. */
@@ -264,6 +292,10 @@ static int is_lead(unsigned char c)
  * 保存 on ①保存's, 読込 on ②読込's.  Measured on both. */
 #define JW_FILE_SAVE " " "\x95\xdb\x91\xb6" "    "
 #define JW_FILE_LOAD " " "\x93\xc7\x8d\x9e" "    "
+/* ③合成 and ④削除 wear ②読込's screen but put their own word over the list,
+ * where ②読込 has `読込`. */
+#define JW_FILE_MERGE " " "\x8d\x87\x90\xac" "    "
+#define JW_FILE_KILL " " "\x8d\xed\x8f\x9c" "    "
 #define JW_FILE_EDIT "\x95\xd2\x8f" "W"
 #define JW_FILE_NAMED "\x83" "t" "\x83" "@" "\x83" "C" "\x83\x8b\x96\xbc"
 
@@ -1920,6 +1952,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_PSET_BAR);
         } else if (s->io_stage == JW_IO_PGO) {
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_PGO_BAR);
+        } else if (s->io_stage == JW_IO_MERGE2) {
+            /* **The second question is asked over the drawing**, not over
+             * the list: the list is taken down, the other drawing is in
+             * and drawn, and the two counts still say what they said. */
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+            jw_ui_text(v, 8, 1, 7, 0, JW_MERGE2_BAR);
         } else if (s->io_stage == JW_IO_DRIVE) {
             jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
             jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
@@ -1932,12 +1971,61 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         } else if (s->io_stage == JW_IO_INDEX) {
             jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
             jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
-            jw_ui_text(v, 8, 1, 7, 0, JW_INDEX_BAR);
-            jw_ui_text(v, 73, 1, 7, 0, JW_BS_BACK);
+            if (s->ix_del) {
+                jw_ui_text(v, 8, 1, 7, 0, JW_IXDEL_BAR);
+            } else {
+                jw_ui_text(v, 8, 1, 7, 0, JW_INDEX_BAR);
+                jw_ui_text(v, 73, 1, 7, 0, JW_BS_BACK);
+            }
+        /* ⑦INDEX's body: the drawing area blacked, a yellow band above the
+         * list and another below it with a ▲ and a ▼ at each end, the three
+         * counts along row 2, and twenty names.
+         *
+         * Measured on the original: the bands are rows 3 and 29 (y 32..47
+         * and 448..463) right across from x 122, the triangles are black on
+         * them at columns 20 and 75, the names sit at column 22 of rows 4 to
+         * 23 in white, and the one that is picked is black on cyan. */
+        if (s->io_stage == JW_IO_INDEX) {
+            char one[32];
+            int i, marks = 0;
+
+            fill(v, 122, 16, 638, 462, 0);
+            fill(v, 128, 463, 638, 463, 0);
+            fill(v, 122, 32, 638, 47, 6);
+            fill(v, 122, 448, 638, 462, 6);
+            jw_ui_text(v, 20, 3, 0, 2, "\x81\xa3");
+            jw_ui_text(v, 75, 3, 0, 2, "\x81\xa3");
+            jw_ui_text(v, 20, 29, 0, 2, "\x81\xa5");
+            jw_ui_text(v, 75, 29, 0, 2, "\x81\xa5");
+            for (i = 0; i < s->ix_n && i < 64; i++) {
+                if (s->ix_mark[i]) {
+                    marks++;
+                }
+            }
+            sprintf(one, "\xcc\xa7\xb2\xd9 %d/%d", s->ix_n ? s->ix_sel + 1 : 0,
+                    s->ix_n);
+            jw_ui_text(v, 22, 2, 7, 0, one);
+            sprintf(one, "\xcf\xb0\xb8=%d", marks);
+            jw_ui_text(v, 40, 2, 7, 0, one);
+            /* **`Max:20` is how many the list holds, not how many it has.**
+             * A JW_FILE0.000 of five names still says 20, and one of
+             * twenty-five is cut to twenty (tools/ixprobe.sh). */
+            jw_ui_text(v, 70, 2, 7, 0, "Max:20");
+            for (i = s->ix_top; i < s->ix_n && i - s->ix_top < 20; i++) {
+                const int row = 4 + i - s->ix_top;
+
+                jw_ui_text(v, 20, row, 6, 0, s->ix_mark[i] ? "*" : " ");
+                /* The drawing that is open is first in the list and is the
+                 * only one written in 5; the cyan is the picked row. */
+                jw_ui_text(v, 22, row, i == 0 ? 5 : 7,
+                           i == s->ix_sel ? 0xffffu : 0, s->ix_name[i]);
+            }
+        }
         } else if (s->io_stage == JW_IO_LOAD || s->io_stage == JW_IO_SAVE
                    || s->io_stage == JW_IO_MERGE || s->io_stage == JW_IO_KILL
                    || s->io_stage == JW_IO_MEMO || s->io_stage == JW_IO_OVER
-                   || s->io_stage == JW_IO_WRITE) {
+                   || s->io_stage == JW_IO_WRITE || s->io_stage == JW_IO_MERGE1
+                   || s->io_stage == JW_IO_KILLASK) {
             /* ①保存 keeps its list on the screen the whole way: ①選択確定,
              * the two memo lines, the overwrite question and 書き込みます
              * all change the top line and leave the rest where it is.
@@ -1959,8 +2047,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * DOS's 8.3 shape, the drawing's own 図面名 at 33, and the row
              * that is picked in yellow on blue.  The panel on the left
              * stays; only the drawing area is given over to the list. */
+            /* **The questions leave the list where it is.**  合成's two
+             * and 削除's one do what 保存's do: the strip along the bottom
+             * comes back, the ` 合成 … bytes free` line is blanked and the
+             * drawing that was picked is named on it instead. */
             const int asking = s->io_stage == JW_IO_OVER
-                               || s->io_stage == JW_IO_WRITE;
+                               || s->io_stage == JW_IO_WRITE
+                               || s->io_stage == JW_IO_MERGE1
+                               || s->io_stage == JW_IO_KILLASK;
 
             fill(v, 122, 16, 639, 463, 0);
             /* The strip along the bottom goes as well -- all of it, the
@@ -2000,6 +2094,17 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
                 jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
                 jw_ui_text(v, 8, 1, 7, 0, JW_WRITE_BAR);
+            } else if (s->io_stage == JW_IO_MERGE1
+                       || s->io_stage == JW_IO_KILLASK) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+                jw_ui_text(v, 8, 1, 7, 0,
+                           s->io_stage == JW_IO_MERGE1 ? JW_MERGE1_BAR
+                           : s->io_stage == JW_IO_MERGE2 ? JW_MERGE2_BAR
+                           : JW_IXDEL_BAR);
+                if (s->io_stage == JW_IO_KILLASK) {
+                    jw_ui_text(v, 73, 1, 7, 0, JW_BS_BACK);
+                }
             } else if (s->io_stage == JW_IO_NEWNAME) {
                 /* ③ 新規 保存 asks for a name.  Measured: the line is
                  * `[ESC]  ` and ` ◆ファイル名入力` at column 8, and the
@@ -2013,7 +2118,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 1, 1, 6, 0xffffu, JW_SAVE_BAR);
             } else {
                 jw_ui_text(v, 1, 1, 7, 0,
-                           s->file_bar ? s->file_bar : JW_FILE_BAR);
+                           s->file_bar ? s->file_bar
+                           : s->io_stage == JW_IO_KILL ? JW_KILL_BAR
+                           : JW_FILE_BAR);
             }
             if (!asking) {
                 /* The two questions clear this line as well as the one
@@ -2027,18 +2134,26 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             }
             if (asking) {
                 /* 保存ﾌｧｲﾙ=A:\NAME.JWC, on white.  Measured off the
-                 * original the moment the question goes up. */
+                 * original the moment the question goes up.  合成 and 削除
+                 * write `ﾌｧｲﾙ=` at column 20 instead, and 削除 in 6. */
                 char stem[9];
+                const int ask3 = s->io_stage == JW_IO_MERGE1
+                                 || s->io_stage == JW_IO_KILLASK;
 
                 memcpy(stem, s->file_n ? s->file_name[s->file_sel] : "        ", 8);
                 stem[8] = 0;
                 for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
-                sprintf(one, "%s%s.JWC", JW_SAVE_FILE, stem);
-                jw_ui_text(v, 17, 3, 7, 0xffffu, one);
+                sprintf(one, "%s%s.JWC", ask3 ? JW_ASK_FILE : JW_SAVE_FILE,
+                        stem);
+                jw_ui_text(v, ask3 ? 20 : 17, 3,
+                           s->io_stage == JW_IO_KILLASK ? 6 : 7, 0xffffu, one);
             } else {
                 sprintf(one, "%s%s bytes free   ",
                         s->file_word ? s->file_word
-                                     : (saving ? JW_FILE_SAVE : JW_FILE_LOAD),
+                        : saving ? JW_FILE_SAVE
+                        : s->io_stage == JW_IO_MERGE ? JW_FILE_MERGE
+                        : s->io_stage == JW_IO_KILL ? JW_FILE_KILL
+                        : JW_FILE_LOAD,
                         s->file_free);
                 jw_ui_text(v, 17, 3, 7, 0, one);
                 if (s->file_named) {
@@ -2199,9 +2314,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                                "                                             ");
                     continue;
                 }
-                /* The row that is picked: 保存 draws it yellow on blue,
-                 * 読込 cyan on blue.  Both measured. */
-                const int fg = on ? (saving ? 6 : 5) : 7;
+                /* The row that is picked: 保存 and ④削除 draw it yellow on
+                 * blue, 読込 and ③合成 cyan on blue.  All measured -- the
+                 * original writes the name with fg 6 for 削除 and fg 5 for
+                 * the other two (tools/origstr.sh). */
+                const int fg = on ? (saving || s->io_stage == JW_IO_KILL
+                                     || s->io_stage == JW_IO_KILLASK
+                                     ? 6 : 5) : 7;
                 const unsigned bg = on ? 1u : 0u;
 
                 jw_ui_text(v, 17, 8 + k, fg, bg, s->file_name[i]);
@@ -2215,12 +2334,20 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 33, 8 + k, fg, bg, one);
             }
         } else if (s->io_stage == JW_IO_FILE) {
+            if (s->io_done) {
+                jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+            }
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_FILE_BAR);
             jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91\x4f\x8d\x80");
-            /* `(A:)`, not `(A:/B:)` -- the original writes four characters
-             * there (branch 273).  A machine with two floppy drives may say
-             * the other thing; this one has one. */
-            jw_ui_text(v, 46, 2, 7, 0xffffu, "(A:)");
+            /* **`(A:/B:)`.**  It was `(A:)` here, from枝 273's picture --
+             * which was taken with an older dosemu.  The emulator answers
+             * INT 21h AH=0Eh with three drives, and with more than one the
+             * original writes the long form: every road measured on
+             * 2026-09-22 has `(A:/B:)` at column 46 (tools/origstr.sh
+             * "30 296 left" "110 8 left", and again on the way back from
+             * ③合成).  The pictures under tmp/branch are older than
+             * dosemu.exe -- tools/check.sh says so about tmp/menus too. */
+            jw_ui_text(v, 46, 2, 7, 0xffffu, "(A:/B:)");
         } else {
             jw_ui_text(v, 8, 1, 7, 0, JW_IO_PLOT_BAR);
         }
@@ -2296,6 +2423,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, z->col, 1, (unsigned)z->fg, (unsigned)z->bg,
                            z->text);
             }
+            /* The green block where the next character goes, the same one
+             * ◆図形名入力 has: eight wide, rows 7 to 15, at the field's own
+             * column plus what has been typed. */
+            {
+                const int at = (s->zukei_ask == JW_ZUKEI_ANG ? 15 : 22)
+                             - 1 + s->zukei_typed_n;
+
+                fill(v, at * 8, 7, at * 8 + 7, 15, 4);
+            }
             if (s->zukei_ask == JW_ZUKEI_ANG) {
                 sprintf(one, "[%8.3f" "\xdf" "]", (double)s->zukei_prev_ang);
                 jw_ui_text(v, 50, 2, 7, 0xffffu, one);
@@ -2310,6 +2446,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (s->zukei_typed_n) {
                     jw_ui_text(v, 22, 1, 7, 0, s->zukei_typed);
                 }
+            }
+            /* and nothing of the line 図形 came up with, the same way the
+             * road's own lines drop it */
+            while (p->col) {
+                p++;
             }
         }
         /* 図形 ①登録 replaces the line 図形 came up with, and keeps
@@ -2537,13 +2678,25 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * written again: the original's own writes at that step are the
          * counts, their label, the new line and [BS]前項, and nothing at
          * column 47. */
-        if (s->command == 27 && s->zukei == JW_ZUKEI_PUT) {
+        /* **Not while one of the fields is open.**  The original clears the
+         * band then and shows only the brackets at column 50. */
+        if (s->command == 27 && s->zukei == JW_ZUKEI_PUT && !s->zukei_ask) {
             /* **One or the other, not both.**  With ④ﾏｳｽ角 up the angle is
              * whatever the mouse will say, so the original takes the number
              * away and writes `Ｘ 方向` or `Ｙ 方向` at column 64 instead:
              * after that press row 24 has ink only from x 504 to 559, where
              * before it had the number from 368 to 439.  ⑤仮表示's `無` at
              * column 76 goes with either. */
+            /* ①倍率指定X,Y's pair, at column 32 and fifteen wide:
+             * `[  2.00,  2.00]`.  It is there once a scale has been entered
+             * and not before -- the band on the way in has only the angle. */
+            if (s->zukei_mx != 1.0f || s->zukei_my != 1.0f) {
+                char two[24];
+
+                sprintf(two, "[%6.2f,%6.2f]", (double)s->zukei_mx,
+                        (double)s->zukei_my);
+                jw_ui_text(v, 32, 2, 7, 0xffffu, two);
+            }
             if (s->zukei_mouse) {
                 jw_ui_text(v, 64, 2, 7, 0xffffu,
                            s->zukei_mouse == 1

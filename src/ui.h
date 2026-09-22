@@ -215,6 +215,32 @@ typedef struct {
     double opt_gap;
     long opt_line;
     int io_stage;
+    /* ⑦INDEX's list.  The original keeps it in `JW_FILE0.000`, one
+     * `A:\NAME` a line with CRLF between, and rewrites it as drawings are
+     * opened -- the names on the screen are that file's, not the disk's
+     * (QPICK and QBYTES are in it and not in `orig/`).
+     *
+     * The screen shows twenty rows at a time, from row 4, with the name at
+     * column 22 and a mark at 20.  `ﾌｧｲﾙ 1/20` at column 22 of row 2 counts
+     * them, `ﾏｰｸ=0` at 40 counts the marked ones and `Max:20` at 70 is how
+     * many the file holds. */
+    char ix_name[64][16];
+    int ix_n;
+    int ix_sel;
+    unsigned char ix_mark[64];
+    /* Which entry is at row 4.  The two yellow bands are the only things
+     * that move it: the upper one puts the list back at the first entry,
+     * the lower one jumps to the last, and then that one entry is all the
+     * screen shows.  Measured with lists of 4, 20 and 25 names
+     * (tools/ixprobe.sh) -- the list is cut to twenty, which is exactly how
+     * many rows there are, so nothing else ever scrolls it. */
+    int ix_top;
+    /* ①ｲﾝﾃﾞｯｸｽ削除 asks first: `削除します |① 削 除 |② 再選択 |`. */
+    int ix_del;
+    /* **The mark at column 6 of ①ﾌｧｲﾙ's line.**  Entering it has none;
+     * coming back to it after 合成 or 削除 has run has `・` there
+     * (tools/origstr.sh, the two roads). */
+    int io_done;
     /* The name ③ﾌｧｲﾙ出力 asks for, in the field at column 25. */
     char io_name[13];
     int io_name_n;
@@ -276,6 +302,9 @@ typedef struct {
 #define JW_IO_DXF 14            /* ⑥ＤＸＦ -> |① 保存|② 読込|③ 設定| */
 #define JW_IO_INDEX 15          /* ⑦INDEX -> 選択ファイル名 ﾏｳｽ指示    */
 #define JW_IO_NEWNAME 16        /* ③ 新規 保存 -> ◆ファイル名入力     */
+#define JW_IO_MERGE1 17         /* ③合成 ①選択確定 -> 合成|① 実 行(L)| */
+#define JW_IO_MERGE2 18         /* その ① 実 行 -> 合成ﾃﾞｰﾀを書き込みます */
+#define JW_IO_KILLASK 19        /* ④削除 ①選択確定 -> 削除します|① 削 除 */
 
 /* ｵﾌﾟｼｮﾝ's own menus, JwUi.opt_stage. */
 #define JW_OPT_PLAN 1           /* ①建具平面 -> 建具選択 の一覧        */

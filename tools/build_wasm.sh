@@ -30,7 +30,7 @@ EMBED=""
 # JW_SAMPL.BAT is on the disk because ｵﾌﾟｼｮﾝ ⑦外部処理 lists `*.bat` and the
 # original's screen shows that one file, its date, its size and its first
 # line.  The JW_OPT*.DAT are the 建具 and 2.5D libraries ｵﾌﾟｼｮﾝ reads.
-for f in orig/SAMPLE*.JWC orig/TEST*.JWC orig/JW_PAL.DAT orig/JW_SAMPL.BAT          orig/JW_OPT*.DAT font/JWANK16.FNT font/JWKAN16.FNT; do
+for f in orig/SAMPLE*.JWC orig/TEST*.JWC orig/JW_PAL.DAT orig/JW_SAMPL.BAT          orig/JW_OPT*.DAT orig/JW_FILE0.000 font/JWANK16.FNT font/JWKAN16.FNT; do
     EMBED="$EMBED --embed-file $f@/$f"
 done
 

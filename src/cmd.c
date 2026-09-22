@@ -2573,7 +2573,7 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
      * line src/item.h holds, because the distribution ships no figures at
      * all: `orig/` has no ZUKEI_1_ until something is registered. */
     if (c->command == 27 && c->pressed == 0 && c->stage == 0 && item == 2
-        && c->zukei_n > 0) {
+        && c->zukei_n > 0 && !c->zukei) {
         c->zukei = JW_ZUKEI_LIST;
         return 1;
     }
@@ -2614,18 +2614,7 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
      * nothing in hand the press does nothing. */
     if (c->command == 27 && c->zukei == JW_ZUKEI_LIST && item == 1
         && c->zukei_in) {
-        c->zukei = JW_ZUKEI_PUT;
-        c->zukei_ang = 0.0f;
-        c->zukei_mouse = 0;
-        c->zukei_noghost = 0;
-        c->zukei_ask = 0;
-        c->zukei_typed_n = 0;
-        c->zukei_prev_ang = 90.0f;
-        c->zukei_mx = 1.0f;
-        c->zukei_my = 1.0f;
-        c->n0_lines = d ? d->n_lines : 0;
-        c->n0_arcs = d ? d->n_arcs : 0;
-        c->n0_texts = d ? d->n_texts : 0;
+        jw_cmd_zukei_put(c, d);
         return 1;
     }
     /* On the list of figures, ①選択確定 takes the cell that is picked --
@@ -2842,6 +2831,29 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
      * the complaint. */
     c->missed = 0;
     return changed;
+}
+
+/* 図形 ②読込: a figure is in hand and the road moves to 位置指示.
+ *
+ * Everything the placing is steered by starts again here -- the angle at
+ * nought, ④ﾏｳｽ角 and ⑤仮表示 off, the two fields shut and what 前回と同じ
+ * would use back at 90 degrees and 1,1 -- and the counts are remembered so
+ * that jw_cmd_after can put the copies back on top. */
+void jw_cmd_zukei_put(JwCmd *c, const Jwc *d)
+{
+    c->zukei = JW_ZUKEI_PUT;
+    c->zukei_ang = 0.0f;
+    c->zukei_mouse = 0;
+    c->zukei_noghost = 0;
+    c->zukei_ask = 0;
+    c->zukei_typed[0] = 0;
+    c->zukei_typed_n = 0;
+    c->zukei_prev_ang = 90.0f;
+    c->zukei_mx = 1.0f;
+    c->zukei_my = 1.0f;
+    c->n0_lines = d ? d->n_lines : 0;
+    c->n0_arcs = d ? d->n_arcs : 0;
+    c->n0_texts = d ? d->n_texts : 0;
 }
 
 int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
