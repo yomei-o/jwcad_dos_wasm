@@ -1232,8 +1232,17 @@ static void tategu(VGA *v, int which)
                 v->clip_x1 = x1;
                 v->clip_y1 = y1;
                 if (units <= 3) {
+                    /* **The smaller angle first.**  jw_arc_poly sweeps
+                     * anticlockwise from its start to its end and adds a
+                     * whole turn when the end is behind the start -- so a
+                     * record with a negative sweep, like 排煙窓's, would go
+                     * the long way round and leave pieces of arc all over
+                     * the row. */
+                    const double lo = a1 < a0 ? a1 : a0;
+                    const double hi = a1 < a0 ? a0 : a1;
+
                     jw_arc_poly(v, ax, ay, r, 10000,
-                                (long)(a0 * 65536.0), (long)(a1 * 65536.0), 0,
+                                (long)(lo * 65536.0), (long)(hi * 65536.0), 0,
                                 ink, ROP_REPLACE, JW_STYLE_SOLID);
                 }
                 if (units == 1 || units == 3 || units == 5 || units == 7) {
@@ -1243,7 +1252,8 @@ static void tategu(VGA *v, int which)
                     const double ex = ax + r * cos(a1 * rad);
                     const double ey = ay - r * sin(a1 * rad);
 
-                    clip_line(v, ax, ay, ex, ey, x0, y0, x1, y1, ink);
+                    clip_line(v, floor(ax), floor(ay), floor(ex), floor(ey),
+                              x0, y0, x1, y1, ink);
                 }
                 v->clip_x0 = cx0;
                 v->clip_y0 = cy0;
