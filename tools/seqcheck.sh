@@ -33,6 +33,10 @@ printf 'wait %s\n' "$BOOT" > tmp/seq/s.txt
 # quietly compare the boot screen instead.  Read the words out another way.
 for step in "$@"; do
     case "$step" in
+    type\ *)
+        printf 'type %s\nwait %s\n' "${step#type }" "$WAIT" >> tmp/seq/s.txt
+        continue
+        ;;
     key\ *)
         printf 'key %s\nwait %s\n' "${step#key }" "$WAIT" >> tmp/seq/s.txt
         continue

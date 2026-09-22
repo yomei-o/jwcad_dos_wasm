@@ -247,6 +247,24 @@ typedef struct {
      * (tools/origstr.sh).  They live in src/main_wasm.c, because
      * jw_ui_from clears everything here. */
     unsigned char dxf_set[5];
+    /* 文字 ④設定's table, out of the drawing: the pen, the width, the
+     * height and the gap of each of the ten character types, in tenths of a
+     * millimetre, and how many texts are of each.  Index 0 is the one being
+     * drawn with, which is why the rows are 1 to 10. */
+    short char_tab_pen[11];
+    short char_tab_w[11];
+    short char_tab_h[11];
+    short char_tab_gap[11];
+    int char_tab_use[11];
+    /* Which cell of it is being changed: 0 none, 1 the pen, 2 the width,
+     * 3 the height, 4 the gap -- and which row, 1 to 10.  Measured: a press
+     * in one of those four columns blanks the cell, puts a green block in
+     * it and writes its own line along the top; a press in the 文字種類
+     * column picks the type instead and moves the ●. */
+    int char_edit;
+    int char_edit_row;
+    char char_edit_typed[16];
+    int char_edit_n;
     /* The DXF has just been written: ` 登 録  完 了 ` sits at row 2 column
      * 20 over ⑥ＤＸＦ's own line (入出力's own 保存 puts the same words at
      * column 34). */
@@ -322,6 +340,7 @@ typedef struct {
 #define JW_IO_DXFSET 20         /* ⑥ＤＸＦ ③設定 -> 出力時の設定…      */
 #define JW_IO_DXFNAME 21        /* ③ 新規 保存 on ①保存 -> ◆ファイル名入力 */
 #define JW_IO_DXFWRITE 22       /* [Enter] -> 書き込みます|① 実 行(L)|    */
+#define JW_IO_NEWASK 23         /* ⑤新規図面 with work in hand -> 失われます */
 
 /* ｵﾌﾟｼｮﾝ's own menus, JwUi.opt_stage. */
 #define JW_OPT_PLAN 1           /* ①建具平面 -> 建具選択 の一覧        */

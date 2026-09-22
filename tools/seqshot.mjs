@@ -24,6 +24,10 @@ const KEY = { enter: 13, esc: 27, bs: 8, space: 32 };
 let lastPress = null;
 for (const step of steps) {
     const w = step.trim().split(/\s+/);
+    if (w[0] === 'type') {
+        for (const ch of step.trim().slice(5)) M._jw_key(ch.charCodeAt(0));
+        continue;
+    }
     if (w[0] === 'key') {
         const k = KEY[w[1]] ?? Number(w[1]);
         M._jw_key(k);

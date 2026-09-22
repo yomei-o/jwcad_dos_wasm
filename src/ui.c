@@ -236,6 +236,14 @@ static int is_lead(unsigned char c)
     "\x83" "X" "\x8e" "w" "\x8e\xa6" " |" "\x87" "@" "\x95\xcf\x8d" \
     "X" "\x8a" "m" "\x92\xe8" "|"
 #define JW_DXF_STAR "\x81\x9a"
+/* ⑤新規図面 asks first when there is work on the drawing in hand.  The line
+ * is src/item.h's for that cell, which is where the original's bytes were
+ * captured (branch 281). */
+#define JW_NEWASK_BAR \
+    "\x95\xd2\x8f" "W" "\x92\x86\x82\xcc\x90" "}" \
+    "\x96\xca\x82\xaa\x8e\xb8\x82\xed\x82\xea\x82\xdc\x82\xb7" \
+    "  |" "\x87" "@" "\x90" "V" "\x8b" "K|" "\x87" "A" \
+    "\x95\xdb\x91\xb6" "|" "\x87" "B" "\x92\x86\x8e" "~|"
 /* ⑥ＤＸＦ ①保存's last question.  Measured: the list stays, the strip along
  * the bottom comes back, the `path=` and the ` DXFOUT …` line are blanked
  * and `A:\NAME.dxf` goes on row 2 at column 18 on white. */
@@ -784,6 +792,24 @@ void jw_ui_from(JwUi *s, const Jwc *d)
     s->char_pen = d->text_pen[d->char_type];
     s->char_w = d->text_w[d->char_type];
     s->char_h = d->text_h[d->char_type];
+    for (i = 0; i < 11; i++) {
+        s->char_tab_pen[i] = d->text_pen[i];
+        s->char_tab_w[i] = d->text_w[i];
+        s->char_tab_h[i] = d->text_h[i];
+        s->char_tab_gap[i] = d->text_gap[i];
+        s->char_tab_use[i] = 0;
+    }
+    {
+        int k;
+
+        for (k = 0; k < d->n_texts; k++) {
+            const int t = d->texts[k].size;
+
+            if (t >= 1 && t <= 10) {
+                s->char_tab_use[t]++;
+            }
+        }
+    }
     for (i = 0; i < 16; i++) {
         const unsigned char layer = (unsigned char)((s->group << 4) | i);
         long k;
@@ -2014,6 +2040,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
             jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
             jw_ui_text(v, 8, 1, 7, 0, JW_MERGE2_BAR);
+        } else if (s->io_stage == JW_IO_NEWASK) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 8, 1, 7, 0, JW_NEWASK_BAR);
         } else if (s->io_stage == JW_IO_DXFSET) {
             int i;
 
@@ -2977,6 +3006,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (r->row == 25 || r->row == 30 || r->row == 0) {
                     continue;
                 }
+                /* **文字 ④設定's ten rows come out of the drawing.**  What
+                 * src/item.h has there is SAMPLE0's own numbers, and the
+                 * panel has to show the ones the drawing carries -- and the
+                 * ones a press on it has just changed. */
+                if ((s->command == 13 || s->command == 28) && s->top_item == 4
+                    && r->row >= 9 && r->row <= 18) {
+                    continue;
+                }
                 /* **The counts box is painted before each thing that goes
                  * in it.**  Both the counts and what a command puts in
                  * their place are written transparently -- black letters on
@@ -3014,6 +3051,85 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * the original -- the pixels src/item.h's text does not account
          * for: the top two rows thick, one under the header, the bottom
          * two, the sides two columns each and five single rules between. */
+        /* The ten rows of 文字 ④設定's table.  Every column was read off
+         * the original's own writes (tools/origstr.sh "90 264 left"
+         * "428 8 left"): the name and the pen at column 20, the width at
+         * 42, two spaces at 51, the height at 53, the gap at 62, and either
+         * how many texts use it at 71 or a `-` at 75.  A type that is used
+         * has a `*` at 22, and the one being drawn with has `●` at 20. */
+        if ((s->command == 13 || s->command == 28) && s->top_item == 4) {
+            char one[64];
+            int k;
+
+            for (k = 1; k <= 10; k++) {
+                const int row = 8 + k;
+
+                sprintf(one, "   [F%2d]        %d     ", k,
+                        s->char_tab_pen[k]);
+                jw_ui_text(v, 20, row, 7, 0, one);
+                sprintf(one, "%6.1f   ", s->char_tab_w[k] / 10.0);
+                jw_ui_text(v, 42, row, 7, 0, one);
+                jw_ui_text(v, 51, row, 7, 0, "  ");
+                sprintf(one, "%6.1f   ", s->char_tab_h[k] / 10.0);
+                jw_ui_text(v, 53, row, 7, 0, one);
+                sprintf(one, "%6.1f   ", s->char_tab_gap[k] / 10.0);
+                jw_ui_text(v, 62, row, 7, 0, one);
+                if (s->char_tab_use[k]) {
+                    sprintf(one, "%5d ", s->char_tab_use[k]);
+                    jw_ui_text(v, 71, row, 7, 0, one);
+                    jw_ui_text(v, 22, row, 7, 0, "*");
+                } else {
+                    jw_ui_text(v, 75, row, 7, 0, "-");
+                }
+            }
+            if (s->char_type >= 1 && s->char_type <= 10) {
+                jw_ui_text(v, 20, 8 + s->char_type, 7, 0, "\x81\x9c");
+            }
+            /* The cell being changed: blanked, with what has been typed in
+             * it and the green block after that.  The four fields are at
+             * columns 31, 40, 51 and 62 -- measured, and not where the
+             * numbers themselves are written.  The line along the top says
+             * which column it is and what it will take, and is written over
+             * the one src/item.h put there. */
+            if (s->char_edit) {
+                static const int FIELD[5] = { 0, 31, 40, 51, 62 };
+                const int at = FIELD[s->char_edit];
+                const int row = 8 + s->char_edit_row;
+                int j;
+
+                jw_ui_text(v, at, row, 7, 0, "        ");
+                if (s->char_edit_n) {
+                    jw_ui_text(v, at, row, 7, 0, s->char_edit_typed);
+                }
+                j = (at - 1 + s->char_edit_n) * 8;
+                fill(v, j, (row - 1) * 16 + 7, j + 7, (row - 1) * 16 + 15, 4);
+
+                fill(v, 0, 0, 639, 15, 0);
+                top_clear();
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                jw_ui_text(v, 8, 1, 7, 0, "      " "\x95\xb6\x8e\x9a" " ");
+                if (s->char_edit == 1) {
+                    jw_ui_text(v, 19, 1, 7, 0,
+                               "\x83" "y" "\x83\x93\x81" "i" "\x90" "F"
+                               "\x81" "j1" "\x81" "`7 ");
+                    jw_ui_text(v, 34, 1, 7, 0, "\x95\xcf\x8d" "X");
+                } else if (s->char_edit == 4) {
+                    jw_ui_text(v, 19, 1, 7, 0, "\x8a\xd4\x8a" "u");
+                    jw_ui_text(v, 23, 1, 7, 0,
+                               "( -1.0" "\x81" "`500)  " "\x90" "}"
+                               "\x96\xca\x90\xa1\x96" "@(mm) ");
+                    jw_ui_text(v, 50, 1, 7, 0, "\x95\xcf\x8d" "X");
+                } else {
+                    jw_ui_text(v, 19, 1, 7, 0,
+                               s->char_edit == 2 ? "\x95\x9d"
+                                                 : "\x8d\x82");
+                    jw_ui_text(v, 21, 1, 7, 0,
+                               "(  0.1" "\x81" "`500)  " "\x90" "}"
+                               "\x96\xca\x90\xa1\x96" "@(mm) ");
+                    jw_ui_text(v, 48, 1, 7, 0, "\x95\xcf\x8d" "X");
+                }
+            }
+        }
         if ((s->command == 13 || s->command == 28) && s->top_item == 4) {
             static const int RULE[5] = { 236, 308, 396, 484, 556 };
             int k;

@@ -20,6 +20,12 @@ printf 'wait 40000000\n' > tmp/ostr/s.txt
 for step in "$@"; do
     [ -n "$step" ] || continue
     case "$step" in
+    type\ *)
+        printf 'type %s
+wait %s
+' "${step#type }" "${WAIT:-26000000}"             >> tmp/ostr/s.txt
+        continue
+        ;;
     key\ *)
         printf 'key %s\nwait %s\n' "${step#key }" "${WAIT:-26000000}" \
             >> tmp/ostr/s.txt

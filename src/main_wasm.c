@@ -240,6 +240,49 @@ static unsigned char dxf_set[5] = { 0, 0, 1, 0, 0 };
  * ③ 新規 保存 and ①選択確定 mean different things on them than they do on
  * 入出力's own. */
 static int dxf_mode;
+/* How big the drawing was when it was opened, saved or started afresh.
+ * **⑤新規図面 asks before it throws work away** -- the original writes
+ * `編集中の図面が失われます |①新規|②保存|③中止|` when there is any, and
+ * goes straight to an empty sheet when there is not. */
+static long base_n[4];
+
+static void base_mark(void)
+{
+    base_n[0] = drawing ? drawing->n_lines : 0;
+    base_n[1] = drawing ? drawing->n_arcs : 0;
+    base_n[2] = drawing ? drawing->n_texts : 0;
+    base_n[3] = drawing ? drawing->n_points : 0;
+}
+
+static int drawing_edited(void)
+{
+    return drawing
+        && (drawing->n_lines != base_n[0] || drawing->n_arcs != base_n[1]
+            || drawing->n_texts != base_n[2]
+            || drawing->n_points != base_n[3]);
+}
+
+static void drawing_new(void)
+{
+    /* **The paper and the scale carry over.**  Measured: from SAMPLE0 the
+     * empty sheet is A-4 at 1/1 and from SAMPLE1 it is A-4 at 1/100, which
+     * is what each of them was. */
+    const int paper = drawing ? drawing->paper : 4;
+    const double denom = drawing ? drawing->denom : 1.0;
+
+    jwc_free(drawing);
+    drawing = jwc_new();
+    if (drawing) {
+        jwc_set_paper(drawing, paper);
+        jwc_set_denom(drawing, denom);
+    }
+    jw_view_original(&view);
+    jw_cmd_pick(&cmd, 30);
+    jw_ui_from(&ui, drawing);
+    ui.command = 30;
+    memset(loaded_name, 0, sizeof loaded_name);
+    base_mark();
+}
 /* And whether a DXF has just been written, for ` 登 録  完 了 `. */
 static int dxf_done;
 static long dxf_n[4];
@@ -1124,6 +1167,7 @@ EMSCRIPTEN_KEEPALIVE int jw_open(const char *path)
     sprintf(status, "%ld lines  %ld arcs  %d texts  %d points",
             d->n_lines, d->n_arcs, d->n_texts, d->n_points);
     index_touch();
+    base_mark();
     return 1;
 }
 
@@ -1744,6 +1788,31 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         present();
         return -1;
     }
+    /* 文字 ④設定's table.  The box's own rules divide the columns, so they
+     * say which cell a press lands in: 文字種類 up to x 236 picks the type,
+     * and ペン, 文字幅, 文字高 and 間隔 (up to 308, 396, 484 and 556) open a
+     * field on that row.  Rows 9 to 18 are y 128 to 287. */
+    if ((ui.command == 13 || ui.command == 28) && ui.top_item == 4
+        && !ui.char_edit && x >= 147 && x < 556 && y >= 128 && y < 288
+        && drawing) {
+        const int row = y / 16 - 7;             /* 1 to 10 */
+
+        mouse_x = x;
+        mouse_y = y;
+        if (x < 236) {
+            drawing->char_type = row;
+            jw_ui_from(&ui, drawing);
+            ui.command = cmd.command;
+            ui.top_item = 4;
+        } else {
+            ui.char_edit = x < 308 ? 1 : x < 396 ? 2 : x < 484 ? 3 : 4;
+            ui.char_edit_row = row;
+            ui.char_edit_n = 0;
+            ui.char_edit_typed[0] = 0;
+        }
+        present();
+        return -1;
+    }
     /* ⑥ＤＸＦ ③設定's rows.  A press takes the side it lands on -- the left
      * one up to column 57 and the right one from 58 (measured at columns 38,
      * 51, 57, 58 and 63) -- and a press between two rows does nothing. */
@@ -1846,6 +1915,23 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         cmd.top_right = 0;
         if (ui.io_stage == 0 && (item == 1 || item == 2)) {
             ui.io_stage = item == 1 ? JW_IO_FILE : JW_IO_PLOT;
+        } else if (ui.io_stage == 0 && item == 5) {
+            /* ⑤新規図面: an empty sheet.  Measured -- the two counts go to
+             * nought, the paper stays A-4 at 1/1, the group goes back to 0
+             * and 入出力's own line is still up. */
+            if (drawing_edited()) {
+                ui.io_stage = JW_IO_NEWASK;
+            } else {
+                drawing_new();
+            }
+        } else if (ui.io_stage == JW_IO_NEWASK && item == 1) {
+            drawing_new();                      /* ①新規 */
+            ui.io_stage = 0;
+        } else if (ui.io_stage == JW_IO_NEWASK && item == 2) {
+            file_list(1);                       /* ②保存 */
+            ui.io_stage = JW_IO_SAVE;
+        } else if (ui.io_stage == JW_IO_NEWASK && item == 3) {
+            ui.io_stage = 0;                    /* ③中止 */
         } else if (ui.io_stage == JW_IO_FILE && (item == 1 || item == 2)) {
             /* `|①保存(L)|②読込(R)|③合成|…` -- **each label is its own
              * cell**, and either button presses it.  The (L) and (R) are
@@ -2034,7 +2120,11 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         } else if (ui.io_stage == JW_IO_PGO && item == 2) {
             ui.io_stage = 0;                    /* ② 中止 */
         }
+        /* ⑤新規図面 answers whether it changes io_stage or not: with an
+         * untouched drawing it just empties it and leaves the line alone,
+         * and src/item.h's question must not be written over that. */
         if (ui.io_stage == was && ui.ix_del == ixwas && !plot_wanted
+            && !(was == 0 && item == 5)
             && jw_ui_item_has(30, item, right)) {
             cmd.top_item = item;
             cmd.top_right = right;
@@ -2335,6 +2425,45 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* [ESC] on ⑦INDEX.  Measured (tools/ixprobe.sh): from the list it goes
      * back to ①ﾌｱｲﾙ's line, and from ①ｲﾝﾃﾞｯｸｽ削除's question it goes back to
      * the list with the pick and the marks as they were. */
+    /* 文字 ④設定's field: digits, [Enter] to put it in the drawing and
+     * [ESC] to give it up. */
+    if (ui.char_edit) {
+        if (key == 27) {
+            ui.char_edit = 0;
+        } else if (key == 13 || key == 10) {
+            if (ui.char_edit_n && drawing) {
+                const double val = atof(ui.char_edit_typed);
+                const int k = ui.char_edit_row;
+
+                if (ui.char_edit == 1) {
+                    drawing->text_pen[k] = (short)val;
+                } else if (ui.char_edit == 2) {
+                    drawing->text_w[k] = (short)(val * 10.0 + 0.5);
+                } else if (ui.char_edit == 3) {
+                    drawing->text_h[k] = (short)(val * 10.0 + 0.5);
+                } else {
+                    drawing->text_gap[k] =
+                        (short)(val * 10.0 + (val < 0 ? -0.5 : 0.5));
+                }
+            }
+            ui.char_edit = 0;
+            if (drawing) {
+                jw_ui_from(&ui, drawing);
+                ui.command = cmd.command;
+                ui.top_item = 4;
+            }
+        } else if (key == 8) {
+            if (ui.char_edit_n > 0) {
+                ui.char_edit_typed[--ui.char_edit_n] = 0;
+            }
+        } else if (key > ' ' && key < 127
+                   && ui.char_edit_n < (int)sizeof ui.char_edit_typed - 1) {
+            ui.char_edit_typed[ui.char_edit_n++] = (char)key;
+            ui.char_edit_typed[ui.char_edit_n] = 0;
+        }
+        present();
+        return -1;
+    }
     if (ui.command == 30 && ui.io_stage == JW_IO_INDEX && key == 27) {
         if (ui.ix_del) {
             ui.ix_del = 0;
