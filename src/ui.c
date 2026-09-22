@@ -2060,6 +2060,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     text = out;
                 }
             }
+            /* **A press on the top row clears the band with it.**  測定
+             * comes up with `【m】 (3)桁` under its line and ①距離 leaves
+             * row 2 empty; what the press writes there is in src/item.h
+             * like everything else, so the prompt's own rows 2 and 3 are
+             * skipped whenever a cell has been pressed. */
+            if (s->top_item && p->row != 1) {
+                continue;
+            }
             /* 複線, 面取 and ２線 carry a number of the program's own in
              * their line, and how many decimals it is shown to is the
              * drawing's.  See put_fixed. */
