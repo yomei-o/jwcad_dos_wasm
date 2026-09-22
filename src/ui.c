@@ -16,6 +16,7 @@
 #include "move.h"
 #include "esc.h"
 #include "item.h"
+#include "tategu.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -1074,6 +1075,57 @@ static int asks_range(void)
         }
     }
     return 0;
+}
+
+/* The sixteen shapes ｵﾌﾟｼｮﾝ ①建具平面 ②断面 ③立面 show, out of the library
+ * files that ship with the program.  See src/tategu.h for the format and the
+ * top of tmp/tatedraw.py's note for where the numbers came from.
+ *
+ * A unit is a quarter of a pixel both ways, the shape's y grows upwards while
+ * the screen's grows down, and the parts stand two hundred pixels apart end
+ * to end whatever their number -- eight hundred units, a door's width. */
+static void tategu(VGA *v, int which)
+{
+    static const char *const FILES[4] = {
+        0, "orig/JW_OPT1.DAT", "orig/JW_OPT2.DAT", "orig/JW_OPT3.DAT"
+    };
+    static JwTategu lib[4];
+    static int read[4];
+    const JwTategu *t;
+    int i;
+
+    if (which < 1 || which > 3) {
+        return;
+    }
+    if (!read[which]) {
+        read[which] = 1;
+        jw_tategu_read(FILES[which], &lib[which]);
+    }
+    t = &lib[which];
+    for (i = 0; i < t->n && i < 16; i++) {
+        const JwTateguShape *sh = &t->shape[i];
+        const int col = i & 1;
+        const int row = i >> 1;
+        const double left = col ? 420.0 : 150.0;
+        const double step = sh->parts > 1 ? 200.0 / (sh->parts - 1) : 0.0;
+        /* 54, not 53.75: the shape's own origin is on the pixel.  Measured
+         * -- cell [3]'s part is a line from y 0 to y 70 and the original
+         * draws it from 102 down to 84, which 54 + 48 gives with the same
+         * truncation everything else here uses. */
+        const double base = 54.0 + 48.0 * row;
+        int k;
+
+        for (k = 0; k < sh->n; k++) {
+            const JwTateguLine *l = &sh->line[k];
+            const double ax = left + (l->a - 1) * step + l->x1 * 0.25;
+            const double bx = left + (l->b - 1) * step + l->x2 * 0.25;
+            const double ay = base - l->y1 * 0.25;
+            const double by = base - l->y2 * 0.25;
+
+            jw_line(v, (int)ax, (int)ay, (int)bx, (int)by, 7, ROP_REPLACE,
+                    JW_STYLE_SOLID);
+        }
+    }
 }
 
 /* The two counts and the label under them.  A command writes what it has
@@ -2209,7 +2261,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             int k;
 
             fill(v, 122, 17, 638, 462, 0);
-            fill(v, 122, 464, 638, 478, 0);
+            fill(v, 122, 463, 638, 478, 0);
+            tategu(v, s->top_item);
             if (s->top_item == 3) {
                 /* ③立面 lays them out four across and four down, 96 tall,
                  * with the rules at x 251, 381 and 511. */
