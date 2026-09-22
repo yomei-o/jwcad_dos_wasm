@@ -73,7 +73,7 @@ typedef struct {
     JwcArc *arcs;
     /* How many the arrays hold, which is not the same as how many are used
      * once a drawing command has added to them. */
-    long cap_lines, cap_arcs, cap_texts;
+    long cap_lines, cap_arcs, cap_texts, cap_points;
     JwcText *texts;
     JwcPoint *points;
     char *text;                 /* the NUL-separated string pool */
@@ -220,6 +220,55 @@ int jwc_save(const Jwc *d, const char *path, const char **why);
  * to -- the browser wants them so it can hand the page a Blob.  The caller
  * frees what comes back; NULL means failure and `why` says what. */
 unsigned char *jwc_bytes(const Jwc *d, long *out_len, const char **why);
+
+/* 図形 (.JWK) -- the bytes ①登録 writes, for the entities the four arrays
+ * mark, measured from (bx,by).  Each array is one byte per entity of that
+ * kind, or NULL for none of them.  See jwc.c for the format, all of which
+ * came off files the original itself wrote. */
+unsigned char *jwc_zukei_bytes(const Jwc *d,
+                               const unsigned char *take_line,
+                               const unsigned char *take_arc,
+                               const unsigned char *take_point,
+                               const unsigned char *take_text,
+                               double bx, double by,
+                               long *out_len, const char **why);
+
+/* 図形 (.JWK) read back in.  The geometry is as the file keeps it: real
+ * millimetres, with the base point at the origin -- see jwc_zukei_bytes for
+ * the whole format.  Nothing here is turned into the drawing's units; that is
+ * the placing's job, and it needs the paper and the scale of the drawing the
+ * figure is going **into**. */
+typedef struct {
+    long n_lines, n_arcs, n_points, n_texts;
+    JwcLine *lines;
+    JwcArc *arcs;
+    JwcPoint *points;
+    JwcText *texts;
+    char *text;                 /* the pool the texts point into */
+    long text_len;
+    float denom;                /* the scale of the drawing it was cut from */
+    float box[3];               /* the three preview numbers, as written */
+} JwcZukei;
+
+/* Returns 1 and fills `z`, or 0 with a reason.  Everything it allocates goes
+ * back with jwc_zukei_free. */
+int jwc_zukei_read(JwcZukei *z, const unsigned char *raw, long len,
+                   const char **why);
+void jwc_zukei_free(JwcZukei *z);
+
+/* How many millimetres one of this drawing's units is: what a figure's
+ * coordinates are multiplied by on the way out and divided by on the way in.
+ * `(float)(paper / 518) * denom`, in that order and in float -- see
+ * jwc_zukei_bytes for why the order matters. */
+float jwc_zukei_scale(const Jwc *d);
+
+/* Append a record as it stands, the way 図形 ②読込 puts a figure down: every
+ * byte but the coordinates is the one that was read.  A text brings its
+ * string, which goes on the end of the pool. */
+int jwc_put_line(Jwc *d, const JwcLine *l);
+int jwc_put_arc(Jwc *d, const JwcArc *a);
+int jwc_put_point(Jwc *d, const JwcPoint *p);
+int jwc_put_text(Jwc *d, const JwcText *t);
 /* An empty drawing, the one the original has when it is started with no
  * file.  Without one in hand every drawing command does nothing. */
 Jwc *jwc_new(void);

@@ -17,6 +17,14 @@
 #define JW_ZUKEI_NAME   6       /* 図形 登録 ◆図形名入力 */
 #define JW_ZUKEI_WRITE  7       /* 書き込みます |① 実 行(L)|② 再選択(R)| */
 #define JW_ZUKEI_DONE   8
+/* The first corner taken with the **right** button, which takes the texts as
+ * well: the same step as stage 2 with another line.  src/ui.c picks between
+ * the two on JwUi.with_text. */
+#define JW_ZUKEI_RANGE2 12
+/* And ②読込's own road, out of tools/zukeiread.sh. */
+#define JW_ZUKEI_LIST   9       /* ②読込: the figures in the group */
+#define JW_ZUKEI_PUT   10       /* one picked: 位置指示 … |①倍率指定X,Y|… */
+#define JW_ZUKEI_PUT2  11       /* one down: ◆ 位置指示 … |①同図形別処理 |… */
 
 typedef struct {
     int stage;                  /* which press, 1 to 8; 0 ends the table */
@@ -143,6 +151,69 @@ static const JwZukei JW_ZUKEI[] = {
       "D" "\x8d\xed\x8f\x9c" "|" "\x87" "E" "\xda\xb2\xd4" \
       " |   <" "\x91\xbc\x90" "}" "\x96\xca" ">|" "\x87" "F" \
       "\x93" "o" "\x98" "^|" "\x87" "G" "\x95\xa1\x8e\xca" "|" },
+    /* press 9 */
+    { 9,  1, 7, 0x0000,
+      "[ESC]" },
+    { 9,  8, 7, 0x0000,
+      "\x81\x9e" " " "\x90" "}" "\x8c" "`" "\x91" "I" "\x91\xf0" \
+      " " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e\xa6" \
+      " |" "\x87" "@" "\x91" "I" "\x91\xf0\x8a" "m" "\x92\xe8" \
+      " |" "\x87" "A" "\x83" "h" "\x83\x89\x83" "C" "\x83" \
+      "u(A:)" "\x95\xcf\x8d" "X|" "\x87" "B" "\x83" "O" \
+      "\x83\x8b\x81" "[" "\x83" "v" "\x95\xcf\x8d" "X|" },
+    /* press 10 */
+    { 10,  1, 7, 0x0000,
+      "[ESC]  " "\x88\xca\x92" "u" "\x8e" "w" "\x8e\xa6" \
+      "(L)free (R)Read |" "\x87" "@" "\x94" "{" "\x97\xa6\x8e" \
+      "w" "\x92\xe8" "X,Y|" "\x87" "A" "\x8a" "p  " "\x93" "x|" \
+      "\x87" "B90" "\xdf\x96\x88" "|" "\x87" "C" \
+      "\xcf\xb3\xbd\x8a" "p|" "\x87" "D" \
+      "\x89\xbc\x95\x5c\x8e\xa6" "|" },
+    /* press 11 */
+    { 11,  1, 7, 0x0000,
+      "[ESC]" },
+    { 11,  8, 7, 0x0000,
+      "\x81\x9f" " " "\x88\xca\x92" "u" "\x8e" "w" "\x8e\xa6" \
+      "(L)free (R)Read |" "\x87" "@" "\x93\xaf\x90" "}" "\x8c" \
+      "`" "\x95\xca\x8f\x88\x97\x9d" " |" "\x87" "A" \
+      "\x91\xbc\x90" "}" "\x8c" "`" "\x93\xc7\x8d\x9e" "|" },
+    { 11, 73, 7, 0x0000,
+      "[BS]" "\x91" "O" "\x8d\x80" },
+    /* press 12 */
+    { 12,  1, 7, 0x0000,
+      "[ESC]  " },
+    { 12,  8, 7, 0x0000,
+      "\x90\xfc\xa5\x89" "~" "\xa5\x95\xb6\x8e\x9a" },
+    { 12, 18, 7, 0x0000,
+      "  " },
+    { 12, 20, 7, 0x0000,
+      "\x8f" "I" "\x93" "_" "\x8e" "w" "\x8e\xa6" " " },
+    { 12, 29, 7, 0x0000,
+      "\xcf\xb3\xbd" "(L) " },
+    { 12, 36, 7, 0x0000,
+      " " "\x94\xcd\x88\xcd\x8a" "m" "\x92\xe8" " " },
+    { 12, 46, 7, 0x0000,
+      "\xcf\xb3\xbd" "(R) " },
+    { 12, 53, 7, 0x0000,
+      "|" },
+    { 12, 54, 7, 0x0000,
+      "\x87" "@" },
+    { 12, 56, 7, 0x0000,
+      "\x83\x8c\x83" "C" "\x83\x84" },
+    { 12, 62, 7, 0x0000,
+      "|" },
+    { 12, 63, 7, 0x0000,
+      "\x87" "A" },
+    { 12, 65, 7, 0x0000,
+      "\x90\xfc\x8e\xed\x90" "F" },
+    { 12, 71, 7, 0x0000,
+      "|" },
+    { 12, 72, 7, 0x0000,
+      "\x87" "B" },
+    { 12, 74, 7, 0x0000,
+      "\x95\xb6\x8e\x9a\x8e\xed" },
+    { 12, 80, 7, 0x0000,
+      "|" },
     { 0, 0, 0, 0, 0 }
 };
 

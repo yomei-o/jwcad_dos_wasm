@@ -1049,6 +1049,67 @@ static int picked_text(const JwCmd *c, const Jwc *d, long k)
               != flipped(c, JW_FLIP_TEXT, k);
 }
 
+/* 図形 ①登録 -- the bytes of the figure for what the range picked.
+ *
+ * The same tests the range draws its selection with, so what goes in the file
+ * is exactly what is marked on the screen.  A point has no test of its own:
+ * it is in when its layer is within reach and it is inside the box, with no
+ * per-entity adding and removing -- that is what jw_cmd_marks does, and what
+ * the original does (図形's own line offers 線･円 and 線･円･文字 and says
+ * nothing about points, and a range over TEST1 that has two of its four
+ * points in it writes two into the file).
+ */
+unsigned char *jw_cmd_zukei_bytes(const JwCmd *c, const Jwc *d,
+                                  long *out_len, const char **why)
+{
+    unsigned char *take_line = NULL, *take_arc = NULL;
+    unsigned char *take_point = NULL, *take_text = NULL;
+    unsigned char *out = NULL;
+    long k;
+
+    *why = NULL;
+    *out_len = 0;
+    if (d->n_lines) {
+        take_line = (unsigned char *)malloc((size_t)d->n_lines);
+    }
+    if (d->n_arcs) {
+        take_arc = (unsigned char *)malloc((size_t)d->n_arcs);
+    }
+    if (d->n_points) {
+        take_point = (unsigned char *)malloc((size_t)d->n_points);
+    }
+    if (d->n_texts) {
+        take_text = (unsigned char *)malloc((size_t)d->n_texts);
+    }
+    if ((d->n_lines && !take_line) || (d->n_arcs && !take_arc)
+        || (d->n_points && !take_point) || (d->n_texts && !take_text)) {
+        *why = "out of memory";
+    } else {
+        for (k = 0; k < d->n_lines; k++) {
+            take_line[k] = (unsigned char)(picked_line(c, d, k) != 0);
+        }
+        for (k = 0; k < d->n_arcs; k++) {
+            take_arc[k] = (unsigned char)(picked_arc(c, d, k) != 0);
+        }
+        for (k = 0; k < d->n_points; k++) {
+            take_point[k] = (unsigned char)
+                (in_reach_layer(d, d->points[k].layer)
+                 && jw_cmd_in_range(c, d->points[k].x, d->points[k].y,
+                                    d->points[k].x, d->points[k].y));
+        }
+        for (k = 0; k < d->n_texts; k++) {
+            take_text[k] = (unsigned char)(picked_text(c, d, k) != 0);
+        }
+        out = jwc_zukei_bytes(d, take_line, take_arc, take_point, take_text,
+                              c->zukei_bx, c->zukei_by, out_len, why);
+    }
+    free(take_line);
+    free(take_arc);
+    free(take_point);
+    free(take_text);
+    return out;
+}
+
 static void freeze(JwCmd *c, const Jwc *d);
 
 /* 複写 ⑤反転: the range again, turned over in the line that was pressed.
@@ -1714,6 +1775,54 @@ static void copy_again(JwCmd *c, Jwc *d)
     c->copies++;
 }
 
+/* What 図形 ①登録 leaves on the screen: the figure it wrote, drawn again on
+ * top of everything, **in its own colours**.
+ *
+ * The original does not repaint after ① 実 行 -- it draws the entities it has
+ * just written over the red they were marked in, each in its own pen, and
+ * they stay there: pressing 図形 and ①登録 again leaves the screen exactly as
+ * it is.  That shows up as a difference only where a picked entity crosses an
+ * unpicked one, because the picked one is now on top: registering the whole
+ * of TEST1 leaves 113 pixels of cyan and 14 of magenta showing white, where
+ * the first painting had the cyan lines and the magenta texts on top.  It is
+ * **not** white paint -- the three pen-1 lines of the 5m dimension come back
+ * cyan, all 99 pixels of them.
+ *
+ * The points are left out: a point drawn again lands on the pixels it already
+ * has, so there is nothing to see either way, and nothing measured to say the
+ * original draws them.
+ */
+void jw_cmd_zukei_left(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
+{
+    long k;
+
+    if (!d) {
+        return;
+    }
+    v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+    v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+    v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+    v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+    for (k = 0; k < d->n_lines; k++) {
+        if (picked_line(c, d, k)) {
+            jw_view_line(v, d, &d->lines[k], w,
+                         jw_view_pen_colour(d->lines[k].pen));
+        }
+    }
+    for (k = 0; k < d->n_arcs; k++) {
+        if (picked_arc(c, d, k)) {
+            jw_view_arc(v, d, &d->arcs[k], w,
+                        jw_view_pen_colour(d->arcs[k].pen));
+        }
+    }
+    for (k = 0; k < d->n_texts; k++) {
+        if (picked_text(c, d, k)) {
+            jw_view_text(v, d, &d->texts[k], w,
+                         jw_view_text_colour(d, d->texts[k].size));
+        }
+    }
+}
+
 void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 {
     long k;
@@ -2307,10 +2416,10 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     /* `書き込みます |① 実 行(L)|② 再選択(R)|`.  Either way the road ends and
      * 図形's own line comes back.
      *
-     * **The file is not written yet.**  Its shape is measured -- see
-     * RESUME.md, 図形登録 -- but three numbers in its header are not
-     * understood, and a file with the wrong numbers in it is worse than no
-     * file: the original could not read it back. */
+     * The file itself goes out beside this, from src/main_wasm.c, which is
+     * where the port's disk is; jw_cmd_zukei_bytes above makes the bytes and
+     * jwc_zukei_bytes lays them out.  ② 再選択 goes back to the list of
+     * figures with the selection still in hand. */
     if (c->command == 27 && c->zukei == JW_ZUKEI_WRITE
         && (item == 1 || item == 2)) {
         c->zukei = item == 2 ? JW_ZUKEI_PICK : 0;

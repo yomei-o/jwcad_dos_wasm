@@ -52,6 +52,14 @@ static char loaded_name[13];
 static unsigned char pixels[VGA_MAX_STRIDE * 8 * VGA_MAX_HEIGHT];
 static unsigned char rgba[640 * 480 * 4];
 static char status[256];
+/* 図形 ①登録's leavings: the selection as it stood when the figure was
+ * written, kept so that it can go on being painted white.  The original has a
+ * screen and simply does not repaint it; this has to redraw every frame, so
+ * it keeps the shape of the thing instead.  The three selection arrays are
+ * **not** kept -- they belong to `cmd` and it is free to reuse them -- so the
+ * range and the 追加･除外 list do the picking, which is what 図形 used anyway. */
+static JwCmd zukei_left;
+static int zukei_left_on;
 static int mouse_x = 200, mouse_y = 200;   /* where the original leaves it */
 
 EMSCRIPTEN_KEEPALIVE int jw_width(void)  { return vga.width; }
@@ -214,6 +222,9 @@ static void present(void)
      * back through it. */
     if (!panel_up()) {
         jw_cmd_marked(&cmd, &vga, drawing, &view);
+        if (zukei_left_on) {
+            jw_cmd_zukei_left(&zukei_left, &vga, drawing, &view);
+        }
         jw_cmd_after(&cmd, &vga, drawing, &view);
     }
     /* the line a half-finished command drags, then the pointer -- both
@@ -647,6 +658,55 @@ static int file_write(void)
     fclose(f);
     free(bytes);
     sprintf(status, "%s.JWC  %ld bytes", stem, len);
+    return 1;
+}
+
+/* 図形 ①登録's ① 実 行 -- put the figure on the disk.
+ *
+ * The original writes it into the group's own directory under the name that
+ * was typed: its top line says ` A:ZUKEI_1_\NAME.JWK ` while it asks, and the
+ * file trace of the running original (tools/zukei.sh with DOSEMU_FILE_TRACE)
+ * shows it building `ZUKEI_1_\jwc_temp.000` first and leaving `NAME.JWK`
+ * behind -- the temp file is gone by the end, so this writes the one name.
+ *
+ * A selection with nothing in it leaves no file at all, which is measured:
+ * the road still offers 書き込みます and ① 実 行 still goes back to the menu,
+ * and the directory is still empty afterwards.
+ */
+static int zukei_write(void)
+{
+    char path[256];
+    const char *why;
+    unsigned char *bytes;
+    long len;
+    FILE *f;
+
+    if (!drawing || !cmd.zukei_name_n) {
+        return 0;
+    }
+    bytes = jw_cmd_zukei_bytes(&cmd, drawing, &len, &why);
+    if (!bytes) {
+        sprintf(status, "%s", why ? why : "nothing to write");
+        return 0;
+    }
+    mkdir(JW_DIR "/ZUKEI_1_", 0777);
+    sprintf(path, "%s/ZUKEI_1_/%s.JWK", JW_DIR, cmd.zukei_name);
+    f = fopen(path, "wb");
+    if (!f) {
+        free(bytes);
+        sprintf(status, "%s: cannot write", path);
+        return 0;
+    }
+    fwrite(bytes, 1, (size_t)len, f);
+    fclose(f);
+    free(bytes);
+    sprintf(status, "%s.JWK  %ld bytes", cmd.zukei_name, len);
+    /* and it stays on the screen in white */
+    zukei_left = cmd;
+    zukei_left.sel_line = NULL;
+    zukei_left.sel_arc = NULL;
+    zukei_left.sel_text = NULL;
+    zukei_left_on = 1;
     return 1;
 }
 
@@ -1497,6 +1557,12 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         return -1;
     }
     if (cmd.command && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
+        /* 図形 ①登録's ① 実 行: the file goes out **before** the press is
+         * handed on, because that is what clears the road. */
+        if (cmd.command == 27 && cmd.zukei == JW_ZUKEI_WRITE && !right
+            && jw_ui_top_item(x, y) == 1) {
+            zukei_write();
+        }
         if (jw_cmd_top(&cmd, drawing, jw_ui_top_item(x, y), right)) {
             jw_ui_from(&ui, drawing);       /* the counts move with it */
             ui.command = cmd.command;

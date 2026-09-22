@@ -28,6 +28,13 @@ DRAWING="${DRAWING:-SAMPLE0}"
 RANGE="${RANGE:-170 130 330 260}"
 BASE="${BASE:-170 130}"
 NAME="${NAME:-BOX}"
+# **The first corner's button decides what the range takes.**  JW_CADV.HLP,
+# 図 形 その1/4: 「始点を左クリックすると線と円弧と曲線が、右クリックする
+# と線と円弧と曲線と文字が選択されます」.
+FIRST="${FIRST:-}"
+# The base point is taken freely with the left button and **read** with the
+# right one, which is the only way to put it exactly on something.
+BASEBTN="${BASEBTN:-}"
 
 rm -rf tmp/zukei/root
 cp -rp orig tmp/zukei/root
@@ -49,13 +56,13 @@ press() {   # x y [right]
     printf 'shot ../jwcad_dos_wasm/tmp/zukei/s0.raw\n'
     press 84 8                        # ①登録
     printf 'shot ../jwcad_dos_wasm/tmp/zukei/s1.raw\n'
-    press "$ax" "$ay"                 # the range, corner one
+    press "$ax" "$ay" $FIRST          # the range, corner one
     printf 'shot ../jwcad_dos_wasm/tmp/zukei/s2.raw\n'
     press "$bx" "$by" right           # and the other, which fixes it
     printf 'shot ../jwcad_dos_wasm/tmp/zukei/s3.raw\n'
     press 560 8                       # ①範囲 確定
     printf 'shot ../jwcad_dos_wasm/tmp/zukei/s4.raw\n'
-    press "$px" "$py"                 # the base point
+    press "$px" "$py" $BASEBTN        # the base point
     printf 'shot ../jwcad_dos_wasm/tmp/zukei/s5.raw\n'
     press 296 8                       # ①選択確定 (cols 32..42 of that line)
     printf 'shot ../jwcad_dos_wasm/tmp/zukei/s6.raw\n'
@@ -64,6 +71,47 @@ press() {   # x y [right]
     printf 'shot ../jwcad_dos_wasm/tmp/zukei/s7.raw\n'
     press 210 8                       # ① 実 行(L)
     printf 'shot ../jwcad_dos_wasm/tmp/zukei/s8.raw\n'
+    # And whatever else is wanted afterwards, which is how to see how long
+    # what the registration leaves on the screen stays there:
+    #     EXTRA="30 248;84 8" sh tools/zukei.sh
+    #
+    # A step that starts with `m` **moves the pointer and does not press**,
+    # which is the only way to see what follows the pointer:
+    #     EXTRA="140 8;190 72;m 190 120" sh tools/zukei.sh
+    #
+    # `r X Y` presses the right button and `t NAME` types a name and
+    # presses [Enter], so a whole second registration fits in EXTRA:
+    #     EXTRA="84 8;200 150;r 300 250;560 8;200 150;296 8;t AAA;210 8"
+    n=9
+    IFS=';'
+    for step in $EXTRA; do
+        unset IFS
+        case "$step" in
+        m*)
+            set -- $step
+            printf 'mouse %s %s\nwait %s\n' "$2" "$3" "$WAIT"
+            ;;
+        r*)
+            # `r X Y` presses the **right** button there.
+            set -- $step
+            press "$2" "$3" right
+            ;;
+        t*)
+            # `t NAME` types it and presses [Enter], which is what
+            # ◆図形名入力 wants.
+            set -- $step
+            printf 'type %s\nwait %s\nkey enter\nwait %s\n' \
+                "$2" "$WAIT" "$WAIT"
+            ;;
+        *)
+            press $step
+            ;;
+        esac
+        printf 'shot ../jwcad_dos_wasm/tmp/zukei/s%s.raw\n' "$n"
+        n=$((n + 1))
+        IFS=';'
+    done
+    unset IFS
 } > tmp/zukei/ss.txt
 
 DOSEMU_CLOCK="${DOSEMU_CLOCK:-20000}" DOSEMU_FILE_TRACE=1 \

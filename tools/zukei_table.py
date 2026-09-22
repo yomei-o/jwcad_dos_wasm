@@ -1,8 +1,16 @@
 # -*- coding: utf-8 -*-
 """src/zukei.h -- what 図形's registration road writes, stage by stage.
 
-    sh tools/zukei.sh                      # drive the original
+    FIRST=right sh tools/zukei.sh          # the first corner's other button
+    cp tmp/zukei/raw.txt tmp/zukei/raw_right.txt
+    sh tools/zukeiread.sh                  # ①登録 and on into ②読込
     python tools/zukei_table.py > src/zukei.h
+
+**Two runs.**  The first corner's button decides what the range takes, and
+the top line says which -- `<線･円>` for the left and `線･円･文字` with a
+third cell `③文字種` for the right (JW_CADV.HLP, 図 形 その1/4).  The
+left-button line is stage 2 and the right-button one is kept as stage 12, the
+way src/span.h keeps 消去's pair.
 
 tools/zukei.sh walks 図形 ①登録 to the end and shoots after every press; this
 turns the strings between two shots into a table in src/stage.h's shape.  The
@@ -17,6 +25,19 @@ stages are the presses:
     7  the name, [Enter] 書き込みます |① 実 行(L)|② 再選択(R)|
     8  ① 実 行          back to 図形's own line
 
+and tools/zukeiread.sh presses on from there, into ②読込:
+
+    9  ②読込            ◇ 図形選択 マウス指示 |1)選択確定 |2)ドライブ …
+   10  the figure picked  位置指示(L)free (R)Read |1)倍率指定X,Y|2)角  度|
+                          3)90ﾟ毎|4)ﾏｳｽ角|5)仮表示|
+   11  a point            the figure goes down, and the line becomes
+                          ◆ 位置指示(L)free (R)Read |1)同図形別処理 |
+                          2)他図形読込|  with [BS]前項 at column 73
+
+Stage 10 also writes `   0.000` and a degree sign at column 47 of **row 2** --
+the angle the figure goes in at, which is a number and not a fixed string, so
+it is not in this table; src/ui.c writes it out of JwCmd.
+
 Only row 1 is kept: the rest of what those presses write is the file screen's
 own furniture, which src/ui.c draws from the drawing rather than replaying.
 """
@@ -28,6 +49,7 @@ import sys
 sys.stdout.reconfigure(encoding='utf-8', newline='\n')
 
 LOG = os.environ.get('ZUKEILOG', 'tmp/zukei/raw.txt')
+RIGHT = os.environ.get('ZUKEIRIGHT', 'tmp/zukei/raw_right.txt')
 WAIT = b'\x81\x96\x82\xa8\x91\xd2\x82\xbf\x89\xba\x82\xb3\x82\xa2\x81\x96'
 
 
@@ -56,26 +78,35 @@ def literal(raw, indent='      ', width=58):
     return (' \\\n' + indent).join(lines)
 
 
-held, stages = [], {}
-for line in open(LOG, encoding='latin-1'):
-    m = re.search(r'\[shot\] .*?s(\d+)\.raw', line)
-    if m:
-        stages[int(m.group(1))] = held
-        held = []
-        continue
-    if '[bp]' not in line or line.count('"') < 2:
-        continue
-    f = line.split()
-    if len(f) < 15:
-        continue
-    try:
-        col, row = int(f[8], 16), int(f[9], 16)
-        fg, bg = int(f[10], 16), int(f[11], 16)
-    except ValueError:
-        continue
-    text = line[line.index('"'):].rstrip('\n')
-    held.append((col, row, fg, bg,
-                 text[text.index('"') + 1:text.rindex('"')].encode('latin-1')))
+def collect(path):
+    held, stages = [], {}
+    for line in open(path, encoding='latin-1'):
+        m = re.search(r'\[shot\] .*?s(\d+)\.raw', line)
+        if m:
+            stages[int(m.group(1))] = held
+            held = []
+            continue
+        if '[bp]' not in line or line.count('"') < 2:
+            continue
+        f = line.split()
+        if len(f) < 15:
+            continue
+        try:
+            col, row = int(f[8], 16), int(f[9], 16)
+            fg, bg = int(f[10], 16), int(f[11], 16)
+        except ValueError:
+            continue
+        text = line[line.index('"'):].rstrip('\n')
+        held.append((col, row, fg, bg,
+                     text[text.index('"') + 1:text.rindex('"')].encode('latin-1')))
+    return stages
+
+
+stages = collect(LOG)
+try:
+    stages[12] = collect(RIGHT)[2]
+except (OSError, KeyError):
+    sys.stderr.write('no right-button run in %s; stage 12 left out\n' % RIGHT)
 
 print('''/* src/zukei.h -- 図形's registration road, as the original writes it.
  *
@@ -96,6 +127,14 @@ print('''/* src/zukei.h -- 図形's registration road, as the original writes it
 #define JW_ZUKEI_NAME   6       /* 図形 登録 ◆図形名入力 */
 #define JW_ZUKEI_WRITE  7       /* 書き込みます |① 実 行(L)|② 再選択(R)| */
 #define JW_ZUKEI_DONE   8
+/* The first corner taken with the **right** button, which takes the texts as
+ * well: the same step as stage 2 with another line.  src/ui.c picks between
+ * the two on JwUi.with_text. */
+#define JW_ZUKEI_RANGE2 12
+/* And ②読込's own road, out of tools/zukeiread.sh. */
+#define JW_ZUKEI_LIST   9       /* ②読込: the figures in the group */
+#define JW_ZUKEI_PUT   10       /* one picked: 位置指示 … |①倍率指定X,Y|… */
+#define JW_ZUKEI_PUT2  11       /* one down: ◆ 位置指示 … |①同図形別処理 |… */
 
 typedef struct {
     int stage;                  /* which press, 1 to 8; 0 ends the table */

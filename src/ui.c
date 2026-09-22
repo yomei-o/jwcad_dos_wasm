@@ -2272,9 +2272,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * what the original writes at each step. */
         if (s->zukei && s->command == 27) {
             const JwZukei *z;
+            /* The first corner taken with the **right** button says
+             * `線･円･文字` and offers ③文字種; with the left one it says
+             * `<線･円>` and stops at ②線種色.  src/zukei.h keeps the pair as
+             * stages 2 and 12, the way src/span.h keeps 消去's. */
+            const int st = s->zukei == 2 && s->with_text ? JW_ZUKEI_RANGE2
+                         : s->zukei;
 
             for (z = JW_ZUKEI; z->stage; z++) {
-                if (z->stage == s->zukei) {
+                if (z->stage == st) {
                     jw_ui_text(v, z->col, 1, (unsigned)z->fg,
                                (unsigned)z->bg, z->text);
                 }

@@ -41,6 +41,7 @@
  */
 #include "jwc.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -507,6 +508,7 @@ Jwc *jwc_load(const char *path, const char **why)
     d->arcs = (JwcArc *)calloc((size_t)(d->n_arcs + 1), sizeof *d->arcs);
     d->texts = (JwcText *)calloc((size_t)(d->n_texts + 1), sizeof *d->texts);
     d->points = (JwcPoint *)calloc((size_t)(d->n_points + 1), sizeof *d->points);
+    d->cap_points = d->n_points + 1;
     d->text = (char *)calloc((size_t)(d->text_len + 1), 1);
     if (!d->lines || !d->arcs || !d->texts || !d->points || !d->text) {
         free(file);
@@ -897,6 +899,580 @@ unsigned char *jwc_bytes(const Jwc *d, long *out_len, const char **why)
 
     *out_len = len;
     return out;
+}
+
+/* 図形 (.JWK) -- what ①登録 writes.
+ *
+ * The same memory image a drawing is, with two header lines instead of four
+ * and its sections in another order.  Every part of it was read off files the
+ * original itself wrote (tools/zukei.sh, tools/zukeigrid.sh):
+ *
+ *   0x000  `jw_cad(c)sym`, twenty-seven dots and a NUL -- forty bytes, where
+ *          a drawing has `jw_cad(c)data` and its own flag bytes among the
+ *          dots.  A figure has none of those flags: TEST1's `a` at offset 20
+ *          is a dot here, and the drawing's dot at 39 is a NUL.
+ *   0x028  the drawing's own bytes 0x28..0xc7, byte for byte -- the two
+ *          32-byte 図面名 fields and the spaces after them, ending in the
+ *          newline that closes the line.
+ *   0x0c8  a line of its own: the nine numbers below, a NUL, spaces, and a
+ *          newline in the last byte.
+ *   0x190  the lines, the arcs, the points, the texts and the string pool.
+ *          Each record is byte for byte the drawing's -- but **the points
+ *          come before the texts**, where a drawing puts them behind the
+ *          pool, and a text's record keeps its offset into the pool with a
+ *          zero where the drawing keeps the pool's segment.
+ *
+ * The nine numbers are the original's own format string, at 0x4345a of
+ * decomp/ovl/jw01.exe:
+ *
+ *     %li,%li,%i,%i,%f,%f,%f,%i,%g
+ *
+ * which is lines, arcs, **points, texts** (again not the drawing's order,
+ * which has the texts third), three numbers for the preview box, the string
+ * pool's length in bytes, and the drawing's scale.
+ *
+ * The three preview numbers were measured rather than guessed at: the same
+ * figure registered from a grid of base points and ranges (tools/zukeigrid.sh)
+ * gives, to the sixth decimal in every one of ten files,
+ *
+ *     s  = 88 / the longer of the figure's width and height
+ *     n1 = 4 + s * how far the figure reaches left of the base point
+ *     n2 = 4 + s * how far it reaches below it
+ *
+ * where the width and the height are of the box round the figure **and the
+ * base point** -- the origin is always inside it -- and an arc counts for the
+ * part of it that is drawn rather than its whole circle.  Two of the ten
+ * settle the rule against the near misses: a figure ten wide and thirty-five
+ * tall has s = 88/35.398, so it is the longer side and not the width, and a
+ * quarter circle has s = 88 / the quarter's own width, not the circle's.
+ *
+ * So the preview is a box 96 across with a margin of 4, and (n1,n2) is where
+ * the base point sits in it.
+ *
+ * A record is the drawing's own byte for byte with **two exceptions**, both
+ * measured by holding figures the original wrote against the drawings they
+ * came out of:
+ *
+ *   * the third of the four spare bytes -- rest[2], the one after the layer
+ *     -- comes out with bit 1 set, in all four kinds.  SAMPLE0's line has 00
+ *     there and its figure 02; TEST1's texts have 80, 08, 00 and 0a and its
+ *     figure 82, 0a, 02 and 0a; one of its lines has 01 and comes out 03, so
+ *     it is a bit being set and not a number being written.
+ *   * an **arc**'s rest[1] comes out zero, where a line's, a point's and a
+ *     text's are copied.  TEST1's arcs have 10 there and come out 00;
+ *     TEST3's have 0d and come out 00; and TEST1's line with 30 -- the same
+ *     bit set -- keeps its 30, so it is the arc and not the bit.
+ */
+static void arc_extent(const JwcArc *a, double *x0, double *y0,
+                       double *x1, double *y1)
+{
+    const double pi = 3.14159265358979323846;
+    const double d2r = pi / 180.0 / 65536.0;
+    const double rx = a->r;
+    const double ry = a->r * (a->flatten > 0 ? a->flatten / 10000.0 : 1.0);
+    const double t = (double)a->tilt * d2r;
+    const double ct = cos(t), st = sin(t);
+    double from = (double)a->start * d2r;
+    double span = a->end == a->start ? 2.0 * pi
+                : (double)(a->end > a->start ? a->end - a->start
+                           : a->end + (360L << 16) - a->start) * d2r;
+    double cand[6];
+    int n, i;
+
+    /* The same parametrisation jw_arc_poly draws with: the angle is the
+     * ellipse's own parameter, not the direction from the centre. */
+    cand[0] = from;
+    cand[1] = from + span;
+    /* Where x and y stop moving: dx/da = 0 and dy/da = 0, and the half turn
+     * after each, which is the other side. */
+    cand[2] = atan2(-ry * st, rx * ct);
+    cand[3] = cand[2] + pi;
+    cand[4] = atan2(ry * ct, rx * st);
+    cand[5] = cand[4] + pi;
+    n = 6;
+    *x0 = *y0 = 1e30;
+    *x1 = *y1 = -1e30;
+    for (i = 0; i < n; i++) {
+        double a1 = cand[i], x, y, off;
+
+        if (i >= 2) {                   /* only if the sweep passes it */
+            off = fmod(a1 - from, 2.0 * pi);
+            if (off < 0) {
+                off += 2.0 * pi;
+            }
+            if (off > span) {
+                continue;
+            }
+        }
+        x = a->cx + rx * cos(a1) * ct - ry * sin(a1) * st;
+        y = a->cy + rx * cos(a1) * st + ry * sin(a1) * ct;
+        if (x < *x0) *x0 = x;
+        if (x > *x1) *x1 = x;
+        if (y < *y0) *y0 = y;
+        if (y > *y1) *y1 = y;
+    }
+}
+
+/* Drawing units to the millimetres a figure is kept in, **in float and in
+ * one multiply**.  Not a niggle: SAMPLE0's -9.9427490234375 comes out
+ * c0b66cab this way and c0b66cac with the paper and the scale applied one
+ * after the other, and TEST1's point at 124.18013763427734 comes out
+ * c6c408f0 this way and c6c408f1 the other -- and the original's own files
+ * say c0b66cab and c6c408f0.  So the factor is worked out once, as a float,
+ * and each coordinate is one float multiply away from it. */
+static float mm(double v, float k)
+{
+    return (float)v * k;
+}
+
+unsigned char *jwc_zukei_bytes(const Jwc *d,
+                               const unsigned char *take_line,
+                               const unsigned char *take_arc,
+                               const unsigned char *take_point,
+                               const unsigned char *take_text,
+                               double bx, double by,
+                               long *out_len, const char **why)
+{
+    static const char TAG[] = "jw_cad(c)sym";
+    char line[TEXT_LINE * 2];
+    unsigned char *out;
+    /* **A figure is kept in millimetres of the real thing**, not in the
+     * drawing's own units, which is what lets it be read into a drawing at
+     * any scale.  Measured: SAMPLE0's vertical at 61.7374 units comes back
+     * out of the original's own file as 35.3977, and 61.7374 * 297 / 518 is
+     * 35.3977 exactly -- 297 being A-4's width, which is what a drawing unit
+     * is a 518th of.  TEST1, at 1/100, multiplies by its hundred on top of
+     * that: its 5m line is 5000 in the file.
+     *
+     * **The paper's own width, not unit_mm.**  unit_mm is 518/297 rounded to
+     * a float, and dividing by that is not multiplying by 297/518: SAMPLE0's
+     * -9.9427490234375 comes out -5.7007656 the one way and -5.7007651 the
+     * other, and the original's file says -5.7007651. */
+    const float mmk = jwc_zukei_scale(d);
+    double x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+    float span, s, n1, n2;
+    long lines = 0, arcs = 0, points = 0, texts = 0, pool = 0;
+    long len, p, k;
+
+    *why = NULL;
+    *out_len = 0;
+    if (!d->raw || d->raw_len < 0xc8) {
+        *why = "nothing was read in";
+        return NULL;
+    }
+    /* What was picked, and the box round it -- **with the base point in it**,
+     * which is why x0,y0,x1,y1 start at nothing rather than at the first
+     * entity. */
+    for (k = 0; k < d->n_lines; k++) {
+        const JwcLine *l = &d->lines[k];
+
+        if (take_line && !take_line[k]) {
+            continue;
+        }
+        lines++;
+        if (mm(l->x0 - bx, mmk) < x0) x0 = mm(l->x0 - bx, mmk);
+        if (mm(l->x0 - bx, mmk) > x1) x1 = mm(l->x0 - bx, mmk);
+        if (mm(l->x1 - bx, mmk) < x0) x0 = mm(l->x1 - bx, mmk);
+        if (mm(l->x1 - bx, mmk) > x1) x1 = mm(l->x1 - bx, mmk);
+        if (mm(l->y0 - by, mmk) < y0) y0 = mm(l->y0 - by, mmk);
+        if (mm(l->y0 - by, mmk) > y1) y1 = mm(l->y0 - by, mmk);
+        if (mm(l->y1 - by, mmk) < y0) y0 = mm(l->y1 - by, mmk);
+        if (mm(l->y1 - by, mmk) > y1) y1 = mm(l->y1 - by, mmk);
+    }
+    for (k = 0; k < d->n_arcs; k++) {
+        double ax0, ay0, ax1, ay1;
+
+        if (take_arc && !take_arc[k]) {
+            continue;
+        }
+        arcs++;
+        arc_extent(&d->arcs[k], &ax0, &ay0, &ax1, &ay1);
+        if (mm(ax0 - bx, mmk) < x0) x0 = mm(ax0 - bx, mmk);
+        if (mm(ax1 - bx, mmk) > x1) x1 = mm(ax1 - bx, mmk);
+        if (mm(ay0 - by, mmk) < y0) y0 = mm(ay0 - by, mmk);
+        if (mm(ay1 - by, mmk) > y1) y1 = mm(ay1 - by, mmk);
+    }
+    for (k = 0; k < d->n_points; k++) {
+        const JwcPoint *q = &d->points[k];
+
+        if (take_point && !take_point[k]) {
+            continue;
+        }
+        points++;
+        if (mm(q->x - bx, mmk) < x0) x0 = mm(q->x - bx, mmk);
+        if (mm(q->x - bx, mmk) > x1) x1 = mm(q->x - bx, mmk);
+        if (mm(q->y - by, mmk) < y0) y0 = mm(q->y - by, mmk);
+        if (mm(q->y - by, mmk) > y1) y1 = mm(q->y - by, mmk);
+    }
+    for (k = 0; k < d->n_texts; k++) {
+        const JwcText *t = &d->texts[k];
+
+        if (take_text && !take_text[k]) {
+            continue;
+        }
+        texts++;
+        pool += (long)(t->text ? strlen(t->text) : 0) + 1;
+        if (mm(t->x0 - bx, mmk) < x0) x0 = mm(t->x0 - bx, mmk);
+        if (mm(t->x0 - bx, mmk) > x1) x1 = mm(t->x0 - bx, mmk);
+        if (mm(t->x1 - bx, mmk) < x0) x0 = mm(t->x1 - bx, mmk);
+        if (mm(t->x1 - bx, mmk) > x1) x1 = mm(t->x1 - bx, mmk);
+        if (mm(t->y0 - by, mmk) < y0) y0 = mm(t->y0 - by, mmk);
+        if (mm(t->y0 - by, mmk) > y1) y1 = mm(t->y0 - by, mmk);
+        if (mm(t->y1 - by, mmk) < y0) y0 = mm(t->y1 - by, mmk);
+        if (mm(t->y1 - by, mmk) > y1) y1 = mm(t->y1 - by, mmk);
+    }
+    if (!lines && !arcs && !points && !texts) {
+        /* The original writes no file at all for an empty selection: walking
+         * the road with a range that picks nothing still puts `書き込みます`
+         * up and still says A:ZUKEI_1_\NAME.JWK, and ① 実 行 leaves the
+         * directory empty (tools/zukei.sh with TEST1 140,130-320,225). */
+        *why = "nothing was picked";
+        return NULL;
+    }
+    /* **In float, not in double.**  SAMPLE0's BOX comes out 43.032702 worked
+     * out in double and 43.032700 in float, and the original's own file says
+     * 43.032700.  Eight files agree once it is done this way and two of them
+     * do not otherwise (tools/jwkcheck.py). */
+    span = (float)((x1 - x0) > (y1 - y0) ? x1 - x0 : y1 - y0);
+    if (span <= 0) {
+        /* A figure with no size at all -- one point, with the base point read
+         * onto it.  Not measured: the road was never walked to a file with
+         * this in it, and 88/0 is not something to guess at.  Only the third
+         * number is affected; the other two are 4 whatever this is. */
+        span = 1;
+    }
+    s = 88.0f / span;
+    n1 = 4.0f + s * (float)(x0 < 0 ? -x0 : 0.0);
+    n2 = 4.0f + s * (float)(y0 < 0 ? -y0 : 0.0);
+
+    len = 0x190 + lines * LINE_SIZE + arcs * ARC_SIZE + points * POINT_SIZE
+        + texts * TEXT_SIZE + pool;
+    out = (unsigned char *)malloc((size_t)len);
+    if (!out) {
+        *why = "out of memory";
+        return NULL;
+    }
+    memset(out, '.', 40);
+    memcpy(out, TAG, sizeof TAG - 1);
+    out[39] = '\0';
+    memcpy(out + 40, d->raw + 40, 0xc8 - 40);
+    sprintf(line, "%ld,%ld,%ld,%ld,%f,%f,%f,%ld,%g", lines, arcs, points,
+            texts, (double)n1, (double)n2, (double)s, pool, (double)d->denom);
+    put_header(out + 0xc8, line);
+
+    p = 0x190;
+    for (k = 0; k < d->n_lines; k++) {
+        const JwcLine *l = &d->lines[k];
+        unsigned char *r = out + p;
+
+        if (take_line && !take_line[k]) {
+            continue;
+        }
+        wr_f32(r, mm(l->x0 - bx, mmk));
+        wr_f32(r + 4, mm(l->y0 - by, mmk));
+        wr_f32(r + 8, mm(l->x1 - bx, mmk));
+        wr_f32(r + 12, mm(l->y1 - by, mmk));
+        r[16] = l->type;
+        r[17] = l->pen;
+        r[18] = l->layer;
+        r[19] = l->rest[1];
+        r[20] = (unsigned char)(l->rest[2] | 2);
+        r[21] = l->rest[3];
+        p += LINE_SIZE;
+    }
+    for (k = 0; k < d->n_arcs; k++) {
+        const JwcArc *a = &d->arcs[k];
+        unsigned char *r = out + p;
+
+        if (take_arc && !take_arc[k]) {
+            continue;
+        }
+        wr_f32(r, mm(a->cx - bx, mmk));
+        wr_f32(r + 4, mm(a->cy - by, mmk));
+        wr_f32(r + 8, mm(a->r, mmk));
+        wr_u16(r + 12, (unsigned)(unsigned short)a->flatten);
+        wr_i32(r + 14, a->start);
+        wr_i32(r + 18, a->end);
+        wr_i32(r + 22, a->tilt);
+        r[26] = a->type;
+        r[27] = a->pen;
+        r[28] = a->layer;
+        r[29] = 0;
+        r[30] = (unsigned char)(a->rest[2] | 2);
+        r[31] = a->rest[3];
+        p += ARC_SIZE;
+    }
+    for (k = 0; k < d->n_points; k++) {
+        const JwcPoint *q = &d->points[k];
+        unsigned char *r = out + p;
+
+        if (take_point && !take_point[k]) {
+            continue;
+        }
+        wr_f32(r, mm(q->x - bx, mmk));
+        wr_f32(r + 4, mm(q->y - by, mmk));
+        r[8] = q->layer;
+        r[9] = q->rest[1];
+        r[10] = (unsigned char)(q->rest[2] | 2);
+        r[11] = q->rest[3];
+        p += POINT_SIZE;
+    }
+    {
+        long at = 0;                    /* where the next string goes */
+        unsigned char *strings = out + p + texts * TEXT_SIZE;
+
+        for (k = 0; k < d->n_texts; k++) {
+            const JwcText *t = &d->texts[k];
+            unsigned char *r = out + p;
+            long n;
+
+            if (take_text && !take_text[k]) {
+                continue;
+            }
+            wr_f32(r, mm(t->x0 - bx, mmk));
+            wr_f32(r + 4, mm(t->y0 - by, mmk));
+            wr_f32(r + 8, mm(t->x1 - bx, mmk));
+            wr_f32(r + 12, mm(t->y1 - by, mmk));
+            /* The offset into this file's own pool, and a zero where the
+             * drawing keeps the segment the pool sat at in memory. */
+            wr_i32(r + 16, at);
+            r[20] = t->size;
+            r[21] = t->layer;
+            r[22] = (unsigned char)(t->rest[2] | 2);
+            r[23] = t->rest[3];
+            n = (long)(t->text ? strlen(t->text) : 0);
+            if (n) {
+                memcpy(strings + at, t->text, (size_t)n);
+            }
+            strings[at + n] = '\0';
+            at += n + 1;
+            p += TEXT_SIZE;
+        }
+        p += pool;
+    }
+
+    *out_len = len;
+    return out;
+}
+
+int jwc_zukei_read(JwcZukei *z, const unsigned char *raw, long len,
+                   const char **why)
+{
+    char line[TEXT_LINE];
+    const char *f;
+    long at, need, k;
+
+    *why = NULL;
+    memset(z, 0, sizeof *z);
+    if (!raw || len < 0x190) {
+        *why = "too short for a figure";
+        return 0;
+    }
+    if (memcmp(raw, "jw_cad(c)sym", 12) != 0) {
+        *why = "not a figure";
+        return 0;
+    }
+    memcpy(line, raw + 0xc8, TEXT_LINE - 1);
+    line[TEXT_LINE - 1] = '\0';
+    z->n_lines = (f = field(line, 0)) ? strtol(f, NULL, 10) : 0;
+    z->n_arcs = (f = field(line, 1)) ? strtol(f, NULL, 10) : 0;
+    z->n_points = (f = field(line, 2)) ? strtol(f, NULL, 10) : 0;
+    z->n_texts = (f = field(line, 3)) ? strtol(f, NULL, 10) : 0;
+    z->box[0] = (f = field(line, 4)) ? (float)atof(f) : 0.0f;
+    z->box[1] = (f = field(line, 5)) ? (float)atof(f) : 0.0f;
+    z->box[2] = (f = field(line, 6)) ? (float)atof(f) : 0.0f;
+    z->text_len = (f = field(line, 7)) ? strtol(f, NULL, 10) : 0;
+    z->denom = (f = field(line, 8)) ? (float)atof(f) : 1.0f;
+    if (z->n_lines < 0 || z->n_arcs < 0 || z->n_points < 0 || z->n_texts < 0
+        || z->text_len < 0) {
+        *why = "the counts make no sense";
+        return 0;
+    }
+    need = z->n_lines * LINE_SIZE + z->n_arcs * ARC_SIZE
+         + z->n_points * POINT_SIZE + z->n_texts * TEXT_SIZE + z->text_len;
+    if (len - 0x190 < need) {
+        *why = "shorter than its own counts";
+        return 0;
+    }
+    if (z->n_lines) {
+        z->lines = (JwcLine *)calloc((size_t)z->n_lines, sizeof *z->lines);
+    }
+    if (z->n_arcs) {
+        z->arcs = (JwcArc *)calloc((size_t)z->n_arcs, sizeof *z->arcs);
+    }
+    if (z->n_points) {
+        z->points = (JwcPoint *)calloc((size_t)z->n_points, sizeof *z->points);
+    }
+    if (z->n_texts) {
+        z->texts = (JwcText *)calloc((size_t)z->n_texts, sizeof *z->texts);
+    }
+    if (z->text_len) {
+        z->text = (char *)malloc((size_t)z->text_len + 1);
+    }
+    if ((z->n_lines && !z->lines) || (z->n_arcs && !z->arcs)
+        || (z->n_points && !z->points) || (z->n_texts && !z->texts)
+        || (z->text_len && !z->text)) {
+        jwc_zukei_free(z);
+        *why = "out of memory";
+        return 0;
+    }
+    at = 0x190;
+    for (k = 0; k < z->n_lines; k++, at += LINE_SIZE) {
+        const unsigned char *r = raw + at;
+
+        z->lines[k].x0 = rd_f32(r);
+        z->lines[k].y0 = rd_f32(r + 4);
+        z->lines[k].x1 = rd_f32(r + 8);
+        z->lines[k].y1 = rd_f32(r + 12);
+        z->lines[k].type = r[16];
+        z->lines[k].pen = r[17];
+        z->lines[k].layer = r[18];
+        memcpy(z->lines[k].rest, r + 18, 4);
+    }
+    for (k = 0; k < z->n_arcs; k++, at += ARC_SIZE) {
+        const unsigned char *r = raw + at;
+
+        z->arcs[k].cx = rd_f32(r);
+        z->arcs[k].cy = rd_f32(r + 4);
+        z->arcs[k].r = rd_f32(r + 8);
+        z->arcs[k].flatten = rd_i16(r + 12);
+        z->arcs[k].start = rd_i32(r + 14);
+        z->arcs[k].end = rd_i32(r + 18);
+        z->arcs[k].tilt = rd_i32(r + 22);
+        z->arcs[k].type = r[26];
+        z->arcs[k].pen = r[27];
+        z->arcs[k].layer = r[28];
+        memcpy(z->arcs[k].rest, r + 28, 4);
+    }
+    for (k = 0; k < z->n_points; k++, at += POINT_SIZE) {
+        const unsigned char *r = raw + at;
+
+        z->points[k].x = rd_f32(r);
+        z->points[k].y = rd_f32(r + 4);
+        z->points[k].layer = r[8];
+        memcpy(z->points[k].rest, r + 8, 4);
+    }
+    {
+        const long texts_at = at;
+        const unsigned char *pool = raw + texts_at + z->n_texts * TEXT_SIZE;
+
+        if (z->text_len) {
+            memcpy(z->text, pool, (size_t)z->text_len);
+            z->text[z->text_len] = '\0';
+        }
+        for (k = 0; k < z->n_texts; k++, at += TEXT_SIZE) {
+            const unsigned char *r = raw + at;
+            const long off = rd_i32(r + 16);
+
+            z->texts[k].x0 = rd_f32(r);
+            z->texts[k].y0 = rd_f32(r + 4);
+            z->texts[k].x1 = rd_f32(r + 8);
+            z->texts[k].y1 = rd_f32(r + 12);
+            z->texts[k].text = off >= 0 && off < z->text_len
+                             ? z->text + off : "";
+            z->texts[k].size = r[20];
+            z->texts[k].layer = r[21];
+            z->texts[k].rest[0] = r[20];
+            z->texts[k].rest[1] = r[21];
+            z->texts[k].rest[2] = r[22];
+            z->texts[k].rest[3] = r[23];
+        }
+        at += z->text_len;
+    }
+    return 1;
+}
+
+void jwc_zukei_free(JwcZukei *z)
+{
+    free(z->lines);
+    free(z->arcs);
+    free(z->points);
+    free(z->texts);
+    free(z->text);
+    memset(z, 0, sizeof *z);
+}
+
+float jwc_zukei_scale(const Jwc *d)
+{
+    static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f, 297.0f };
+
+    return (float)(PAPER[d->paper >= 0 && d->paper <= 4 ? d->paper : 4]
+                   / 518.0f) * d->denom;
+}
+
+int jwc_put_line(Jwc *d, const JwcLine *l)
+{
+    static const long BLOCK = 256;
+
+    if (d->n_lines >= d->cap_lines) {
+        long want = d->cap_lines + BLOCK;
+        JwcLine *grown = (JwcLine *)realloc(d->lines,
+                                            (size_t)want * sizeof *grown);
+
+        if (!grown) {
+            return 0;
+        }
+        d->lines = grown;
+        d->cap_lines = want;
+    }
+    d->lines[d->n_lines++] = *l;
+    return 1;
+}
+
+int jwc_put_arc(Jwc *d, const JwcArc *a)
+{
+    static const long BLOCK = 64;
+
+    if (d->n_arcs >= d->cap_arcs) {
+        long want = d->cap_arcs + BLOCK;
+        JwcArc *grown = (JwcArc *)realloc(d->arcs,
+                                          (size_t)want * sizeof *grown);
+
+        if (!grown) {
+            return 0;
+        }
+        d->arcs = grown;
+        d->cap_arcs = want;
+    }
+    d->arcs[d->n_arcs++] = *a;
+    return 1;
+}
+
+int jwc_put_point(Jwc *d, const JwcPoint *p)
+{
+    /* The points live in an array of their own with no spare room kept, so
+     * this grows it one block at a time like the others. */
+    static const long BLOCK = 64;
+
+    if (d->n_points >= d->cap_points) {
+        long want = d->cap_points + BLOCK;
+        JwcPoint *grown = (JwcPoint *)realloc(d->points,
+                                              (size_t)want * sizeof *grown);
+
+        if (!grown) {
+            return 0;
+        }
+        d->points = grown;
+        d->cap_points = want;
+    }
+    d->points[d->n_points++] = *p;
+    return 1;
+}
+
+int jwc_put_text(Jwc *d, const JwcText *t)
+{
+    JwcText *q;
+
+    if (!jwc_add_text(d, t->x0, t->y0, t->x1, t->y1,
+                      t->text ? t->text : "", t->size, t->layer)) {
+        return 0;
+    }
+    /* jwc_add_text puts the string in the pool and fills the record in its own
+     * way; the two spare bytes behind the layer are the figure's. */
+    q = &d->texts[d->n_texts - 1];
+    q->rest[2] = t->rest[2];
+    q->rest[3] = t->rest[3];
+    return 1;
 }
 
 int jwc_save(const Jwc *d, const char *path, const char **why)

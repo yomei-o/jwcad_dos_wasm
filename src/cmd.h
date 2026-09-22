@@ -397,6 +397,11 @@ int jw_cmd_two_line(const JwCmd *c, const Jwc *d, int i, double *e);
 
 void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
 
+/* And what 図形 ①登録 leaves behind once the figure has been written: the
+ * same selection, drawn again in its own colours on top of everything.  See
+ * src/cmd.c -- the original does not repaint, so what it wrote stays on top. */
+void jw_cmd_zukei_left(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
+
 /* And what the command has **made** since the range was fixed -- 複写's
  * copies -- drawn over the finished screen, chrome and all.  That is the
  * original's own order: it paints a new entity on top rather than redrawing,
@@ -410,6 +415,13 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
  * 35 to 44 call it off, and column 34, the bar itself, does nothing.
  * Returns 1 if the drawing changed. */
 int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right);
+
+/* 図形 ①登録 -- the bytes of the .JWK for what the range picked, measured
+ * from the base point that was pressed.  NULL and a reason when there is
+ * nothing to write, which is what the original does with an empty range: it
+ * offers 書き込みます all the same and then leaves the directory empty. */
+unsigned char *jw_cmd_zukei_bytes(const JwCmd *c, const Jwc *d,
+                                  long *out_len, const char **why);
 
 /* Has src/item.h anything to say about this press?  Defined in src/ui.c,
  * which is where the table lives. */
