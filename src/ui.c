@@ -2129,6 +2129,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             fill(v, 0, 464, 639, 479, 0);
             fill(v, 147, 87, 612, 298, 0);
         }
+        /* 図形 ④ｸﾞﾙｰﾌﾟ変 takes the whole drawing area. */
+        if (s->command == 27 && s->top_item == 4) {
+            fill(v, 0, 464, 639, 479, 0);
+            fill(v, 122, 16, 638, 462, 0);
+        }
         /* 寸法 ⑨設定's panel.  The box goes up first and the words over
          * it -- the rule at x 410 is broken where each value is written,
          * which is the original telling us the order. */
@@ -2163,11 +2168,21 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             fill(v, 0, 0, 639, 15, 0);
             top_clear();
             for (r = JW_ITEM; r->command; r++) {
-                if (r->command == s->command && r->item == s->top_item
-                    && r->right == s->top_right) {
-                    jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
-                               (unsigned)r->bg, r->text);
+                if (r->command != s->command || r->item != s->top_item
+                    || r->right != s->top_right) {
+                    continue;
                 }
+                /* Rows 25 and 30 are the chrome's own -- `サブ画面 表示` and
+                 * the strip along the bottom.  The original writes them
+                 * again after a redraw and they are in the table with
+                 * everything else, but the chrome has already put them
+                 * there, and replaying them takes the rule at y 384 and the
+                 * two blitted characters of `電卓` with them. */
+                if (r->row == 25 || r->row == 30) {
+                    continue;
+                }
+                jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
+                           (unsigned)r->bg, r->text);
             }
             /* **A field of blanks on the top row is a field**, and the
              * original puts its green cursor in the first cell of it: the
@@ -2202,6 +2217,18 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             fill(v, 611, 87, 612, 297, 7);
             for (k = 0; k < 5; k++) {
                 fill(v, RULE[k], 87, RULE[k], 297, 7);
+            }
+        }
+        /* 図形 ④ｸﾞﾙｰﾌﾟ変's grid, after the words for the same reason the
+         * 文字種類 box is: the original's rules are whole. */
+        if (s->command == 27 && s->top_item == 4) {
+            int k;
+
+            for (k = 0; k <= 10; k++) {
+                fill(v, 144, 56 + k * 32, 624, 56 + k * 32, 7);
+            }
+            for (k = 0; k <= 5; k++) {
+                fill(v, 144 + k * 96, 56, 144 + k * 96, 376, 7);
             }
         }
         /* Then what the command has written since, stage by stage, because a

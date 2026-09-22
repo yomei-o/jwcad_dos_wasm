@@ -172,7 +172,7 @@ static int panel_up(void)
     if (ui.command == 14 && ui.top_item == 9) {
         return 1;
     }
-    if (ui.command == 27 && ui.again) {
+    if (ui.command == 27 && (ui.again || ui.top_item == 4)) {
         return 1;
     }
     return 0;

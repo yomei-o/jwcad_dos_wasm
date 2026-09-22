@@ -62,9 +62,19 @@ def deltas():
     return out
 
 
-# `※お待ち下さい※` flashes while the program thinks and is gone by the time
-# anything is looked at, so it is not part of the screen.
-WAIT = b'\x81\x96\x82\xa8\x91\xd2\x82\xbf\x89\xba\x82\xb3\x82\xa2\x81\x96'
+# What the original puts up while it is thinking and takes away again.  It is
+# never on the screen anyone looks at, so it is not part of it.
+#
+#   ※お待ち下さい※            over the top line
+#   描画中断 [ｽﾍﾟｰｽｷｰ],ﾏｳｽ(R)  in the strip along the bottom, while it redraws
+#
+# The second one matters more than it looks: the strip that comes back is
+# painted as well as written, and only the writing is in the log, so replaying
+# the strings alone leaves the first cell of it standing.
+GONE = (
+    b'\x81\x96\x82\xa8\x91\xd2\x82\xbf\x89\xba\x82\xb3\x82\xa2\x81\x96',
+    b' \x95`\x89\xe6\x92\x86\x92f [\xbd\xcd\xdf\xb0\xbd\xb7\xb0],\xcf\xb3\xbd(R) ',
+)
 
 
 def literal(raw, indent='      ', width=58):
@@ -130,7 +140,7 @@ for i, line in enumerate(lines):
     menu, item, button = line.split()[:3]
     if item == '0':
         continue
-    rows = [r for r in log.get(n, []) if r[4] != WAIT]
+    rows = [r for r in log.get(n, []) if r[4] not in GONE]
     if not rows:
         print('    /* branch %d (menu %s item %s %s): the press wrote nothing */'
               % (n, menu, item, button))
