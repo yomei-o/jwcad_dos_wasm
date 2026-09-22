@@ -1924,6 +1924,21 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     /* 寸法 ⑨設定's panel.  The ten rows are 6 to 22 of the box, two rows
      * apart; the six with a number open a field and the three with 【】
      * change over where they stand.  Its own line has three more. */
+    /* 寸法's own line while it is asking for the 寸法値の始点 carries
+     * `|①小数点以下[1]桁 |②半径|③直径|④累寸|⑤一括|`, and ① turns the
+     * digit round the same way 寸法設定's ④ does: measured, [1] becomes
+     * [2].  The cell is columns 34 to 52.  ② to ⑤ are not done. */
+    if (ui.command == 14 && !dxf_mode && y >= 0 && y <= 15
+        && ((!ui.top_item && (cmd.stage == 3 || cmd.stage == 5))
+            || ui.top_item == 5)
+        && x / 8 + 1 >= 34 && x / 8 + 1 <= 52) {
+        dim_dec = (dim_dec + 1) % 4;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
     /* 寸法 ③任意方向's `｜0 度 ﾏｳｽ(L)｜`: columns 34 to 44 of the top
      * line.  前回と同じ ﾏｳｽ(R) and [F1] ﾏｳｽ角度 are not done. */
     if (ui.command == 14 && ui.top_item == 3 && !right

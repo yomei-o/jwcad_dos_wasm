@@ -1058,10 +1058,12 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
     if (q->command == 24 && q->col == 20 && q->row == 2) {
         return;
     }
-    /* ⑤寸法値's line stops at the `(R)`: where ①横方向 goes on with
-     * `|①連続|`, the value-only road has nothing after it (measured). */
-    if (q->command == 14 && q->stage == 5 && q->col == 8 && s->dim_only) {
-        char one[160];
+    /* 寸法's own line while it asks for the 寸法値: the `[1]` in
+     * `①小数点以下[1]桁` is the setting, not a recording (measured -- one
+     * press on that cell makes it `[2]`), and ⑤寸法値's line stops at the
+     * `(R)` where ①横方向 goes on with `|①連続|`. */
+    if (q->command == 14 && q->col == 8
+        && (q->stage == 3 || q->stage == 5)) {
         int i;
 
         strncpy(out, q->text, sizeof out - 1);
@@ -1071,13 +1073,16 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
                 i++;
                 continue;
             }
-            if (out[i] == '|') {
+            if (out[i] == '[' && out[i + 1] >= '0' && out[i + 1] <= '9'
+                && out[i + 2] == ']') {
+                out[i + 1] = (char)('0' + (s->dim_dec & 15));
+            }
+            if (out[i] == '|' && s->dim_only) {
                 out[i] = 0;
                 break;
             }
         }
-        strcpy(one, out);
-        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, out);
         return;
     }
     /* 寸法's `文字[F2]` is not a 2: it is **the 寸法値's character type**, the
@@ -3125,6 +3130,28 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                  * the top of the box.  See counts(). */
                 if (r->row == 2 && r->col <= 15) {
                     fill(v, 1, 17, 120, 47, 4);
+                }
+                /* ⑤寸法値's own line carries the same `[1]` -- the
+                 * 小数点以下 setting, in the same columns. */
+                if (s->command == 14 && s->top_item == 5 && r->col == 8) {
+                    char one[160];
+                    int j;
+
+                    strncpy(one, r->text, sizeof one - 1);
+                    one[sizeof one - 1] = 0;
+                    for (j = 0; one[j]; j++) {
+                        if (is_lead((unsigned char)one[j]) && one[j + 1]) {
+                            j++;
+                            continue;
+                        }
+                        if (one[j] == '[' && one[j + 1] >= '0'
+                            && one[j + 1] <= '9' && one[j + 2] == ']') {
+                            one[j + 1] = (char)('0' + (s->dim_dec & 15));
+                        }
+                    }
+                    jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
+                               (unsigned)r->bg, one);
+                    continue;
                 }
                 /* **寸法 ⑥点's line carries two numbers**: the 点のペン
                  * No. in 点(No.n) and the drawing's own count of real
