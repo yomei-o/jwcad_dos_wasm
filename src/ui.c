@@ -3238,7 +3238,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         /* 測定's unit and decimals.  Drawn last, over whatever src/prompt.h
          * or src/item.h put there, because they are state and those two are
          * recordings. */
-        if (s->command == 15) {
+        /* **The band goes when a cell is pressed.**  測定 comes up with
+         * `ｍ (3)桁` under its line and ①距離 leaves row 2 empty; only
+         * ⑥単位 and ⑦小数点以下 put it back, and those two are not
+         * `top_item` presses (src/main_wasm.c). */
+        if (s->command == 15 && !s->top_item) {
             static const char *const UNIT[3] = {
                 " " "\x82\x8d" " ", " cm ", " mm "
             };

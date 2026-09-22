@@ -43,6 +43,11 @@ const before = [0, 1].map((i) => M._jw_count(i));
 let at = rowOf('SAMPLE1 .JWC');
 press(300, 112 + at * 16);
 press(300, 112 + at * 16);
+/* **It asks twice now.**  `合成 |① 実 行(L)|② 再選択(R)|` comes up over the
+   list, the first ① 実 行 brings the drawing in and shows it, and the second
+   question's ① 実行 keeps it (RESUME 4.44c). */
+press(250, 8);
+press(300, 8);
 ok(M._jw_count(0) === before[0] + 762,
    '③合成 adds the other drawing\'s lines (' + before[0] + ' -> '
    + M._jw_count(0) + ')');
@@ -56,10 +61,10 @@ const had = M._jw_file_count();
 at = rowOf('TEST2   .JWC');
 press(300, 112 + at * 16);
 press(300, 112 + at * 16);
+/* and `削除します |① 削 除 |② 再選択 |` before it goes */
+press(180, 8);
 ok(!M.FS.analyzePath('orig/TEST2.JWC').exists,
    '④削除 takes the file off the disk (' + status() + ')');
-toFile();
-press(180, 8);
 ok(M._jw_file_count() === had - 1,
    'and the list is one shorter (' + had + ' -> ' + M._jw_file_count() + ')');
 ok(rowOf('TEST2   .JWC') === -1, 'with that name gone');
