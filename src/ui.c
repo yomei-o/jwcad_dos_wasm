@@ -1126,6 +1126,31 @@ static void clip_line(VGA *v, double x0, double y0, double x1, double y1,
             JW_STYLE_SOLID);
 }
 
+/* One coordinate, in pixels away from the block's own origin.
+ *
+ * A front view is as tall as the window, and the height is no more in the
+ * file than the width is: it is written in **tenths of the opening plus an
+ * offset**.  0 is the sill, 5000 the middle, 10000 the head, 3000 three
+ * tenths up; what is left over is an ordinary measurement, so 10035 is 35
+ * above the head, 4900 a hundred below the middle and 3040 forty above three
+ * tenths.
+ *
+ * `step` is how far apart two tenths are drawn.  A plan has no such values --
+ * everything in it is under five hundred -- so it passes nought and the sum
+ * is the ordinary one.
+ *
+ * Measured on ③立面, where the opening is 60 pixels tall and a unit is a
+ * fourteenth of a pixel: cell 5's middle rail comes out at 165, 168, 170 and
+ * 175 for 5035, 5000, 4960 and 4900, cell 3's at 81 and 84 for 3040 and
+ * 3000, and cell 2's stiles at 314 and 317 for -15 and 15.  Nothing else
+ * fits all three. */
+static double across(int v, double unit, double step)
+{
+    const int k = (int)floor((v + 500.0) / 1000.0);
+
+    return k * step + (v - k * 1000) * unit;
+}
+
 /* The sixteen shapes ｵﾌﾟｼｮﾝ ①建具平面 ②断面 ③立面 show, out of the library
  * files that ship with the program.  See src/tategu.h for the format and the
  * top of tmp/tatedraw.py's note for where the numbers came from.
@@ -1153,31 +1178,38 @@ static void tategu(VGA *v, int which)
     t = &lib[which];
     for (i = 0; i < t->n && i < 16; i++) {
         const JwTateguShape *sh = &t->shape[i];
-        const int col = i & 1;
-        const int row = i >> 1;
-        const double left = col ? 420.0 : 150.0;
-        const double step = sh->parts > 1 ? 200.0 / (sh->parts - 1) : 0.0;
-        /* 54, not 53.75: the shape's own origin is on the pixel.  Measured
-         * -- cell [3]'s part is a line from y 0 to y 70 and the original
-         * draws it from 102 down to 84, which 54 + 48 gives with the same
-         * truncation everything else here uses. */
-        const double base = 54.0 + 48.0 * row;
+        /* ③立面 is a front view and is laid out four across and four down;
+         * the other two are plans, two across and eight down. */
+        const int wide = which == 3;
+        const int col = wide ? i % 4 : i & 1;
+        const int row = wide ? i / 4 : i >> 1;
+        /* how far a unit goes, how far apart the blocks stand end to end,
+         * and how tall the opening is drawn */
+        const double unit = wide ? 1.0 / 14.0 : 0.25;
+        const double span = wide ? 60.0 : 200.0;
+        const double tenth = wide ? 6.0 : 0.0;
+        const double left = wide ? 156.0 + col * 130.0
+                                 : (col ? 420.0 : 150.0);
+        const double step = sh->parts > 1 ? span / (sh->parts - 1) : 0.0;
+        const double base = wide ? 102.0 + 96.0 * row : 54.0 + 48.0 * row;
         /* The row this shape is shown in, between its two rules.  They are
          * at y 16, 63, 111, 159 ... -- 47 apart once and 48 after that --
          * and the divider down the middle is x 380.  **Everything is cut to
          * it**: a shape taller than its row would otherwise write into the
          * ones above and below. */
-        const int x0 = col ? 381 : 122, x1 = col ? 638 : 379;
-        const int y0 = (row ? 63 + (row - 1) * 48 : 16) + 1;
-        const int y1 = 63 + row * 48 - 1;
+        const int x0 = wide ? (col ? 122 + col * 130 : 122) : (col ? 381 : 122);
+        const int x1 = wide ? (col == 3 ? 638 : 250 + col * 130)
+                            : (col ? 638 : 379);
+        const int y0 = (wide ? 16 + row * 96 : (row ? 63 + (row - 1) * 48 : 16)) + 1;
+        const int y1 = (wide ? 112 + row * 96 : 63 + row * 48) - 1;
         int k;
 
         for (k = 0; k < sh->n; k++) {
             const JwTateguLine *l = &sh->line[k];
-            const double ax = left + (l->a - 1) * step + l->x1 * 0.25;
-            const double bx = left + (l->b - 1) * step + l->x2 * 0.25;
-            const double ay = base - l->y1 * 0.25;
-            const double by = base - l->y2 * 0.25;
+            const double ax = left + (l->a - 1) * step + across(l->x1, unit, 0.0);
+            const double bx = left + (l->b - 1) * step + across(l->x2, unit, 0.0);
+            const double ay = base - across(l->y1, unit, tenth);
+            const double by = base - across(l->y2, unit, tenth);
             const unsigned ink = jw_view_pen_colour((unsigned)l->pen);
 
             if (l->arc) {
@@ -2354,27 +2386,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * down the middle at x 380.  All of the strip along the bottom goes
          * but `電卓[Z 範囲記憶`, which the original leaves standing. */
         if (s->command == 29 && s->top_item >= 1 && s->top_item <= 3) {
-            int k;
-
             fill(v, 122, 17, 638, 462, 0);
             fill(v, 122, 463, 638, 478, 0);
-            if (s->top_item == 3) {
-                /* ③立面 lays them out four across and four down, 96 tall,
-                 * with the rules at x 251, 381 and 511. */
-                for (k = 0; k < 5; k++) {
-                    fill(v, 122, 16 + k * 96, 638, 16 + k * 96, 7);
-                }
-                fill(v, 251, 16, 251, 400, 7);
-                fill(v, 381, 16, 381, 400, 7);
-                fill(v, 511, 16, 511, 400, 7);
-            } else {
-                for (k = 0; k < 9; k++) {
-                    const int y = k ? 63 + (k - 1) * 48 : 16;
-
-                    fill(v, 122, y, 638, y, 7);
-                }
-                fill(v, 380, 16, 380, 399, 7);
-            }
         }
         /* 図形 ④ｸﾞﾙｰﾌﾟ変 takes the whole drawing area. */
         if (s->command == 27 && s->top_item == 4) {
@@ -2495,6 +2508,30 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     fill(v, 122, 48, 638, 383, 0);
                     break;
                 }
+            }
+        }
+        /* The rules go **after** the labels: ③立面's names sit on the same
+         * text row as the rule above their cell, and the original's rule is
+         * whole underneath them. */
+        if (s->command == 29 && s->top_item >= 1 && s->top_item <= 3) {
+            int k;
+
+            if (s->top_item == 3) {
+                /* ③立面 lays them out four across and four down, 96 tall,
+                 * with the rules at x 251, 381 and 511. */
+                for (k = 0; k < 5; k++) {
+                    fill(v, 122, 16 + k * 96, 638, 16 + k * 96, 7);
+                }
+                fill(v, 251, 16, 251, 400, 7);
+                fill(v, 381, 16, 381, 400, 7);
+                fill(v, 511, 16, 511, 400, 7);
+            } else {
+                for (k = 0; k < 9; k++) {
+                    const int y = k ? 63 + (k - 1) * 48 : 16;
+
+                    fill(v, 122, y, 638, y, 7);
+                }
+                fill(v, 380, 16, 380, 399, 7);
             }
         }
         /* And the shapes themselves, **after** the labels: the `[7]` the

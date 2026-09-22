@@ -44,7 +44,7 @@ int jw_tategu_read(const char *path, JwTategu *out)
             continue;           /* a comment */
         }
         got = numbers(line, v, 7);
-        if (got == 1 && v[0] == 999) {
+        if (got == 1 && v[0] >= 990 && v[0] <= 999) {
             /* the next line opens a shape */
             if (out->n < JW_TATEGU_MAX) {
                 shape = &out->shape[out->n++];
@@ -68,6 +68,10 @@ int jw_tategu_read(const char *path, JwTategu *out)
         if (got >= 6 && shape->n < JW_TATEGU_LINES) {
             JwTateguLine *l = &shape->line[shape->n++];
             const char *e = strchr(line, 'E');
+
+            if (!e) {
+                e = strchr(line, 'e');
+            }
 
             memset(l, 0, sizeof(*l));
             l->a = v[0];
