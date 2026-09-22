@@ -140,6 +140,13 @@ static void sync_ui(void)
      * so ⑦連線 came up saying free where the original says 45度毎. */
     ui.poly_deg = cmd.poly_deg;
     ui.again = cmd.again;
+    /* The first three steps of 図形 ①登録 are the range being taken, which
+     * the selection machinery counts in `pressed`; the rest are its own. */
+    memcpy(ui.zukei_name, cmd.zukei_name, sizeof ui.zukei_name);
+    ui.zukei_name_n = cmd.zukei_name_n;
+    ui.zukei = cmd.zukei > JW_ZUKEI_BASE ? cmd.zukei
+             : cmd.zukei ? (cmd.pressed == 0 ? 1 : cmd.pressed == 1 ? 2 : 3)
+             : 0;
     ui.top_item = cmd.top_item;
     ui.band_off = cmd.band_off;
     ui.top_right = cmd.top_right;
@@ -178,7 +185,9 @@ static int panel_up(void)
     if (ui.command == 14 && ui.top_item == 9) {
         return 1;
     }
-    if (ui.command == 27 && (ui.again || ui.top_item == 4)) {
+    if (ui.command == 27
+        && (ui.again || ui.top_item == 4
+            || (ui.zukei >= JW_ZUKEI_PICK && ui.zukei < JW_ZUKEI_WRITE))) {
         return 1;
     }
     if (ui.command == 29 && ui.top_item >= 1 && ui.top_item <= 3) {
@@ -1534,6 +1543,26 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * second brings up the overwrite question. */
     /* ③ 新規 保存's field.  [Enter] takes the name on to ◆ｍｅｍｏ入力 and
      * the rest of the road; [ESC] goes back to the list. */
+    /* 図形 ①登録's ◆図形名入力.  The name is what the figure is written
+     * under, and [Enter] goes on to `書き込みます`. */
+    if (cmd.command == 27 && cmd.zukei == JW_ZUKEI_NAME) {
+        if (key == 27) {
+            cmd.zukei = JW_ZUKEI_PICK;
+        } else if ((key == 13 || key == 10) && cmd.zukei_name_n) {
+            cmd.zukei = JW_ZUKEI_WRITE;
+        } else if (key == 8) {
+            if (cmd.zukei_name_n > 0) {
+                cmd.zukei_name[--cmd.zukei_name_n] = 0;
+            }
+        } else if (key > ' ' && key < 127
+                   && cmd.zukei_name_n < (int)sizeof cmd.zukei_name - 4) {
+            cmd.zukei_name[cmd.zukei_name_n++] = (char)toupper(key);
+            cmd.zukei_name[cmd.zukei_name_n] = 0;
+        }
+        sync_ui();
+        present();
+        return -1;
+    }
     if (ui.command == 30 && ui.io_stage == JW_IO_NEWNAME) {
         if (key == 27) {
             ui.io_stage = JW_IO_SAVE;

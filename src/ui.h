@@ -147,6 +147,9 @@ typedef struct {
      * screens and **green on ｵﾌﾟｼｮﾝ ⑦外部処理's**, which is the original's
      * own doing: its call says colour 4 where the others say 5. */
     int file_path_fg;
+    int zukei;                  /* JwCmd.zukei -- 図形 ①登録's road */
+    char zukei_name[16];        /* what has been typed into ◆図形名入力 */
+    int zukei_name_n;
     int top_item;
     int top_right;
     int band_off;               /* JwCmd.band_off */

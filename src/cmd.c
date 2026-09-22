@@ -206,7 +206,10 @@ void jw_cmd_band(const JwCmd *c, VGA *v, const JwView *w, int sx, int sy)
      * that was pressed.  Measured with ③指定範囲 on SAMPLE0 --
      * `STOP=1 sh tools/span.sh 150 130 245 170` leaves the pointer where the
      * second press landed and the original has 264 green pixels there. */
-    if (JW_RANGE_CMD(c->command) && c->pressed == 2 && c->stage == 3) {
+    /* Not 図形 ①登録: its range is fixed by the right button and it goes
+     * straight on to the base point, with no box left on the screen. */
+    if (JW_RANGE_CMD(c->command) && !c->zukei && c->pressed == 2
+        && c->stage == 3) {
         int qx, qy;
 
         /* Exclusive-or, and each side drawn corner to corner, is what the
@@ -959,9 +962,13 @@ static int wholly_outside(const JwCmd *c, double ax, double ay,
  * the left one 89, which is the two lines without text 0. */
 static int takes_text(const JwCmd *c)
 {
-    /* ①範囲内消去 and ②範囲外消去 never ask; ③指定範囲 and 複写 do, and the
-     * answer is which button took the first point. */
-    return !(c->span || JW_MOVE_CMD(c->command)) || c->with_text;
+    /* ①範囲内消去 and ②範囲外消去 never ask; ③指定範囲, 複写 and 図形 ①登録
+     * do, and the answer is which button took the first point.  図形's own
+     * line says so -- `(L)線･円  (R)線･円･文字` -- and HELP 図 形 その1/4
+     * spells it out: 始点を左クリックすると線と円弧と曲線が、右クリックする
+     * と…文字が選択されます. */
+    return !(c->span || JW_MOVE_CMD(c->command) || c->command == 27)
+           || c->with_text;
 }
 
 static int flipped(const JwCmd *c, int kind, long at)
@@ -2282,6 +2289,36 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
             return 1;
         }
         return 0;
+    }
+    /* 図形 ①登録 -- the same range 複写 takes, and then a base point and a
+     * name.  src/zukei.h holds the line at each step. */
+    if (c->command == 27 && c->pressed == 0 && c->stage == 0 && item == 1) {
+        c->zukei = JW_ZUKEI_RANGE;
+        return 1;
+    }
+    /* On the list of figures, ①選択確定 takes the cell that is picked --
+     * `新規登録` to start with -- and asks for a name. */
+    if (c->command == 27 && c->zukei == JW_ZUKEI_PICK && item == 1) {
+        c->zukei = JW_ZUKEI_NAME;
+        c->zukei_name[0] = 0;
+        c->zukei_name_n = 0;
+        return 1;
+    }
+    /* `書き込みます |① 実 行(L)|② 再選択(R)|`.  Either way the road ends and
+     * 図形's own line comes back.
+     *
+     * **The file is not written yet.**  Its shape is measured -- see
+     * RESUME.md, 図形登録 -- but three numbers in its header are not
+     * understood, and a file with the wrong numbers in it is worse than no
+     * file: the original could not read it back. */
+    if (c->command == 27 && c->zukei == JW_ZUKEI_WRITE
+        && (item == 1 || item == 2)) {
+        c->zukei = item == 2 ? JW_ZUKEI_PICK : 0;
+        if (!c->zukei) {
+            c->pressed = 0;
+            c->stage = 0;
+        }
+        return 1;
     }
     if (c->command == 25 && c->pressed == 0 && c->stage == 0) {
         if (item == 1 || item == 2) {
@@ -3844,6 +3881,17 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     c->press_y = sy;
     c->moved = 0;
     c->escaped = 0;
+    /* 図形 ①登録, once the range is fixed: the press is the figure's own
+     * base point -- `◇原図形の基準点位置 マウス指示 (L)free (R)Read` -- and
+     * the figure is written out measured from it.  The screen then goes to
+     * the list of figures in the group. */
+    if (c->command == 27 && c->zukei == JW_ZUKEI_RANGE && c->pressed == 2) {
+        jw_cmd_at(w, sx, sy, &x, &y);
+        c->zukei_bx = x;
+        c->zukei_by = y;
+        c->zukei = JW_ZUKEI_PICK;
+        return 1;
+    }
     if (c->command == 5) {
         /* 複線: point at a line, type how far away the copy goes, and press
          * the side it goes to.  RESUME.md 4.12 has the whole sequence as the

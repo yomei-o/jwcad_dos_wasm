@@ -15,6 +15,7 @@
 #include "copy.h"
 #include "move.h"
 #include "esc.h"
+#include "zukei.h"
 #include "item.h"
 #include "tategu.h"
 
@@ -2266,6 +2267,35 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 break;
             }
         }
+        /* 図形 ①登録 replaces the line 図形 came up with, and keeps
+         * replacing it the whole way to `書き込みます`.  src/zukei.h holds
+         * what the original writes at each step. */
+        if (s->zukei && s->command == 27) {
+            const JwZukei *z;
+
+            for (z = JW_ZUKEI; z->stage; z++) {
+                if (z->stage == s->zukei) {
+                    jw_ui_text(v, z->col, 1, (unsigned)z->fg,
+                               (unsigned)z->bg, z->text);
+                }
+            }
+            if (s->zukei == JW_ZUKEI_NAME) {
+                /* the name, and the green block where the next character
+                 * goes -- the field is nine cells at column 34 */
+                const int n = s->zukei_name_n < 9 ? s->zukei_name_n : 9;
+
+                if (n) {
+                    jw_ui_text(v, 34, 1, 7, 0, s->zukei_name);
+                }
+                fill(v, 33 * 8 + n * 8, 7, 33 * 8 + 7 + n * 8, 15, 4);
+            }
+            /* and nothing of the line 図形 came up with.  Not `p = q`:
+             * the loop above breaks early when the prompt writes in the
+             * counts box, and 図形's does. */
+            while (p->col) {
+                p++;
+            }
+        }
         /* ③指定範囲 replaces the line 消去 came up with: the original writes
          * `指定範囲  始点マウス指示  (L)線･円  (R)線･円･文字 …` over the top
          * of it.  src/span.h holds that whole line as stage 0. */
@@ -2374,8 +2404,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             fill(v, 122, 16, 638, 383, 0);
             /* `登録図形がありません（グループ変更）`, the original's bytes.
              * It goes only while nothing on the bar has been pressed: the
-             * press puts the band's own labels back over it. */
-            if (!s->top_item) {
+             * press puts the band's own labels back over it -- and ①登録,
+             * which has its own road and no cell of the table, takes it
+             * away too. */
+            if (!s->top_item && !s->zukei) {
                 jw_ui_text(v, 22, 2, 7, 0,
                            "\x93" "o" "\x98" "^" "\x90" "}" "\x8c" "`"
                            "\x82\xaa\x82\xa0\x82\xe8\x82\xdc\x82\xb9\x82\xf1\x81" "i"
@@ -2399,10 +2431,35 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             fill(v, 122, 17, 638, 462, 0);
             fill(v, 122, 463, 638, 478, 0);
         }
-        /* 図形 ④ｸﾞﾙｰﾌﾟ変 takes the whole drawing area. */
-        if (s->command == 27 && s->top_item == 4) {
+        /* 図形 ④ｸﾞﾙｰﾌﾟ変 takes the whole drawing area, and so does the
+         * list of figures 図形 ①登録 puts up once its base point is down. */
+        if ((s->command == 27 && s->top_item == 4)
+            || (s->command == 27 && s->zukei >= JW_ZUKEI_PICK
+                && s->zukei < JW_ZUKEI_WRITE)) {
             fill(v, 0, 464, 639, 479, 0);
             fill(v, 122, 16, 638, 462, 0);
+        }
+        if (s->command == 27 && s->zukei == JW_ZUKEI_WRITE) {
+            /* `書き込みます` puts the drawing back and names the file it is
+             * about to write, black on white. */
+            char one[48];
+
+            sprintf(one, " A:ZUKEI_1_" "\x5c" "%s.JWK ", s->zukei_name);
+            jw_ui_text(v, 18, 2, 7, 0xffffu, one);
+        }
+        if (s->command == 27 && s->zukei >= JW_ZUKEI_PICK
+            && s->zukei < JW_ZUKEI_WRITE) {
+            /* the group's path, how many figures it holds, and the cell
+             * that makes a new one */
+            jw_ui_text(v, 10, 30, 7, 0, "A:ZUKEI_1_");
+            /* **The two numbers are not understood yet.**  They are what
+             * the original wrote on the run tools/zukei.sh made; when the
+             * groups and their contents are real they will come from
+             * those. */
+            jw_ui_text(v, 60, 2, 7, 0,
+                       " " "\x90" "}" "\x8c" "` 1   " "\x90\x94" "=1");
+            jw_ui_text(v, 20, 5, 7, 0xffffu,
+                       " " "\x90" "V" "\x8b" "K" "\x93" "o" "\x98" "^ ");
         }
         /* 寸法 ⑨設定's panel.  The box goes up first and the words over
          * it -- the rule at x 410 is broken where each value is written,
@@ -2551,8 +2608,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             tategu(v, s->top_item);
         }
         /* 図形 ④ｸﾞﾙｰﾌﾟ変's grid, after the words for the same reason the
-         * 文字種類 box is: the original's rules are whole. */
-        if (s->command == 27 && s->top_item == 4) {
+         * 文字種類 box is: the original's rules are whole.  ①登録's list of
+         * figures is the same grid. */
+        if (s->command == 27
+            && (s->top_item == 4
+                || (s->zukei >= JW_ZUKEI_PICK && s->zukei < JW_ZUKEI_WRITE))) {
             int k;
 
             for (k = 0; k <= 10; k++) {
@@ -2566,12 +2626,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * later stage only writes over part of what an earlier one left -- and
          * the original puts the two counts back between them, which is why they
          * are not on the screen when a command has finished. */
-        for (i = 1; !s->top_item && i <= s->stage; i++) {
+        for (i = 1; !s->top_item && !s->zukei && i <= s->stage; i++) {
             /* **A cell that was pressed has said everything already.**
              * src/item.h holds every write that press made, so the stages
              * are not replayed over the top of it -- 文字 ①基点変 puts the
              * command at stage 2 and the stage's own line is not the one
-             * the original writes when it is reached that way. */
+             * the original writes when it is reached that way.  Same for
+             * 図形 ①登録's road, which takes a range the way 複写 does but
+             * writes its own line at each step (src/zukei.h). */
             const JwStage *q;
 
             /* The original clears the top line and paints the counts box

@@ -18,6 +18,8 @@
  * `flip` list below. */
 #define JW_FLIP_MAX 64
 
+#include "zukei.h"
+
 /* What kind of entity a `flip` entry names. */
 #define JW_FLIP_LINE 0
 #define JW_FLIP_ARC  1
@@ -225,6 +227,13 @@ typedef struct {
      * original writes for each -- **the line, not yet the behaviour**: as
      * each command's item is built, its own code claims the press and the
      * entry goes out of the table. */
+    /* 図形 ①登録's road: 0 = not on it, 1 = the range is being taken, and
+     * on from there -- see src/zukei.h, which holds what the original writes
+     * at each step, and JW_ZUKEI_* below. */
+    int zukei;
+    double zukei_bx, zukei_by;  /* the base point, in drawing units */
+    char zukei_name[16];        /* ◆図形名入力 */
+    int zukei_name_n;
     int top_item;
     int top_right;
     /* A press on the top line that landed outside every cell.  The command's
@@ -320,7 +329,7 @@ typedef struct {
 /* Which commands take a range with two presses the way ③指定範囲 does: 消去
  * itself, and 複写, whose own line offers the same `(L)線･円  (R)線･円･文字`
  * and whose first stage is spelt exactly the same (src/copy.h). */
-#define JW_RANGE_CMD(n) ((n) == 25 || (n) == 1 || (n) == 16)
+#define JW_RANGE_CMD(n) ((n) == 25 || (n) == 1 || (n) == 16 || (n) == 27)
 
 /* And which of those put what the range holds somewhere else: 複写 leaves the
  * originals and 移動 does not, but everything up to the distance is the same
