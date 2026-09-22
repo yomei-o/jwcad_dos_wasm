@@ -3926,6 +3926,65 @@ static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
  * the dimension line, half a millimetre above it, in character type 2 with
  * pen 1 -- the 寸法設定 the band shows as `ﾍﾟﾝ1` and `横 2.5 縦 2.5`.
  */
+/* 連続入力: the right button at the end of one dimension carries on from
+ * where it stopped.  Measured on SAMPLE0 after the 250 above, reading the
+ * corner at (232,157):
+ *
+ *     line (477.000,353.000)-(110.737,353.000) 01 01 00 6e 00 20
+ *     line (110.737,323.000)-(110.737,353.000) 01 01 00 59 00 20
+ *     text (290.598,353.872)-(297.139,353.872) 02 00 10 40  `210`
+ *
+ * -- the dimension line from the last end to the new one (A byte 0x6e,
+ * not 0x80), **one** extension line because the other end already has
+ * one, and the value between them.  What 【矢印】 adds here is not
+ * measured. */
+static void dimension_more(JwCmd *c, Jwc *d, double x1)
+{
+    const unsigned char layer =
+        (unsigned char)((0 << 4) | (d->write_layer & 15));
+    const unsigned char type = (unsigned char)d->line_type;
+    const unsigned char pen =
+        (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN);
+    const double ux = c->dim_ux, uy = c->dim_uy;
+    const double vx = -uy, vy = ux;
+    const double x0 = c->dim_x1, y = c->dim_y, b = c->dim_by;
+    const double mid = (x0 + x1) / 2.0;
+    const double off = (c->dim_gap_mm > 0.0 ? c->dim_gap_mm : 0.5)
+                      * d->unit_mm;
+    const double ye = y + (y > b ? 1.0 : -1.0) * c->dim_ext_mm * d->unit_mm;
+    char buf[32];
+    double len;
+
+#define DIM_X(a, bb) ((float)((a) * ux + (bb) * vx))
+#define DIM_Y(a, bb) ((float)((a) * uy + (bb) * vy))
+    if (jwc_add_line(d, DIM_X(x0, y), DIM_Y(x0, y),
+                     DIM_X(x1, y), DIM_Y(x1, y), type, pen, layer)) {
+        d->lines[d->n_lines - 1].rest[1] = 0x6e;
+        d->lines[d->n_lines - 1].rest[3] = 0x20;
+    }
+    if (jwc_add_line(d, DIM_X(x1, b), DIM_Y(x1, b),
+                     DIM_X(x1, ye), DIM_Y(x1, ye), type, pen, layer)) {
+        d->lines[d->n_lines - 1].rest[1] = 0x59;
+        d->lines[d->n_lines - 1].rest[3] = 0x20;
+    }
+    c->dim_value = (x1 > x0 ? x1 - x0 : x0 - x1) * jwc_zukei_scale(d);
+    jwc_dim_text(buf, sizeof buf, c->dim_value, c->dim_unit, c->dim_dec,
+                 c->dim_comma_on, c->dim_zero_on);
+    len = jwc_text_length(d, buf, d->dim_size);
+    if (jwc_add_text(d,
+                     DIM_X(mid - len / 2.0, y + off),
+                     DIM_Y(mid - len / 2.0, y + off),
+                     DIM_X(mid + len / 2.0, y + off),
+                     DIM_Y(mid + len / 2.0, y + off),
+                     buf, (unsigned char)d->dim_size, layer)) {
+        d->texts[d->n_texts - 1].rest[2] = 0x10;
+        d->texts[d->n_texts - 1].rest[3] = 0x40;
+    }
+    c->dim_x1 = x1;
+#undef DIM_X
+#undef DIM_Y
+}
+
 static void dimension(JwCmd *c, Jwc *d, double x1)
 {
     const unsigned char layer =
@@ -4033,6 +4092,7 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
     /* The value is the **real** size: units x (紙 / 518) x 縮尺の分母.
      * SAMPLE0 is 1/1 so the two are the same there; SAMPLE2 is 1/100 and its
      * 188mm of paper is written `18,800`. */
+    c->dim_x1 = x1;
     c->dim_value = (x1 > x0 ? x1 - x0 : x0 - x1) * jwc_zukei_scale(d);
     jwc_dim_text(buf, sizeof buf, c->dim_value, c->dim_unit, c->dim_dec,
                  c->dim_comma_on, c->dim_zero_on);
@@ -4859,6 +4919,21 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->dim_y = -x * c->dim_uy + y * c->dim_ux;
             c->dim_texts = d->n_texts;
             c->stage = 3;
+            return 1;
+        }
+        if (c->stage == 5 && right && !c->dim_only) {
+            /* 連続入力の終点 ﾏｳｽ(R): carry on from the last end. */
+            if (!take_point(c, d, w, sx, sy, 1, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
+            dimension_more(c, d, x * c->dim_ux + y * c->dim_uy);
+            c->dim_texts = d->n_texts;
+            c->stage = 5;
             return 1;
         }
         if (c->stage == 3 || c->stage == 5) {
