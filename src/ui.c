@@ -488,6 +488,52 @@ int jw_ui_past_cells(int x, int y)
     return 0;
 }
 
+/* ②円周 の帯は **図面の上** です。原作は寸法を描いてから帯を書き直すので、
+ * 桁 17 の値も 端部 の桁も円弧に乗ります（測定：値の右端 x=167 の y=31 が
+ * 原作では白のまま、こちらでは円弧の水色でした）。段の中で書くと
+ * jw_cmd_after が上から塗るので、ここだけ最後に書きます。 */
+void jw_ui_band_last(VGA *v, const JwUi *s)
+{
+    if (s->command != 14 || (!s->dim_ck && !s->dim_arc)) {
+        return;
+    }
+    if (s->missed) {
+        /* ①円径 は `読取可能データ無` を BEL なしで桁 32 から。②円周 は
+         * どちらも桁 20 からで、円が見つからずに線を拾うと
+         * `線データです`（三つとも測定）。 */
+        if (s->dim_arc && s->dim_arc_miss) {
+            jw_ui_text(v, 20, 2, 7, 0, "\x90\xfc\x83" "f\x81[\x83^\x82\xc5\x82\xb7");
+        } else {
+            jw_ui_text(v, s->dim_arc ? 20 : 32, 2, 7, 0, "\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83" "f\x81[\x83^\x96\xb3");
+        }
+        return;
+    }
+    /* ①円径 の 書込角度 と値も同じです。外した押しのあとは帯に何も
+     * 残りません（測定：サーチが桁 17..30 を消し、書込角度 も値も
+     * 書き直されません）。 */
+    if (s->dim_ck && s->stage == 9) {
+        char one[24];
+
+        sprintf(one, "%8.3f\xdf", s->dim_ck_deg);
+        jw_ui_text(v, 62, 2, 7, 0xffffu, one);
+        if (s->dim_ck_val[0]) {
+            jw_ui_text(v, 18, 2, 7, 0xffffu, s->dim_ck_val);
+        }
+        return;
+    }
+    if (!s->dim_arc || s->stage != 11) {
+        return;
+    }
+    if (s->dim_arc_end) {
+        jw_ui_text(v, 45, 2, 7, 0xffffu, "\x96\xee\x88\xf3");
+    } else {
+        jw_ui_text(v, 46, 2, 7, 0xffffu, "\x93_");
+    }
+    if (s->dim_arc_val[0]) {
+        jw_ui_text(v, 17, 2, 7, 0xffffu, s->dim_arc_val);
+    }
+}
+
 int jw_ui_top_item(int x, int y)
 {
     const int col = x / 8 + 1;
@@ -1494,8 +1540,9 @@ static void counts(VGA *v, const JwUi *s)
     /* **⑦矢印 の 2 本は箱に出ません。** 本物は矢印を引いたあと箱を
      * 書き直さないので、選んだときの線数のままです（30 のまま）。 */
     sprintf(buf, "%7ld|%7ld ",
-            (s->command == 14 && s->top_item == 7) ? s->dim_lines0
-                                                   : s->n_lines,
+            ((s->command == 14 && s->top_item == 7)
+             || (s->command == 14 && s->dim_arc && s->dim_did))
+                ? s->dim_lines0 : s->n_lines,
             s->n_arcs);
     jw_ui_text(v, 1, 2, 0, 0, buf);
     jw_ui_text(v, 1, 3, 0, 0, " \x90\xfc  \x90\x94|\x89\x7e\xa5\x95\xb6\x90\x94");
@@ -3740,6 +3787,29 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
                 jw_ui_text(v, 8, 1, 7, 0, "\x81\x9c" " " "\x89" "~" " " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e\xa6" " ");
             }
+            /* 寸法 ④円･角 ②円周 の五つの段。桁 1 の [ESC] は一本入った
+             * あとだけ、桁 6 の `・` と桁 73 の [BS]前項 は段 11 だけ、
+             * 帯の 端部 は 点 が桁 46、矢印 が桁 45 です（測定）。 */
+            if (s->command == 14 && s->dim_arc && i == s->stage
+                && s->stage >= 11 && s->stage <= 15) {
+                if (s->dim_did || s->stage > 11) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                }
+                if (s->stage == 11) {
+                    jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+                    jw_ui_text(v, 8, 1, 7, 0,
+                               s->dim_did ? "\x89~\x8e\xfc \x89~\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)              |\x87@\x92[\x95\x94|\x87" "A\x98" "A\x91\xb1\x8en\x93_\x8ew\x8e\xa6 (R) |" : "\x89~\x8e\xfc \x89~\x83}\x83" "E\x83X\x8ew\x8e\xa6                  |\x87@\x92[\x95\x94|");
+                    jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                } else if (s->stage == 12) {
+                    jw_ui_text(v, 8, 1, 7, 0, "\x89~\x8e\xfc\x81i\x8d\xb6\x89\xf4\x82\xe8\x81j\x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
+                } else if (s->stage == 13) {
+                    jw_ui_text(v, 8, 1, 7, 0, "\x89~\x8e\xfc\x81i\x8d\xb6\x89\xf4\x82\xe8\x81j         \x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
+                } else if (s->stage == 14) {
+                    jw_ui_text(v, 8, 1, 7, 0, "\x88\xf8\x8fo\x82\xb5\x90\xfc\x82\xcc\x8en\x93_ (L)free (R)Read ");
+                } else {
+                    jw_ui_text(v, 8, 1, 7, 0, "\x81\x9c \x90\xa1\x96@\x90\xfc \x88\xca\x92u \x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ");
+                }
+            }
             /* 寸法 ④円･角 ①円径: `円マウス指示 半径(L) 直径(R)` and the
              * three cells, with the 書込角度 in a field at column 62.
              * **[ESC] goes up only once one has been drawn**: the press
@@ -3758,16 +3828,6 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         s->dim_ck_vout ? "\x81y\x8aO\x81z" : "\x81y\x93\xe0\x81z", "|\x87" "B\x8f\x91\x8d\x9e\x8ap\x93x|");
                 jw_ui_text(v, 8, 1, 7, 0, one);
                 jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
-                /* 外した押しのあとは帯に何も残りません（測定：サーチが
-                 * 桁 17..30 を消し、書込角度 も値も書き直されません）。 */
-                if (!s->missed) {
-                    sprintf(one, "%8.3f\xdf", s->dim_ck_deg);
-                    jw_ui_text(v, 62, 2, 7, 0xffffu, one);
-                    if (s->dim_ck_val[0]) {
-                        jw_ui_text(v, 18, 2, 7, 0xffffu,
-                                   s->dim_ck_val);
-                    }
-                }
             }
             /* ③書込角度's own field (段 10): the same `角度 =` line
              * ③任意方向 has, with its own 前回と同じ at column 50. */
@@ -4075,11 +4135,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             /* 寸法 ④円･角 ①円径 は同じ言葉を **一桁左から**、
              * BEL なしに桁 32 から書きます。ほかの道は BEL が一桁を取るので
              * 桁 33 からです――どちらも画面で測りました。 */
-            if (s->command == 14 && s->dim_ck) {
-                jw_ui_text(v, 32, 2, 7, 0,
-                           "\x93" "\xc7" "\x8e" "\xe6" "\x89"
-                           "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
-                           "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+            if (s->command == 14 && (s->dim_ck || s->dim_arc)) {
+                ;               /* jw_ui_band_last で、図面のあとに */
             } else {
                 jw_ui_text(v, 32, 2, 7, 0,
                            "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"

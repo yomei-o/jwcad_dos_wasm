@@ -234,6 +234,10 @@ static void sync_ui(void)
     ui.dim_only = cmd.dim_only;
     ui.dim_prog = cmd.dim_prog;
     ui.dim_circle = cmd.dim_circle;
+    ui.dim_arc = cmd.dim_arc;
+    ui.dim_arc_end = cmd.dim_arc_end;
+    ui.dim_arc_miss = cmd.dim_arc_miss;
+    memcpy(ui.dim_arc_val, cmd.dim_arc_val, sizeof ui.dim_arc_val);
     ui.dim_ck = cmd.dim_ck;
     ui.dim_ck_out = cmd.dim_ck_out;
     ui.dim_ck_vout = cmd.dim_ck_vout;
@@ -433,6 +437,7 @@ static void present(void)
             jw_cmd_zukei_left(&zukei_left, &vga, drawing, &view);
         }
         jw_cmd_after(&cmd, &vga, drawing, &view);
+        jw_ui_band_last(&vga, &ui);
         /* ｵﾌﾟｼｮﾝ ①建具平面 reddens the line the fitting is going into while
          * it asks where along it.  Measured: the line goes colour 2 the
          * moment it is picked and back to white once the fitting is in. */
@@ -1998,9 +2003,39 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         cmd.top_item = 0;
         cmd.top_right = 0;
         cmd.dim_ck = 1;
+        /* **枠の上に戻すのは、この道に入ってからのもの全部です。**
+         * 二本目を入れると一本目の弧が消えました（y32..47 の 49 画素）
+         * ——原作は項目を選んだときに (122,17)-(638,47) を黒くして、
+         * あとから描いたものはそのまま残します。 */
+        cmd.n0_lines = drawing ? drawing->n_lines : 0;
+        cmd.n0_arcs = drawing ? drawing->n_arcs : 0;
+        cmd.n0_texts = drawing ? drawing->n_texts : 0;
         cmd.dim_ck_val[0] = 0;
         cmd.dim_did = 0;
         cmd.stage = 9;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* ②円周 は同じ線の桁 20 から 29、右ボタンの合図つきですが、どちらの
+     * ボタンでも入ります（①円径 と同じ）。 */
+    if (ui.command == 14 && ui.top_item == 4 && !dxf_mode
+        && y >= 0 && y <= 15 && x / 8 + 1 >= 20 && x / 8 + 1 <= 29) {
+        cmd.top_item = 0;
+        cmd.top_right = 0;
+        cmd.dim_arc = 1;
+        /* **枠の上に戻すのは、この道に入ってからのもの全部です。**
+         * 二本目を入れると一本目の弧が消えました（y32..47 の 49 画素）
+         * ——原作は項目を選んだときに (122,17)-(638,47) を黒くして、
+         * あとから描いたものはそのまま残します。 */
+        cmd.n0_lines = drawing ? drawing->n_lines : 0;
+        cmd.n0_arcs = drawing ? drawing->n_arcs : 0;
+        cmd.n0_texts = drawing ? drawing->n_texts : 0;
+        cmd.dim_arc_val[0] = 0;
+        cmd.dim_did = 0;
+        cmd.stage = 11;
         mouse_x = x;
         mouse_y = y;
         sync_ui();

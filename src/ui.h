@@ -424,6 +424,10 @@ typedef struct {
     long dim_lines0;
     int dim_only;
     int dim_prog;
+    int dim_arc;
+    int dim_arc_end;
+    int dim_arc_miss;
+    char dim_arc_val[24];
     int dim_ck;
     int dim_ck_out;
     int dim_ck_vout;
@@ -636,6 +640,7 @@ const char *jw_ui_guide(void);
  * nothing at all.  Anything before the first bar is not an item either.
  *
  * It reads the line jw_ui_draw last drew, so call it after that. */
+void jw_ui_band_last(VGA *v, const JwUi *s);
 int jw_ui_top_item(int x, int y);
 
 #endif
