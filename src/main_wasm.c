@@ -237,6 +237,7 @@ static void sync_ui(void)
     ui.dim_arc = cmd.dim_arc;
     ui.dim_arc_end = cmd.dim_arc_end;
     ui.dim_arc_miss = cmd.dim_arc_miss;
+    ui.dim_lot = cmd.dim_lot;
     ui.dim_arc_two = cmd.dim_arc_two;
     ui.dim_arc_unit = cmd.dim_arc_unit;
     memcpy(ui.dim_arc_val, cmd.dim_arc_val, sizeof ui.dim_arc_val);
@@ -423,6 +424,7 @@ static void present(void)
         memset(vga.plane, 0, sizeof vga.plane);
     } else {
         jw_view_draw(&vga, drawing, &view);
+        jw_cmd_before(&cmd, &vga, drawing, &view);
     }
     ui.snap = mouse_x >= AREA_X0 && mouse_x <= AREA_X1
         && mouse_y >= AREA_Y0 && mouse_y <= AREA_Y1;
@@ -2086,6 +2088,23 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         && x / 8 + 1 >= 53 && x / 8 + 1 <= 66) {
         cmd.dim_circle = x / 8 + 1 <= 59 ? 1 : 2;
         cmd.stage = 6;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* ⑤一括（桁 74 から）: 始線・終線・追加線･除外線 を選んで、隣どうしの
+     * あいだに寸法を並べて入れます。 */
+    if (ui.command == 14 && !ui.top_item && !dxf_mode && !cmd.dim_prog
+        && (cmd.stage == 3 || cmd.stage == 5) && y >= 0 && y <= 15
+        && x / 8 + 1 >= 74) {
+        cmd.dim_lot = 1;
+        cmd.dim_lot_n = 0;
+        cmd.stage = 21;
+        cmd.n0_lines = drawing ? drawing->n_lines : 0;
+        cmd.n0_arcs = drawing ? drawing->n_arcs : 0;
+        cmd.n0_texts = drawing ? drawing->n_texts : 0;
         mouse_x = x;
         mouse_y = y;
         sync_ui();

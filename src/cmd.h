@@ -230,6 +230,14 @@ typedef struct {
      * 指示された円の中心と半径、③角度 は 原点マウス指示 で取った点。 */
     double dim_arc_cx, dim_arc_cy, dim_arc_r;
     /* ③【２線間】: 始線と終線を指示して、その交点まわりの角度。 */
+    /* ⑤一括: 始線と終線、それに 追加線･除外線 で選んだ線を並べて、
+     * 隣どうしのあいだに寸法を入れます（段 21..23）。 */
+    int dim_lot;
+    int dim_lot_n;
+    int dim_lot_run;            /* 1 = 一本目、2 = 二本目から（引出し線が
+                                 * 一本ぶん減ります） */
+    long dim_lot_k[64];
+    int dim_lot_sx, dim_lot_sy;         /* 始線を押した画面の点 */
     int dim_arc_two;
     long dim_arc_l0;            /* 始線 */
     double dim_arc_px, dim_arc_py;      /* 始線を押したところ */
@@ -516,6 +524,8 @@ void jw_cmd_zukei_left(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
  * original's own order: it paints a new entity on top rather than redrawing,
  * and the two rows under the top line were cleared once, when the item was
  * picked.  Call it after jw_ui_draw. */
+void jw_cmd_before(const JwCmd *c, VGA *v, const Jwc *d,
+                   const JwView *w);
 void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w);
 /* 寸法 の 2 本の案内線が画面のどこに来るか。戻り値は本数（0/1/2）で、
  * `*vert` が縦かどうか、`*a` が 引出し線の始点、`*b` が 寸法線 の位置。

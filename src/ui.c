@@ -3846,6 +3846,25 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 8, 1, 7, 0, "\x81\x9c \x90\xa1\x96@\x90\xfc \x88\xca\x92u \x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ");
                 }
             }
+            /* 寸法 ⑤一括 の四つの段。 */
+            if (s->command == 14 && s->dim_lot && i == s->stage
+                && s->stage >= 21 && s->stage <= 24) {
+                if (s->stage == 22) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                } else {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                }
+                if (s->stage == 21) {
+                    jw_ui_text(v, 8, 1, 7, 0, " \x81\x9e\x88\xea\x8a\x87\x8f\x88\x97\x9d\x82\xb7\x82\xe9\x90\xfc\x82\xcc \x81i\x8en\x90\xfc\x81j\x83}\x83" "E\x83X\x8ew\x8e\xa6  \x81m\xcf\xb3\xbd(R) \x93\xaf\x8e\xed\x90\xfc\x91I\x91\xf0\x81n");
+                } else if (s->stage == 22) {
+                    jw_ui_text(v, 8, 1, 7, 0, " \x81\x9e\x88\xea\x8a\x87\x8f\x88\x97\x9d\x82\xb7\x82\xe9\x90\xfc\x82\xcc   \x81y\x8fI\x90\xfc\x81z\x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
+                } else if (s->stage == 23) {
+                    jw_ui_text(v, 8, 1, 7, 0, "\x92\xc7\x89\xc1\x90\xfc\xa5\x8f\x9c\x8aO\x90\xfc \x83}\x83" "E\x83X\x8ew\x8e\xa6 |\x87@\x88\xea\x8a\x87\x8f\x88\x97\x9d\x8e\xc0\x8ds |\x87" "A \x92\x86\x8e~ | ");
+                } else {
+                    jw_ui_text(v, 8, 1, 7, 0, "\x88\xea\x8a\x87\x8f\x88\x97\x9d |\x87@\x98" "A\x91\xb1\x93\xfc\x97\xcd|\x87" "A\x8fI\x97\xb9|");
+                    jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                }
+            }
             /* 寸法 ④円･角 ①円径: `円マウス指示 半径(L) 直径(R)` and the
              * three cells, with the 書込角度 in a field at column 62.
              * **[ESC] goes up only once one has been drawn**: the press

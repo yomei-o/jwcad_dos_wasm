@@ -335,6 +335,14 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
 {
     int px, py;
 
+    /* **寸法 ⑤一括 の緑の点線は出していません。** 始線を取ったところから
+     * 矢の先へ色 4 の点が 4 画素おきに並びます（測定：始線 を (400,140) で
+     * 取って矢を (324,250) に置くと (399,140) から (325,248) まで）。
+     * 模様は始まりで揃っていて、`jw_line` に 0x2222 を渡すと合いますが、
+     * **始まりが押した点より 1 画素左で、しかもそれだけでは並びが合いません**
+     * ——(399,140)-(324,250) を引いても 8 画素ずれます。矢の先が何なのかが
+     * 分からないので、当てずっぽうを置くより出さないでおきます（外した
+     * 押しのあとだけ 28 画素の差）。 */
     /* 図形 ②読込, with a figure in hand: it is at the pointer from the
      * moment it is picked, before anything has moved. */
     if (c->command == 27
@@ -2221,6 +2229,28 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * while they wait for Ｂ.  線伸縮 does **not** -- its first press leaves
      * the line white and only changes the line above (measured: one press on
      * SAMPLE0's line 5 leaves all 71 of its pixels as they were). */
+    /* 寸法 ⑤一括 が選んだ線（測定：二本選んだところで赤が 551 画素）。
+     * **一括処理実行 のあと（段 24）は赤が消えます**——そのときの枠の縦線
+     * は本物でも白のままでした。
+     *
+     * `jw_view_line` は色の引数を見ない（線のペンで描く）ので、ここは
+     * `jw_line` に画面の座標を渡します。 */
+    if (c->command == 14 && c->dim_lot && c->stage < 24) {
+        int i;
+
+        for (i = 0; i < c->dim_lot_n; i++) {
+            const JwcLine *l;
+            int x0, y0, x1, y1;
+
+            if (c->dim_lot_k[i] < 0 || c->dim_lot_k[i] >= d->n_lines) {
+                continue;
+            }
+            l = &d->lines[c->dim_lot_k[i]];
+            at_screen(w, l->x0, l->y0, &x0, &y0);
+            at_screen(w, l->x1, l->y1, &x1, &y1);
+            jw_line(v, x0, y0, x1, y1, mark, ROP_REPLACE, JW_STYLE_SOLID);
+        }
+    }
     /* 測定 draws each leg as it is measured, in the same colour 2 (measured:
      * the 201 pixels between (250,200) and (450,300) come out f30000). */
     if (c->command == 15) {
@@ -2470,7 +2500,8 @@ int jw_cmd_guide_pos(const JwCmd *c, const JwView *w, int seg[2][4])
     /* ④円･角 ①円径 に案内線はありません（寸法線の位置を
      * 問わない道だから）。 */
     if (c->command != 14 || c->stage < 2 || c->top_item || c->dim_only
-        || c->dim_ck || c->dim_arc) {
+        || c->dim_ck || c->dim_arc
+        || (c->dim_lot && c->stage < 24)) {
         return 0;
     }
     /* The screen direction of the dimension's own axis: x grows with the
@@ -2495,6 +2526,35 @@ int jw_cmd_guide_pos(const JwCmd *c, const JwView *w, int seg[2][4])
         n = 2;
     }
     return n;
+}
+
+/* 寸法 ⑤一括 が入れた寸法は **図面の上・案内線の下** です。測定：
+ * 引出し線の下端 2 画素は枠の白より上に出ていて、寸法線のほうは案内線の
+ * 白に消されています。だから jw_cmd_after ではなく、枠を描く前のここで
+ * 描き直します。 */
+void jw_cmd_before(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
+{
+    long k;
+
+    if (!d || c->command != 14 || !c->dim_lot) {
+        return;
+    }
+    v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+    v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+    v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+    v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+    for (k = c->n0_lines; k < d->n_lines; k++) {
+        if (jwc_visible(d, d->lines[k].layer)) {
+            jw_view_line(v, d, &d->lines[k], w,
+                         jw_view_pen_colour(d->lines[k].pen));
+        }
+    }
+    for (k = c->n0_texts; k < d->n_texts; k++) {
+        if (jwc_visible(d, d->texts[k].layer)) {
+            jw_view_text(v, d, &d->texts[k], w,
+                         jw_view_text_colour(d, d->texts[k].size));
+        }
+    }
 }
 
 void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
@@ -2785,6 +2845,9 @@ static int cmd_top_dim3(JwCmd *c)
     return 0;                   /* the line is the item's own recording */
 }
 
+/* 寸法 ⑤一括 の本体は下のほうです。 */
+static void dimension_lot(JwCmd *c, Jwc *d);
+
 static int cmd_top(JwCmd *c, Jwc *d, int item)
 {
     long k;
@@ -2907,6 +2970,25 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->dim_val_size = 0;
         c->stage = 7;
         return 1;
+    }
+    if (c->command == 14 && c->dim_lot && c->stage == 23) {
+        /* `|①一括処理実行 |② 中止 |` */
+        if (item == 1) {
+            c->dim_seen_lines = d->n_lines;
+            c->dim_seen_arcs = d->n_arcs;
+            c->dim_seen_texts = d->n_texts;
+            dimension_lot(c, d);
+            c->dim_texts = d->n_texts;
+            c->stage = 24;
+            return 1;
+        }
+        if (item == 2) {
+            c->dim_lot = 0;
+            c->dim_lot_n = 0;
+            c->stage = 3;
+            return 1;
+        }
+        return 0;
     }
     if (c->command == 14 && c->dim_arc && c->stage == 11) {
         /* ②円周 の線の `|①端部|`: 【点】 と 【矢印】 が入れ替わります。
@@ -4997,11 +5079,13 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
     if (jwc_add_line(d, DIM_X(x0, y), DIM_Y(x0, y),
                      DIM_X(x1, y), DIM_Y(x1, y), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = (unsigned char)
-            (c->dim_circle ? 0xa2 : uy == 0.0 && ux > 0.0 ? 0x80 : 0x00);
+            (c->dim_lot_run ? 0x00
+             : c->dim_circle ? 0xa2 : uy == 0.0 && ux > 0.0 ? 0x80 : 0x00);
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
-    if (jwc_add_line(d, DIM_X(x0, b), DIM_Y(x0, b),
-                     DIM_X(x0, ye), DIM_Y(x0, ye), type, pen, layer)) {
+    if (c->dim_lot_run != 2
+        && jwc_add_line(d, DIM_X(x0, b), DIM_Y(x0, b),
+                        DIM_X(x0, ye), DIM_Y(x0, ye), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
@@ -5071,6 +5155,51 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
     }
 #undef DIM_X
 #undef DIM_Y
+}
+
+/* ⑤一括 が並べる一本ぶん。`dimension()` をそのまま使いますが、境目の
+ * 引出し線は一本なので二本目からは左側を書かず、寸法線の A バイトも
+ * 0x80 ではなく 0x00 です（測定）。 */
+static void dimension_lot(JwCmd *c, Jwc *d)
+{
+    const double ux = c->dim_ux, uy = c->dim_uy;
+    const double vx = -uy, vy = ux;
+    double at[64];
+    int n = 0, i, j;
+
+    for (i = 0; i < c->dim_lot_n; i++) {
+        const JwcLine *l = &d->lines[c->dim_lot_k[i]];
+        const double p0 = l->x0 * vx + l->y0 * vy;
+        const double p1 = l->x1 * vx + l->y1 * vy;
+        double t;
+
+        /* 寸法線と平行な線は交わりません。本物がそれをどう扱うかは
+         * 測っていないので、ここでは飛ばします。 */
+        if (p1 - p0 > -1e-9 && p1 - p0 < 1e-9) {
+            continue;
+        }
+        /* **寸法線との交わりで測っています。** 引出し線の始点の側で
+         * 測るのとは、斜めの線でしか違いません（SAMPLE0 の線はどれも
+         * 縦か横なので、どちらか決められませんでした）。 */
+        t = (c->dim_y - p0) / (p1 - p0);
+        at[n] = (l->x0 + (l->x1 - l->x0) * t) * ux
+              + (l->y0 + (l->y1 - l->y0) * t) * uy;
+        n++;
+    }
+    for (i = 1; i < n; i++) {           /* 小さい順に */
+        const double v = at[i];
+
+        for (j = i; j > 0 && at[j - 1] > v; j--) {
+            at[j] = at[j - 1];
+        }
+        at[j] = v;
+    }
+    for (i = 0; i + 1 < n; i++) {
+        c->dim_x0 = at[i];
+        c->dim_lot_run = i ? 2 : 1;
+        dimension(c, d, at[i + 1]);
+    }
+    c->dim_lot_run = 0;
 }
 
 /* ------------------------------------------------------- 円線接 ①接線 */
@@ -5908,6 +6037,55 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->typing = 1;
             c->typed[0] = 0;
             c->typed_n = 0;
+            return 1;
+        }
+        if (c->dim_lot && c->stage >= 21 && c->stage <= 24) {
+            /* ⑤一括: 始線・終線、そのあとは 追加線･除外線。押した線は
+             * 赤（色 2）になります。 */
+            const long k = jw_cmd_line_at(d, w, sx, sy);
+
+            if (c->stage == 24) {
+                /* 一本入れたあと、図面を押すと 始線 から始め直します
+                 * （測定したのは空押しだけです）。 */
+                c->dim_lot_n = 0;
+                c->stage = 21;
+                return 1;
+            }
+            if (k < 0) {
+                c->missed = 1;
+                return 1;
+            }
+            c->missed = 0;
+            if (c->stage == 21 || c->stage == 22) {
+                if (c->stage == 21) {
+                    c->dim_lot_sx = sx;
+                    c->dim_lot_sy = sy;
+                }
+                if (c->dim_lot_n < (int)(sizeof c->dim_lot_k
+                                         / sizeof c->dim_lot_k[0])) {
+                    c->dim_lot_k[c->dim_lot_n++] = k;
+                }
+                c->stage++;
+                return 1;
+            }
+            /* 追加線･除外線: もう入っていれば外し、なければ足します。 */
+            {
+                int i;
+
+                for (i = 0; i < c->dim_lot_n; i++) {
+                    if (c->dim_lot_k[i] == k) {
+                        for (; i + 1 < c->dim_lot_n; i++) {
+                            c->dim_lot_k[i] = c->dim_lot_k[i + 1];
+                        }
+                        c->dim_lot_n--;
+                        return 1;
+                    }
+                }
+                if (c->dim_lot_n < (int)(sizeof c->dim_lot_k
+                                         / sizeof c->dim_lot_k[0])) {
+                    c->dim_lot_k[c->dim_lot_n++] = k;
+                }
+            }
             return 1;
         }
         if (c->dim_arc && c->stage >= 11 && c->stage <= 15) {
