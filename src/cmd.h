@@ -295,6 +295,12 @@ typedef struct {
     double dim_arrow_mm;
     double dim_angle_deg;
     int tan_on;                 /* ①接線 is running */
+    /* ①接線 ④角度指定: 角度を打ってから円を指示すると、その角度の接線が
+     * 決まります。始点と終点はその線の上に落として使います（4.25b）。 */
+    double tan_deg;             /* 打ち込んだ角度 */
+    double tan_prev;            /* その欄の「前回と同じ」-- 初めは 45 度 */
+    double tan_bx, tan_by;      /* 接線の上の一点（接点） */
+    double tan_ax, tan_ay;      /* 始点を落としたところ */
     double tan_x, tan_y;        /* the 指定点 it has in hand */
     int hatch_closed;           /* the start line has come round again */
     long hatch_first;           /* the first line ① 実 行 made */

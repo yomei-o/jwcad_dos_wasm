@@ -46,6 +46,8 @@ void jw_cmd_pick(JwCmd *c, int command)
     /* ハッチ's `[  45.00]` and `[  10.0]`, likewise. */
     c->hatch_angle = 45.0;
     c->hatch_pitch = 10.0;
+    /* 円線接 ①接線 ④角度指定 の `[  45.000\xdf]`、その欄の前回と同じ。 */
+    c->tan_prev = 45.0;
     /* ＋ and ／'s `[  1000.000mm]` and `[  45.000\xdf]`, likewise. */
     c->ask_len = 1000.0;
     c->ask_ang = 45.0;
@@ -3070,6 +3072,22 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     }
     if (c->command == 26) {
         /* `接線 |①円～円間 |②円周点 |③指定点 |④角度指定 |` -- only ③. */
+        /* ①接 線 は上の行からも選べます（測定：行が
+         * `接線 |①円～円間 |②円周点 |③指定点 |④角度指定 |` になります）。 */
+        if (!c->tan_on && item == 1) {
+            c->tan_on = 1;
+            c->pressed = 1;
+            c->stage = 1;
+            return 1;
+        }
+        if (c->tan_on && c->stage == 1 && item == 4) {
+            /* ④角度指定: まず角度、それから円、始点、終点。 */
+            c->typing = 1;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 12;
+            return 1;
+        }
         if (c->tan_on && c->stage == 1 && item == 3) {
             c->stage = 2;
             return 1;
@@ -3875,6 +3893,36 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typing = 0;
             c->typed[0] = 0;
             c->typed_n = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if (c->command == 26 && c->tan_on && c->stage == 12) {
+        /* ④角度指定 の角度。[Enter] で円を訊きにいきます。 */
+        if (key == 13 || key == 10) {
+            /* 空のまま [Enter] を押すと「前回と同じ」が使われます。 */
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                c->tan_deg = atof(c->typed);
+                c->tan_prev = c->tan_deg;
+            } else {
+                c->tan_deg = c->tan_prev;
+            }
+            c->typing = 0;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 13;
             return 1;
         }
         if (key == 8) {
@@ -6706,6 +6754,69 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->tan_on = 1;
             c->pressed = 1;
             c->stage = 1;
+            return 1;
+        }
+        if (c->stage == 13) {
+            /* ④角度指定: 円を指示すると、打った角度の接線のうち **押した
+             * 側** のものが決まります。測定（TEST1、30 度、円
+             * c=(165,193.397) r=43.603 を (255,239) で押す）: できた線は
+             * (65.536,186.320)-(280.488,310.422) で、向きは 30 度ちょうど、
+             * 中心からの離れは 43.60 ——半径です。 */
+            const long k = jw_cmd_arc_at(d, w, sx, sy);
+            const double rad = c->tan_deg * 3.14159265358979323846 / 180.0;
+            const double nx = -sin(rad), ny = cos(rad);
+            double px, py, side;
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            jw_cmd_at(w, sx, sy, &px, &py);
+            side = (px - d->arcs[k].cx) * nx + (py - d->arcs[k].cy) * ny;
+            c->tan_bx = d->arcs[k].cx + (side < 0.0 ? -1.0 : 1.0)
+                      * d->arcs[k].r * nx;
+            c->tan_by = d->arcs[k].cy + (side < 0.0 ? -1.0 : 1.0)
+                      * d->arcs[k].r * ny;
+            c->stage = 14;
+            return 1;
+        }
+        if (c->stage == 14 || c->stage == 15) {
+            /* 始点と終点は、その接線の上に **落として** 使います（測定：
+             * 押した点からの垂線の足が、そのまま線の端になります）。 */
+            const double rad = c->tan_deg * 3.14159265358979323846 / 180.0;
+            const double ux = cos(rad), uy = sin(rad);
+            double t;
+
+            if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            t = (x - c->tan_bx) * ux + (y - c->tan_by) * uy;
+            if (c->stage == 14) {
+                c->tan_ax = c->tan_bx + ux * t;
+                c->tan_ay = c->tan_by + uy * t;
+                c->stage = 15;
+                return 1;
+            }
+            c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
+            if (jwc_add_line(d, (float)c->tan_ax, (float)c->tan_ay,
+                             (float)(c->tan_bx + ux * t),
+                             (float)(c->tan_by + uy * t),
+                             (unsigned char)d->line_type,
+                             (unsigned char)d->pen,
+                             (unsigned char)((0 << 4)
+                                             | (d->write_layer & 15)))) {
+                d->lines[d->n_lines - 1].rest[1] = 0x05;
+            }
+            /* 一本入ると角度の欄に戻ります（測定）。 */
+            c->typing = 1;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 12;
             return 1;
         }
         if (c->stage == 2 || c->stage == 4) {

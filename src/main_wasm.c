@@ -14,6 +14,7 @@
  *
  *   sh tools/build_wasm.sh     -> jwcad.js + jwcad.wasm
  */
+#include <math.h>
 #include "cmd.h"
 #include "jwc.h"
 #include "plot.h"
@@ -237,6 +238,32 @@ static void sync_ui(void)
     ui.dim_arc = cmd.dim_arc;
     ui.dim_arc_end = cmd.dim_arc_end;
     ui.dim_arc_miss = cmd.dim_arc_miss;
+    ui.tan_deg = cmd.tan_deg;
+    ui.tan_prev = cmd.tan_prev;
+    ui.tan_len = 0.0;
+    ui.tan_ang = 0.0;
+    if (cmd.command == 26 && cmd.stage == 15 && drawing) {
+        /* 終点を訊いている間の `長さ =` と `角度 =`。どちらも矢の先を
+         * 接線に落としたところまでで、長さは **本当の大きさ**（図面の
+         * 単位 x 縮尺）です（測定：TEST1 で 248.2 単位が 28462.13mm）。 */
+        const double rad = cmd.tan_deg * 3.14159265358979323846 / 180.0;
+        const double ux = cos(rad), uy = sin(rad);
+        double px, py, t;
+
+        jw_cmd_at(&view, mouse_x, mouse_y, &px, &py);
+        t = (px - cmd.tan_bx) * ux + (py - cmd.tan_by) * uy;
+        px = cmd.tan_bx + ux * t - cmd.tan_ax;
+        py = cmd.tan_by + uy * t - cmd.tan_ay;
+        ui.tan_len = sqrt(px * px + py * py) * jwc_zukei_scale(drawing);
+        /* 角度 は **引いている向き** で、長さが 0 なら 0.000 です
+         * （測定：始点を押したところでは 0.000、終点まで引くと 30.000）。 */
+        if (ui.tan_len != 0.0) {
+            ui.tan_ang = atan2(py, px) * 180.0 / 3.14159265358979323846;
+            while (ui.tan_ang < 0.0) {
+                ui.tan_ang += 360.0;
+            }
+        }
+    }
     ui.hen_dbl = cmd.hen_dbl;
     ui.hen_dbl_cap = cmd.hen_dbl_cap;
     ui.hen_dbl_edit = cmd.hen_dbl && cmd.typing;

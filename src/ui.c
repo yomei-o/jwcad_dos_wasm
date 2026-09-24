@@ -3846,6 +3846,46 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 8, 1, 7, 0, "\x81\x9c \x90\xa1\x96@\x90\xfc \x88\xca\x92u \x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ");
                 }
             }
+            /* 円線接 ①接線 ④角度指定 の四つの段。 */
+            if (s->command == 26 && i == s->stage
+                && s->stage >= 12 && s->stage <= 15) {
+                char one[48];
+
+                if (i == 12) {
+                    int n, x;
+
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    jw_ui_text(v, 8, 1, 7, 0, "\x8ap\x93x =");
+                    jw_ui_text(v, 32, 1, 7, 0, "\x81" "b0 \x93x \xcf\xb3\xbd(L)\x81" "b\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) \x81" "b[F1] \xcf\xb3\xbd\x8ap\x93x\x81" "b");
+                    sprintf(one, "[%8.3f\xdf]", s->tan_prev);
+                    jw_ui_text(v, 50, 2, 7, 0xffffu, one);
+                    x = 14 * 8;
+                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                        char two[4];
+
+                        two[0] = s->typed[n];
+                        two[1] = two[2] = ' ';
+                        two[3] = 0;
+                        jw_ui_text(v, 15 + n, 1, 7, 0, two);
+                    }
+                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    x += n * 8;
+                    fill(v, x, 7, x + 7, 15, 4);
+                } else if (i == 13) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    jw_ui_text(v, 8, 1, 7, 0, "\x8ap\x93x\x8ew\x92\xe8\x82\xcc\x90\xda\x90\xfc  \x81\x9e \x89~\x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
+                } else if (i == 14) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    jw_ui_text(v, 8, 1, 7, 0, "\x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
+                } else {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    jw_ui_text(v, 8, 1, 7, 0, "\x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
+                    sprintf(one, "%s%10.2f%s", "\x92\xb7\x82\xb3 =", s->tan_len, " (mm) ");
+                    jw_ui_text(v, 34, 1, 7, 0, one);
+                    sprintf(one, "%s%7.3f%s", "\x8ap\x93x =", s->tan_ang, "(\xdf) ");
+                    jw_ui_text(v, 56, 1, 7, 0, one);
+                }
+            }
             /* 変形 ③複線化 は同じ範囲の道を通りますが、言葉が違います。
              * 段 3 は 文字(R) を取らないので `線・円(L)` だけ、段 4 は
              * 自分の行です。 */
