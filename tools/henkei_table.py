@@ -51,6 +51,12 @@ def main():
     st.run(head + para + first_l, d + '/left')
     st.run(head + para + first_r + second + fix + way + base + place,
            d + '/on')
+    # ②数値位置: the distance typed one key at a time (the whole string at
+    # once outruns the program and only the first key lands), then [Enter]
+    num = st.PRESS % (220, 8, 'left', 'left')       # ②数値位置, columns 24..33
+    typed = ''.join('type ' + ch + NL + 'wait 6000000' + NL for ch in '20,30')
+    st.run(head + para + first_r + second + fix + num + typed
+           + 'key enter' + NL + 'wait 40000000' + NL, d + '/num')
     # 40M to start, 26M for the menu and 36M a press: the press that starts at
     # N leaves its line in the window N..N+36M.  ①パラメトリック変形 is one
     # press more than 複写's road, so everything is 36M later.
@@ -62,6 +68,9 @@ def main():
     from_items = st.strings(on, 210_000_000, 246_000_000)
     to_items = st.strings(on, 246_000_000, 282_000_000)
     again_items = st.strings(on, 282_000_000, 1 << 62)
+    nm = d + '/num.log'
+    dist_items = st.strings(nm, 210_000_000, 246_000_000)
+    done_items = st.strings(nm, 276_000_000, 1 << 62)
     text = ['/* ' + __doc__.rstrip() + '\n */',
             '#ifndef JW_HENKEI_H', '#define JW_HENKEI_H', '',
             '#include "stage.h"', '',
@@ -78,6 +87,10 @@ def main():
     text += list(st.rows(from_items, 5, command))
     text += ['    /* stage 6: 変形 位置 */']
     text += list(st.rows(to_items, 6, command))
+    text += ['    /* stage 7: ②数値位置 -- the distance in millimetres */']
+    text += list(st.rows(dist_items, 7, command))
+    text += ['    /* stage 8: it is done */']
+    text += list(st.rows(done_items, 8, command))
     text += ['    /* stage 9: 再変形 -- it does not end there */']
     text += list(st.rows(again_items, 9, command))
     text += ['    { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0, 0 },', '};', '',

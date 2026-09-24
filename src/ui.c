@@ -3794,7 +3794,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             /* 複写's distance field, the same shape but from column 18:
              * `[ESC].距離 X,Y =` fills columns 1 to 16 and the characters go in
              * one to a cell after it. */
-            if (((s->command == 1 || s->command == 16) && i == 7)
+            if (((s->command == 1 || s->command == 16 || s->command == 17)
+                 && i == 7)
                 || (s->command == 21 && i == 2)) {
                 int n;
 

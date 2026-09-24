@@ -1941,9 +1941,8 @@ static void copy_by_mm(JwCmd *c, Jwc *d)
  * Arcs and texts are taken the way 複写 takes them (wholly inside), because
  * neither can be stretched; what the original does with an arc that crosses
  * the edge is not measured. */
-static void henkei_at(JwCmd *c, Jwc *d, double px, double py)
+static void henkei_by(JwCmd *c, Jwc *d, double dx, double dy)
 {
-    const double dx = px - c->base_x, dy = py - c->base_y;
     long k;
 
     /* **Which ends are dragged is settled once.**  再変形 presses again and
@@ -2002,6 +2001,19 @@ static void henkei_at(JwCmd *c, Jwc *d, double px, double py)
             d->texts[k].rest[2] = (unsigned char)(d->texts[k].rest[2] | 0x02);
         }
     }
+}
+
+static void henkei_at(JwCmd *c, Jwc *d, double px, double py)
+{
+    henkei_by(c, d, px - c->base_x, py - c->base_y);
+}
+
+/* ②数値位置: the same, by a distance in millimetres of paper. */
+static void henkei_by_mm(JwCmd *c, Jwc *d)
+{
+    const double per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
+
+    henkei_by(c, d, d->copy_x_mm * per, d->copy_y_mm * per);
 }
 
 static void place_at(JwCmd *c, Jwc *d, double px, double py)
@@ -2222,10 +2234,17 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
             }
         } else if (c->command == 17) {
             /* 変形: the ones it will stretch are dotted, the ones it will
-             * move whole are solid.  See henkei_kind. */
-            const int kind = henkei_kind(c, l->x0, l->y0, l->x1, l->y1);
+             * move whole are solid.  See henkei_kind.
+             *
+             * **Once it has moved them the mask is what says so**, not the
+             * box: ②数値位置 with 20,30 carries line 5's end clean out of
+             * the range and the original still shows it red. */
+            const int ends = c->hen_end ? c->hen_end[k] : 0;
+            const int kind = c->hen_end
+                           ? (ends == 3 ? 1 : ends ? 2 : 0)
+                           : henkei_kind(c, l->x0, l->y0, l->x1, l->y1);
 
-            if (!kind || flipped(c, JW_FLIP_LINE, k)) {
+            if (!kind || (!c->hen_end && flipped(c, JW_FLIP_LINE, k))) {
                 continue;
             }
             if (kind == 2) {
@@ -2953,6 +2972,16 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->stage = 5;
         return 1;
     }
+    if (c->command == 17 && c->stage == 4 && item == 2) {
+        /* ②数値位置: `.距離 X,Y =` in millimetres of paper, the same
+         * field 複写 has.  Measured: `20,30` moves the ends that are in
+         * the box by (34.883,52.323) = (20,30) x unit_mm. */
+        c->stage = 7;
+        c->typing = 1;
+        c->typed_n = 0;
+        c->typed[0] = 0;
+        return 1;
+    }
     if (JW_MOVE_CMD(c->command)) {
         /* 複写 and 移動, once the range is fixed.  Nothing in the line is picked yet --
          * none of the seven has 【】 round it -- so ①ﾏｳｽ位置 has to be chosen
@@ -3575,6 +3604,38 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 c->typed[c->typed_n] = 0;
             }
             return 1;
+        }
+        return 1;
+    }
+    if (c->command == 17 && c->stage == 7) {
+        /* 変形's distance, the same field and the same rule. */
+        if (key == 13 || key == 10) {
+            const char *comma;
+
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                d->copy_x_mm = atof(c->typed);
+                comma = strchr(c->typed, ',');
+                d->copy_y_mm = comma ? atof(comma + 1) : d->copy_x_mm;
+            }
+            c->typing = 0;
+            c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
+            c->stage = 8;
+            henkei_by_mm(c, d);
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == ','
+             || key == '-') && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
         }
         return 1;
     }
