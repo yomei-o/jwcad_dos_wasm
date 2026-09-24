@@ -299,6 +299,12 @@ typedef struct {
      * 決まります。始点と終点はその線の上に落として使います（4.25b）。 */
     double tan_deg;             /* 打ち込んだ角度 */
     double tan_prev;            /* その欄の「前回と同じ」-- 初めは 45 度 */
+    long tan_k;                 /* ②円周点 が指示された円 */
+    int tan_kind;               /* 2 = ②円周点、4 = ④角度指定 */
+    long tan_kb;                /* ①円～円間 の円(Ａ) */
+    int tan_miss;               /* 円を探して線が出た（線データです） */
+    double tan_apx, tan_apy;    /* 円(Ａ)を押したところ */
+    int tan_did;                /* 一本引いた（桁 1 の [ESC]） */
     double tan_bx, tan_by;      /* 接線の上の一点（接点） */
     double tan_ax, tan_ay;      /* 始点を落としたところ */
     double tan_x, tan_y;        /* the 指定点 it has in hand */

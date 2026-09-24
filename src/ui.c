@@ -3846,6 +3846,33 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 8, 1, 7, 0, "\x81\x9c \x90\xa1\x96@\x90\xfc \x88\xca\x92u \x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ");
                 }
             }
+            /* ①円～円間 の二つの段。 */
+            if (s->command == 26 && i == s->stage
+                && (s->stage == 18 || s->stage == 19)) {
+                if (s->tan_did || i == 19) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                }
+                jw_ui_text(v, 8, 1, 7, 0, i == 18 ? "\x89~\x81`\x89~\x8a\xd4\x82\xcc\x90\xda\x90\xfc \x81\x9e \x89~(\x82`)\x82\xf0\x83}\x83" "E\x83X\x8ew\x8e\xa6 \x81i\x90\xda\x90\xfc\x92\xca\x89\xdf\x88\xca\x92u\x81j" : "\x89~\x81`\x89~\x8a\xd4\x82\xcc\x90\xda\x90\xfc \x81\x9f \x89~(\x82" "a)\x82\xf0\x83}\x83" "E\x83X\x8ew\x8e\xa6 \x81i\x90\xda\x90\xfc\x92\xca\x89\xdf\x88\xca\x92u\x81j");
+                if (i == 18) {
+                    /* 桁 73 の [BS]前項 は 円(Ａ) のときだけです（測定）。 */
+                    jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                }
+            }
+            /* ②円周点 の二つの段。 */
+            if (s->command == 26 && i == s->stage
+                && (s->stage == 16 || s->stage == 17)) {
+                if (i == 16) {
+                    /* 一本引いたあとだけ [ESC] が出ます（測定）。 */
+                    if (s->tan_did) {
+                        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    }
+                    jw_ui_text(v, 8, 1, 7, 0, "\x89~\x8e\xfc\x93_\x82\xcc\x90\xda\x90\xfc  \x81\x9e \x89~\x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
+                    jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                } else {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    jw_ui_text(v, 8, 1, 7, 0, " \x81\x9e \x89~\x8e\xfc\x93_\x82\xf0\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ");
+                }
+            }
             /* 円線接 ①接線 ④角度指定 の四つの段。 */
             if (s->command == 26 && i == s->stage
                 && s->stage >= 12 && s->stage <= 15) {
@@ -4274,7 +4301,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * when a press finds something (the band is repainted) or another item
          * is picked.  Both were measured -- 線消 at (244,140) then (446,189)
          * leaves the band empty, and picking 複写 after the miss clears it. */
-        if (s->missed) {
+        if (s->missed && s->command == 26) {
+            /* 円線接 は桁 17 から、句点つきです（測定）。 */
+            jw_ui_text(v, 18, 2, 7, 0, s->tan_miss ? "\x90\xfc\x83" "f\x81[\x83^\x82\xc5\x82\xb7" : "\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83" "f\x81[\x83^\x96\xb3");
+        } else if (s->missed) {
             /* 寸法 ④円･角 ①円径 は同じ言葉を **一桁左から**、
              * BEL なしに桁 32 から書きます。ほかの道は BEL が一桁を取るので
              * 桁 33 からです――どちらも画面で測りました。 */

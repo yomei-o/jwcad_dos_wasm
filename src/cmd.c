@@ -2869,7 +2869,11 @@ static int cmd_top_dim3(JwCmd *c)
 
 /* 寸法 ⑤一括 の本体は下のほうです。 */
 static void dimension_lot(JwCmd *c, Jwc *d);
+/* 円線接 ①円～円間 の本体は下のほうです。 */
+static void tangent_pair(JwCmd *c, Jwc *d, long kb, double px, double py);
 /* 変形 ③複線化 の本体も下のほうです。 */
+/* 円線接 の道に入ったところも下のほうです。 */
+static void tan_start(JwCmd *c, const Jwc *d);
 static void henkei_double(JwCmd *c, Jwc *d);
 
 static int cmd_top(JwCmd *c, Jwc *d, int item)
@@ -3076,12 +3080,29 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
          * `接線 |①円～円間 |②円周点 |③指定点 |④角度指定 |` になります）。 */
         if (!c->tan_on && item == 1) {
             c->tan_on = 1;
+            tan_start(c, d);
             c->pressed = 1;
             c->stage = 1;
             return 1;
         }
+        if (c->tan_on && c->stage == 1 && item == 1) {
+            /* ①円～円間: 円を二つ指示すると、押した側どうしを結ぶ接線。 */
+            c->tan_kind = 1;
+            tan_start(c, d);
+            c->stage = 18;
+            return 1;
+        }
+        if (c->tan_on && c->stage == 1 && item == 2) {
+            /* ②円周点: 円を指示してから、その円周の上の点。 */
+            c->tan_kind = 2;
+            tan_start(c, d);
+            c->stage = 16;
+            return 1;
+        }
         if (c->tan_on && c->stage == 1 && item == 4) {
             /* ④角度指定: まず角度、それから円、始点、終点。 */
+            c->tan_kind = 4;
+            tan_start(c, d);
             c->typing = 1;
             c->typed[0] = 0;
             c->typed_n = 0;
@@ -5544,6 +5565,15 @@ static void henkei_double(JwCmd *c, Jwc *d)
  * the radius there is square to the line, and it is the nearer of the two
  * tangent points to the press.  The record's A byte is 0x05.
  */
+/* 円線接 の道に入ったところ。ここから先に作ったものは、みな枠の上に
+ * 描き直されます（jw_cmd_after）。 */
+static void tan_start(JwCmd *c, const Jwc *d)
+{
+    c->n0_lines = d ? d->n_lines : 0;
+    c->n0_arcs = d ? d->n_arcs : 0;
+    c->n0_texts = d ? d->n_texts : 0;
+}
+
 static int tangent_to(JwCmd *c, Jwc *d, const JwView *w, long k,
                       int sx, int sy)
 {
@@ -5582,6 +5612,68 @@ static int tangent_to(JwCmd *c, Jwc *d, const JwView *w, long k,
     }
     d->lines[d->n_lines - 1].rest[1] = 0x05;
     return 1;
+}
+
+/* 円線接 ①接線 ①円～円間: 二つの円の接線のうち、接点が押したところに
+ * いちばん近いものを一本。
+ *
+ * 線は単位法線 `n` と `n·x = p` で表せて、中心からの符号つきの離れが
+ * それぞれ σ1r1・σ2r2 になります。引き算すると `n·(c2−c1) = σ2r2 − σ1r1`
+ * なので、`k = (σ2r2 − σ1r1)/D` として
+ * `n = (d/D)k ± ⊥(d/D)√(1−k²)`。接点は `c − σrn` です。
+ * σ1 を −1 に決めても四本そろいます（σ2 の二通り × 根の二通り）。 */
+static void tangent_pair(JwCmd *c, Jwc *d, long kb, double px, double py)
+{
+    const JwcArc *a = &d->arcs[c->tan_kb];
+    const JwcArc *b = &d->arcs[kb];
+    const double dx = b->cx - a->cx, dy = b->cy - a->cy;
+    const double far = sqrt(dx * dx + dy * dy);
+    double bx0 = 0.0, by0 = 0.0, bx1 = 0.0, by1 = 0.0, best = 0.0;
+    int got = 0, i, j;
+
+    if (far <= 0.0) {
+        return;
+    }
+    for (i = 0; i < 2; i++) {
+        const double s2 = i ? -1.0 : 1.0;
+        const double kk = (s2 * b->r + a->r) / far;
+        double root;
+
+        if (kk > 1.0 || kk < -1.0) {
+            continue;
+        }
+        root = sqrt(1.0 - kk * kk);
+        for (j = 0; j < 2; j++) {
+            const double sgn = j ? -1.0 : 1.0;
+            const double nx = dx / far * kk - sgn * dy / far * root;
+            const double ny = dy / far * kk + sgn * dx / far * root;
+            const double t0x = a->cx + a->r * nx;
+            const double t0y = a->cy + a->r * ny;
+            const double t1x = b->cx - s2 * b->r * nx;
+            const double t1y = b->cy - s2 * b->r * ny;
+            const double away = (t0x - c->tan_apx) * (t0x - c->tan_apx)
+                              + (t0y - c->tan_apy) * (t0y - c->tan_apy)
+                              + (t1x - px) * (t1x - px)
+                              + (t1y - py) * (t1y - py);
+
+            if (!got || away < best) {
+                best = away;
+                bx0 = t0x;
+                by0 = t0y;
+                bx1 = t1x;
+                by1 = t1y;
+                got = 1;
+            }
+        }
+    }
+    if (!got) {
+        return;
+    }
+    if (jwc_add_line(d, (float)bx0, (float)by0, (float)bx1, (float)by1,
+                     (unsigned char)d->line_type, (unsigned char)d->pen,
+                     (unsigned char)((0 << 4) | (d->write_layer & 15)))) {
+        d->lines[d->n_lines - 1].rest[1] = 0x05;
+    }
 }
 
 /* ----------------------------------------------------------- ハッチ */
@@ -6752,8 +6844,85 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 return 0;       /* ②接円 is not done */
             }
             c->tan_on = 1;
+            tan_start(c, d);
             c->pressed = 1;
             c->stage = 1;
+            return 1;
+        }
+        if (c->stage == 18 || c->stage == 19) {
+            /* ①円～円間: 四本ある接線（外二本・内二本）のうち、接点が
+             * 押したところにいちばん近いものを引きます。
+             *
+             * 測定（TEST1）: 同じ半径の二つ（r=43.603、中心 y が同じ）を
+             * どちらも上四半分で押すと `(165,237)-(326,237)`——上の外接線。
+             * 半径の違う二つ（43.603 と 87.205）だと
+             * `(153.191,235.371)-(302.383,277.344)` で、中心からの離れは
+             * 43.60 と 87.20 ——どちらも半径ちょうどです。 */
+            const long k = jw_cmd_arc_at(d, w, sx, sy);
+            double px, py;
+
+            if (k < 0) {
+                /* 円を探して線が出ると言葉が変わります（測定：桁 17 から
+                 * `.線データです`、何もなければ `.読取可能データ無`）。 */
+                c->tan_miss = jw_cmd_line_at(d, w, sx, sy) >= 0;
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            jw_cmd_at(w, sx, sy, &px, &py);
+            if (c->stage == 18) {
+                c->tan_kb = k;
+                c->tan_apx = px;
+                c->tan_apy = py;
+                c->stage = 19;
+                return 1;
+            }
+            tangent_pair(c, d, k, px, py);
+            c->tan_did = 1;
+            c->stage = 18;
+            return 1;
+        }
+        if (c->stage == 16) {
+            /* ②円周点: まず円。 */
+            const long k = jw_cmd_arc_at(d, w, sx, sy);
+
+            if (k < 0) {
+                /* 円を探して線が出ると言葉が変わります（測定：桁 17 から
+                 * `.線データです`、何もなければ `.読取可能データ無`）。 */
+                c->tan_miss = jw_cmd_line_at(d, w, sx, sy) >= 0;
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->tan_k = k;
+            c->stage = 17;
+            return 1;
+        }
+        if (c->stage == 17) {
+            /* 円周点: 押した点にいちばん近い円周の点が接点になり、そこの
+             * 半径と直角な線が接線です。測定（TEST1、円
+             * c=(165,193.397) r=43.603、円周点 (200,300)）: 接点は
+             * (123.888,178.870)、線は (134.047,150.130)-(93.418,265.078)
+             * で中心からの離れが 43.60 ——半径ちょうど。 */
+            const JwcArc *a = &d->arcs[c->tan_k];
+            double dx, dy, far;
+
+            if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            dx = x - a->cx;
+            dy = y - a->cy;
+            far = sqrt(dx * dx + dy * dy);
+            if (far <= 0.0) {
+                return 0;
+            }
+            c->tan_bx = a->cx + a->r * dx / far;
+            c->tan_by = a->cy + a->r * dy / far;
+            c->tan_deg = atan2(dy, dx) * 180.0 / 3.14159265358979323846
+                       - 90.0;
+            c->stage = 14;
             return 1;
         }
         if (c->stage == 13) {
@@ -6768,6 +6937,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             double px, py, side;
 
             if (k < 0) {
+                c->tan_miss = jw_cmd_line_at(d, w, sx, sy) >= 0;
                 c->missed = 1;
                 return 0;
             }
@@ -6800,9 +6970,6 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 c->stage = 15;
                 return 1;
             }
-            c->n0_lines = d->n_lines;
-            c->n0_arcs = d->n_arcs;
-            c->n0_texts = d->n_texts;
             if (jwc_add_line(d, (float)c->tan_ax, (float)c->tan_ay,
                              (float)(c->tan_bx + ux * t),
                              (float)(c->tan_by + uy * t),
@@ -6812,7 +6979,13 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                                              | (d->write_layer & 15)))) {
                 d->lines[d->n_lines - 1].rest[1] = 0x05;
             }
-            /* 一本入ると角度の欄に戻ります（測定）。 */
+            /* 一本入ると、④角度指定 は角度の欄へ、②円周点 は
+             * 円の問いへ戻ります（どちらも測定）。 */
+            c->tan_did = 1;
+            if (c->tan_kind == 2) {
+                c->stage = 16;
+                return 1;
+            }
             c->typing = 1;
             c->typed[0] = 0;
             c->typed_n = 0;
@@ -6842,10 +7015,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             /* The new line goes **over** the finished screen, which is what
              * the original does -- a text drawn after it in the file would
              * otherwise cover it (TEST1 has one right across the tangent).
-             * jw_cmd_after draws everything past these three. */
-            c->n0_lines = d->n_lines;
-            c->n0_arcs = d->n_arcs;
-            c->n0_texts = d->n_texts;
+             * jw_cmd_after draws everything past tan_start's three, so a
+             * second tangent does not drop the first one under the text
+             * (measured: 11 pixels of the first one went magenta). */
             if (!tangent_to(c, d, w, k, sx, sy)) {
                 return 0;
             }
