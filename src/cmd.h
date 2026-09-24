@@ -398,7 +398,7 @@ typedef struct {
 /* Which commands take a range with two presses the way ③指定範囲 does: 消去
  * itself, and 複写, whose own line offers the same `(L)線･円  (R)線･円･文字`
  * and whose first stage is spelt exactly the same (src/copy.h). */
-#define JW_RANGE_CMD(n) ((n) == 25 || (n) == 1 || (n) == 16 || (n) == 27)
+#define JW_RANGE_CMD(n) ((n) == 25 || (n) == 1 || (n) == 16 || (n) == 27 || (n) == 17)
 
 /* And which of those put what the range holds somewhere else: 複写 leaves the
  * originals and 移動 does not, but everything up to the distance is the same

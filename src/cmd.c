@@ -324,6 +324,9 @@ static void zukei_ghost(const JwCmd *c, const Jwc *d, VGA *v,
     }
 }
 
+static int in_reach_layer(const Jwc *d, unsigned char layer);
+static int flipped(const JwCmd *c, int kind, long at);
+
 void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
                  int sx, int sy)
 {
@@ -362,6 +365,38 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
      * second press landed and the original has 264 green pixels there. */
     /* Not 図形 ①登録: its range is fixed by the right button and it goes
      * straight on to the base point, with no box left on the screen. */
+    /* 変形 shows what it is about to do while the pointer moves: the lines
+     * it has taken, stretched to where the pointer is, in **colour 4 and
+     * exclusive-or** -- the same way the range box is drawn.  Measured with
+     * the pointer left on the base point, where the preview lands exactly on
+     * the dotted red lines and turns them 00ff00 and 00ffff (0 xor 4 and
+     * 1 xor 4). */
+    if (c->command == 17 && c->stage == 6 && d
+        && sx >= w->x0 && sx <= w->x1 && sy >= w->y0 && sy <= w->y1) {
+        double px, py, dx, dy;
+        long k;
+
+        jw_cmd_at(w, sx, sy, &px, &py);
+        dx = px - c->base_x;
+        dy = py - c->base_y;
+        for (k = 0; k < c->n0_lines; k++) {
+            const JwcLine *l = &d->lines[k];
+            int a, b;
+
+            if (!in_reach_layer(d, l->layer) || flipped(c, JW_FLIP_LINE, k)) {
+                continue;
+            }
+            a = jw_cmd_in_range(c, l->x0, l->y0, l->x0, l->y0);
+            b = jw_cmd_in_range(c, l->x1, l->y1, l->x1, l->y1);
+            if (!a && !b) {
+                continue;
+            }
+            jw_view_mark(v, w, l->x0 + (a ? dx : 0.0), l->y0 + (a ? dy : 0.0),
+                         l->x1 + (b ? dx : 0.0), l->y1 + (b ? dy : 0.0),
+                         4, jw_view_line_style(l->type), 0x18);
+        }
+        return;
+    }
     if (JW_RANGE_CMD(c->command) && !c->zukei && c->pressed == 2
         && c->stage == 3) {
         int qx, qy;
@@ -1121,7 +1156,8 @@ static int takes_text(const JwCmd *c)
      * line says so -- `(L)線･円  (R)線･円･文字` -- and HELP 図 形 その1/4
      * spells it out: 始点を左クリックすると線と円弧と曲線が、右クリックする
      * と…文字が選択されます. */
-    return !(c->span || JW_MOVE_CMD(c->command) || c->command == 27)
+    return !(c->span || JW_MOVE_CMD(c->command) || c->command == 27
+             || c->command == 17)
            || c->with_text;
 }
 
@@ -1181,6 +1217,24 @@ static int picked_line(const JwCmd *c, const Jwc *d, long k)
            && jw_cmd_in_range(c, d->lines[k].x0, d->lines[k].y0,
                               d->lines[k].x1, d->lines[k].y1)
               != flipped(c, JW_FLIP_LINE, k);
+}
+
+/* 変形 takes more than 複写 does.  複写 wants the whole entity inside the
+ * box; パラメトリック変形 also takes anything with **one** endpoint in it,
+ * because those are the ones it stretches.  Measured on SAMPLE0 with the
+ * range (200,150)-(450,350): lines 5 and 6, which stick out of the box,
+ * come out **red and dotted** (every other pixel, style 0), and with the
+ * bigger box that holds them whole they are solid red -- the same colour 2
+ * 複写 uses.
+ *
+ * Returns 0 (not taken), 1 (wholly inside) or 2 (one end inside). */
+static int henkei_kind(const JwCmd *c, double ax, double ay,
+                       double bx, double by)
+{
+    const int a = jw_cmd_in_range(c, ax, ay, ax, ay);
+    const int b = jw_cmd_in_range(c, bx, by, bx, by);
+
+    return (a && b) ? 1 : (a || b) ? 2 : 0;
 }
 
 static int picked_arc(const JwCmd *c, const Jwc *d, long k)
@@ -1865,6 +1919,71 @@ static void copy_by_mm(JwCmd *c, Jwc *d)
  * The distance the original remembers for ②数値位置 is **not** touched:
  * measured on SAMPLE0 -- copy with the mouse, then ①同形別処理 and ②数値位置,
  * and the line still offers `[  1000.000,  1000.000 mm]`. */
+/* 変形 ①パラメトリック変形: **every endpoint inside the range moves and the
+ * rest stay**.  A line with one end in the box is stretched; one wholly
+ * inside moves whole.  Measured on SAMPLE0 with the range (200,150)-(450,350)
+ * and the base and place at screen (300,250) and (350,300) -- a step of
+ * (+50,-50) in the drawing:
+ *
+ *     line 5 (40.973,305.616)-(110.737,305.616)
+ *         -> (40.973,305.616)-(160.737,255.616)  01 02 00 41 02 02
+ *     line 6 (110.737,305.616)-(110.737,323.057)
+ *         -> (160.737,255.616)-(110.737,323.057) 01 02 00 41 02 01
+ *
+ * -- only the end that was inside has moved.  With a box that holds them
+ * whole both ends move and the last byte is **00**, so that byte says which
+ * single end was dragged: 1 the start, 2 the end, 0 neither or both.  Bit 1
+ * of the byte before it is set on everything the command touched.
+ *
+ * Arcs and texts are taken the way 複写 takes them (wholly inside), because
+ * neither can be stretched; what the original does with an arc that crosses
+ * the edge is not measured. */
+static void henkei_at(JwCmd *c, Jwc *d, double px, double py)
+{
+    const double dx = px - c->base_x, dy = py - c->base_y;
+    long k;
+
+    for (k = 0; k < c->n0_lines; k++) {
+        JwcLine *l = &d->lines[k];
+        int a, b;
+
+        if (!in_reach_layer(d, l->layer) || flipped(c, JW_FLIP_LINE, k)) {
+            continue;
+        }
+        a = jw_cmd_in_range(c, l->x0, l->y0, l->x0, l->y0);
+        b = jw_cmd_in_range(c, l->x1, l->y1, l->x1, l->y1);
+        if (!a && !b) {
+            continue;
+        }
+        if (a) {
+            l->x0 = (float)(l->x0 + dx);
+            l->y0 = (float)(l->y0 + dy);
+        }
+        if (b) {
+            l->x1 = (float)(l->x1 + dx);
+            l->y1 = (float)(l->y1 + dy);
+        }
+        l->rest[2] = (unsigned char)(l->rest[2] | 0x02);
+        l->rest[3] = (unsigned char)((a && b) ? 0x00 : a ? 0x01 : 0x02);
+    }
+    for (k = 0; k < c->n0_arcs; k++) {
+        if (picked_arc(c, d, k)) {
+            d->arcs[k].cx = (float)(d->arcs[k].cx + dx);
+            d->arcs[k].cy = (float)(d->arcs[k].cy + dy);
+            d->arcs[k].rest[2] = (unsigned char)(d->arcs[k].rest[2] | 0x02);
+        }
+    }
+    for (k = 0; k < c->n0_texts; k++) {
+        if (picked_text(c, d, k)) {
+            d->texts[k].x0 = (float)(d->texts[k].x0 + dx);
+            d->texts[k].y0 = (float)(d->texts[k].y0 + dy);
+            d->texts[k].x1 = (float)(d->texts[k].x1 + dx);
+            d->texts[k].y1 = (float)(d->texts[k].y1 + dy);
+            d->texts[k].rest[2] = (unsigned char)(d->texts[k].rest[2] | 0x02);
+        }
+    }
+}
+
 static void place_at(JwCmd *c, Jwc *d, double px, double py)
 {
     place_by(c, d, px - c->base_x, py - c->base_y);
@@ -2080,6 +2199,17 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
                  * inside goes red when it is pressed (measured -- 69 pixels
                  * of SAMPLE0's line 5). */
                 continue;
+            }
+        } else if (c->command == 17) {
+            /* 変形: the ones it will stretch are dotted, the ones it will
+             * move whole are solid.  See henkei_kind. */
+            const int kind = henkei_kind(c, l->x0, l->y0, l->x1, l->y1);
+
+            if (!kind || flipped(c, JW_FLIP_LINE, k)) {
+                continue;
+            }
+            if (kind == 2) {
+                style = jw_view_line_style(0);          /* 0x5555 */
             }
         } else if (!picked_line(c, d, k)) {
             continue;
@@ -2793,9 +2923,15 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
             /* 消去 goes on to `復活出来ません |①実行|②中止|`; 複写 asks how
              * to copy -- `|①ﾏｳｽ位置(L,R)|②数値位置|…|⑦属性変更|`, with
              * 変更無し in the band (src/copy.h stage 4). */
-            c->stage = JW_MOVE_CMD(c->command) ? 4 : 2;
+            c->stage = (JW_MOVE_CMD(c->command) || c->command == 17)
+                     ? 4 : 2;
         }
         return 0;
+    }
+    if (c->command == 17 && c->stage == 4 && item == 1) {
+        /* ①ﾏｳｽ位置 from the cell: it asks for the base point first. */
+        c->stage = 5;
+        return 1;
     }
     if (JW_MOVE_CMD(c->command)) {
         /* 複写 and 移動, once the range is fixed.  Nothing in the line is picked yet --
@@ -5882,6 +6018,34 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 return 1;
             }
             place_at(c, d, px, py);
+            c->stage = 9;
+            return 1;
+        }
+        if (c->command == 17 && c->stage >= 4) {
+            /* ①ﾏｳｽ位置: the base point (段 5) and then where it goes (段 6).
+             * **A press in the drawing at 段 4 does both** -- it picks
+             * ①ﾏｳｽ位置 and is the base -- which is what the line's `(L,R)`
+             * means.  Measured: pressing the cell at the top stops at 段 5,
+             * a press in the drawing goes straight to 段 6. */
+            double px, py;
+
+            if (c->stage != 4 && c->stage != 5 && c->stage != 6
+                && c->stage != 9) {
+                return 0;
+            }
+            if (!take(c, d, w, sx, sy, right, &px, &py)) {
+                return 1;
+            }
+            if (c->stage == 4 || c->stage == 5) {
+                c->base_x = px;
+                c->base_y = py;
+                c->stage = 6;
+                return 1;
+            }
+            c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
+            henkei_at(c, d, px, py);
             c->stage = 9;
             return 1;
         }

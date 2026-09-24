@@ -14,6 +14,7 @@
 #include "span.h"
 #include "copy.h"
 #include "move.h"
+#include "henkei.h"
 #include "esc.h"
 #include "zukei.h"
 #include "optplan.h"
@@ -3605,6 +3606,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     own = 1;
                 }
             }
+            for (q = JW_HENKEI; q->command; q++) {
+                if (q->command == s->command && q->stage == i
+                    && (q->row == 2 || q->row == 3) && q->col <= 15) {
+                    own = 1;
+                }
+            }
             /* [ESC] puts the two counts back: □ and ○ write their sides and
              * radius into that box while they run, and after [ESC] the box
              * says `30| 13` again (measured -- 748 pixels of it). */
@@ -3723,6 +3730,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 const int st = (i == 1 && !s->with_text) ? 11 : i;
 
                 for (r = s->command == 1 ? JW_COPY : JW_MOVE; r->command; r++) {
+                    stage_text(v, r, s, st);
+                }
+            }
+            /* 変形 ①パラメトリック変形 walks 複写's road cell for cell, out
+             * of its own table (src/henkei.h). */
+            if (s->command == 17) {
+                const JwStage *r;
+                const int st = (i == 1 && !s->with_text) ? 11 : i;
+
+                for (r = JW_HENKEI; r->command; r++) {
                     stage_text(v, r, s, st);
                 }
             }
