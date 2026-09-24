@@ -424,6 +424,7 @@ typedef struct {
     long dim_lines0;
     int dim_only;
     int dim_prog;
+    int dim_circle;
     /* ハッチ: how many lines the frame has taken (the band counts down from
      * 100), and the angle and pitch it will fill with. */
     int hatch_n;

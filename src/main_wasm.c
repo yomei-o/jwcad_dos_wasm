@@ -222,6 +222,7 @@ static void sync_ui(void)
     ui.dim_lines0 = cmd.dim_lines0;
     ui.dim_only = cmd.dim_only;
     ui.dim_prog = cmd.dim_prog;
+    ui.dim_circle = cmd.dim_circle;
     ui.hatch_n = cmd.hatch_n;
     ui.hatch_angle = cmd.hatch_angle;
     ui.hatch_pitch = cmd.hatch_pitch;
@@ -1956,6 +1957,19 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             || ui.top_item == 5)
         && x / 8 + 1 >= 34 && x / 8 + 1 <= 52) {
         dim_dec = (dim_dec + 1) % 4;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* ②半径 (columns 53 to 59) and ③直径 (60 to 66): both ask `● 円
+     * マウス指示` and then take a circle. */
+    if (ui.command == 14 && !ui.top_item && !dxf_mode && !cmd.dim_prog
+        && (cmd.stage == 3 || cmd.stage == 5) && y >= 0 && y <= 15
+        && x / 8 + 1 >= 53 && x / 8 + 1 <= 66) {
+        cmd.dim_circle = x / 8 + 1 <= 59 ? 1 : 2;
+        cmd.stage = 6;
         mouse_x = x;
         mouse_y = y;
         sync_ui();

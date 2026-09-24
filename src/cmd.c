@@ -4468,15 +4468,15 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
      * the line that stopped at 353.000 now ends at 361.721, and
      * 361.721 - 353.000 = 8.721 = 5 x unit_mm. */
     const double ye = y + (y > b ? 1.0 : -1.0) * c->dim_ext_mm * d->unit_mm;
-    char buf[32];
+    char buf[40];
     double len;
 
 #define DIM_X(a, bb) ((float)((a) * ux + (bb) * vx))
 #define DIM_Y(a, bb) ((float)((a) * uy + (bb) * vy))
     if (jwc_add_line(d, DIM_X(x0, y), DIM_Y(x0, y),
                      DIM_X(x1, y), DIM_Y(x1, y), type, pen, layer)) {
-        d->lines[d->n_lines - 1].rest[1] =
-            (unsigned char)(uy == 0.0 && ux > 0.0 ? 0x80 : 0x00);
+        d->lines[d->n_lines - 1].rest[1] = (unsigned char)
+            (c->dim_circle ? 0xa2 : uy == 0.0 && ux > 0.0 ? 0x80 : 0x00);
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
     if (jwc_add_line(d, DIM_X(x0, b), DIM_Y(x0, b),
@@ -4525,7 +4525,17 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
      * 188mm of paper is written `18,800`. */
     c->dim_x1 = x1;
     c->dim_value = (x1 > x0 ? x1 - x0 : x0 - x1) * jwc_zukei_scale(d);
-    jwc_dim_text(buf, sizeof buf, c->dim_value, c->dim_unit, c->dim_dec,
+    /* ②半径 and ③直径 put `R` or `φ` in front of the same number
+     * (measured: a circle of 100 units on SAMPLE0 gives `R57.3` and
+     * `φ114.7`）。φ は SJIS の 83 d3 です。 */
+    buf[0] = 0;
+    if (c->dim_circle == 1) {
+        strcpy(buf, "R");
+    } else if (c->dim_circle == 2) {
+        strcpy(buf, "\x83\xd3");
+    }
+    jwc_dim_text(buf + strlen(buf), (long)(sizeof buf - strlen(buf)),
+                 c->dim_value, c->dim_unit, c->dim_dec,
                  c->dim_comma_on, c->dim_zero_on);
     len = jwc_text_length(d, buf, d->dim_size);
     if (jwc_add_text(d,
@@ -4535,7 +4545,8 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
                      DIM_Y(mid + len / 2.0, y + off),
                      buf, (unsigned char)d->dim_size, layer)) {
         d->texts[d->n_texts - 1].rest[2] = 0x10;
-        d->texts[d->n_texts - 1].rest[3] = 0x40;
+        d->texts[d->n_texts - 1].rest[3] =
+            (unsigned char)(0x40 + c->dim_circle);
     }
 #undef DIM_X
 #undef DIM_Y
@@ -5348,7 +5359,38 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             }
             c->missed = 0;
             c->dim_y = -x * c->dim_uy + y * c->dim_ux;
+            c->dim_ya = x * c->dim_ux + y * c->dim_uy;
             c->dim_texts = d->n_texts;
+            c->stage = 3;
+            return 1;
+        }
+        if (c->dim_circle && c->stage == 6) {
+            /* ②半径・③直径: the press takes a circle, and the dimension
+             * is a plain horizontal one whose length is the radius (or
+             * the diameter) starting at -- or centred on -- the point the
+             * 寸法線 was pressed at.  Measured on SAMPLE0 with a circle of
+             * 100 units and the 寸法線 at (300,110) = 179:
+             *
+             *     ②半径 (179,353)-(279,353) 01 01 00 a2 00 20  `R57.3`
+             *     ③直径  (79,353)-(279,353) 01 01 00 a2 00 20  `φ114.7`
+             */
+            const long k = jw_cmd_arc_at(d, w, sx, sy);
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
+            c->dim_x0 = c->dim_circle == 1 ? c->dim_ya
+                                           : c->dim_ya - d->arcs[k].r;
+            dimension(c, d, c->dim_ya + d->arcs[k].r);
+            c->dim_circle = 0;
+            c->dim_texts = d->n_texts;
+            /* and the line goes back to the one it came from (段 3), not
+             * to 段 5's 連続入力 -- measured */
             c->stage = 3;
             return 1;
         }

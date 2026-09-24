@@ -213,6 +213,10 @@ typedef struct {
     double dim_y;               /* 寸法線を書く位置（の y） */
     double dim_x0;              /* 寸法値の始点（の x） */
     double dim_x1;              /* さっき書いた寸法値の終点。①連続 が継ぐ */
+    double dim_ya;              /* 寸法線を押した点の、線に沿った側 */
+    /* ②半径・③直径: 1 なら R、2 なら φ。値の前に付いて、寸法線の A バイトが
+     * 0xa2、文字の最後のバイトが 0x41／0x42 になります。 */
+    int dim_circle;
     /* ④累寸: 始点は一つで、読むたびにそこからの寸法が増えます。 */
     int dim_prog;
     int dim_prog_n;

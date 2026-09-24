@@ -3668,6 +3668,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                             jw_view_line_style(k ? 0 : 9));
                 }
             }
+            /* ②半径・③直径 ask for a circle: `[ESC]` and
+             * `● 円 マウス指示 ` at column 8, and nothing else. */
+            if (s->command == 14 && s->dim_circle && i == s->stage
+                && s->stage == 6) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                jw_ui_text(v, 8, 1, 7, 0, "\x81\x9c" " " "\x89" "~" " " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e\xa6" " ");
+            }
             /* ④累寸 keeps `[BS]前項` on the line while it asks for the
              * next point; the plain road's stage 4 has nothing there. */
             if (s->command == 14 && s->dim_prog && i == s->stage
