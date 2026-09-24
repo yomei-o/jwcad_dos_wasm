@@ -217,6 +217,11 @@ typedef struct {
     /* ②半径・③直径: 1 なら R、2 なら φ。値の前に付いて、寸法線の A バイトが
      * 0xa2、文字の最後のバイトが 0x41／0x42 になります。 */
     int dim_circle;
+    /* ⑧値変: 1 なら値を待っている、2 なら欄を出している。`dim_val_k` は
+     * 書き直す文字のばんごう、`dim_val_size` は 変更文字種類 の [Fn]。 */
+    int dim_val;
+    long dim_val_k;
+    int dim_val_size;
     /* ④累寸: 始点は一つで、読むたびにそこからの寸法が増えます。 */
     int dim_prog;
     int dim_prog_n;

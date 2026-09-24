@@ -1850,6 +1850,89 @@ int jwc_add_text(Jwc *d, float x0, float y0, float x1, float y1,
  * (51.172,310.957)-(93.030,310.957) became (51.172,310.957)-(102.187,310.957),
  * which is jwc_text_length of the longer string to a thousandth.
  */
+/* 寸法 ⑧値変: a new string for the text at `k`, **in its own place**.
+ * 文編集 moves the record to the back; this one leaves it where it is, which
+ * is what the original does -- text 13 comes back as text 13 with `999` where
+ * it had `250`.  The baseline keeps its middle and takes the length the
+ * (possibly new) character type gives it: with [F3] the same three digits go
+ * from (255.716..262.257) to (254.626..263.347), the same centre either way.
+ *
+ * The pool is one run of strings in record order, so the old one is taken out
+ * and the new one put in at the same place rather than appended. */
+int jwc_set_text(Jwc *d, long k, const char *str, unsigned char size)
+{
+    JwcText *t;
+    long off, gone, want, m;
+    char *pool;
+    double len, mid, ux, uy, half;
+
+    if (!d || k < 0 || k >= d->n_texts || !str) {
+        return 0;
+    }
+    t = &d->texts[k];
+    off = t->text ? (long)(t->text - d->text) : 0;
+    gone = (long)strlen(d->text + off) + 1;
+    want = (long)strlen(str) + 1;
+    if (want > gone) {
+        long *keep = (long *)malloc((size_t)(d->n_texts + 1) * sizeof *keep);
+
+        if (!keep) {
+            return 0;
+        }
+        for (m = 0; m < d->n_texts; m++) {
+            keep[m] = d->texts[m].text ? (long)(d->texts[m].text - d->text) : 0;
+        }
+        pool = (char *)realloc(d->text,
+                               (size_t)(d->text_len + (want - gone) + 2));
+        if (!pool) {
+            free(keep);
+            return 0;
+        }
+        d->text = pool;
+        for (m = 0; m < d->n_texts; m++) {
+            d->texts[m].text = d->text + keep[m];
+        }
+        free(keep);
+        t = &d->texts[k];
+    }
+    memmove(d->text + off + want, d->text + off + gone,
+            (size_t)(d->text_len - off - gone));
+    memcpy(d->text + off, str, (size_t)want);
+    d->text_len += want - gone;
+    d->text[d->text_len] = 0;
+    d->text[d->text_len + 1] = 0;
+    for (m = 0; m < d->n_texts; m++) {
+        if (d->texts[m].text && (long)(d->texts[m].text - d->text) > off) {
+            d->texts[m].text += want - gone;
+        }
+    }
+    t->size = size;
+    t->rest[0] = size;
+    len = jwc_text_length(d, str, size);
+    ux = (double)t->x1 - t->x0;
+    uy = (double)t->y1 - t->y0;
+    half = sqrt(ux * ux + uy * uy);
+    if (half > 0.0) {
+        ux /= half;
+        uy /= half;
+    } else {
+        ux = 1.0;
+        uy = 0.0;
+    }
+    mid = 0.0;
+    (void)mid;
+    {
+        const double cx = ((double)t->x0 + t->x1) / 2.0;
+        const double cy = ((double)t->y0 + t->y1) / 2.0;
+
+        t->x0 = (float)(cx - ux * len / 2.0);
+        t->y0 = (float)(cy - uy * len / 2.0);
+        t->x1 = (float)(cx + ux * len / 2.0);
+        t->y1 = (float)(cy + uy * len / 2.0);
+    }
+    return 1;
+}
+
 int jwc_edit_text(Jwc *d, long k, const char *str)
 {
     JwcText was;

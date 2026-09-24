@@ -211,7 +211,9 @@ static void sync_ui(void)
     ui.mscale = cmd.mscale;
     ui.rot_deg = cmd.rot_deg;
     ui.dim_value = cmd.dim_value;
-    ui.dim_texts = cmd.dim_texts;
+    /* ⑧値変 counts what the drawing has now, not what the road left. */
+    ui.dim_texts = cmd.dim_val && drawing ? drawing->n_texts
+                                          : cmd.dim_texts;
     ui.dim_w = drawing ? drawing->text_w[drawing->dim_size] / 10.0 : 0.0;
     ui.dim_h = drawing ? drawing->text_h[drawing->dim_size] / 10.0 : 0.0;
     ui.dim_text_pen = drawing ? drawing->text_pen[drawing->dim_size] : 0;
@@ -223,6 +225,8 @@ static void sync_ui(void)
     ui.dim_only = cmd.dim_only;
     ui.dim_prog = cmd.dim_prog;
     ui.dim_circle = cmd.dim_circle;
+    ui.dim_val = cmd.dim_val;
+    ui.dim_val_size = cmd.dim_val_size;
     ui.hatch_n = cmd.hatch_n;
     ui.hatch_angle = cmd.hatch_angle;
     ui.hatch_pitch = cmd.hatch_pitch;

@@ -3612,6 +3612,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     own = 1;
                 }
             }
+            /* ⑧値変 keeps the 文字 band the road left in the box: the
+             * original shows `ﾍﾟﾝ1 文数 14 / 横 2.5 縦 2.5` while it asks
+             * for a value, not the two counts. */
+            if (s->command == 14 && s->dim_val && (i == 7 || i == 8)) {
+                own = 1;
+            }
             /* [ESC] puts the two counts back: □ and ○ write their sides and
              * radius into that box while they run, and after [ESC] the box
              * says `30| 13` again (measured -- 748 pixels of it). */
@@ -3666,6 +3672,47 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_line(v, s->dim_guide[k][0], s->dim_guide[k][1],
                             s->dim_guide[k][2], s->dim_guide[k][3], 2, 0x18,
                             jw_view_line_style(k ? 0 : 9));
+                }
+            }
+            /* ⑧値変: `変更文字種類[Fn]  変更寸法値ﾏｳｽ(L)   始･終点変更
+             * 寸法値ﾏｳｽ(R) ` while it waits for one, and ` 寸法値 =` with the
+             * value in a field at column 18 once one is pressed. */
+            if (s->command == 14 && s->dim_val && i == s->stage) {
+                char one[160];
+                const JwStage *r;
+
+                /* The box keeps the 文字 band the road puts there --
+                 * `ﾍﾟﾝ1 文数 14 / 横 2.5 縦 2.5` -- and 段 3's own
+                 * records are what write it. */
+                for (r = JW_TYPED; r->command; r++) {
+                    if (r->command == 14 && r->stage == 3 && r->col <= 15
+                        && (r->row == 2 || r->row == 3)) {
+                        stage_text(v, r, s, 3);
+                    }
+                }
+
+                if (s->stage == 7) {
+                    jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+                    sprintf(one, "%s%d%s", "\x95\xcf\x8d" "X" "\x95\xb6\x8e\x9a\x8e\xed\x97\xde" "[F",
+                            s->dim_val_size ? s->dim_val_size : s->dim_size,
+                            "]  " "\x95\xcf\x8d" "X" "\x90\xa1\x96" "@" "\x92" "l" "\xcf\xb3\xbd" "(L)   " "\x8e" "n" "\xa5\x8f" "I" "\x93" "_" "\x95\xcf\x8d" "X" "\x90\xa1\x96" "@" "\x92" "l" "\xcf\xb3\xbd" "(R) ");
+                    jw_ui_text(v, 8, 1, 7, 0, one);
+                    jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91" "O\x8d\x80");
+                } else if (s->stage == 8) {
+                    int n;
+
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    jw_ui_text(v, 8, 1, 7, 0, " " "\x90\xa1\x96" "@" "\x92" "l" " =");
+                    for (n = 0; n < s->typed_n && n < 16; n++) {
+                        char two[4];
+
+                        two[0] = s->typed[n];
+                        two[1] = two[2] = ' ';
+                        two[3] = 0;
+                        jw_ui_text(v, 18 + n, 1, 7, 0, two);
+                    }
+                    n = s->typed_n < 16 ? s->typed_n : 16;
+                    fill(v, 136 + n * 8, 7, 143 + n * 8, 15, 4);
                 }
             }
             /* ②半径・③直径 ask for a circle: `[ESC]` and

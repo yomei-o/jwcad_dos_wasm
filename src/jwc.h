@@ -359,6 +359,10 @@ void jwc_remove_text(Jwc *d, long k);
 #define JW_DIM_PEN   1
 #define JW_DIM_SIZE  2
 
+/* 寸法 ⑧値変: a new string in the text's own place, keeping the baseline's
+ * middle and taking the length from the character type. */
+int jwc_set_text(Jwc *d, long k, const char *str, unsigned char size);
+
 /* 文編集: a new string on the text at `k`.  The record goes to the back and
  * its baseline gets a new far end; see jwc.c. */
 int jwc_edit_text(Jwc *d, long k, const char *str);

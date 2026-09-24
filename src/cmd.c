@@ -2835,6 +2835,17 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
          * `[ESC]` where this does not. */
         return 0;
     }
+    /* ⑧値変 is **measured but not wired up**: the road and the records
+     * are right (段 7 asks for a value, 段 8 puts it in a field, [Enter]
+     * rewrites the text in place with jwc_set_text), but the original
+     * **redraws the drawing without its layer-1 lines** while the field
+     * is up, and that is not understood yet -- 6,785 pixels.  Turning it
+     * on would put a screen on the page that is not the original's.
+     * The rest of the road is below and in RESUME 4.26; the one line
+     * that brings it back is
+     *
+     *     c->dim_val = 1; c->dim_val_size = 0; c->stage = 7; return 1;
+     */
     if (c->command == 14 && c->stage == 0 && item == 3) {
         return cmd_top_dim3(c);
     }
@@ -3543,6 +3554,40 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         sprintf(c->typed, "%g", F[key - JW_KEY_F1]);
         c->typed_n = (int)strlen(c->typed);
         key = 13;
+    }
+    if (c->command == 14 && c->dim_val == 2 && c->stage == 8) {
+        /* ⑧値変's field: what is in it to start with is the value that
+         * was pressed, and [Enter] writes it back **in place** with the
+         * 変更文字種類 -- measured, text 13 stays text 13. */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            jwc_set_text(d, c->dim_val_k, c->typed,
+                         (unsigned char)(c->dim_val_size ? c->dim_val_size
+                                                         : d->dim_size));
+            c->typing = 0;
+            c->dim_val = 1;
+            c->stage = 7;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (key >= 0x20 && key <= 0xff && c->typed_n < 16) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if (c->command == 14 && c->dim_val && key >= JW_KEY_F1
+        && key <= JW_KEY_F10) {
+        /* 変更文字種類[Fn] */
+        c->dim_val_size = key - JW_KEY_F1 + 1;
+        return 1;
     }
     if (c->command == 14 && c->top_item == 3) {
         /* ③任意方向's angle.  The field takes digits, a point and a
@@ -5362,6 +5407,28 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->dim_ya = x * c->dim_ux + y * c->dim_uy;
             c->dim_texts = d->n_texts;
             c->stage = 3;
+            return 1;
+        }
+        if (c->dim_val == 1 && c->stage == 7) {
+            /* ⑧値変: the press takes a **dimension value** -- a text the
+             * 寸法 command wrote, which is what the 0x40 in its last byte
+             * says.  SAMPLE0's own dimension texts have 0x00 there and
+             * the original will not pick them up. */
+            const long k = jw_cmd_text_at(d, w, sx, sy);
+
+            if (k < 0 || !(d->texts[k].rest[3] & 0x40)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->dim_val = 2;
+            c->dim_val_k = k;
+            c->stage = 8;
+            c->typing = 1;
+            strncpy(c->typed, d->texts[k].text ? d->texts[k].text : "",
+                    sizeof c->typed - 1);
+            c->typed[sizeof c->typed - 1] = 0;
+            c->typed_n = (int)strlen(c->typed);
             return 1;
         }
         if (c->dim_circle && c->stage == 6) {
