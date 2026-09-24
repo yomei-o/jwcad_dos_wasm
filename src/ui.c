@@ -2999,6 +2999,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, p->col, p->row, (unsigned)p->fg, (unsigned)p->bg,
                        text);
         }
+        /* **入出力 の行の `④自動保存(無)` は保存間隔がついていると
+         * `(有)` になります**（測定：①保存間隔 に 30 を入れてから行に
+         * 戻ると 有）。行は src/prompt.h の録画なので、その一字だけ
+         * 上から書きます（桁 59）。 */
+        if (s->command == 30 && !s->top_item && s->auto_interval > 0) {
+            jw_ui_text(v, 59, 1, 7, 0, "\x97L");
+        }
         /* **図形 picked a second time puts up its own screen.**  The
          * drawing area from row 2 to row 24 goes and row 2 says what there
          * is to show.  Measured with tools/escroad.sh on SAMPLE2, where

@@ -1362,6 +1362,64 @@ EMSCRIPTEN_KEEPALIVE int jw_save(void)
     return 1;
 }
 
+/* 入出力 ④自動保存 —— **時計で書き出すところ。**
+ *
+ * 盤で決めた `①保存間隔` 秒ごとに、`②ファイル名` を `③保存パス` に
+ * 書きます。本物は起動から三十分ほどで `AUTO.JWC` を置く（RESUME 4.44f、
+ * 図形の一覧の先頭に出ます）ので、そこはページの時計に任せて、ここは
+ * 「何秒たった」と言われたら書くだけにしてあります。
+ *
+ * `jw_auto_tick(秒)` を呼ぶと、たまった秒が保存間隔に届いたところで一度
+ * 書いて 1 を返します。間隔が 0（行に `④自動保存(無)` と出ているとき）は
+ * 何もしません。書き先は ①保存 と同じで、`orig/<名前>.JWC`。
+ * 保存パスは A: しか無いので、覚えてはいますが道は変えていません。 */
+static double auto_clock;
+
+EMSCRIPTEN_KEEPALIVE int jw_auto_tick(double seconds)
+{
+    char path[256];
+    char stem[16];
+    const char *why;
+    unsigned char *bytes;
+    long len;
+    FILE *f;
+    int k;
+
+    if (auto_interval <= 0 || !drawing) {
+        auto_clock = 0.0;
+        return 0;
+    }
+    auto_clock += seconds;
+    if (auto_clock < (double)auto_interval) {
+        return 0;
+    }
+    auto_clock = 0.0;
+    memcpy(stem, auto_name, sizeof stem - 1);
+    stem[sizeof stem - 1] = 0;
+    for (k = (int)strlen(stem) - 1; k >= 0 && stem[k] == ' '; k--) {
+        stem[k] = 0;
+    }
+    if (!stem[0]) {
+        return 0;
+    }
+    bytes = jwc_bytes(drawing, &len, &why);
+    if (!bytes) {
+        sprintf(status, "%s", why);
+        return 0;
+    }
+    sprintf(path, "%s/%s.JWC", JW_DIR, stem);
+    f = fopen(path, "wb");
+    if (!f) {
+        free(bytes);
+        sprintf(status, "%s: cannot write", path);
+        return 0;
+    }
+    fwrite(bytes, 1, (size_t)len, f);
+    fclose(f);
+    free(bytes);
+    return 1;
+}
+
 EMSCRIPTEN_KEEPALIVE const unsigned char *jw_saved(void) { return saved; }
 EMSCRIPTEN_KEEPALIVE int jw_saved_size(void) { return (int)saved_len; }
 
