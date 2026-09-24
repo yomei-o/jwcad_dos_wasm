@@ -427,6 +427,7 @@ typedef struct {
     int dim_circle;
     int dim_val;
     int dim_val_size;
+    char dim_val_now[32];       /* 欄が出している今の値 */
     /* ハッチ: how many lines the frame has taken (the band counts down from
      * 100), and the angle and pitch it will fill with. */
     int hatch_n;

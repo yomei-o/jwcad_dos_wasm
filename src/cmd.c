@@ -2835,17 +2835,15 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
          * `[ESC]` where this does not. */
         return 0;
     }
-    /* ⑧値変 is **measured but not wired up**: the road and the records
-     * are right (段 7 asks for a value, 段 8 puts it in a field, [Enter]
-     * rewrites the text in place with jwc_set_text), but the original
-     * **redraws the drawing without its layer-1 lines** while the field
-     * is up, and that is not understood yet -- 6,785 pixels.  Turning it
-     * on would put a screen on the page that is not the original's.
-     * The rest of the road is below and in RESUME 4.26; the one line
-     * that brings it back is
-     *
-     *     c->dim_val = 1; c->dim_val_size = 0; c->stage = 7; return 1;
-     */
+    if (c->command == 14 && c->stage == 0 && item == 8) {
+        /* ⑧値変: it asks for a dimension value to rewrite.
+         * 段 7 waits for one, 段 8 puts it in a field, [Enter] writes it
+         * back in place (jwc_set_text). */
+        c->dim_val = 1;
+        c->dim_val_size = 0;
+        c->stage = 7;
+        return 1;
+    }
     if (c->command == 14 && c->stage == 0 && item == 3) {
         return cmd_top_dim3(c);
     }
@@ -3539,6 +3537,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->moved = 0;
         return 1;
     }
+    if (c->command == 14 && c->dim_val && key >= JW_KEY_F1
+        && key <= JW_KEY_F10) {
+        /* ⑧値変's 変更文字種類[Fn].  **Before the `typing` gate**: the mode
+         * is not typing anything until a value has been pressed. */
+        c->dim_val_size = key - JW_KEY_F1 + 1;
+        return 1;
+    }
     if (key == JW_KEY_F2 && JW_RANGE_CMD(c->command) && c->stage == 3) {
         c->cleared = 1;
         c->n_flip = 0;
@@ -3560,10 +3565,39 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
          * was pressed, and [Enter] writes it back **in place** with the
          * 変更文字種類 -- measured, text 13 stays text 13. */
         if (key == 13 || key == 10) {
+            /* **The keys overwrite the old value a cell at a time and
+             * what they do not reach stays.**  Measured: `99` typed into
+             * `250` leaves `990`, and the baseline does not move because
+             * the string is still three characters long. */
             c->typed[c->typed_n] = 0;
-            jwc_set_text(d, c->dim_val_k, c->typed,
-                         (unsigned char)(c->dim_val_size ? c->dim_val_size
-                                                         : d->dim_size));
+            if (c->typed_n) {
+                char both[64];
+                const char *was = d->texts[c->dim_val_k].text;
+                const int had = was ? (int)strlen(was) : 0;
+
+                strncpy(both, c->typed, sizeof both - 1);
+                both[sizeof both - 1] = 0;
+                if (was && had > c->typed_n) {
+                    strncpy(both + c->typed_n, was + c->typed_n,
+                            sizeof both - 1 - (size_t)c->typed_n);
+                    both[sizeof both - 1] = 0;
+                }
+                /* **And the answer is written the way 寸法設定 writes a
+                 * value**, not as it was typed: `9999` comes back
+                 * `9,999`.  The number is already in whatever unit the
+                 * panel is set to, so it is not divided again. */
+                {
+                    char out[64];
+
+                    jwc_dim_text(out, (long)sizeof out, atof(both), 0,
+                                 c->dim_dec, c->dim_comma_on,
+                                 c->dim_zero_on);
+                    jwc_set_text(d, c->dim_val_k, out,
+                                 (unsigned char)(c->dim_val_size
+                                                 ? c->dim_val_size
+                                                 : d->dim_size));
+                }
+            }
             c->typing = 0;
             c->dim_val = 1;
             c->stage = 7;
@@ -3581,12 +3615,6 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
-        return 1;
-    }
-    if (c->command == 14 && c->dim_val && key >= JW_KEY_F1
-        && key <= JW_KEY_F10) {
-        /* 変更文字種類[Fn] */
-        c->dim_val_size = key - JW_KEY_F1 + 1;
         return 1;
     }
     if (c->command == 14 && c->top_item == 3) {
@@ -5424,11 +5452,14 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->dim_val = 2;
             c->dim_val_k = k;
             c->stage = 8;
+            /* **The field starts empty.**  What it shows is the value
+             * that was pressed, the way 複線 shows `[  1000.000mm]`, and
+             * the green cursor sits on the *first* cell -- so the first
+             * key typed takes its place rather than going after it.
+             * [Enter] with nothing typed leaves the value alone. */
             c->typing = 1;
-            strncpy(c->typed, d->texts[k].text ? d->texts[k].text : "",
-                    sizeof c->typed - 1);
-            c->typed[sizeof c->typed - 1] = 0;
-            c->typed_n = (int)strlen(c->typed);
+            c->typed[0] = 0;
+            c->typed_n = 0;
             return 1;
         }
         if (c->dim_circle && c->stage == 6) {

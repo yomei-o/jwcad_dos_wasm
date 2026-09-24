@@ -214,9 +214,18 @@ static void sync_ui(void)
     /* ⑧値変 counts what the drawing has now, not what the road left. */
     ui.dim_texts = cmd.dim_val && drawing ? drawing->n_texts
                                           : cmd.dim_texts;
-    ui.dim_w = drawing ? drawing->text_w[drawing->dim_size] / 10.0 : 0.0;
-    ui.dim_h = drawing ? drawing->text_h[drawing->dim_size] / 10.0 : 0.0;
-    ui.dim_text_pen = drawing ? drawing->text_pen[drawing->dim_size] : 0;
+    /* ⑧値変's 変更文字種類[Fn] takes the band with it: with [F3] the box
+     * reads `ﾍﾟﾝ2 文数 14 / 横 3.0 縦 3.0`, which is character type 3's
+     * pen and size. */
+    {
+        const int dk = (cmd.dim_val && cmd.dim_val_size)
+                     ? cmd.dim_val_size
+                     : (drawing ? drawing->dim_size : 0);
+
+        ui.dim_w = drawing ? drawing->text_w[dk] / 10.0 : 0.0;
+        ui.dim_h = drawing ? drawing->text_h[dk] / 10.0 : 0.0;
+        ui.dim_text_pen = drawing ? drawing->text_pen[dk] : 0;
+    }
     ui.dim_size = drawing ? drawing->dim_size : 0;
     ui.dim_guide_n = jw_cmd_guide_pos(&cmd, &view, ui.dim_guide);
     ui.dim_points = drawing ? drawing->n_points : 0;
@@ -227,6 +236,14 @@ static void sync_ui(void)
     ui.dim_circle = cmd.dim_circle;
     ui.dim_val = cmd.dim_val;
     ui.dim_val_size = cmd.dim_val_size;
+    ui.dim_val_now[0] = 0;
+    if (cmd.dim_val == 2 && drawing && cmd.dim_val_k >= 0
+        && cmd.dim_val_k < drawing->n_texts
+        && drawing->texts[cmd.dim_val_k].text) {
+        strncpy(ui.dim_val_now, drawing->texts[cmd.dim_val_k].text,
+                sizeof ui.dim_val_now - 1);
+        ui.dim_val_now[sizeof ui.dim_val_now - 1] = 0;
+    }
     ui.hatch_n = cmd.hatch_n;
     ui.hatch_angle = cmd.hatch_angle;
     ui.hatch_pitch = cmd.hatch_pitch;

@@ -21,6 +21,8 @@ M._free(buf);
 /* `key enter`, `key esc`, `key bs` -- the same words the emulator's script
  * takes, so one list of steps drives both halves. */
 const KEY = { enter: 13, esc: 27, bs: 8, space: 32 };
+/* The function keys, the same numbers src/cmd.h gives them. */
+for (let i = 1; i <= 10; i++) KEY['f' + i] = 0x100 + i;
 let lastPress = null;
 for (const step of steps) {
     const w = step.trim().split(/\s+/);

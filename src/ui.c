@@ -1985,9 +1985,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     /* -- the strip along the bottom ------------------------------------- */
     fill(v, 1, 464, 638, 478, 0);
     box(v, 0, 463, 639, 479, 7);
-    if (s->ask == JW_ASK_LNAME) {
+    if (s->ask == JW_ASK_LNAME
+        || (s->command == 14 && s->dim_val && s->stage == 8)) {
         /* 図面名 empties the strip altogether -- y 464..479 is black right
-         * across, frame and all, while it is asking for the name. */
+         * across, frame and all, while it is asking for the name.  **寸法
+         * ⑧値変's field does the same** while it holds the value (measured:
+         * 5,865 pixels of the strip). */
         fill(v, 0, 464, 639, 479, 0);
     } else if (s->zoom_stage) {
         /* ■拡大■ takes the whole strip: 電卓, 範囲記憶, 前倍率, 倍率指定,
@@ -3615,7 +3618,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             /* ⑧値変 keeps the 文字 band the road left in the box: the
              * original shows `ﾍﾟﾝ1 文数 14 / 横 2.5 縦 2.5` while it asks
              * for a value, not the two counts. */
-            if (s->command == 14 && s->dim_val && (i == 7 || i == 8)) {
+            /* 段 7 keeps the 文字 band; **段 8 puts the two counts back**
+             * (measured: `33| 14` while the field is up). */
+            if (s->command == 14 && s->dim_val && i == 7) {
                 own = 1;
             }
             /* [ESC] puts the two counts back: □ and ○ write their sides and
@@ -3681,13 +3686,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 char one[160];
                 const JwStage *r;
 
-                /* The box keeps the 文字 band the road puts there --
+                /* 段 7 keeps the 文字 band the road puts there --
                  * `ﾍﾟﾝ1 文数 14 / 横 2.5 縦 2.5` -- and 段 3's own
                  * records are what write it. */
-                for (r = JW_TYPED; r->command; r++) {
-                    if (r->command == 14 && r->stage == 3 && r->col <= 15
-                        && (r->row == 2 || r->row == 3)) {
-                        stage_text(v, r, s, 3);
+                if (s->stage == 7) {
+                    for (r = JW_TYPED; r->command; r++) {
+                        if (r->command == 14 && r->stage == 3
+                            && r->col <= 15
+                            && (r->row == 2 || r->row == 3)) {
+                            stage_text(v, r, s, 3);
+                        }
                     }
                 }
 
@@ -3699,20 +3707,30 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 8, 1, 7, 0, one);
                     jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91" "O\x8d\x80");
                 } else if (s->stage == 8) {
-                    int n;
+                    int n, m;
 
                     jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
                     jw_ui_text(v, 8, 1, 7, 0, " " "\x90\xa1\x96" "@" "\x92" "l" " =");
+                    /* The value that was pressed is written first and the
+                     * typed keys go **over it, a cell at a time** -- with
+                     * `9` typed into `250` the original shows `9`, the
+                     * cursor over the `5` and the `0` still there. */
+                    jw_ui_text(v, 18, 1, 7, 0, s->dim_val_now);
                     for (n = 0; n < s->typed_n && n < 16; n++) {
-                        char two[4];
+                        char two[2];
 
                         two[0] = s->typed[n];
-                        two[1] = two[2] = ' ';
-                        two[3] = 0;
+                        two[1] = 0;
                         jw_ui_text(v, 18 + n, 1, 7, 0, two);
                     }
+                    /* **The whole cell, exclusive-or.**  The digit under
+                     * it comes out magenta (7 xor 4) and the block is
+                     * sixteen rows tall, not the nine 複線's cursor has. */
                     n = s->typed_n < 16 ? s->typed_n : 16;
-                    fill(v, 136 + n * 8, 7, 143 + n * 8, 15, 4);
+                    for (m = 0; m < 16; m++) {
+                        jw_line(v, 136 + n * 8, m, 143 + n * 8, m, 4,
+                                ROP_XOR, JW_STYLE_SOLID);
+                    }
                 }
             }
             /* ②半径・③直径 ask for a circle: `[ESC]` and
