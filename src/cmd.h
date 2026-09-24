@@ -302,6 +302,13 @@ typedef struct {
     long tan_k;                 /* ②円周点 が指示された円 */
     int tan_kind;               /* 2 = ②円周点、4 = ④角度指定 */
     long tan_kb;                /* ①円～円間 の円(Ａ) */
+    /* ②接円（半径と２条件）。小項目は 1..6 で、いまは ⑥２点 だけです。 */
+    int tan_circ;
+    double tan_r;               /* ①接円半径（本当の大きさのミリ） */
+    double tan_p1x, tan_p1y;    /* 第１点 */
+    double tan_ccx[2], tan_ccy[2];      /* 接円の候補 */
+    double tan_cr;              /* その半径（図面の単位） */
+    int tan_cn;                 /* 候補の数 */
     int tan_miss;               /* 円を探して線が出た（線データです） */
     double tan_apx, tan_apy;    /* 円(Ａ)を押したところ */
     int tan_did;                /* 一本引いた（桁 1 の [ESC]） */

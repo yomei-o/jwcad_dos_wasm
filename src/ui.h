@@ -429,6 +429,8 @@ typedef struct {
     int dim_arc_miss;
     double tan_deg;
     int tan_did;
+    int tan_circ;
+    double tan_r;
     int tan_miss;
     double tan_prev;
     double tan_len;
