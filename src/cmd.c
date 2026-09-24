@@ -38,6 +38,8 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->edit_text = -1;
     /* 連線's `③丸 面   辺寸法 ` as the original comes up with it. */
     c->edge_mm = 3.0;
+    /* 寸法 ④円･角 ③書込角度 の `[  90.000\xdf]`、その欄の前回と同じ。 */
+    c->dim_ck_prev = 90.0;
     /* ハッチ's `[  45.00]` and `[  10.0]`, likewise. */
     c->hatch_angle = 45.0;
     c->hatch_pitch = 10.0;
@@ -2465,7 +2467,10 @@ int jw_cmd_guide_pos(const JwCmd *c, const JwView *w, int seg[2][4])
     double sx, sy;
     int n = 0;
 
-    if (c->command != 14 || c->stage < 2 || c->top_item || c->dim_only) {
+    /* ④円･角 ①円径 に案内線はありません（寸法線の位置を
+     * 問わない道だから）。 */
+    if (c->command != 14 || c->stage < 2 || c->top_item || c->dim_only
+        || c->dim_ck) {
         return 0;
     }
     /* The screen direction of the dimension's own axis: x grows with the
@@ -2499,7 +2504,10 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     /* **寸法 は枠の上に描き直しません。** 案内線は寸法線の上（白い点）で、
      * カウント箱は案内線の上です。つまり 線 → 案内線 → 枠 の順で、ここで
      * 線を描き直すと案内線が消えます（y=110 の 219 画素）。 */
-    if (c->command == 14) {
+    /* ④円･角 ①円径 は別です。案内線がない代わりに、引いた寸法線が
+     * 円の上に乗ります（測定：r=100 の円の右端 (400,200) が原作では
+     * 寸法線の水色、ここでは円の白でした）。 */
+    if (c->command == 14 && !c->dim_ck) {
         return;
     }
 
@@ -2843,6 +2851,27 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->dim_val_size = 0;
         c->stage = 7;
         return 1;
+    }
+    if (c->command == 14 && c->dim_ck && c->stage == 9) {
+        /* ④円･角 ①円径's own line, `|①矢印【内】|②値【内】|③書込角度|`:
+         * the first two change over where they stand and the third opens
+         * an angle field (段 10). */
+        if (item == 1) {
+            c->dim_ck_out = !c->dim_ck_out;
+            return 1;
+        }
+        if (item == 2) {
+            c->dim_ck_vout = !c->dim_ck_vout;
+            return 1;
+        }
+        if (item == 3) {
+            c->typing = 1;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 10;
+            return 1;
+        }
+        return 0;
     }
     if (c->command == 14 && c->stage == 0 && item == 3) {
         return cmd_top_dim3(c);
@@ -3267,6 +3296,18 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
      * over the line the menu item came up with.  See src/ui.c. */
     c->top_item = 0;
     c->top_right = 0;
+    /* ④円･角 ①円径 の三つの桁は別で、押しても [ESC] も帯の値も残ります
+     * （測定：①矢印 を押したあとも桁 1 の [ESC]、桁 18 の値、桁 62 の
+     * 書込角度 がそのまま書き直されます）。 */
+    if (c->command == 14 && c->dim_ck && c->stage == 9) {
+        changed = cmd_top(c, d, item);
+        if (!changed && jw_ui_item_has(c->command, item, right)) {
+            c->top_item = item;
+            c->top_right = right;
+            return 1;
+        }
+        return changed;
+    }
     c->dim_did = 0;      /* 項目を選び直すと [ESC] は消えます */
     c->dim_lines0 = d ? d->n_lines : 0;
     c->dim_only = 0;
@@ -3612,6 +3653,37 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (key >= 0x20 && key <= 0xff && c->typed_n < 16) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if (c->command == 14 && c->dim_ck && c->stage == 10) {
+        /* ③書込角度's field.  [Enter] takes what is typed and the line
+         * goes back to 円マウス指示.  The `[  90.000\xdf]` beside it is
+         * that field's own 前回と同じ: it starts at 90, follows a typed
+         * value (30 typed makes it `[  30.000\xdf]`) and the `0 度` cell
+         * leaves it alone -- all three measured. */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            c->dim_ck_deg = c->typed_n ? atof(c->typed) : 0.0;
+            if (c->typed_n) {
+                c->dim_ck_prev = c->dim_ck_deg;
+            }
+            c->typing = 0;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 9;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -4485,6 +4557,119 @@ static void dimension_prog(JwCmd *c, Jwc *d, double a)
         d->texts[d->n_texts - 1].rest[3] = 0x50;
     }
     c->dim_prog_n++;
+#undef DIM_X
+#undef DIM_Y
+}
+
+/* 寸法 ④円･角 ①円径: the circle is pointed at and the whole dimension goes
+ * in on that one press -- there is no 寸法線の位置 and no 引出し線.
+ *
+ * Measured on SAMPLE0 (unit_mm 1.744108) with a circle of r=100 at
+ * (179,263), 書込角度 0, 矢印長さ 3mm・角度 15 度:
+ *
+ *     半径 (L)  line (179.000,263.000)-(279.000,263.000) 01 01 00 8f 00 20
+ *               line (279.000,263.000)-(273.946,264.354) 01 01 00 8f 00 20
+ *               line (279.000,263.000)-(273.946,261.646) 01 01 00 8f 00 20
+ *               text (223.550,263.872)-(234.450,263.872) 02 00 10 41 `R57.3`
+ *     直径 (R)  line  (79.000,263.000)-(279.000,263.000) and a pair of
+ *               arrows at each end, `φ114.7` with 42
+ *
+ * -- every record 0x8f, the arrows included, where ②半径 uses 0xa2 for the
+ * line and 0xf2 for the arrows.  The dimension line runs from the centre
+ * (半径) or right across the circle (直径) in the 書込角度's direction: the
+ * same circle with 30 度 gives (179,263)-(265.603,313.000) and the value is
+ * turned with it, so the whole thing is one drawing in the angle's frame.
+ *
+ * ①矢印【外】 turns the arrows round and runs the line 2 x 矢印長さ past
+ * the circle at every end that has one (measured: 289.465 = 279 + 2 x 5.232
+ * and 68.535 = 79 - 2 x 5.232), and it writes the far end's pair **first**
+ * where 【内】 writes the near one's.
+ *
+ * ②値【外】 takes the value off the middle and puts it after the end,
+ * 矢印長さ/2 past the arrow, and runs the dimension line out to where the
+ * value ends: with 3mm arrows the value starts at 279 + 2.616 and with 5mm
+ * at 279 + 4.360, which is 矢印長さ/2 both times, and 【外】 arrows push it
+ * a whole 矢印長さ further (286.848 = 279 + 5.232 + 2.616).
+ */
+static void dimension_circle(JwCmd *c, Jwc *d, long k, int right)
+{
+    const unsigned char layer =
+        (unsigned char)((0 << 4) | (d->write_layer & 15));
+    const unsigned char type = (unsigned char)d->line_type;
+    const unsigned char pen =
+        (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN);
+    const double rad = c->dim_ck_deg * 3.14159265358979323846 / 180.0;
+    const double ux = cos(rad), uy = sin(rad);
+    const double vx = -uy, vy = ux;
+    const double r = d->arcs[k].r;
+    /* the centre in the 書込角度's own frame */
+    const double mid = d->arcs[k].cx * ux + d->arcs[k].cy * uy;
+    const double y = d->arcs[k].cx * vx + d->arcs[k].cy * vy;
+    const double x1 = mid + r;
+    const double x0 = right ? mid - r : mid;
+    const double off = (c->dim_gap_mm > 0.0 ? c->dim_gap_mm : 0.5)
+                      * d->unit_mm;
+    const double alen = (c->dim_arrow_mm > 0.0 ? c->dim_arrow_mm : 3.0)
+                      * d->unit_mm;
+    const double arad = c->dim_angle_deg * 3.14159265358979323846 / 180.0;
+    const double ax = alen * cos(arad), ay = alen * sin(arad);
+    const double past = c->dim_ck_out ? 2.0 * alen : 0.0;
+    char buf[40];
+    double len, at, from, to;
+    int i;
+
+#define DIM_X(a, bb) ((float)((a) * ux + (bb) * vx))
+#define DIM_Y(a, bb) ((float)((a) * uy + (bb) * vy))
+    /* the value first: 値【外】 puts it where the dimension line has to
+     * reach, so its length is part of the line */
+    strcpy(buf, right ? "\x83\xd3" : "R");
+    jwc_dim_text(buf + strlen(buf), (long)(sizeof buf - strlen(buf)),
+                 (right ? 2.0 * r : r) * jwc_zukei_scale(d),
+                 c->dim_unit, c->dim_dec, c->dim_comma_on, c->dim_zero_on);
+    len = jwc_text_length(d, buf, d->dim_size);
+    at = x1 + alen / 2.0 + (c->dim_ck_out ? alen : 0.0);
+    from = right ? x0 - past : x0;
+    to = c->dim_ck_vout ? at + len : x1 + past;
+    if (jwc_add_line(d, DIM_X(from, y), DIM_Y(from, y),
+                     DIM_X(to, y), DIM_Y(to, y), type, pen, layer)) {
+        d->lines[d->n_lines - 1].rest[1] = 0x8f;
+        d->lines[d->n_lines - 1].rest[3] = 0x20;
+    }
+    /* The arrows: a pair at the far end, and a second at the near one when
+     * the whole diameter is being written.  Each pair is +a then -a across
+     * the line, the way every other dimension writes its four. */
+    for (i = 0; i < 4; i++) {
+        const int far = c->dim_ck_out ? i < 2 : i >= 2;
+        const double on = far ? x1 : x0;
+        const double dir = (far ? -1.0 : 1.0) * (c->dim_ck_out ? -1.0 : 1.0);
+        const double per = (i & 1) ? y - ay : y + ay;
+
+        if (!right && !far) {
+            continue;           /* 半径 has the one pair */
+        }
+        if (jwc_add_line(d, DIM_X(on, y), DIM_Y(on, y),
+                         DIM_X(on + dir * ax, per),
+                         DIM_Y(on + dir * ax, per), type, pen, layer)) {
+            d->lines[d->n_lines - 1].rest[1] = 0x8f;
+            d->lines[d->n_lines - 1].rest[3] = 0x20;
+        }
+    }
+    if (c->dim_ck_vout) {
+        from = at;
+    } else {
+        from = (x0 + x1) / 2.0 - len / 2.0;
+    }
+    to = from + len;
+    if (jwc_add_text(d, DIM_X(from, y + off), DIM_Y(from, y + off),
+                     DIM_X(to, y + off), DIM_Y(to, y + off),
+                     buf, (unsigned char)d->dim_size, layer)) {
+        d->texts[d->n_texts - 1].rest[2] = 0x10;
+        d->texts[d->n_texts - 1].rest[3] =
+            (unsigned char)(right ? 0x42 : 0x41);
+    }
+    /* and the band keeps it: 桁 18 の白地に、描いた値がそのまま出ます */
+    strncpy(c->dim_ck_val, buf, sizeof c->dim_ck_val - 1);
+    c->dim_ck_val[sizeof c->dim_ck_val - 1] = 0;
 #undef DIM_X
 #undef DIM_Y
 }
@@ -5460,6 +5645,26 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->typing = 1;
             c->typed[0] = 0;
             c->typed_n = 0;
+            return 1;
+        }
+        if (c->dim_ck && c->stage == 9) {
+            /* ④円･角 ①円径: the press takes a circle and the dimension is
+             * in at once -- the left button the radius, the right the
+             * diameter.  The line stays up, so the next circle gets one
+             * too (measured: it writes the same line again). */
+            const long k = jw_cmd_arc_at(d, w, sx, sy);
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
+            dimension_circle(c, d, k, right);
+            c->dim_did = 1;
+            c->dim_texts = d->n_texts;
             return 1;
         }
         if (c->dim_circle && c->stage == 6) {

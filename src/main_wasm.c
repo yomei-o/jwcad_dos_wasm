@@ -234,6 +234,12 @@ static void sync_ui(void)
     ui.dim_only = cmd.dim_only;
     ui.dim_prog = cmd.dim_prog;
     ui.dim_circle = cmd.dim_circle;
+    ui.dim_ck = cmd.dim_ck;
+    ui.dim_ck_out = cmd.dim_ck_out;
+    ui.dim_ck_vout = cmd.dim_ck_vout;
+    ui.dim_ck_deg = cmd.dim_ck_deg;
+    ui.dim_ck_prev = cmd.dim_ck_prev;
+    memcpy(ui.dim_ck_val, cmd.dim_ck_val, sizeof ui.dim_ck_val);
     ui.dim_val = cmd.dim_val;
     ui.dim_val_size = cmd.dim_val_size;
     ui.dim_val_now[0] = 0;
@@ -1978,6 +1984,39 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             || ui.top_item == 5)
         && x / 8 + 1 >= 34 && x / 8 + 1 <= 52) {
         dim_dec = (dim_dec + 1) % 4;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* 寸法 ④円･角's own line, `|①円径(L) |②円周(R) |③角度 |`: ①円径 is
+     * columns 9 to 18 and asks for a circle.  ②円周 and ③角度 are not
+     * done, so their cells stay src/item.h's. */
+    if (ui.command == 14 && ui.top_item == 4 && !dxf_mode
+        && y >= 0 && y <= 15 && x / 8 + 1 >= 9 && x / 8 + 1 <= 18) {
+        cmd.top_item = 0;
+        cmd.top_right = 0;
+        cmd.dim_ck = 1;
+        cmd.dim_ck_val[0] = 0;
+        cmd.dim_did = 0;
+        cmd.stage = 9;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* ③書込角度's `｜0 度 ￏﾳﾽ(L)｜`: columns 34 to 44, the cell
+     * ③任意方向 has too.  It sets the angle to nought and leaves the
+     * field's 前回と同じ alone (measured). */
+    if (ui.command == 14 && ui.dim_ck && cmd.stage == 10 && !right
+        && y >= 0 && y <= 15 && x / 8 + 1 >= 34 && x / 8 + 1 <= 44) {
+        cmd.dim_ck_deg = 0.0;
+        cmd.typing = 0;
+        cmd.typed[0] = 0;
+        cmd.typed_n = 0;
+        cmd.stage = 9;
         mouse_x = x;
         mouse_y = y;
         sync_ui();

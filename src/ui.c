@@ -3740,6 +3740,60 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
                 jw_ui_text(v, 8, 1, 7, 0, "\x81\x9c" " " "\x89" "~" " " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e\xa6" " ");
             }
+            /* 寸法 ④円･角 ①円径: `円マウス指示 半径(L) 直径(R)` and the
+             * three cells, with the 書込角度 in a field at column 62.
+             * **[ESC] goes up only once one has been drawn**: the press
+             * that puts the line up leaves column 1 blank, which is what
+             * the screen says and what the string log agrees with. */
+            if (s->command == 14 && s->dim_ck && i == s->stage
+                && s->stage == 9) {
+                char one[160];
+
+                if (s->dim_did) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                }
+                jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+                sprintf(one, "%s%s%s%s%s", "\x89~\x83}\x83" "E\x83X\x8ew\x8e\xa6 \x94\xbc\x8c" "a(L) \x92\xbc\x8c" "a(R)|\x87@\x96\xee\x88\xf3",
+                        s->dim_ck_out ? "\x81y\x8aO\x81z" : "\x81y\x93\xe0\x81z", "|\x87" "A\x92l",
+                        s->dim_ck_vout ? "\x81y\x8aO\x81z" : "\x81y\x93\xe0\x81z", "|\x87" "B\x8f\x91\x8d\x9e\x8ap\x93x|");
+                jw_ui_text(v, 8, 1, 7, 0, one);
+                jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                /* 外した押しのあとは帯に何も残りません（測定：サーチが
+                 * 桁 17..30 を消し、書込角度 も値も書き直されません）。 */
+                if (!s->missed) {
+                    sprintf(one, "%8.3f\xdf", s->dim_ck_deg);
+                    jw_ui_text(v, 62, 2, 7, 0xffffu, one);
+                    if (s->dim_ck_val[0]) {
+                        jw_ui_text(v, 18, 2, 7, 0xffffu,
+                                   s->dim_ck_val);
+                    }
+                }
+            }
+            /* ③書込角度's own field (段 10): the same `角度 =` line
+             * ③任意方向 has, with its own 前回と同じ at column 50. */
+            if (s->command == 14 && s->dim_ck && i == s->stage
+                && s->stage == 10) {
+                char one[80];
+                int n, x;
+
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                jw_ui_text(v, 8, 1, 7, 0, "\x8ap\x93x =");
+                jw_ui_text(v, 32, 1, 7, 0, "\x81" "b0 \x93x \xcf\xb3\xbd(L)\x81" "b\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) \x81" "b[F1] \xcf\xb3\xbd\x8ap\x93x\x81" "b");
+                sprintf(one, "[%8.3f\xdf]", s->dim_ck_prev);
+                jw_ui_text(v, 50, 2, 7, 0xffffu, one);
+                x = 14 * 8;
+                for (n = 0; n < s->typed_n && n < 8; n++) {
+                    char two[4];
+
+                    two[0] = s->typed[n];
+                    two[1] = two[2] = ' ';
+                    two[3] = 0;
+                    jw_ui_text(v, 15 + n, 1, 7, 0, two);
+                }
+                n = s->typed_n < 8 ? s->typed_n : 8;
+                x += n * 8;
+                fill(v, x, 7, x + 7, 15, 4);
+            }
             /* ④累寸 keeps `[BS]前項` on the line while it asks for the
              * next point; the plain road's stage 4 has nothing there. */
             if (s->command == 14 && s->dim_prog && i == s->stage
@@ -4018,10 +4072,20 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * is picked.  Both were measured -- 線消 at (244,140) then (446,189)
          * leaves the band empty, and picking 複写 after the miss clears it. */
         if (s->missed) {
-            jw_ui_text(v, 32, 2, 7, 0,
-                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
-                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
-                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+            /* 寸法 ④円･角 ①円径 は同じ言葉を **一桁左から**、
+             * BEL なしに桁 32 から書きます。ほかの道は BEL が一桁を取るので
+             * 桁 33 からです――どちらも画面で測りました。 */
+            if (s->command == 14 && s->dim_ck) {
+                jw_ui_text(v, 32, 2, 7, 0,
+                           "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                           "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                           "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+            } else {
+                jw_ui_text(v, 32, 2, 7, 0,
+                           "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                           "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                           "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+            }
         }
         /* A modified read that is waiting for its second press writes a line
          * of its own.  Last of all, because it goes over everything: the top

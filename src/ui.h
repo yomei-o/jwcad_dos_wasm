@@ -424,6 +424,12 @@ typedef struct {
     long dim_lines0;
     int dim_only;
     int dim_prog;
+    int dim_ck;
+    int dim_ck_out;
+    int dim_ck_vout;
+    double dim_ck_deg;
+    double dim_ck_prev;
+    char dim_ck_val[24];
     int dim_circle;
     int dim_val;
     int dim_val_size;
