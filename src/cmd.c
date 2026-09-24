@@ -12,6 +12,7 @@
 
 void jw_cmd_pick(JwCmd *c, int command)
 {
+    free(c->hen_end);
     free(c->sel_line);
     free(c->sel_arc);
     free(c->sel_text);
@@ -1848,6 +1849,8 @@ static void freeze(JwCmd *c, const Jwc *d)
 {
     long k;
 
+    free(c->hen_end);
+    c->hen_end = 0;
     free(c->sel_line);
     free(c->sel_arc);
     free(c->sel_text);
@@ -1943,15 +1946,32 @@ static void henkei_at(JwCmd *c, Jwc *d, double px, double py)
     const double dx = px - c->base_x, dy = py - c->base_y;
     long k;
 
+    /* **Which ends are dragged is settled once.**  再変形 presses again and
+     * again, and an end that has been pulled out of the box goes on being
+     * pulled: measured with the base at (300,250) and two places, (350,300)
+     * then (400,350), where line 5's end lands at 210.737 -- the whole
+     * distance from the base, not the first step twice over. */
+    if (!c->hen_end) {
+        c->hen_end = (unsigned char *)calloc((size_t)(c->n0_lines + 1), 1);
+        if (!c->hen_end) {
+            return;
+        }
+        for (k = 0; k < c->n0_lines; k++) {
+            const JwcLine *l = &d->lines[k];
+
+            if (!in_reach_layer(d, l->layer)
+                || flipped(c, JW_FLIP_LINE, k)) {
+                continue;
+            }
+            c->hen_end[k] = (unsigned char)
+                ((jw_cmd_in_range(c, l->x0, l->y0, l->x0, l->y0) ? 1 : 0)
+                 | (jw_cmd_in_range(c, l->x1, l->y1, l->x1, l->y1) ? 2 : 0));
+        }
+    }
     for (k = 0; k < c->n0_lines; k++) {
         JwcLine *l = &d->lines[k];
-        int a, b;
+        const int a = c->hen_end[k] & 1, b = c->hen_end[k] & 2;
 
-        if (!in_reach_layer(d, l->layer) || flipped(c, JW_FLIP_LINE, k)) {
-            continue;
-        }
-        a = jw_cmd_in_range(c, l->x0, l->y0, l->x0, l->y0);
-        b = jw_cmd_in_range(c, l->x1, l->y1, l->x1, l->y1);
         if (!a && !b) {
             continue;
         }
@@ -6046,6 +6066,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->n0_arcs = d->n_arcs;
             c->n0_texts = d->n_texts;
             henkei_at(c, d, px, py);
+            /* and the base follows, so 再変形 carries on from where it is */
+            c->base_x = px;
+            c->base_y = py;
             c->stage = 9;
             return 1;
         }

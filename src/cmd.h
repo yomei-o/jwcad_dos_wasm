@@ -113,6 +113,10 @@ typedef struct {
      * original still shows them picked -- so what was picked is written down
      * at that moment.  NULL until then; jw_cmd_pick frees them. */
     unsigned char *sel_line, *sel_arc, *sel_text;
+    /* 変形 ①パラメトリック変形: どの端が範囲の中だったか（1=始点、
+     * 2=終点、3=両方）。**一度決めたら測り直しません**——再変形で
+     * 動いた端が範囲の外へ出ても、本物は同じ端を引っぱり続けます。 */
+    unsigned char *hen_end;
     /* [ESC] has thrown the point away and the command is asking for it again.
      * The line it wrote over is still there, so the chrome replays the stage
      * that was up and then puts src/esc.h's three pieces on top. */
