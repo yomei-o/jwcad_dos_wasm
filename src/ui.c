@@ -3813,7 +3813,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 n = s->typed_n < 8 ? s->typed_n : 8;
                 fill(v, 136 + n * 8, 7, 143 + n * 8, 15, 4);
             }
-            if ((s->command == 1 || s->command == 16) && i == 18) {
+            if ((s->command == 1 || s->command == 16 || s->command == 17)
+                && i == 18) {
                 /* ③数値倍率's pair.  `[ESC].倍率 X,Y =` fills columns 1 to
                  * 16 and the field is at 18, the same place ②数値位置 puts
                  * its distance. */

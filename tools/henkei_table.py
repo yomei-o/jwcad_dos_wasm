@@ -57,6 +57,11 @@ def main():
     typed = ''.join('type ' + ch + NL + 'wait 6000000' + NL for ch in '20,30')
     st.run(head + para + first_r + second + fix + num + typed
            + 'key enter' + NL + 'wait 40000000' + NL, d + '/num')
+    # ③数値倍率: the base point, then the scale, then where it goes
+    mul = st.PRESS % (300, 8, 'left', 'left')       # ③数値倍率, columns 35..44
+    two = 'type 2' + NL + 'wait 6000000' + NL
+    st.run(head + para + first_r + second + fix + mul + base + two
+           + 'key enter' + NL + 'wait 34000000' + NL + place, d + '/mul')
     # 40M to start, 26M for the menu and 36M a press: the press that starts at
     # N leaves its line in the window N..N+36M.  ①パラメトリック変形 is one
     # press more than 複写's road, so everything is 36M later.
@@ -68,6 +73,10 @@ def main():
     from_items = st.strings(on, 210_000_000, 246_000_000)
     to_items = st.strings(on, 246_000_000, 282_000_000)
     again_items = st.strings(on, 282_000_000, 1 << 62)
+    ml = d + '/mul.log'
+    scale_items = st.strings(ml, 246_000_000, 282_000_000)
+    at_items = st.strings(ml, 288_000_000, 322_000_000)
+    end_items = st.strings(ml, 322_000_000, 1 << 62)
     nm = d + '/num.log'
     dist_items = st.strings(nm, 210_000_000, 246_000_000)
     done_items = st.strings(nm, 276_000_000, 1 << 62)
@@ -91,6 +100,12 @@ def main():
     text += list(st.rows(dist_items, 7, command))
     text += ['    /* stage 8: it is done */']
     text += list(st.rows(done_items, 8, command))
+    text += ['    /* stage 18: ③数値倍率 -- the scale */']
+    text += list(st.rows(scale_items, 18, command))
+    text += ['    /* stage 19: and where it goes */']
+    text += list(st.rows(at_items, 19, command))
+    text += ['    /* stage 20: it is done */']
+    text += list(st.rows(end_items, 20, command))
     text += ['    /* stage 9: 再変形 -- it does not end there */']
     text += list(st.rows(again_items, 9, command))
     text += ['    { 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0 }, 0, 0 },', '};', '',

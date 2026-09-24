@@ -372,7 +372,7 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
      * the pointer left on the base point, where the preview lands exactly on
      * the dotted red lines and turns them 00ff00 and 00ffff (0 xor 4 and
      * 1 xor 4). */
-    if (c->command == 17 && c->stage == 6 && d
+    if (c->command == 17 && (c->stage == 6 || c->stage == 19) && d
         && sx >= w->x0 && sx <= w->x1 && sy >= w->y0 && sy <= w->y1) {
         double px, py, dx, dy;
         long k;
@@ -390,6 +390,16 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
             a = jw_cmd_in_range(c, l->x0, l->y0, l->x0, l->y0);
             b = jw_cmd_in_range(c, l->x1, l->y1, l->x1, l->y1);
             if (!a && !b) {
+                continue;
+            }
+            if (c->stage == 19) {
+                /* ③数値倍率 previews the scaled shape, S(p-基準点)+ポインタ. */
+                jw_view_mark(v, w,
+                             a ? c->scale_x * (l->x0 - c->base_x) + px : l->x0,
+                             a ? c->scale_y * (l->y0 - c->base_y) + py : l->y0,
+                             b ? c->scale_x * (l->x1 - c->base_x) + px : l->x1,
+                             b ? c->scale_y * (l->y1 - c->base_y) + py : l->y1,
+                             4, jw_view_line_style(l->type), 0x18);
                 continue;
             }
             jw_view_mark(v, w, l->x0 + (a ? dx : 0.0), l->y0 + (a ? dy : 0.0),
@@ -2008,6 +2018,64 @@ static void henkei_at(JwCmd *c, Jwc *d, double px, double py)
     henkei_by(c, d, px - c->base_x, py - c->base_y);
 }
 
+/* ③数値倍率: the ends it has taken are scaled about the base point and put
+ * down at the pressed one -- S(p - 基準点) + 置く点, the same formula
+ * 複写's ③数値倍率 uses.  Measured on SAMPLE0 with the range
+ * (200,150)-(450,350), the base at screen (300,250), a scale of 2 and the
+ * place at (350,300): line 5's end goes (110.737,305.616) ->
+ * (92.475,348.232), which is 2 x (110.737-179, 305.616-213) + (229,163).
+ *
+ * What it does to an arc or a text is not measured; they are carried the
+ * same way their anchor points are. */
+static void henkei_scale(JwCmd *c, Jwc *d, double px, double py)
+{
+    long k;
+
+    if (!c->hen_end) {
+        henkei_by(c, d, 0.0, 0.0);      /* settles which ends are taken */
+    }
+    if (!c->hen_end) {
+        return;
+    }
+    for (k = 0; k < c->n0_lines; k++) {
+        JwcLine *l = &d->lines[k];
+        const int a = c->hen_end[k] & 1, b = c->hen_end[k] & 2;
+
+        if (a) {
+            l->x0 = (float)(c->scale_x * (l->x0 - c->base_x) + px);
+            l->y0 = (float)(c->scale_y * (l->y0 - c->base_y) + py);
+        }
+        if (b) {
+            l->x1 = (float)(c->scale_x * (l->x1 - c->base_x) + px);
+            l->y1 = (float)(c->scale_y * (l->y1 - c->base_y) + py);
+        }
+        if (a || b) {
+            l->rest[2] = (unsigned char)(l->rest[2] | 0x02);
+            l->rest[3] = (unsigned char)((a && b) ? 0x00 : a ? 0x01 : 0x02);
+        }
+    }
+    for (k = 0; k < c->n0_arcs; k++) {
+        if (picked_arc(c, d, k)) {
+            JwcArc *a = &d->arcs[k];
+
+            a->cx = (float)(c->scale_x * (a->cx - c->base_x) + px);
+            a->cy = (float)(c->scale_y * (a->cy - c->base_y) + py);
+            a->rest[2] = (unsigned char)(a->rest[2] | 0x02);
+        }
+    }
+    for (k = 0; k < c->n0_texts; k++) {
+        if (picked_text(c, d, k)) {
+            JwcText *t = &d->texts[k];
+
+            t->x0 = (float)(c->scale_x * (t->x0 - c->base_x) + px);
+            t->y0 = (float)(c->scale_y * (t->y0 - c->base_y) + py);
+            t->x1 = (float)(c->scale_x * (t->x1 - c->base_x) + px);
+            t->y1 = (float)(c->scale_y * (t->y1 - c->base_y) + py);
+            t->rest[2] = (unsigned char)(t->rest[2] | 0x02);
+        }
+    }
+}
+
 /* ②数値位置: the same, by a distance in millimetres of paper. */
 static void henkei_by_mm(JwCmd *c, Jwc *d)
 {
@@ -2972,6 +3040,13 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->stage = 5;
         return 1;
     }
+    if (c->command == 17 && c->stage == 4 && item == 3) {
+        /* ③数値倍率: the base point first, then `.倍率 X,Y =`, then
+         * where it goes. */
+        c->scaling = 1;
+        c->stage = 5;
+        return 1;
+    }
     if (c->command == 17 && c->stage == 4 && item == 2) {
         /* ②数値位置: `.距離 X,Y =` in millimetres of paper, the same
          * field 複写 has.  Measured: `20,30` moves the ends that are in
@@ -3604,6 +3679,34 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 c->typed[c->typed_n] = 0;
             }
             return 1;
+        }
+        return 1;
+    }
+    if (c->command == 17 && c->stage == 18) {
+        /* ③数値倍率's `X,Y`, one number on its own meaning both. */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                const char *comma = strchr(c->typed, ',');
+
+                c->scale_x = atof(c->typed);
+                c->scale_y = comma ? atof(comma + 1) : c->scale_x;
+            }
+            c->typing = 0;
+            c->scaling = 3;
+            c->stage = 19;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == ','
+             || key == '-') && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
         }
         return 1;
     }
@@ -6111,7 +6214,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             double px, py;
 
             if (c->stage != 4 && c->stage != 5 && c->stage != 6
-                && c->stage != 9) {
+                && c->stage != 9 && c->stage != 19) {
                 return 0;
             }
             if (!take(c, d, w, sx, sy, right, &px, &py)) {
@@ -6120,7 +6223,24 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             if (c->stage == 4 || c->stage == 5) {
                 c->base_x = px;
                 c->base_y = py;
+                if (c->scaling == 1) {
+                    c->scaling = 2;
+                    c->stage = 18;
+                    c->typing = 1;
+                    c->typed_n = 0;
+                    c->typed[0] = 0;
+                    return 1;
+                }
                 c->stage = 6;
+                return 1;
+            }
+            if (c->scaling == 3) {
+                c->n0_lines = d->n_lines;
+                c->n0_arcs = d->n_arcs;
+                c->n0_texts = d->n_texts;
+                henkei_scale(c, d, px, py);
+                c->scaling = 4;
+                c->stage = 20;
                 return 1;
             }
             c->n0_lines = d->n_lines;
