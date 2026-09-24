@@ -427,6 +427,7 @@ typedef struct {
     int dim_arc;
     int dim_arc_end;
     int dim_arc_miss;
+    int dim_arc_unit;
     char dim_arc_val[24];
     int dim_ck;
     int dim_ck_out;

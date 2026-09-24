@@ -237,6 +237,7 @@ static void sync_ui(void)
     ui.dim_arc = cmd.dim_arc;
     ui.dim_arc_end = cmd.dim_arc_end;
     ui.dim_arc_miss = cmd.dim_arc_miss;
+    ui.dim_arc_unit = cmd.dim_arc_unit;
     memcpy(ui.dim_arc_val, cmd.dim_arc_val, sizeof ui.dim_arc_val);
     ui.dim_ck = cmd.dim_ck;
     ui.dim_ck_out = cmd.dim_ck_out;
@@ -2036,6 +2037,25 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         cmd.dim_arc_val[0] = 0;
         cmd.dim_did = 0;
         cmd.stage = 11;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* ③角度 は同じ線の桁 31 から 37。②円周 と同じ道を通り、始めの押しが
+     * 円ではなく 角度原点 になります。 */
+    if (ui.command == 14 && ui.top_item == 4 && !dxf_mode
+        && y >= 0 && y <= 15 && x / 8 + 1 >= 31 && x / 8 + 1 <= 37) {
+        cmd.top_item = 0;
+        cmd.top_right = 0;
+        cmd.dim_arc = 2;
+        cmd.dim_arc_val[0] = 0;
+        cmd.dim_did = 0;
+        cmd.stage = 11;
+        cmd.n0_lines = drawing ? drawing->n_lines : 0;
+        cmd.n0_arcs = drawing ? drawing->n_arcs : 0;
+        cmd.n0_texts = drawing ? drawing->n_texts : 0;
         mouse_x = x;
         mouse_y = y;
         sync_ui();

@@ -2915,6 +2915,12 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
             c->dim_arc_end = !c->dim_arc_end;
             return 1;
         }
+        if (item == 2 && c->dim_arc == 2) {
+            /* ②単位: 度 と 度分秒 が入れ替わり、桁 53 の `度` は
+             * 度分秒 のときは出ません（測定）。 */
+            c->dim_arc_unit = !c->dim_arc_unit;
+            return 1;
+        }
         return 0;
     }
     if (c->command == 14 && c->dim_ck && c->stage == 9) {
@@ -4693,9 +4699,9 @@ static void dimension_arc(JwCmd *c, Jwc *d, double r1)
     const unsigned char pen =
         (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN);
     const double pi = 3.14159265358979323846;
-    const double cx = d->arcs[c->dim_arc_k].cx;
-    const double cy = d->arcs[c->dim_arc_k].cy;
-    const double r = d->arcs[c->dim_arc_k].r;
+    const double cx = c->dim_arc_cx;
+    const double cy = c->dim_arc_cy;
+    const double r = c->dim_arc_r;
     const double a0 = c->dim_arc_a0 * pi / 180.0;
     const double a1 = c->dim_arc_a1 * pi / 180.0;
     const double off = (c->dim_gap_mm > 0.0 ? c->dim_gap_mm : 0.5)
@@ -4737,9 +4743,35 @@ static void dimension_arc(JwCmd *c, Jwc *d, double r1)
                        type, pen, layer, 0x03)) {
         d->arcs[d->n_arcs - 1].rest[2] = 0x40;
     }
-    jwc_dim_text(buf, (long)sizeof buf,
-                 2.0 * pi * r * span / 360.0 * jwc_zukei_scale(d),
-                 c->dim_unit, c->dim_dec, c->dim_comma_on, c->dim_zero_on);
+    if (c->dim_arc == 2) {
+        /* ③角度 の値は角度そのものです。②単位 が 度 のときは小数四桁を
+         * 詰めて `\xdf` を付けます（測定：270 度は `270\xdf`、
+         * atan2(50,80)=32.00538 度は `32.0054\xdf`）。もう一方は度分秒で、
+         * 同じ 270 度が `270\xdf0'0"` でした。 */
+        if (c->dim_arc_unit) {
+            const long all = (long)(span * 3600.0 + 0.5);
+
+            sprintf(buf, "%ld\xdf%ld'%ld" "\x22",
+                    all / 3600L, all / 60L % 60L, all % 60L);
+        } else {
+            char *q;
+
+            sprintf(buf, "%.4f", span);
+            q = buf + strlen(buf) - 1;
+            while (q > buf && *q == '0') {
+                *q-- = 0;
+            }
+            if (q > buf && *q == '.') {
+                *q = 0;
+            }
+            strcat(buf, "\xdf");
+        }
+    } else {
+        jwc_dim_text(buf, (long)sizeof buf,
+                     2.0 * pi * r * span / 360.0 * jwc_zukei_scale(d),
+                     c->dim_unit, c->dim_dec, c->dim_comma_on,
+                     c->dim_zero_on);
+    }
     len = jwc_text_length(d, buf, d->dim_size);
     am = (c->dim_arc_a0 + span / 2.0) * pi / 180.0;
     {
@@ -4753,7 +4785,8 @@ static void dimension_arc(JwCmd *c, Jwc *d, double r1)
                          (float)(my + len / 2.0 * dy),
                          buf, (unsigned char)d->dim_size, layer)) {
             d->texts[d->n_texts - 1].rest[2] = 0x10;
-            d->texts[d->n_texts - 1].rest[3] = 0x40;
+            d->texts[d->n_texts - 1].rest[3] =
+                (unsigned char)(c->dim_arc == 2 ? 0x44 : 0x40);
         }
     }
     if (!c->dim_arc_end) {
@@ -5853,6 +5886,22 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
              * 15 は寸法線の位置——そこで一本入ります。 */
             double x, y;
 
+            if (c->stage == 11 && c->dim_arc == 2) {
+                /* ③角度 の 角度原点マウス指示: 円ではなく点です。 */
+                if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                c->dim_arc_miss = 0;
+                c->dim_arc_cx = x;
+                c->dim_arc_cy = y;
+                c->dim_arc_r = 0.0;
+                c->dim_arc_val[0] = 0;
+                c->dim_did = 0;
+                c->stage = 12;
+                return 1;
+            }
             if (c->stage == 11) {
                 const long k = jw_cmd_arc_at(d, w, sx, sy);
 
@@ -5868,7 +5917,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 }
                 c->missed = 0;
                 c->dim_arc_miss = 0;
-                c->dim_arc_k = k;
+                c->dim_arc_cx = d->arcs[k].cx;
+                c->dim_arc_cy = d->arcs[k].cy;
+                c->dim_arc_r = d->arcs[k].r;
                 c->dim_arc_val[0] = 0;
                 c->dim_did = 0;
                 c->stage = 12;
@@ -5880,8 +5931,8 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             }
             c->missed = 0;
             if (c->stage == 12 || c->stage == 13) {
-                const double dx = x - d->arcs[c->dim_arc_k].cx;
-                const double dy = y - d->arcs[c->dim_arc_k].cy;
+                const double dx = x - c->dim_arc_cx;
+                const double dy = y - c->dim_arc_cy;
                 double deg = atan2(dy, dx) * 180.0
                            / 3.14159265358979323846;
 
@@ -5897,8 +5948,8 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 return 1;
             }
             {
-                const double dx = x - d->arcs[c->dim_arc_k].cx;
-                const double dy = y - d->arcs[c->dim_arc_k].cy;
+                const double dx = x - c->dim_arc_cx;
+                const double dy = y - c->dim_arc_cy;
                 const double away = sqrt(dx * dx + dy * dy);
 
                 if (c->stage == 14) {

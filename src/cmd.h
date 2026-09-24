@@ -226,7 +226,10 @@ typedef struct {
     long dim_seen_lines, dim_seen_arcs, dim_seen_texts;
     int dim_arc_end;            /* ①端部: 0 = 点、1 = 矢印 */
     int dim_arc_miss;           /* 円を探して線が出た（線データです） */
-    long dim_arc_k;             /* 指示された円 */
+    /* ③角度 も同じ道です（dim_arc は 1 が ②円周、2 が ③角度）。②円周 は
+     * 指示された円の中心と半径、③角度 は 原点マウス指示 で取った点。 */
+    double dim_arc_cx, dim_arc_cy, dim_arc_r;
+    int dim_arc_unit;           /* ③角度 の ②単位: 0 = 度、1 = 度分秒 */
     double dim_arc_a0, dim_arc_a1;      /* 始点・終点の角度（度、反時計） */
     double dim_arc_r0;          /* 引出し線の始点までの半径 */
     char dim_arc_val[24];       /* 描いたあと帯の桁 17 に出る値 */

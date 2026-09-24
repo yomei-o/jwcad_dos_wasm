@@ -529,6 +529,18 @@ void jw_ui_band_last(VGA *v, const JwUi *s)
     } else {
         jw_ui_text(v, 46, 2, 7, 0xffffu, "\x93_");
     }
+    if (s->dim_arc == 2) {
+        /* ②単位 の欄は桁 54 で中心をそろえます: `度` は桁 53、`度分秒` は
+         * 桁 51 から。**文字列の記録には桁を押したときの `度分秒` が出て
+         * きませんが、画面には出ています**——記録だけで決めると、押した
+         * だけでは空になってしまいます。 */
+        if (!s->dim_arc_unit) {
+            jw_ui_text(v, 53, 2, 7, 0xffffu, "\x93x");
+        } else {
+            jw_ui_text(v, 51, 2, 7, 0xffffu,
+                       "\x93x" "\x95" "\xaa" "\x95" "\x62");
+        }
+    }
     if (s->dim_arc_val[0]) {
         jw_ui_text(v, 17, 2, 7, 0xffffu, s->dim_arc_val);
     }
@@ -3795,7 +3807,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (s->dim_did || s->stage > 11) {
                     jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
                 }
-                if (s->stage == 11) {
+                if (s->stage == 11 && s->dim_arc == 2) {
+                    jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+                    jw_ui_text(v, 8, 1, 7, 0, "\x8ap\x93x\x8c\xb4\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read |\x87@\x92[\x95\x94|\x87" "A\x92P\x88\xca|\x87" "B\x81y\x82Q\x93_\x8a\xd4\x81z|");
+                    jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                } else if (s->stage == 12 && s->dim_arc == 2) {
+                    jw_ui_text(v, 8, 1, 7, 0, "\x8ap\x93x\x81i\x8d\xb6\x89\xf4\x82\xe8\x81j\x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
+                } else if (s->stage == 13 && s->dim_arc == 2) {
+                    jw_ui_text(v, 8, 1, 7, 0, "\x8ap\x93x\x81i\x8d\xb6\x89\xf4\x82\xe8\x81j         \x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
+                } else if (s->stage == 11) {
                     jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
                     jw_ui_text(v, 8, 1, 7, 0,
                                s->dim_did ? "\x89~\x8e\xfc \x89~\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)              |\x87@\x92[\x95\x94|\x87" "A\x98" "A\x91\xb1\x8en\x93_\x8ew\x8e\xa6 (R) |" : "\x89~\x8e\xfc \x89~\x83}\x83" "E\x83X\x8ew\x8e\xa6                  |\x87@\x92[\x95\x94|");
