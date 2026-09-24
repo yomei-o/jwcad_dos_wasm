@@ -3128,10 +3128,24 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
             c->stage = 30;
             return 1;
         }
+        if (c->tan_on && c->stage == 30 && item == 4) {
+            /* ④２線: 二本の線に接する、決めた半径の円。 */
+            c->tan_circ = 4;
+            c->stage = 24;
+            return 1;
+        }
         if (c->tan_on && c->stage == 30 && item == 6) {
             /* ⑥２点: 二点を通る、決めた半径の円。 */
             c->tan_circ = 6;
             c->stage = 20;
+            return 1;
+        }
+        if (c->tan_on && c->tan_circ == 4
+            && (c->stage == 24 || c->stage == 25) && item == 1) {
+            c->typing = 1;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 26;
             return 1;
         }
         if (c->tan_on && c->tan_circ > 0
@@ -3979,6 +3993,32 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typing = 0;
             c->typed[0] = 0;
             c->typed_n = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if (c->command == 26 && c->tan_on && c->stage == 26) {
+        /* ④２線 の ①接円半径 の欄（段 23 と同じ中身で、戻る段だけ違う）。 */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                c->tan_r = atof(c->typed);
+            }
+            c->typing = 0;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 24;
             return 1;
         }
         if (key == 8) {
@@ -6939,6 +6979,78 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->pressed = 1;
             c->stage = 1;
             return 1;
+        }
+        if (c->tan_circ == 4 && (c->stage == 24 || c->stage == 25)) {
+            /* ④２線: 二本の線に接する、決めた半径の円。**選ぶ段はなく**、
+             * 二本目を押したところで入ります。
+             *
+             * どの四隅に入るかは押したところで決まります: 中心は
+             * **（Ａ）を押した側の（Ｂ）の側**と、**（Ｂ）を押した側の
+             * （Ａ）の側** に来ます。測定（SAMPLE0、半径 1000mm =
+             * 1744.108 単位、枠の横線を画面 (400,140)、縦線を (162,250)）:
+             * `arc c=(1785.081,-1421.051) r=1744.108 … 01 02 00 00 00 2c`
+             * ——交わるところ (40.973,323.057) から右下へ半径ぶんです。
+             * 記録の最後のバイトは **0x2c**（⑥２点 の 0x24 とは別）。 */
+            const long k = jw_cmd_line_at(d, w, sx, sy);
+            double px, py;
+
+            if (k < 0) {
+                c->tan_miss = 0;
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            jw_cmd_at(w, sx, sy, &px, &py);
+            if (c->stage == 24) {
+                c->tan_la = k;
+                c->tan_lax = px;
+                c->tan_lay = py;
+                c->stage = 25;
+                return 1;
+            }
+            {
+                const JwcLine *a = &d->lines[c->tan_la];
+                const JwcLine *b = &d->lines[k];
+                const double adx = a->x1 - a->x0, ady = a->y1 - a->y0;
+                const double bdx = b->x1 - b->x0, bdy = b->y1 - b->y0;
+                const double alen = sqrt(adx * adx + ady * ady);
+                const double blen = sqrt(bdx * bdx + bdy * bdy);
+                const double r = c->tan_r / (jwc_zukei_scale(d) > 0.0
+                                             ? jwc_zukei_scale(d) : 1.0);
+                double anx, any, bnx, bny, ca, cb, det, cx, cy, side;
+
+                if (alen <= 0.0 || blen <= 0.0) {
+                    return 0;
+                }
+                anx = -ady / alen;
+                any = adx / alen;
+                bnx = -bdy / blen;
+                bny = bdx / blen;
+                det = anx * bny - any * bnx;
+                if (det > -1e-9 && det < 1e-9) {
+                    c->tan_miss = 2;    /* 平行。`データが不適当` */
+                    c->missed = 1;
+                    c->stage = 24;
+                    return 1;
+                }
+                /* （Ａ）から見た側は（Ｂ）を押したところ、その逆も同じ。 */
+                side = (px - a->x0) * anx + (py - a->y0) * any;
+                ca = anx * a->x0 + any * a->y0 + (side < 0.0 ? -r : r);
+                side = (c->tan_lax - b->x0) * bnx
+                     + (c->tan_lay - b->y0) * bny;
+                cb = bnx * b->x0 + bny * b->y0 + (side < 0.0 ? -r : r);
+                cx = (ca * bny - cb * any) / det;
+                cy = (anx * cb - bnx * ca) / det;
+                if (jwc_add_arc_at(d, (float)cx, (float)cy, (float)r, 0L, 0L,
+                                   (unsigned char)d->line_type,
+                                   (unsigned char)d->pen,
+                                   (unsigned char)((0 << 4)
+                                       | (d->write_layer & 15)), 0x2c)) {
+                    c->tan_did = 1;
+                }
+                c->stage = 24;
+                return 1;
+            }
         }
         if (c->tan_circ == 6
             && (c->stage == 20 || c->stage == 21 || c->stage == 22)) {

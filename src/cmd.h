@@ -308,6 +308,8 @@ typedef struct {
     double tan_p1x, tan_p1y;    /* 第１点 */
     double tan_ccx[2], tan_ccy[2];      /* 接円の候補 */
     double tan_cr;              /* その半径（図面の単位） */
+    long tan_la;                /* ④２線 の（Ａ） */
+    double tan_lax, tan_lay;    /* そこを押した点 */
     int tan_cn;                 /* 候補の数 */
     int tan_miss;               /* 円を探して線が出た（線データです） */
     double tan_apx, tan_apy;    /* 円(Ａ)を押したところ */

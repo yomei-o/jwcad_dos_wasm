@@ -3856,20 +3856,58 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             /* ②接円（半径と２条件）の道。 */
             if (s->command == 26 && i == s->stage
                 && (s->stage == 30 || s->stage == 20 || s->stage == 21
-                    || s->stage == 22 || s->stage == 23)) {
+                    || s->stage == 22 || s->stage == 23
+                    || s->stage == 24 || s->stage == 25
+                    || s->stage == 26)) {
                 char one[80];
 
                 if (i == 30) {
                     jw_ui_text(v, 8, 1, 7, 0, "|\x87@\x82P\x90\xfc\x82P\x89~(L)|\x87" "A\x82P\x93_\x82P\x90\xfc(R)|\x87" "B\x82P\x89~\x82P\x93_ |\x87" "C\x82Q\x90\xfc |\x87" "D\x82Q\x89~ |\x87" "E\x82Q\x93_ |");
                     jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
                 } else if (i == 20 || i == 21) {
-                    if (s->tan_did) {
+                    /* 二つめの段（第２点・（Ｂ））は [ESC] が出て
+                     * [BS]前項 が出ません。一つめはその逆です。 */
+                    if (s->tan_did || i == 21) {
                         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
                     }
-                    sprintf(one, "%s%8.2f|", i == 20 ? "\x91\xe6\x82P\x93_ \x8ew\x8e\xa6 (L)free (R)Read   |\x87@\x90\xda\x89~\x94\xbc\x8c" "a=" : "\x91\xe6\x82Q\x93_ \x8ew\x8e\xa6 (L)free (R)Read   |\x87@\x90\xda\x89~\x94\xbc\x8c" "a=",
+                    sprintf(one, "%s%8.3f|", i == 20 ? "\x91\xe6\x82P\x93_ \x8ew\x8e\xa6 (L)free (R)Read   |\x87@\x90\xda\x89~\x94\xbc\x8c" "a=" : "\x91\xe6\x82Q\x93_ \x8ew\x8e\xa6 (L)free (R)Read   |\x87@\x90\xda\x89~\x94\xbc\x8c" "a=",
                             s->tan_r);
                     jw_ui_text(v, 8, 1, 7, 0, one);
-                    jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                    if (i == 20) {
+                        jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                    }
+                } else if (i == 24 || i == 25) {
+                    /* （Ｂ）の段は [ESC] が出て [BS]前項 が出ません。
+                     * （Ａ）はその逆です（どちらも測定）。 */
+                    if (s->tan_did || i == 25) {
+                        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    }
+                    sprintf(one, "%s%8.3f|", i == 24 ? "\x82Q\x90\xfc\x81i\x82`\x81j  \x83}\x83" "E\x83X\x8ew\x8e\xa6   |\x87@\x90\xda\x89~\x94\xbc\x8c" "a=" : "\x82Q\x90\xfc\x81i\x82" "a\x81j  \x83}\x83" "E\x83X\x8ew\x8e\xa6   |\x87@\x90\xda\x89~\x94\xbc\x8c" "a=",
+                            s->tan_r);
+                    jw_ui_text(v, 8, 1, 7, 0, one);
+                    if (i == 24) {
+                        jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                    }
+                } else if (i == 26) {
+                    int n, x;
+
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    jw_ui_text(v, 8, 1, 7, 0, "\x95\xcf\x8dX\x94\xbc\x8c" "a=");
+                    sprintf(one, "[%10.3f mm]", s->tan_r);
+                    jw_ui_text(v, 50, 1, 7, 0, one);
+                    jw_ui_text(v, 17, 1, 7, 0, "        ");
+                    x = 16 * 8;
+                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                        char two[4];
+
+                        two[0] = s->typed[n];
+                        two[1] = two[2] = ' ';
+                        two[3] = 0;
+                        jw_ui_text(v, 17 + n, 1, 7, 0, two);
+                    }
+                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    x += n * 8;
+                    fill(v, x, 7, x + 7, 15, 4);
                 } else if (i == 22) {
                     jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
                     jw_ui_text(v, 8, 1, 7, 0, "\x90\xda\x89~\x91I\x91\xf0\x81\x81\x83}\x83" "E\x83X\x88\xda\x93\xae\x81@\x81@ \x81@\x8am\x92\xe8\x81\x81\x83N\x83\x8a\x83" "b\x83N\x81@\x81@\x81i\x90\xda\x89~\x90\x94" "2\x81j");
@@ -3878,7 +3916,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
                     jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
                     jw_ui_text(v, 8, 1, 7, 0, "\x95\xcf\x8dX\x94\xbc\x8c" "a=");
-                    sprintf(one, "[%10.2f mm]", s->tan_r);
+                    sprintf(one, "[%10.3f mm]", s->tan_r);
                     jw_ui_text(v, 50, 1, 7, 0, one);
                     jw_ui_text(v, 17, 1, 7, 0, "        ");
                     x = 16 * 8;
@@ -4350,8 +4388,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * when a press finds something (the band is repainted) or another item
          * is picked.  Both were measured -- 線消 at (244,140) then (446,189)
          * leaves the band empty, and picking 複写 after the miss clears it. */
-        if (s->missed && s->command == 26) {
-            /* 円線接 は桁 17 から、句点つきです（測定）。 */
+        /* 円線接 の ①接線 は桁 17 から、句点つきです（測定）。
+         * **②接円 は違います**——読めなかっただけのときは、ほかの
+         * 命令と同じ BEL つきの `読取可能データ無` が桁 32 から
+         * 出ます（測定：④２線 で線でないところを押すと
+         * `サーチ`(桁 18、青地) と `.読取可能データ無`(桁 32)。
+         * サーチ は行を書き直すときに桁 17..30 ごと消えます）。
+         * 二本が平行のときの `データが不適当` は ②接円 でも
+         * 桁 18 で、これは 0 画素で合っています。 */
+        if (s->missed && s->command == 26
+            && (s->tan_miss || !s->tan_circ)) {
             jw_ui_text(v, 18, 2, 7, 0,
                        s->tan_miss == 2
                        ? "\x83" "f\x81[\x83^\x82\xaa\x95s\x93K\x93\x96"

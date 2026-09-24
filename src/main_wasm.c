@@ -2713,11 +2713,28 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             && jw_ui_top_item(x, y) == 1) {
             zukei_take(zukei_pick);
         }
+        /* 項目を押しても帯の `読取可能データ無` は消えます（測定：
+         * 円線接 ④２線 で外したあと ①接円半径 を押すと帯は空）。 */
+        cmd.missed = 0;
         if (jw_cmd_top(&cmd, drawing, jw_ui_top_item(x, y), right)) {
             jw_ui_from(&ui, drawing);       /* the counts move with it */
             ui.command = cmd.command;
             ui.guide = 0;
         }
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    if (cmd.command && y >= 0 && y <= 15) {
+        /* 上の行の、項目でないところ。図面の押しではありません——
+         * 原作はここを押してもサーチをしません（文字の記録に
+         * サーチが出ません）。道は動かず、帯に出ていた
+         * `読取可能データ無` だけが消えます（測定：円線接 ④２線 で
+         * 外した押しのあと、桁 20（マウス指示 の上）を押すと帯は
+         * 空になります）。 */
+        cmd.missed = 0;
         mouse_x = x;
         mouse_y = y;
         sync_ui();
