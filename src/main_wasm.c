@@ -237,6 +237,7 @@ static void sync_ui(void)
     ui.dim_arc = cmd.dim_arc;
     ui.dim_arc_end = cmd.dim_arc_end;
     ui.dim_arc_miss = cmd.dim_arc_miss;
+    ui.dim_arc_two = cmd.dim_arc_two;
     ui.dim_arc_unit = cmd.dim_arc_unit;
     memcpy(ui.dim_arc_val, cmd.dim_arc_val, sizeof ui.dim_arc_val);
     ui.dim_ck = cmd.dim_ck;

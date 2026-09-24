@@ -501,6 +501,15 @@ void jw_ui_band_last(VGA *v, const JwUi *s)
         /* ①円径 は `読取可能データ無` を BEL なしで桁 32 から。②円周 は
          * どちらも桁 20 からで、円が見つからずに線を拾うと
          * `線データです`（三つとも測定）。 */
+        if (s->dim_arc == 2 && s->dim_arc_two) {
+            /* ③【２線間】の外した押しは、ほかの道と同じ BEL つきです
+             * （測定：桁 32 に `.読取可能データ無`）。 */
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93\xc7\x8e\xe6\x89"
+                       "\xc2\x94\x5c\x83\x66\x81"
+                       "\x5b\x83\x5e\x96\xb3");
+            return;
+        }
         if (s->dim_arc && s->dim_arc_miss) {
             jw_ui_text(v, 20, 2, 7, 0, "\x90\xfc\x83" "f\x81[\x83^\x82\xc5\x82\xb7");
         } else {
@@ -3807,7 +3816,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (s->dim_did || s->stage > 11) {
                     jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
                 }
-                if (s->stage == 11 && s->dim_arc == 2) {
+                if (s->stage == 11 && s->dim_arc == 2 && s->dim_arc_two) {
+                    jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+                    jw_ui_text(v, 8, 1, 7, 0, "\x8ap\x93x\x81i\x8d\xb6\x89\xf4\x82\xe8\x81j\x8en\x90\xfc\x83}\x83" "E\x83X\x8ew\x8e\xa6       |\x87@\x92[\x95\x94|\x87" "A\x92P\x88\xca|\x87" "B\x81y\x82Q\x90\xfc\x8a\xd4\x81z|");
+                    jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                } else if (s->stage == 12 && s->dim_arc == 2
+                           && s->dim_arc_two) {
+                    jw_ui_text(v, 8, 1, 7, 0, "\x8ap\x93x\x81i\x8d\xb6\x89\xf4\x82\xe8\x81j         \x8fI\x90\xfc\x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
+                } else if (s->stage == 11 && s->dim_arc == 2) {
                     jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
                     jw_ui_text(v, 8, 1, 7, 0, "\x8ap\x93x\x8c\xb4\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read |\x87@\x92[\x95\x94|\x87" "A\x92P\x88\xca|\x87" "B\x81y\x82Q\x93_\x8a\xd4\x81z|");
                     jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");

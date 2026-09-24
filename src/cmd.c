@@ -2915,6 +2915,12 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
             c->dim_arc_end = !c->dim_arc_end;
             return 1;
         }
+        if (item == 3 && c->dim_arc == 2) {
+            /* ③【２点間】と【２線間】。【２線間】は 始線・終線・寸法線の
+             * 位置の三押しで、引出し線の段がありません（測定）。 */
+            c->dim_arc_two = !c->dim_arc_two;
+            return 1;
+        }
         if (item == 2 && c->dim_arc == 2) {
             /* ②単位: 度 と 度分秒 が入れ替わり、桁 53 の `度` は
              * 度分秒 のときは出ません（測定）。 */
@@ -4691,6 +4697,23 @@ static void dimension_prog(JwCmd *c, Jwc *d, double a)
  * 引出し線, each pair turned ±矢印角度 off the circle's own direction and
  * pointing into the arc.
  */
+/* 線の向きを、押した側に向けて度で返します（④円･角 ③角度【２線間】）。 */
+static double line_side(double dx, double dy, double px, double py)
+{
+    double deg = atan2(dy, dx) * 180.0 / 3.14159265358979323846;
+
+    if (dx * px + dy * py < 0.0) {
+        deg += 180.0;
+    }
+    while (deg < 0.0) {
+        deg += 360.0;
+    }
+    while (deg >= 360.0) {
+        deg -= 360.0;
+    }
+    return deg;
+}
+
 static void dimension_arc(JwCmd *c, Jwc *d, double r1)
 {
     const unsigned char layer =
@@ -4702,14 +4725,21 @@ static void dimension_arc(JwCmd *c, Jwc *d, double r1)
     const double cx = c->dim_arc_cx;
     const double cy = c->dim_arc_cy;
     const double r = c->dim_arc_r;
-    const double a0 = c->dim_arc_a0 * pi / 180.0;
-    const double a1 = c->dim_arc_a1 * pi / 180.0;
+    /* **角度は 16.16 の度で持たれます。値もその丸めた角度から出ます。**
+     * 測定：③【２線間】で 153.4349488 度の線を取ると、記録は 153.4350 に
+     * なり、値は 45 - 153.4350 + 360 = `251.565` でした。丸めずに出すと
+     * `251.5651` になります。 */
+    const double q = 1.0 / 65536.0;
+    const double deg0 = floor(c->dim_arc_a0 / q + 0.5) * q;
+    const double deg1 = floor(c->dim_arc_a1 / q + 0.5) * q;
+    const double a0 = deg0 * pi / 180.0;
+    const double a1 = deg1 * pi / 180.0;
     const double off = (c->dim_gap_mm > 0.0 ? c->dim_gap_mm : 0.5)
                       * d->unit_mm;
     const double alen = (c->dim_arrow_mm > 0.0 ? c->dim_arrow_mm : 3.0)
                       * d->unit_mm;
     const double arad = c->dim_angle_deg * pi / 180.0;
-    double span = c->dim_arc_a1 - c->dim_arc_a0;
+    double span = deg1 - deg0;
     double am, len;
     char buf[40];
     int i;
@@ -4738,8 +4768,8 @@ static void dimension_arc(JwCmd *c, Jwc *d, double r1)
         }
     }
     if (jwc_add_arc_at(d, (float)cx, (float)cy, (float)r1,
-                       (long)(c->dim_arc_a0 * 65536.0 + 0.5),
-                       (long)(c->dim_arc_a1 * 65536.0 + 0.5),
+                       (long)(deg0 * 65536.0 + 0.5),
+                       (long)(deg1 * 65536.0 + 0.5),
                        type, pen, layer, 0x03)) {
         d->arcs[d->n_arcs - 1].rest[2] = 0x40;
     }
@@ -4773,7 +4803,7 @@ static void dimension_arc(JwCmd *c, Jwc *d, double r1)
                      c->dim_zero_on);
     }
     len = jwc_text_length(d, buf, d->dim_size);
-    am = (c->dim_arc_a0 + span / 2.0) * pi / 180.0;
+    am = (deg0 + span / 2.0) * pi / 180.0;
     {
         const double tr = r1 + off;
         const double mx = cx + tr * cos(am), my = cy + tr * sin(am);
@@ -4809,7 +4839,7 @@ static void dimension_arc(JwCmd *c, Jwc *d, double r1)
      * 箱の 線数 には入りません: 端部【点】 の一本は箱が 30 のまま（記録は
      * 32 行）、端部【矢印】 は 34（記録は 36 行）——どちらも測りました。 */
     c->dim_lines0 = d->n_lines;
-    for (i = 0; i < 2; i++) {
+    for (i = 0; i < 2 && !c->dim_arc_two; i++) {
         const double a = i ? a1 : a0;
 
         if (jwc_add_line(d, (float)(cx + c->dim_arc_r0 * cos(a)),
@@ -5886,6 +5916,54 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
              * 15 は寸法線の位置——そこで一本入ります。 */
             double x, y;
 
+            if (c->dim_arc == 2 && c->dim_arc_two
+                && (c->stage == 11 || c->stage == 12)) {
+                /* ③【２線間】: 線を二本。角度は **その線の向き** で、
+                 * 押した側に向けます（測定：45 度でない線を線から 6 画素
+                 * 外して押しても、弧の始まりは線の向き 153.4350 度の
+                 * ままで、押した点への向き 156.83 度ではありません）。
+                 * 弧の中心は二本の交わるところ。 */
+                const long k = jw_cmd_line_at(d, w, sx, sy);
+
+                if (k < 0) {
+                    c->missed = 1;
+                    return 0;
+                }
+                jw_cmd_at(w, sx, sy, &x, &y);
+                c->missed = 0;
+                if (c->stage == 11) {
+                    c->dim_arc_l0 = k;
+                    c->dim_arc_px = x;
+                    c->dim_arc_py = y;
+                    c->dim_arc_val[0] = 0;
+                    c->dim_did = 0;
+                    c->stage = 12;
+                    return 1;
+                }
+                {
+                    const JwcLine *a = &d->lines[c->dim_arc_l0];
+                    const JwcLine *b = &d->lines[k];
+                    const double ax = a->x1 - a->x0, ay = a->y1 - a->y0;
+                    const double bx = b->x1 - b->x0, by = b->y1 - b->y0;
+                    const double det = ax * by - ay * bx;
+                    double t, cx, cy;
+
+                    if (det > -1e-9 && det < 1e-9) {
+                        return 0;       /* 平行。測っていません */
+                    }
+                    t = ((b->x0 - a->x0) * by - (b->y0 - a->y0) * bx) / det;
+                    cx = a->x0 + ax * t;
+                    cy = a->y0 + ay * t;
+                    c->dim_arc_cx = cx;
+                    c->dim_arc_cy = cy;
+                    c->dim_arc_r = 0.0;
+                    c->dim_arc_a0 = line_side(ax, ay, c->dim_arc_px - cx,
+                                              c->dim_arc_py - cy);
+                    c->dim_arc_a1 = line_side(bx, by, x - cx, y - cy);
+                    c->stage = 15;
+                    return 1;
+                }
+            }
             if (c->stage == 11 && c->dim_arc == 2) {
                 /* ③角度 の 角度原点マウス指示: 円ではなく点です。 */
                 if (!take_point(c, d, w, sx, sy, right, &x, &y)) {

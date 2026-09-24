@@ -229,6 +229,10 @@ typedef struct {
     /* ③角度 も同じ道です（dim_arc は 1 が ②円周、2 が ③角度）。②円周 は
      * 指示された円の中心と半径、③角度 は 原点マウス指示 で取った点。 */
     double dim_arc_cx, dim_arc_cy, dim_arc_r;
+    /* ③【２線間】: 始線と終線を指示して、その交点まわりの角度。 */
+    int dim_arc_two;
+    long dim_arc_l0;            /* 始線 */
+    double dim_arc_px, dim_arc_py;      /* 始線を押したところ */
     int dim_arc_unit;           /* ③角度 の ②単位: 0 = 度、1 = 度分秒 */
     double dim_arc_a0, dim_arc_a1;      /* 始点・終点の角度（度、反時計） */
     double dim_arc_r0;          /* 引出し線の始点までの半径 */
