@@ -427,6 +427,10 @@ typedef struct {
     int dim_arc;
     int dim_arc_end;
     int dim_arc_miss;
+    int hen_dbl;
+    int hen_dbl_cap;
+    int hen_dbl_edit;
+    double hen_dbl_gap;
     int dim_lot;
     int dim_arc_two;
     int dim_arc_unit;

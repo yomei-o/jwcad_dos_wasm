@@ -3846,6 +3846,52 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 8, 1, 7, 0, "\x81\x9c \x90\xa1\x96@\x90\xfc \x88\xca\x92u \x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ");
                 }
             }
+            /* 変形 ③複線化 は同じ範囲の道を通りますが、言葉が違います。
+             * 段 3 は 文字(R) を取らないので `線・円(L)` だけ、段 4 は
+             * 自分の行です。 */
+            if (s->command == 17 && s->hen_dbl && i == s->stage) {
+                if (i == 3) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    jw_ui_text(v, 6, 1, 7, 0, "\x81Q");
+                    jw_ui_text(v, 8, 1, 7, 0, "\x95\xa1\x90\xfc\x89\xbb  \x92\xc7\x89\xc1\xa5\x8f\x9c\x8aO\x83" "f\x81[\x83^\x8ew\x8e\xa6   ");
+                    jw_ui_text(v, 38, 1, 7, 0, "\x90\xfc\x81" "E\x89~(L) ");
+                    jw_ui_text(v, 48, 1, 7, 0, " [F1\x81`F10] ");
+                    jw_ui_text(v, 68, 1, 7, 0, "|\x87@\x94\xcd\x88\xcd \x8am\x92\xe8|");
+                } else if (i == 4 && s->hen_dbl_edit) {
+                    /* ③間隔 の欄（測定：`[ESC]` のあとに BEL、桁 38 に
+                     * 前回と同じ、桁 56 に `[%10.3f`、桁 67 に `mm`、
+                     * 桁 69 に `]`、打ち込みは桁 14 から 8 つ）。 */
+                    char one[40];
+                    int m, gx;
+
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC].\x8a\xd4\x8au =");
+                    jw_ui_text(v, 38, 1, 7, 0, "\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) ");
+                    sprintf(one, "[%10.3f", s->hen_dbl_gap);
+                    jw_ui_text(v, 56, 1, 7, 0, one);
+                    jw_ui_text(v, 67, 1, 7, 0, "mm");
+                    jw_ui_text(v, 69, 1, 7, 0, "]");
+                    jw_ui_text(v, 14, 1, 7, 0, "        ");
+                    gx = 13 * 8;
+                    for (m = 0; m < s->typed_n && m < 8; m++) {
+                        char two[4];
+
+                        two[0] = s->typed[m];
+                        two[1] = two[2] = ' ';
+                        two[3] = 0;
+                        jw_ui_text(v, 14 + m, 1, 7, 0, two);
+                    }
+                    m = s->typed_n < 8 ? s->typed_n : 8;
+                    gx += m * 8;
+                    fill(v, gx, 7, gx + 7, 15, 4);
+                } else if (i == 4) {
+                    char one[120];
+
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    sprintf(one, "%s%8.2f%s%s", "\x95\xa1\x90\xfc\x89\xbb |\x87@ \x8e\xc0\x8ds(L)|\x87" "A \x92\x86\x8e~(R)|\x87" "B\x8a\xd4\x8au", s->hen_dbl_gap,
+                            "(mm)|\x87" "C\x97\xaf\x90\xfc\x81y", s->hen_dbl_cap ? "\x97L\x81z|(\x89~\x95s\x89\xc2)" : "\x96\x9d\x81z|");
+                    jw_ui_text(v, 8, 1, 7, 0, one);
+                }
+            }
             /* 寸法 ⑤一括 の四つの段。 */
             if (s->command == 14 && s->dim_lot && i == s->stage
                 && s->stage >= 21 && s->stage <= 24) {
@@ -3976,7 +4022,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             }
             /* 変形 ①パラメトリック変形 walks 複写's road cell for cell, out
              * of its own table (src/henkei.h). */
-            if (s->command == 17) {
+            /* ③複線化 の段 3 と 4 は自分の行を出します。 */
+            if (s->command == 17
+                && !(s->hen_dbl && (i == 3 || i == 4))) {
                 const JwStage *r;
                 const int st = (i == 1 && !s->with_text) ? 11 : i;
 
@@ -4224,6 +4272,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
         }
+    /* 変形 ③複線化 を選んだところ。命令の行のかわりに自分の行が出ます。 */
+    if (s->command == 17 && s->hen_dbl && !s->stage && !s->top_item) {
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, "\x95\xa1\x90\xfc\x89\xbb  \x8en\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
+        jw_ui_text(v, 31, 1, 7, 0, "(L)\x90\xfc\xa5\x89~ ");
+        jw_ui_text(v, 68, 1, 7, 0, "|\x87@ \x91O \x94\xcd \x88\xcd|");
+    }
     } else {
         jw_ui_text(v, 8, 1, 7, 0,
                    "|| JW_CADV version 2.22H  Copyright (c) jw_software club "

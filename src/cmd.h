@@ -116,6 +116,12 @@ typedef struct {
     /* 変形 ①パラメトリック変形: どの端が範囲の中だったか（1=始点、
      * 2=終点、3=両方）。**一度決めたら測り直しません**——再変形で
      * 動いた端が範囲の外へ出ても、本物は同じ端を引っぱり続けます。 */
+    /* 変形 ③複線化: 範囲に丸ごと入っている線を、間隔ぶん外に膨らませた
+     * 輪郭にします（4.45b）。 */
+    int hen_dbl;                /* 1 = ③複線化 の道 */
+    int hen_dbl_cap;            /* ④留線【有】 */
+    double hen_dbl_gap;         /* ③間隔（紙のミリ） */
+    long hen_dbl_from;          /* 入れた線の先頭 */
     unsigned char *hen_end;
     /* [ESC] has thrown the point away and the command is asking for it again.
      * The line it wrote over is still there, so the chrome replays the stage

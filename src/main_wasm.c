@@ -237,6 +237,10 @@ static void sync_ui(void)
     ui.dim_arc = cmd.dim_arc;
     ui.dim_arc_end = cmd.dim_arc_end;
     ui.dim_arc_miss = cmd.dim_arc_miss;
+    ui.hen_dbl = cmd.hen_dbl;
+    ui.hen_dbl_cap = cmd.hen_dbl_cap;
+    ui.hen_dbl_edit = cmd.hen_dbl && cmd.typing;
+    ui.hen_dbl_gap = cmd.hen_dbl_gap;
     ui.dim_lot = cmd.dim_lot;
     ui.dim_arc_two = cmd.dim_arc_two;
     ui.dim_arc_unit = cmd.dim_arc_unit;
@@ -1980,6 +1984,27 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             present();
             return -1;
         }
+    }
+    /* 変形（17）の行の `③複線化`（桁 51〜58、x 400〜471）。範囲の道は
+     * ①パラメトリック変形 と同じものを通り、①範囲確定 のあとの行だけ
+     * 変わります。①パラメトリック変形（桁 9〜31）を押し直すと戻ります。 */
+    if (ui.command == 17 && !ui.top_item && !cmd.pressed && !dxf_mode
+        && y >= 0 && y <= 15 && x / 8 + 1 >= 51 && x / 8 + 1 <= 58) {
+        cmd.hen_dbl = 1;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    if (ui.command == 17 && !ui.top_item && !cmd.pressed && !dxf_mode
+        && y >= 0 && y <= 15 && x / 8 + 1 >= 9 && x / 8 + 1 <= 31) {
+        cmd.hen_dbl = 0;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
     }
     /* 寸法 ⑨設定's panel.  The ten rows are 6 to 22 of the box, two rows
      * apart; the six with a number open a field and the three with 【】

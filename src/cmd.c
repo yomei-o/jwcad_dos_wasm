@@ -40,6 +40,9 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->edge_mm = 3.0;
     /* 寸法 ④円･角 ③書込角度 の `[  90.000\xdf]`、その欄の前回と同じ。 */
     c->dim_ck_prev = 90.0;
+    /* 変形 ③複線化 の `③間隔  100.00(mm)` と `④留線【有】`。 */
+    c->hen_dbl_gap = 100.0;
+    c->hen_dbl_cap = 1;
     /* ハッチ's `[  45.00]` and `[  10.0]`, likewise. */
     c->hatch_angle = 45.0;
     c->hatch_pitch = 10.0;
@@ -2347,6 +2350,11 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
             if (!kind || (!c->hen_end && flipped(c, JW_FLIP_LINE, k))) {
                 continue;
             }
+            /* ③複線化 は伸ばしません。丸ごと入っている線だけが
+             * 赤くなります（測定：半分だけ入っている線 6 は白のまま）。 */
+            if (c->hen_dbl && kind == 2) {
+                continue;
+            }
             if (kind == 2) {
                 style = jw_view_line_style(0);          /* 0x5555 */
             }
@@ -2534,25 +2542,32 @@ int jw_cmd_guide_pos(const JwCmd *c, const JwView *w, int seg[2][4])
  * 描き直します。 */
 void jw_cmd_before(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 {
-    long k;
+    long k, from;
 
-    if (!d || c->command != 14 || !c->dim_lot) {
+    if (!d) {
+        return;
+    }
+    if (c->command == 14 && c->dim_lot) {
+        from = c->n0_lines;
+    } else {
         return;
     }
     v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
     v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
     v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
     v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
-    for (k = c->n0_lines; k < d->n_lines; k++) {
+    for (k = from; k < d->n_lines; k++) {
         if (jwc_visible(d, d->lines[k].layer)) {
             jw_view_line(v, d, &d->lines[k], w,
                          jw_view_pen_colour(d->lines[k].pen));
         }
     }
-    for (k = c->n0_texts; k < d->n_texts; k++) {
-        if (jwc_visible(d, d->texts[k].layer)) {
-            jw_view_text(v, d, &d->texts[k], w,
-                         jw_view_text_colour(d, d->texts[k].size));
+    if (c->command == 14) {
+        for (k = c->n0_texts; k < d->n_texts; k++) {
+            if (jwc_visible(d, d->texts[k].layer)) {
+                jw_view_text(v, d, &d->texts[k], w,
+                             jw_view_text_colour(d, d->texts[k].size));
+            }
         }
     }
 }
@@ -2725,9 +2740,14 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
                 || c->command == 23 || c->command == 26
                 || c->command == 14)
         || (JW_RANGE_CMD(c->command) && c->pressed != 2
-            && !(c->command == 27 && c->zukei == JW_ZUKEI_PUT2))) {
+            && !(c->command == 27 && c->zukei == JW_ZUKEI_PUT2)
+            && !(c->command == 17 && c->hen_dbl
+                 && c->hen_dbl_from > 0))) {
         return;
     }
+    /* **③複線化 が入れた線は範囲を放したあとも枠の上です。** 測定：
+     * x=406 の縦の留線が帯の下の 2 行（枠が黒くするところ）にも出て
+     * いました。 */
     /* The drawing window again: the chrome leaves the clip open to the
      * whole screen. */
     v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
@@ -2847,6 +2867,8 @@ static int cmd_top_dim3(JwCmd *c)
 
 /* 寸法 ⑤一括 の本体は下のほうです。 */
 static void dimension_lot(JwCmd *c, Jwc *d);
+/* 変形 ③複線化 の本体も下のほうです。 */
+static void henkei_double(JwCmd *c, Jwc *d);
 
 static int cmd_top(JwCmd *c, Jwc *d, int item)
 {
@@ -3229,6 +3251,31 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
              * 変更無し in the band (src/copy.h stage 4). */
             c->stage = (JW_MOVE_CMD(c->command) || c->command == 17)
                      ? 4 : 2;
+        }
+        return 0;
+    }
+    if (c->command == 17 && c->hen_dbl && c->stage == 4) {
+        /* `複線化 |① 実行(L)|② 中止(R)|③間隔  100.00(mm)|④留線【有】|` */
+        if (item == 1) {
+            henkei_double(c, d);
+            c->pressed = 0;
+            c->stage = 0;
+            return 1;
+        }
+        if (item == 2) {
+            c->pressed = 0;
+            c->stage = 0;
+            return 1;
+        }
+        if (item == 3) {
+            c->typing = 1;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            return 1;
+        }
+        if (item == 4) {
+            c->hen_dbl_cap = !c->hen_dbl_cap;
+            return 1;
         }
         return 0;
     }
@@ -3813,6 +3860,31 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (key >= 0x20 && key <= 0xff && c->typed_n < 16) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if (c->command == 17 && c->hen_dbl && c->stage == 4 && c->typing) {
+        /* ③間隔 の欄。[Enter] で紙のミリが決まって、行が戻ります。 */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                c->hen_dbl_gap = atof(c->typed);
+            }
+            c->typing = 0;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -5200,6 +5272,217 @@ static void dimension_lot(JwCmd *c, Jwc *d)
         dimension(c, d, at[i + 1]);
     }
     c->dim_lot_run = 0;
+}
+
+/* 二つの点が同じところか（③複線化 のつなぎ目さがし）。 */
+static int near_enough(double ax, double ay, double bx, double by)
+{
+    const double dx = ax - bx, dy = ay - by;
+
+    return dx * dx + dy * dy < 1e-6;
+}
+
+/* 元の線と同じ 線種・ペン・レイヤ・A バイトで一本足します（③複線化）。 */
+static void add_like(Jwc *d, const JwcLine *l, double x0, double y0,
+                     double x1, double y1)
+{
+    const unsigned char type = l->type, pen = l->pen, layer = l->layer;
+    const unsigned char a = l->rest[1], b = l->rest[3];
+
+    if (jwc_add_line(d, (float)x0, (float)y0, (float)x1, (float)y1,
+                     type, pen, layer)) {
+        d->lines[d->n_lines - 1].rest[1] = a;
+        d->lines[d->n_lines - 1].rest[3] = b;
+    }
+}
+
+/* 二本の離した線が交わるところ（③複線化 の角）。平行なら動かしません。 */
+static void meet_at(double p0x, double p0y, double p1x, double p1y,
+                    double q0x, double q0y, double q1x, double q1y,
+                    double gap, double *ax, double *ay,
+                    double *bx, double *by)
+{
+    int side;
+
+    for (side = 0; side < 2; side++) {
+        const double s = side ? -gap : gap;
+        const double d0x = p1x - p0x, d0y = p1y - p0y;
+        const double d1x = q1x - q0x, d1y = q1y - q0y;
+        const double l0 = sqrt(d0x * d0x + d0y * d0y);
+        const double l1 = sqrt(d1x * d1x + d1y * d1y);
+        double e0x, e0y, e1x, e1y, det, t;
+
+        if (l0 <= 0.0 || l1 <= 0.0) {
+            return;
+        }
+        e0x = p0x - d0y / l0 * s;
+        e0y = p0y + d0x / l0 * s;
+        e1x = q0x - d1y / l1 * s;
+        e1y = q0y + d1x / l1 * s;
+        det = d0x * d1y - d0y * d1x;
+        if (det > -1e-9 && det < 1e-9) {
+            continue;           /* まっすぐ続いている */
+        }
+        t = ((e1x - e0x) * d1y - (e1y - e0y) * d1x) / det;
+        if (side) {
+            *bx = e0x + d0x * t;
+            *by = e0y + d0y * t;
+        } else {
+            *ax = e0x + d0x * t;
+            *ay = e0y + d0y * t;
+        }
+    }
+}
+
+/* 変形 ③複線化 —— 範囲に丸ごと入っている線を一本の折れ線につなぎ、その
+ * 両側に 間隔 ぶん離した輪郭を入れます。
+ *
+ * 測定（SAMPLE0、間隔 100mm = 174.411 単位）:
+ *
+ *   線 5 だけ（(40.973,305.616)-(110.737,305.616)）を範囲に入れると
+ *     line (-133.438,480.027)-(285.148,480.027)   左側
+ *     line (-133.438,131.205)-(285.148,131.205)   右側
+ *     line (-133.438,480.027)-(-133.438,131.205)  始めの留線
+ *     line ( 285.148,480.027)-( 285.148,131.205)  終わりの留線
+ *   —— 元の線を四方に 174.411 ふくらませた長方形です。
+ *
+ *   線 5 と線 6（L 字）だと六本になり、角では両側とも **交わるところ** で
+ *   折れます（左側は (-63.674,480.027)、右側は (285.148,131.205)）。
+ *
+ *   ④留線【無】 にすると留線が消え、**両端の伸ばしもなくなります**
+ *   （線 5 だけなら (40.973,480.027)-(110.737,480.027) と
+ *   (40.973,131.205)-(110.737,131.205) の二本だけ）。
+ *
+ * 記録は元の線の 線種・ペン・レイヤ・A バイトをそのまま継ぎます。
+ * 並びは「一本目の左・右・始めの留線、二本目の左・右、…、終わりの留線」。
+ */
+static void henkei_double(JwCmd *c, Jwc *d)
+{
+    long idx[64];
+    int flip[64];
+    int n = 0, i, j;
+    double px[65], py[65];
+    double gap;
+    long k;
+
+    if (!c->sel_line) {
+        freeze(c, d);
+    }
+    if (!c->sel_line) {
+        return;
+    }
+    c->hen_dbl_from = d->n_lines;
+    for (k = 0; k < c->n0_lines && n < 64; k++) {
+        if (c->sel_line[k]) {
+            idx[n] = k;
+            flip[n] = 0;
+            n++;
+        }
+    }
+    if (n < 1) {
+        return;
+    }
+    /* 端点でつなぎ直します。いちばん小さい番号の線から前へ後ろへ歩いて、
+     * つながる線を並べます。つながらないものが混じったときに本物が何を
+     * するかは測っていません。 */
+    for (i = 1; i < n; i++) {
+        const double ex = flip[i - 1] ? d->lines[idx[i - 1]].x0
+                                      : d->lines[idx[i - 1]].x1;
+        const double ey = flip[i - 1] ? d->lines[idx[i - 1]].y0
+                                      : d->lines[idx[i - 1]].y1;
+        int best = -1, bflip = 0;
+
+        for (j = i; j < n; j++) {
+            const JwcLine *l = &d->lines[idx[j]];
+
+            if (near_enough(l->x0, l->y0, ex, ey)) {
+                best = j;
+                bflip = 0;
+                break;
+            }
+            if (near_enough(l->x1, l->y1, ex, ey)) {
+                best = j;
+                bflip = 1;
+                break;
+            }
+        }
+        if (best < 0) {
+            n = i;              /* そこで切ります */
+            break;
+        }
+        if (best != i) {
+            const long t = idx[i];
+            const int f = flip[i];
+
+            idx[i] = idx[best];
+            flip[i] = bflip;
+            idx[best] = t;
+            flip[best] = f;
+        } else {
+            flip[i] = bflip;
+        }
+    }
+    for (i = 0; i < n; i++) {
+        const JwcLine *l = &d->lines[idx[i]];
+
+        px[i] = flip[i] ? l->x1 : l->x0;
+        py[i] = flip[i] ? l->y1 : l->y0;
+    }
+    px[n] = flip[n - 1] ? d->lines[idx[n - 1]].x0 : d->lines[idx[n - 1]].x1;
+    py[n] = flip[n - 1] ? d->lines[idx[n - 1]].y0 : d->lines[idx[n - 1]].y1;
+    /* 間隔は紙のミリ。複線と同じで `gap * unit_mm / denom`。 */
+    gap = c->hen_dbl_gap * (d->unit_mm > 0.0f ? d->unit_mm : 1.0f)
+        / (d->denom > 0.0 ? d->denom : 1.0);
+    {
+        double ax[65], ay[65], bx[65], by[65];
+
+        for (i = 0; i <= n; i++) {
+            ax[i] = ay[i] = bx[i] = by[i] = 0.0;
+        }
+        for (i = 0; i < n; i++) {
+            const double dx = px[i + 1] - px[i], dy = py[i + 1] - py[i];
+            const double len = sqrt(dx * dx + dy * dy);
+            const double ux = len > 0.0 ? dx / len : 1.0;
+            const double uy = len > 0.0 ? dy / len : 0.0;
+            const double nx = -uy, ny = ux;      /* 左の法線 */
+            double s0 = 0.0, s1 = 0.0;
+
+            if (c->hen_dbl_cap) {
+                if (i == 0) {
+                    s0 = -gap;
+                }
+                if (i == n - 1) {
+                    s1 = gap;
+                }
+            }
+            ax[i] = px[i] + nx * gap + ux * s0;
+            ay[i] = py[i] + ny * gap + uy * s0;
+            bx[i] = px[i] - nx * gap + ux * s0;
+            by[i] = py[i] - ny * gap + uy * s0;
+            ax[i + 1] = px[i + 1] + nx * gap + ux * s1;
+            ay[i + 1] = py[i + 1] + ny * gap + uy * s1;
+            bx[i + 1] = px[i + 1] - nx * gap + ux * s1;
+            by[i + 1] = py[i + 1] - ny * gap + uy * s1;
+            if (i > 0) {
+                /* 角は前の一本との **交わるところ** で折れます。 */
+                meet_at(px[i - 1], py[i - 1], px[i], py[i],
+                        px[i], py[i], px[i + 1], py[i + 1], gap,
+                        &ax[i], &ay[i], &bx[i], &by[i]);
+            }
+        }
+        for (i = 0; i < n; i++) {
+            const JwcLine *l = &d->lines[idx[i]];
+
+            add_like(d, l, ax[i], ay[i], ax[i + 1], ay[i + 1]);
+            add_like(d, l, bx[i], by[i], bx[i + 1], by[i + 1]);
+            if (i == 0 && c->hen_dbl_cap) {
+                add_like(d, l, ax[0], ay[0], bx[0], by[0]);
+            }
+            if (i == n - 1 && c->hen_dbl_cap) {
+                add_like(d, l, ax[n], ay[n], bx[n], by[n]);
+            }
+        }
+    }
 }
 
 /* ------------------------------------------------------- 円線接 ①接線 */
