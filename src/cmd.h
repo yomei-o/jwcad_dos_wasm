@@ -203,6 +203,11 @@ typedef struct {
     double sine_bx, sine_by;    /* 終点 */
     double sine_cycle, sine_amp, sine_div;
     int sine_did;               /* 一本でも引いたら桁 1 に [ESC] */
+    /* 曲線 ③ｽﾌﾟﾗｲﾝ。点を並べて ①点指示終了 → ①作図開始。 */
+    int spl;                    /* 道が走っている */
+    int spl_n;                  /* 取った点の数（最大 50） */
+    int spl_div;                /* 区間分割数（初めは 5） */
+    double spl_x[50], spl_y[50];
     int poly;                   /* ⑦連線 is running */
     int poly_deg;               /* 45, 90 or 0 for free */
     int poly_n;                 /* how many points have been pressed */

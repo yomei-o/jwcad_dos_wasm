@@ -3853,6 +3853,49 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 8, 1, 7, 0, "\x81\x9c \x90\xa1\x96@\x90\xfc \x88\xca\x92u \x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ");
                 }
             }
+            /* 曲線 ③ｽﾌﾟﾗｲﾝ の道。 */
+            if (s->command == 23 && s->spl && i == s->stage
+                && i >= 30 && i <= 35) {
+                char one[120];
+
+                if (i == 30) {
+                    if (s->sine_did) {
+                        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    }
+                    sprintf(one, "\xbd\xcc\xdf\xd7\xb2\xdd\x8b\xc8\x90\xfc\x81\x9e     \x8en\x93_    \x8ew\x8e\xa6(L)free (R)Read  \x93_\x8e" "c\x90\x94 %2d", 50 - s->spl_n);
+                    jw_ui_text(v, 8, 1, 7, 0, one);
+                    jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                } else if (i >= 31 && i <= 33) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    sprintf(one, i == 31 ? "\xbd\xcc\xdf\xd7\xb2\xdd\x8b\xc8\x90\xfc\x81\x9f   \x92\xca\x89\xdf\x93_    \x8ew\x8e\xa6(L)free (R)Read  \x93_\x8e" "c\x90\x94 %2d" : i == 32 ? "\xbd\xcc\xdf\xd7\xb2\xdd\x8b\xc8\x90\xfc\x81\x9c \x92\xca\x89\xdf\x93_\x81" "E\x8fI\x93_\x8ew\x8e\xa6(L)free (R)Read  \x93_\x8e" "c\x90\x94 %2d"
+                            : "|\x87@\x93_\x8ew\x8e\xa6\x8fI\x97\xb9| \x81\x9c \x92\xca\x89\xdf\x93_\x81" "E\x8fI\x93_\x8ew\x8e\xa6(L)free (R)Read  \x93_\x8e" "c\x90\x94 %2d", 50 - s->spl_n);
+                    jw_ui_text(v, 8, 1, 7, 0, one);
+                } else if (i == 34) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    sprintf(one, "\xbd\xcc\xdf\xd7\xb2\xdd |\x87@\x8d\xec\x90}\x8aJ\x8en |\x87" "A\x8b\xe6\x8a\xd4\x95\xaa\x8a\x84\x90\x94(%d) |", s->spl_div);
+                    jw_ui_text(v, 8, 1, 7, 0, one);
+                } else {
+                    int k, x;
+
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    jw_ui_text(v, 8, 1, 7, 0, "\x8b\xe6\x8a\xd4\x95\xaa\x8a\x84\x90\x94");
+                    jw_ui_text(v, 18, 1, 7, 0, " =");
+                    sprintf(one, "\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) [%3d ]", s->spl_div);
+                    jw_ui_text(v, 44, 1, 7, 0, one);
+                    jw_ui_text(v, 21, 1, 7, 0, "        ");
+                    for (k = 0; k < s->typed_n && k < 8; k++) {
+                        char two[4];
+
+                        two[0] = s->typed[k];
+                        two[1] = two[2] = ' ';
+                        two[3] = 0;
+                        jw_ui_text(v, 21 + k, 1, 7, 0, two);
+                    }
+                    k = s->typed_n < 8 ? s->typed_n : 8;
+                    x = (20 + k) * 8;
+                    fill(v, x, 7, x + 7, 15, 4);
+                }
+            }
             /* 曲線 ①ｻｲﾝ曲線 の道。 */
             if (s->command == 23 && s->sine == 2 && i == 20
                 && s->stage == 20) {

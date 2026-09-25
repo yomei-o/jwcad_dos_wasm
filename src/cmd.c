@@ -46,6 +46,7 @@ void jw_cmd_pick(JwCmd *c, int command)
     /* ハッチ's `[  45.00]` and `[  10.0]`, likewise. */
     c->hatch_angle = 45.0;
     c->hatch_pitch = 10.0;
+    c->spl_div = 5;             /* 曲線 ③ｽﾌﾟﾗｲﾝ の区間分割数 */
     /* 曲線 ①ｻｲﾝ曲線 の三つの欄（紙のミリ）。 */
     c->sine_cycle = 2000.0;
     c->sine_amp = 1000.0;
@@ -354,6 +355,70 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
      * ——(399,140)-(324,250) を引いても 8 画素ずれます。矢の先が何なのかが
      * 分からないので、当てずっぽうを置くより出さないでおきます（外した
      * 押しのあとだけ 28 画素の差）。 */
+    /* ③ｽﾌﾟﾗｲﾝ: 最後に取った点から矢の先へ、緑（色 4）の排他的論理和で
+     * ゴムひもが伸びます。**作図領域では切りません**——測定では帯の
+     * 上端 y=17 まで出ていました（その上は行の描き直しで消えます）。 */
+    if (c->command == 23 && c->spl && c->spl_n > 0 && c->spl_n < 50
+        && c->stage >= 30 && c->stage <= 33 && d) {
+        int ax, ay;
+
+        at_screen(w, c->spl_x[c->spl_n - 1], c->spl_y[c->spl_n - 1],
+                  &ax, &ay);
+        /* **jw_line は切り取りを見ません**（画素を直に書きます）ので、
+         * 端をこちらで切ってから渡します。箱は帯の上端から下——
+         * 測定では y=17 より上には出ませんでした。 */
+        v->clip_x0 = 0;
+        v->clip_y0 = 17;
+        v->clip_x1 = v->width - 1;
+        v->clip_y1 = v->height - 1;
+        if (ax != sx || ay != sy) {
+            double t0 = 0.0, t1 = 1.0;
+            const double dx = sx - ax, dy = sy - ay;
+            int j, ok = 1;
+
+            for (j = 0; j < 4 && ok; j++) {
+                const double pp = j == 0 ? -dx : j == 1 ? dx
+                                : j == 2 ? -dy : dy;
+                const double qq = j == 0 ? ax - v->clip_x0
+                                : j == 1 ? v->clip_x1 - ax
+                                : j == 2 ? ay - v->clip_y0
+                                         : v->clip_y1 - ay;
+                double r;
+
+                if (pp == 0.0) {
+                    if (qq < 0.0) {
+                        ok = 0;
+                    }
+                    continue;
+                }
+                r = qq / pp;
+                if (pp < 0.0) {
+                    if (r > t1) { ok = 0; } else if (r > t0) { t0 = r; }
+                } else {
+                    if (r < t0) { ok = 0; } else if (r < t1) { t1 = r; }
+                }
+            }
+            if (ok) {
+                /* 切り落とした端は **外側へ丸めます**（測定：
+                 * 390.625 は 391、168.87 は 168 ——どちらも線の
+                 * 進む向きの外側）。 */
+                {
+                    const double x0d = ax + t0 * dx;
+                    const double y0d = ay + t0 * dy;
+                    const double x1d = ax + t1 * dx;
+                    const double y1d = ay + t1 * dy;
+
+                    jw_line(v,
+                            (int)(dx > 0.0 ? floor(x0d) : ceil(x0d)),
+                            (int)(dy > 0.0 ? floor(y0d) : ceil(y0d)),
+                            (int)(dx > 0.0 ? ceil(x1d) : floor(x1d)),
+                            (int)(dy > 0.0 ? ceil(y1d) : floor(y1d)),
+                            4u, 0x18, JW_STYLE_SOLID);
+                }
+            }
+        }
+        return;
+    }
     /* 円線接 ②接円 の選びかけ: 候補のうち **円周が矢の先にいちばん近い
      * もの** を色 2 で描きます（測定：選ぶところで赤が 526 画素）。 */
     if (c->command == 26
@@ -2612,6 +2677,27 @@ void jw_cmd_before(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     if (!d) {
         return;
     }
+    /* ③ｽﾌﾟﾗｲﾝ: 点を入れているあいだ、取った点を結ぶ折れ線が
+     * **緑（色 4）で仮に**出ます（測定：二点入れると 100 画素）。 */
+    if (c->command == 23 && c->spl && c->spl_n >= 2) {
+        int i;
+
+        v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+        v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+        v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+        v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+        for (i = 0; i + 1 < c->spl_n; i++) {
+            int ax, ay, bx2, by2;
+
+            at_screen(w, c->spl_x[i], c->spl_y[i], &ax, &ay);
+            at_screen(w, c->spl_x[i + 1], c->spl_y[i + 1],
+                      &bx2, &by2);
+            /* **排他的論理和**です。節点が二度打たれて黒に戻るのが
+             * 目印で、三点入れると真ん中の一画素が消えます。 */
+            jw_line(v, ax, ay, bx2, by2, 4u, 0x18,
+                    JW_STYLE_SOLID);
+        }
+    }
     if (c->command == 14 && c->dim_lot) {
         from = c->n0_lines;
     } else {
@@ -2938,6 +3024,7 @@ static void tangent_pair(JwCmd *c, Jwc *d, long kb, double px, double py);
 /* 円線接 の道に入ったところも下のほうです。 */
 static void tan_start(JwCmd *c, const Jwc *d);
 static void sine_draw(JwCmd *c, Jwc *d);
+static void spline_draw(JwCmd *c, Jwc *d);
 static void henkei_double(JwCmd *c, Jwc *d);
 
 static int cmd_top(JwCmd *c, Jwc *d, int item)
@@ -3349,6 +3436,31 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     if (c->command == 23) {
         /* 曲線's own line, `|①ｻｲﾝ曲線|②２次曲線|③ｽﾌﾟﾗｲﾝ|④ﾍﾞｼﾞｪ|⑤手書線|
          * ⑥連続弧|⑦連線|⑧解除|`.  Only ⑦連線 is done. */
+        if (!c->poly && !c->sine && !c->spl && item == 3) {
+            /* ③ｽﾌﾟﾗｲﾝ。点を並べます。 */
+            c->spl = 1;
+            c->spl_n = 0;
+            c->stage = 30;
+            return 1;
+        }
+        if (c->spl && c->stage == 33 && item == 1) {
+            c->stage = 34;      /* ①点指示終了 */
+            return 1;
+        }
+        if (c->spl && c->stage == 34 && item == 1) {
+            spline_draw(c, d);  /* ①作図開始 */
+            c->sine_did = 1;    /* 描いたあとは桁 1 に [ESC] */
+            c->spl_n = 0;
+            c->stage = 30;
+            return 1;
+        }
+        if (c->spl && c->stage == 34 && item == 2) {
+            c->typing = 1;      /* ②区間分割数 */
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 35;
+            return 1;
+        }
         if (!c->poly && !c->sine && item == 8) {
             /* ⑧解除: 曲線のつながりをほどきます。 */
             c->sine = 2;
@@ -4283,6 +4395,30 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         if (((key >= '0' && key <= '9') || key == '.' || key == '-')
             && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if (c->command == 23 && c->spl && c->stage == 35) {
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n && atoi(c->typed) > 0) {
+                c->spl_div = atoi(c->typed);
+            }
+            c->typing = 0;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 34;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (key >= '0' && key <= '9' && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -6177,6 +6313,115 @@ static int tan_solve3(const JwTanObj *o, const double *pxs,
  *
  * 記録は線で、残ったもののうち **最初が rest[1]=0x40、最後が 0xc0、
  * あいだが 0x80**（飛びがあっても通し）です。 */
+/* 自然三次スプラインの係数（端の二階微分が 0）。`ts` は助変数、`ys` は
+ * 値、`b`/`c`/`d` に区間ごとの一次・二次・三次の係数を返します。 */
+static void jw_natural_spline(const double *ts, const double *ys, int n,
+                              double *b, double *c, double *d)
+{
+    double h[50], al[50], l[50], mu[50], z[50];
+    int i, j;
+
+    for (i = 0; i + 1 < n; i++) {
+        h[i] = ts[i + 1] - ts[i];
+    }
+    for (i = 1; i + 1 < n; i++) {
+        al[i] = 3.0 * ((ys[i + 1] - ys[i]) / h[i]
+                       - (ys[i] - ys[i - 1]) / h[i - 1]);
+    }
+    l[0] = 1.0;
+    mu[0] = 0.0;
+    z[0] = 0.0;
+    for (i = 1; i + 1 < n; i++) {
+        l[i] = 2.0 * (ts[i + 1] - ts[i - 1]) - h[i - 1] * mu[i - 1];
+        mu[i] = h[i] / l[i];
+        z[i] = (al[i] - h[i - 1] * z[i - 1]) / l[i];
+    }
+    c[n - 1] = 0.0;
+    for (j = n - 2; j >= 0; j--) {
+        c[j] = z[j] - mu[j] * c[j + 1];
+        b[j] = (ys[j + 1] - ys[j]) / h[j] - h[j] * (c[j + 1] + 2.0 * c[j]) / 3.0;
+        d[j] = (c[j + 1] - c[j]) / (3.0 * h[j]);
+    }
+}
+
+/* **ｽﾌﾟﾗｲﾝ曲線を線の連なりにします**（曲線 ③ｽﾌﾟﾗｲﾝ）。
+ *
+ * 本物は **弦長で助変数を取った自然三次スプライン**でした。測定
+ * （SAMPLE0 で (79,263)(179,313)(279,213) を通し、区間分割数 20）:
+ *
+ *   * 区間の**内側の点は等間隔の三次標本**です（四次差が 1e-4 まで 0）。
+ *   * 節点での接線が、区間 1 と区間 2 で弦長の比 `111.803/141.421` だけ
+ *     違う——つまり弦長助変数で C1。値は自然スプライン（端の二階微分 0）
+ *     と小数 5 桁まで一致しました。
+ *
+ * **区間の刻み**は端だけ狭くなります。区間分割数を n とすると
+ *
+ *     h = L / (n - 0.84)
+ *     標本は 0、0.58h、1.58h、…、(n-2+0.58)h、L
+ *
+ * （端の切れ端が内側の 0.58 倍）。n = 5 と n = 20 のどちらでも 0.58 で、
+ * 二つの区間とも同じでした。計算し直すと測定と小数 4 桁まで合います。
+ *
+ * 記録は線で、`rest[1] = 0x12`、`rest[2]` が 最初 0x40・あいだ 0x80・
+ * 最後 0xc0（ｻｲﾝ曲線と同じ連なりの印）。 */
+static void spline_draw(JwCmd *c, Jwc *d)
+{
+    double ts[50], bx[50], cx2[50], dx2[50], by[50], cy2[50], dy2[50];
+    int n = c->spl_n, i, first = -1, last = -1;
+
+    if (n < 2 || c->spl_div < 1) {
+        return;
+    }
+    ts[0] = 0.0;
+    for (i = 0; i + 1 < n; i++) {
+        const double ex = c->spl_x[i + 1] - c->spl_x[i];
+        const double ey = c->spl_y[i + 1] - c->spl_y[i];
+
+        ts[i + 1] = ts[i] + sqrt(ex * ex + ey * ey);
+        if (ts[i + 1] <= ts[i]) {
+            return;             /* 同じ点が二つ続いたら何もしません */
+        }
+    }
+    jw_natural_spline(ts, c->spl_x, n, bx, cx2, dx2);
+    jw_natural_spline(ts, c->spl_y, n, by, cy2, dy2);
+    for (i = 0; i + 1 < n; i++) {
+        const double len = ts[i + 1] - ts[i];
+        const double h = len / ((double)c->spl_div - 0.84);
+        int k;
+
+        for (k = 0; k < c->spl_div; k++) {
+            const double ta = k == 0 ? 0.0 : 0.58 * h + (k - 1) * h;
+            const double tb = k + 1 == c->spl_div ? len
+                                                  : 0.58 * h + k * h;
+            const double ax = c->spl_x[i] + bx[i] * ta + cx2[i] * ta * ta
+                            + dx2[i] * ta * ta * ta;
+            const double ay = c->spl_y[i] + by[i] * ta + cy2[i] * ta * ta
+                            + dy2[i] * ta * ta * ta;
+            const double ex = c->spl_x[i] + bx[i] * tb + cx2[i] * tb * tb
+                            + dx2[i] * tb * tb * tb;
+            const double ey = c->spl_y[i] + by[i] * tb + cy2[i] * tb * tb
+                            + dy2[i] * tb * tb * tb;
+
+            if (!jwc_add_line(d, (float)ax, (float)ay, (float)ex, (float)ey,
+                              (unsigned char)d->line_type,
+                              (unsigned char)d->pen,
+                              (unsigned char)d->write_layer)) {
+                break;
+            }
+            d->lines[d->n_lines - 1].rest[1] = 0x12;
+            d->lines[d->n_lines - 1].rest[2] = 0x80;
+            if (first < 0) {
+                first = (int)(d->n_lines - 1);
+            }
+            last = (int)(d->n_lines - 1);
+        }
+    }
+    if (first >= 0) {
+        d->lines[first].rest[2] = 0x40;
+        d->lines[last].rest[2] = 0xc0;
+    }
+}
+
 static void sine_draw(JwCmd *c, Jwc *d)
 {
     /* **三つの欄は実寸のミリ**です（縮尺 1/1 の SAMPLE0 では紙の
@@ -7554,6 +7799,21 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         mirror_range(c, d, m);
         c->mirror = 2;
         c->stage = 12;
+        return 1;
+    }
+    if (c->command == 23 && c->spl && c->stage >= 30 && c->stage <= 33) {
+        if (c->spl_n >= 50) {
+            return 0;
+        }
+        if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        c->spl_x[c->spl_n] = x;
+        c->spl_y[c->spl_n] = y;
+        c->spl_n++;
+        c->stage = 30 + (c->spl_n > 3 ? 3 : c->spl_n);
         return 1;
     }
     if (c->command == 23 && c->sine == 2 && c->stage == 20) {
