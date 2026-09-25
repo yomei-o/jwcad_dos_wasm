@@ -240,6 +240,11 @@ static void sync_ui(void)
     ui.dim_arc_miss = cmd.dim_arc_miss;
     ui.tan_deg = cmd.tan_deg;
     ui.tan_did = cmd.tan_did;
+    ui.sine = cmd.sine;
+    ui.sine_cycle = cmd.sine_cycle;
+    ui.sine_amp = cmd.sine_amp;
+    ui.sine_div = cmd.sine_div;
+    ui.sine_did = cmd.sine_did;
     ui.tan_tri = cmd.tan_tri;
     ui.tan_cn = cmd.tan_cn;
     ui.tan_circ = cmd.tan_circ;
@@ -3248,10 +3253,27 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * the one-letter keys would otherwise pick another item out from under it
      * (`5` is not a menu key, but `.` and the digits share the line with
      * nothing and the next key after [Enter] must go back to the menu). */
-    if (jw_cmd_key(&cmd, drawing, key)) {
-        sync_ui();
-        present();
-        return -1;
+    {
+        /* **鍵でも数は動きます。** 曲線 ①ｻｲﾝ曲線 は分割 長さの
+         * [Enter] で線が増えるので、押しのときと同じように
+         * カウント箱を取り直します（測定：取り直さないと 線数 が
+         * 30 のままで 40 画素ずれました）。 */
+        const long n0 = drawing ? drawing->n_lines : 0;
+        const long a0 = drawing ? drawing->n_arcs : 0;
+        const long t0 = drawing ? drawing->n_texts : 0;
+
+        if (jw_cmd_key(&cmd, drawing, key)) {
+            if (drawing && (drawing->n_lines != n0
+                            || drawing->n_arcs != a0
+                            || drawing->n_texts != t0)) {
+                jw_ui_from(&ui, drawing);
+                ui.command = cmd.command;
+                ui.guide = 0;
+            }
+            sync_ui();
+            present();
+            return -1;
+        }
     }
     pick = jw_ui_key_command(key);
 

@@ -46,6 +46,10 @@ void jw_cmd_pick(JwCmd *c, int command)
     /* ハッチ's `[  45.00]` and `[  10.0]`, likewise. */
     c->hatch_angle = 45.0;
     c->hatch_pitch = 10.0;
+    /* 曲線 ①ｻｲﾝ曲線 の三つの欄（紙のミリ）。 */
+    c->sine_cycle = 2000.0;
+    c->sine_amp = 1000.0;
+    c->sine_div = 100.0;
     /* 円線接 ②接円 の `①接円半径= 1000.00`。 */
     c->tan_r = 1000.0;
     /* 円線接 ①接線 ④角度指定 の `[  45.000\xdf]`、その欄の前回と同じ。 */
@@ -2933,6 +2937,7 @@ static void tangent_pair(JwCmd *c, Jwc *d, long kb, double px, double py);
 /* 変形 ③複線化 の本体も下のほうです。 */
 /* 円線接 の道に入ったところも下のほうです。 */
 static void tan_start(JwCmd *c, const Jwc *d);
+static void sine_draw(JwCmd *c, Jwc *d);
 static void henkei_double(JwCmd *c, Jwc *d);
 
 static int cmd_top(JwCmd *c, Jwc *d, int item)
@@ -3344,6 +3349,13 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     if (c->command == 23) {
         /* 曲線's own line, `|①ｻｲﾝ曲線|②２次曲線|③ｽﾌﾟﾗｲﾝ|④ﾍﾞｼﾞｪ|⑤手書線|
          * ⑥連続弧|⑦連線|⑧解除|`.  Only ⑦連線 is done. */
+        if (!c->poly && !c->sine && item == 1) {
+            /* ①ｻｲﾝ曲線: 基準線 → 座標原点 → 1ｻｲｸﾙ → 振幅 → 始点 →
+             * 終点 → 分割 長さ。 */
+            c->sine = 1;
+            c->stage = 10;
+            return 1;
+        }
         if (!c->poly && item == 7) {
             c->poly = 1;
             c->poly_deg = 45;   /* the band comes up saying `45度毎` */
@@ -4255,6 +4267,49 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typed[0] = 0;
             c->typed_n = 0;
             c->stage = 20;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if (c->command == 23 && c->sine
+        && (c->stage == 12 || c->stage == 13 || c->stage == 16)) {
+        /* ｻｲﾝ曲線 の三つの欄。空のまま [Enter] は前回と同じです。 */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                const double v = atof(c->typed);
+
+                if (c->stage == 12) {
+                    c->sine_cycle = v;
+                } else if (c->stage == 13) {
+                    c->sine_amp = v;
+                } else {
+                    c->sine_div = v;
+                }
+            }
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            if (c->stage == 12) {
+                c->stage = 13;
+            } else if (c->stage == 13) {
+                c->typing = 0;
+                c->stage = 14;
+            } else {
+                c->typing = 0;
+                sine_draw(c, d);
+                c->stage = 10;
+            }
             return 1;
         }
         if (key == 8) {
@@ -6090,6 +6145,144 @@ static int tan_solve3(const JwTanObj *o, const double *pxs,
     return got;
 }
 
+/* **ｻｲﾝ曲線を線の連なりにします**（曲線 ①ｻｲﾝ曲線）。
+ *
+ * 基準線の向きを u、その法線を p、座標原点を O とすると、道筋は
+ *
+ *     P(s) = O + s·u + 振幅·sin(2π s / 1ｻｲｸﾙ)·p
+ *
+ * で、振幅も 1ｻｲｸﾙも**紙のミリ × unit_mm** です。基準線は向きだけを
+ * 決めていて、その位置は使いません（測定：基準線が y=305.6 の線でも
+ * 曲線は座標原点の y=263 を中心に揺れました）。
+ *
+ * **本数の決め方**（測った十通りに合います）:
+ *
+ *     n後 = max(2, ceil(原点→終点の紙ミリ / 分割))
+ *     刻み = 原点→終点 / n後
+ *     n前 = ceil(原点→始点 / 刻み)
+ *
+ * 前半は後半の刻みに合わせて割るので、**同じ前半でも後半の長さで
+ * 本数が変わります**（前半 50 単位が、分割 100mm のとき後半 50 なら
+ * 2 本、100 以上なら 1 本）。
+ *
+ * **帯から出た切れ端は丸ごと落ちます**（切り取られません）。帯は
+ * `-100 ≦ y ≦ 600`（図面の単位、測定）。作図領域は y 1〜415 なので、
+ * 画面に収まる曲線なら当たりません。
+ *
+ * 記録は線で、残ったもののうち **最初が rest[1]=0x40、最後が 0xc0、
+ * あいだが 0x80**（飛びがあっても通し）です。 */
+static void sine_draw(JwCmd *c, Jwc *d)
+{
+    /* **三つの欄は実寸のミリ**です（縮尺 1/1 の SAMPLE0 では紙の
+     * ミリと同じに見えますが、TEST1 で振幅 10000 を入れると 87.2
+     * 単位＝10000/114.673 になりました）。接円の半径と同じ換算です。 */
+    const double sc = jwc_zukei_scale(d) > 0.0 ? jwc_zukei_scale(d) : 1.0;
+    const double amp = c->sine_amp / sc;
+    const double cyc = c->sine_cycle / sc;
+    const double ux = c->sine_ux, uy = c->sine_uy;
+    const double nx = -uy, ny = ux;
+    const double s1 = (c->sine_ax - c->sine_ox) * ux
+                    + (c->sine_ay - c->sine_oy) * uy;
+    const double s2 = (c->sine_bx - c->sine_ox) * ux
+                    + (c->sine_by - c->sine_oy) * uy;
+    const double tau = 6.28318530717958647692;
+    double step, len1 = s1 < 0.0 ? -s1 : s1;
+    double len2 = s2 < 0.0 ? -s2 : s2;
+    int n1, n2, i, first = -1, last = -1;
+
+    if (cyc <= 0.0 || c->sine_div <= 0.0) {
+        return;
+    }
+    if (s1 * s2 < 0.0) {
+        /* **座標原点が始点と終点のあいだにある**ふつうの形。刻みは
+         * 後半（原点→終点）から決まり、前半はその刻みに合わせて
+         * 割ります——だから同じ前半でも後半の長さで本数が変わります。 */
+        n2 = (int)(len2 * sc / c->sine_div);
+        if ((double)n2 * c->sine_div / sc < len2 - 1e-9) {
+            n2++;
+        }
+        if (n2 < 2) {
+            n2 = 2;
+        }
+        step = len2 / n2;
+        n1 = (int)(len1 / step);
+        if ((double)n1 * step < len1 - 1e-9) {
+            n1++;
+        }
+        if (n1 < 1) {
+            n1 = 1;
+        }
+    } else {
+        /* **原点が範囲の外**（始点と終点が同じ側、または片方が原点）。
+         * こちらは始点から終点まで一様に割り、本数は
+         * `max(3, ceil(範囲の紙ミリ / 分割))` です（測定：100 単位を
+         * 分割 20/50/100 で 3・3・3、200 単位を 20/50 で 6・3）。 */
+        const double len = s2 - s1 < 0.0 ? s1 - s2 : s2 - s1;
+        int n = (int)(len * sc / c->sine_div);
+
+        if ((double)n * c->sine_div / sc < len - 1e-9) {
+            n++;
+        }
+        if (n < 3) {
+            n = 3;
+        }
+        n1 = 0;
+        n2 = n;
+        step = len / n;
+    }
+    /* **並べるのは s の小さいほうから**です（始点→終点ではありません
+     * ——TEST1 で基準線の向きが逆のとき、原作は終点の側から並べて
+     * いました）。原点が内にあるときは負の腕が先、外にあるときは
+     * 小さいほうから。 */
+    {
+        const double neg = s1 < 0.0 ? s1 : s2;
+        const double pos = s1 < 0.0 ? s2 : s1;
+        const int nneg = s1 < 0.0 ? n1 : n2;
+        const int npos = s1 < 0.0 ? n2 : n1;
+        const double lo = s1 < s2 ? s1 : s2;
+        const double hi = s1 < s2 ? s2 : s1;
+
+    for (i = 0; i < n1 + n2; i++) {
+        double sa, sb, ax, ay, bx, by;
+
+        if (n1 > 0) {
+            sa = i < nneg ? neg * (double)(nneg - i) / nneg
+                          : pos * (double)(i - nneg) / npos;
+            sb = i + 1 <= nneg ? neg * (double)(nneg - i - 1) / nneg
+                               : pos * (double)(i + 1 - nneg) / npos;
+        } else {
+            sa = lo + (hi - lo) * (double)i / n2;
+            sb = lo + (hi - lo) * (double)(i + 1) / n2;
+        }
+        ax = c->sine_ox + sa * ux + amp * sin(tau * sa / cyc) * nx;
+        ay = c->sine_oy + sa * uy + amp * sin(tau * sa / cyc) * ny;
+        bx = c->sine_ox + sb * ux + amp * sin(tau * sb / cyc) * nx;
+        by = c->sine_oy + sb * uy + amp * sin(tau * sb / cyc) * ny;
+        if (ay < -100.0 || ay > 600.0 || by < -100.0 || by > 600.0) {
+            continue;
+        }
+        if (!jwc_add_line(d, (float)ax, (float)ay, (float)bx, (float)by,
+                          (unsigned char)d->line_type, (unsigned char)d->pen,
+                          (unsigned char)d->write_layer)) {
+            break;
+        }
+        /* 印は rest[2]、rest[1] は 0（jwc_add_line の既定は 3）。 */
+        d->lines[d->n_lines - 1].rest[1] = 0x00;
+        d->lines[d->n_lines - 1].rest[2] = 0x80;
+        if (first < 0) {
+            first = (int)(d->n_lines - 1);
+        }
+        last = (int)(d->n_lines - 1);
+    }
+    }
+    if (first >= 0) {
+        d->lines[first].rest[2] = 0x40;
+        d->lines[last].rest[2] = 0xc0;
+        c->sine_did = 1;
+    }
+    (void)step;
+}
+
 static void tan_start(JwCmd *c, const Jwc *d)
 {
     c->n0_lines = d ? d->n_lines : 0;
@@ -7356,6 +7549,77 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->mirror = 2;
         c->stage = 12;
         return 1;
+    }
+    if (c->command == 23 && c->sine) {
+        if (c->stage == 10) {
+            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const JwcLine *l;
+            double ex, ey, ll;
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            l = &d->lines[k];
+            ex = l->x1 - l->x0;
+            ey = l->y1 - l->y0;
+            ll = sqrt(ex * ex + ey * ey);
+            if (ll <= 0.0) {
+                return 0;
+            }
+            c->sine_ux = ex / ll;
+            c->sine_uy = ey / ll;
+            c->stage = 11;
+            return 1;
+        }
+        if (c->stage == 11 || c->stage == 14 || c->stage == 15) {
+            if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            if (c->stage == 11) {
+                c->sine_ox = x;
+                c->sine_oy = y;
+                c->typing = 1;
+                c->typed[0] = 0;
+                c->typed_n = 0;
+                c->stage = 12;
+            } else if (c->stage == 14) {
+                c->sine_ax = x;
+                c->sine_ay = y;
+                c->stage = 15;
+            } else {
+                c->sine_bx = x;
+                c->sine_by = y;
+                c->typing = 1;
+                c->typed[0] = 0;
+                c->typed_n = 0;
+                c->stage = 16;
+            }
+            return 1;
+        }
+        if (c->stage == 12 || c->stage == 13 || c->stage == 16) {
+            /* 前回と同じ ﾏｳｽ(R)。 */
+            if (!right) {
+                return 0;
+            }
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            if (c->stage == 12) {
+                c->stage = 13;
+            } else if (c->stage == 13) {
+                c->typing = 0;
+                c->stage = 14;
+            } else {
+                c->typing = 0;
+                sine_draw(c, d);
+                c->stage = 10;
+            }
+            return 1;
+        }
+        return 0;
     }
     if (c->command == 26) {
         /* 円線接: the item's own line offers ①接 線 with the left button and

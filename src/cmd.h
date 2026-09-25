@@ -194,6 +194,15 @@ typedef struct {
      * the segment before it left.  The first one is the odd one: it is
      * anchored at the 始点.  Two lines meet at their intersection, and the
      * corner is rounded there.  See jw_cmd_press and RESUME 4.20b. */
+    /* 曲線 ①ｻｲﾝ曲線。段 10 基準線、11 座標原点、12 1ｻｲｸﾙの長さ、
+     * 13 振幅、14 始点、15 終点、16 分割 長さ。値は紙のミリ。 */
+    int sine;
+    double sine_ux, sine_uy;    /* 基準線の向き */
+    double sine_ox, sine_oy;    /* 座標原点 */
+    double sine_ax, sine_ay;    /* 始点 */
+    double sine_bx, sine_by;    /* 終点 */
+    double sine_cycle, sine_amp, sine_div;
+    int sine_did;               /* 一本でも引いたら桁 1 に [ESC] */
     int poly;                   /* ⑦連線 is running */
     int poly_deg;               /* 45, 90 or 0 for free */
     int poly_n;                 /* how many points have been pressed */

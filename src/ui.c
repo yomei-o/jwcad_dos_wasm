@@ -3853,6 +3853,47 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 8, 1, 7, 0, "\x81\x9c \x90\xa1\x96@\x90\xfc \x88\xca\x92u \x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ");
                 }
             }
+            /* 曲線 ①ｻｲﾝ曲線 の道。 */
+            if (s->command == 23 && s->sine && i == s->stage
+                && i >= 10 && i <= 16) {
+                char one[80];
+
+                if (i == 10) {
+                    if (s->sine_did) {
+                        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    }
+                    jw_ui_text(v, 8, 1, 7, 0, "\xbb\xb2\xdd\x8b\xc8\x90\xfc  \x81\x9e\x8a\xee\x8f\x80\x90\xfc\x81@\x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
+                    jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                } else if (i == 11 || i == 14 || i == 15) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    jw_ui_text(v, 8, 1, 7, 0,
+                               i == 11 ? "\xbb\xb2\xdd\x8b\xc8\x90\xfc\x82\xcc\x8d\xc0\x95W\x8c\xb4\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read " : i == 14 ? "\xbb\xb2\xdd\x8b\xc8\x90\xfc\x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read " : "\x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
+                } else {
+                    const int at = i == 12 ? 22 : 20;
+                    const double val = i == 12 ? s->sine_cycle
+                                     : i == 13 ? s->sine_amp : s->sine_div;
+                    int n, x;
+
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    jw_ui_text(v, 8, 1, 7, 0,
+                               i == 12 ? "1\xbb\xb2\xb8\xd9\x82\xcc\x92\xb7\x82\xb3 =" : i == 13 ? "\x90U \x95\x9d(\x81}) =" : "\x95\xaa\x8a\x84 \x92\xb7\x82\xb3 =");
+                    jw_ui_text(v, 44, 1, 7, 0, "\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) ");
+                    sprintf(one, "[%9.*fmm]", s->dec_drawing, val);
+                    jw_ui_text(v, 62, 1, 7, 0, one);
+                    jw_ui_text(v, at, 1, 7, 0, "        ");
+                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                        char two[4];
+
+                        two[0] = s->typed[n];
+                        two[1] = two[2] = ' ';
+                        two[3] = 0;
+                        jw_ui_text(v, at + n, 1, 7, 0, two);
+                    }
+                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    x = (at - 1 + n) * 8;
+                    fill(v, x, 7, x + 7, 15, 4);
+                }
+            }
             /* ③接円（３条件）の道。 */
             if (s->command == 26 && i == s->stage
                 && (s->stage == 50 || s->stage == 57

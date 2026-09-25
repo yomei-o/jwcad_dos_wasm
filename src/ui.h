@@ -429,6 +429,9 @@ typedef struct {
     int dim_arc_miss;
     double tan_deg;
     int tan_did;
+    int sine;                   /* 曲線 ①ｻｲﾝ曲線 の道 */
+    double sine_cycle, sine_amp, sine_div;
+    int sine_did;
     int tan_tri;                /* ③接円（３条件）の小項目 */
     int tan_cn;                 /* 接円の候補の数（`（接円数n）`） */
     int tan_circ;
