@@ -46,6 +46,7 @@ void jw_cmd_pick(JwCmd *c, int command)
     /* ハッチ's `[  45.00]` and `[  10.0]`, likewise. */
     c->hatch_angle = 45.0;
     c->hatch_pitch = 10.0;
+    c->ch_r = 1000.0;           /* 曲線 ⑥連続弧 の ③半径 の欄 */
     c->spl_div = 5;             /* 曲線 ③ｽﾌﾟﾗｲﾝ の区間分割数 */
     /* 曲線 ①ｻｲﾝ曲線 の三つの欄（紙のミリ）。 */
     c->sine_cycle = 2000.0;
@@ -355,6 +356,127 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
      * ——(399,140)-(324,250) を引いても 8 画素ずれます。矢の先が何なのかが
      * 分からないので、当てずっぽうを置くより出さないでおきます（外した
      * 押しのあとだけ 28 画素の差）。 */
+    /* ⑥連続弧: 次に引かれる弧（か線）が **色 2 で仮に**出ます。
+     * 決め方は chain_arc と同じで、矢の先を終わりの点にします。 */
+    /* ⑥連続弧 の三点目を待つあいだ、**始点・中間点・矢の先を通る弧**が
+     * 色 2 で仮に出ます（測定：(200,200) と (300,150) を取って矢を
+     * (400,250) に置くと 224 画素の赤い弧）。 */
+    if (c->command == 23 && c->chain && c->stage == 52 && d) {
+        double qx, qy, cx, cy, rr;
+        const double d2r = 3.14159265358979323846 / 180.0;
+
+        if (sx < w->x0 || sx > w->x1 || sy < w->y0 || sy > w->y1) {
+            return;
+        }
+        jw_cmd_at(w, sx, sy, &qx, &qy);
+        {
+            const double d1x = c->ch_mx - c->ch_ax, d1y = c->ch_my - c->ch_ay;
+            const double d2x = qx - c->ch_ax, d2y = qy - c->ch_ay;
+            const double det = 2.0 * (d1x * d2y - d1y * d2x);
+            const double l1 = d1x * d1x + d1y * d1y;
+            const double l2 = d2x * d2x + d2y * d2y;
+            double sa, ea;
+
+            if (det > -1e-9 && det < 1e-9) {
+                return;
+            }
+            cx = c->ch_ax + (d2y * l1 - d1y * l2) / det;
+            cy = c->ch_ay + (d1x * l2 - d2x * l1) / det;
+            rr = sqrt((cx - c->ch_ax) * (cx - c->ch_ax)
+                      + (cy - c->ch_ay) * (cy - c->ch_ay));
+            sa = atan2(c->ch_ay - cy, c->ch_ax - cx) / d2r;
+            ea = atan2(qy - cy, qx - cx) / d2r;
+            while (sa < 0.0) { sa += 360.0; }
+            while (ea < 0.0) { ea += 360.0; }
+            if (det <= 0.0) {
+                const double sw = sa; sa = ea; ea = sw;
+            }
+            v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+            v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+            v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+            v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+            jw_arc_poly(v, (cx - w->ox) * w->scale + w->ax,
+                        w->ay - (cy - w->oy) * w->scale,
+                        rr * w->scale, 10000,
+                        (long)(sa * 65536.0 + 0.5),
+                        (long)(ea * 65536.0 + 0.5), 0L, 2u, 0x18,
+                        jw_view_line_style(d->line_type));
+        }
+        return;
+    }
+    if (c->command == 23 && c->chain && c->stage == 53 && d) {
+        double qx, qy, dx, dy, t, cx, cy, rr, nn;
+
+        /* **矢が作図領域の外にいるあいだは出ません**（測定：
+         * ②弧反転 を押したあと矢は行の上にいて、原作は何も
+         * 引かず、移植だけが 221 画素の弧を出していました）。 */
+        if (sx < w->x0 || sx > w->x1 || sy < w->y0 || sy > w->y1) {
+            return;
+        }
+        jw_cmd_at(w, sx, sy, &qx, &qy);
+        dx = c->ch_px - c->ch_cx;
+        dy = c->ch_py - c->ch_cy;
+        nn = sqrt(dx * dx + dy * dy);
+        if (nn <= 0.0) {
+            return;
+        }
+        dx /= nn;
+        dy /= nn;
+        v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+        v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+        v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+        v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+        if (c->ch_line) {
+            const double fx = -c->ch_tx, fy = -c->ch_ty;
+            const double pr = (qx - c->ch_px) * fx
+                            + (qy - c->ch_py) * fy;
+            int ax, ay, bx2, by2;
+
+            at_screen(w, c->ch_px, c->ch_py, &ax, &ay);
+            at_screen(w, c->ch_px + pr * fx, c->ch_py + pr * fy,
+                      &bx2, &by2);
+            jw_line(v, ax, ay, bx2, by2, 2u, 0x18, JW_STYLE_SOLID);
+            return;
+        }
+        if (c->ch_r_on && c->ch_r > 0.0) {
+            const double scl = jwc_zukei_scale(d) > 0.0
+                             ? jwc_zukei_scale(d) : 1.0;
+
+            t = c->ch_r / scl;
+        } else {
+            const double ex = qx - c->ch_px, ey = qy - c->ch_py;
+            const double dot = dx * -ex + dy * -ey;
+
+            if (dot > -1e-9 && dot < 1e-9) {
+                return;
+            }
+            t = -(ex * ex + ey * ey) / (2.0 * dot);
+        }
+        cx = c->ch_px + t * dx;
+        cy = c->ch_py + t * dy;
+        rr = t < 0.0 ? -t : t;
+        {
+            const double d2r = 3.14159265358979323846 / 180.0;
+            const double ux = (cx - w->ox) * w->scale + w->ax;
+            const double uy = w->ay - (cy - w->oy) * w->scale;
+            double sa = atan2(c->ch_py - cy, c->ch_px - cx) / d2r;
+            double ea = atan2(qy - cy, qx - cx) / d2r;
+            const double vx2 = -(c->ch_py - cy);
+            const double vy2 = c->ch_px - cx;
+            const int ccw = vx2 * c->ch_tx + vy2 * c->ch_ty > 0.0;
+
+            while (sa < 0.0) { sa += 360.0; }
+            while (ea < 0.0) { ea += 360.0; }
+            if (!ccw) {
+                const double sw = sa; sa = ea; ea = sw;
+            }
+            jw_arc_poly(v, ux, uy, rr * w->scale, 10000,
+                        (long)(sa * 65536.0 + 0.5),
+                        (long)(ea * 65536.0 + 0.5), 0L, 2u, 0x18,
+                        jw_view_line_style(d->line_type));
+        }
+        return;
+    }
     /* ③ｽﾌﾟﾗｲﾝ: 最後に取った点から矢の先へ、緑（色 4）の排他的論理和で
      * ゴムひもが伸びます。**作図領域では切りません**——測定では帯の
      * 上端 y=17 まで出ていました（その上は行の描き直しで消えます）。 */
@@ -3437,14 +3559,14 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     if (c->command == 23) {
         /* 曲線's own line, `|①ｻｲﾝ曲線|②２次曲線|③ｽﾌﾟﾗｲﾝ|④ﾍﾞｼﾞｪ|⑤手書線|
          * ⑥連続弧|⑦連線|⑧解除|`.  Only ⑦連線 is done. */
-        if (!c->poly && !c->sine && !c->spl && item == 4) {
+        if (!c->poly && !c->sine && !c->spl && !c->chain && item == 4) {
             /* ④ﾍﾞｼﾞｪ。③ｽﾌﾟﾗｲﾝ と同じ道で、曲線だけ違います。 */
             c->spl = 2;
             c->spl_n = 0;
             c->stage = 30;
             return 1;
         }
-        if (!c->poly && !c->sine && !c->spl && item == 3) {
+        if (!c->poly && !c->sine && !c->spl && !c->chain && item == 3) {
             /* ③ｽﾌﾟﾗｲﾝ。点を並べます。 */
             c->spl = 1;
             c->spl_n = 0;
@@ -3480,31 +3602,52 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
             c->stage = 50;
             return 1;
         }
+        if (c->chain && c->stage == 53 && item == 2) {
+            /* ②弧反転 は**いまの進む向きをひっくり返す**だけ
+             * です。そのあとの弧は向きを引き継ぐので、弧ごとに
+             * 裏返すと二度返して元に戻ってしまいます（測定：
+             * 反転してから三本目が原作と逆になりました）。 */
+            c->ch_tx = -c->ch_tx;
+            c->ch_ty = -c->ch_ty;
+            c->ch_rev = !c->ch_rev;
+            return 1;
+        }
+        if (c->chain && c->stage == 53 && item == 3) {
+            c->typing = 1;              /* ③半径 */
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 54;
+            return 1;
+        }
+        if (c->chain && c->stage == 53 && item == 4) {
+            c->ch_line = !c->ch_line;   /* ④直線 */
+            return 1;
+        }
         if (c->chain && c->stage == 53 && item == 1) {
             c->stage = 50;      /* ①終了 */
             return 1;
         }
-        if (!c->poly && !c->sine && !c->spl && item == 2) {
+        if (!c->poly && !c->sine && !c->spl && !c->chain && item == 2) {
             /* ②２次曲線: 基準線 → 座標原点 → 通過点 → 始点 → 終点 →
              * 分割 長さ。ｻｲﾝ曲線 と同じ骨組みです。 */
             c->sine = 3;
             c->stage = 40;
             return 1;
         }
-        if (!c->poly && !c->sine && item == 8) {
+        if (!c->poly && !c->sine && !c->spl && !c->chain && item == 8) {
             /* ⑧解除: 曲線のつながりをほどきます。 */
             c->sine = 2;
             c->stage = 20;
             return 1;
         }
-        if (!c->poly && !c->sine && item == 1) {
+        if (!c->poly && !c->sine && !c->spl && !c->chain && item == 1) {
             /* ①ｻｲﾝ曲線: 基準線 → 座標原点 → 1ｻｲｸﾙ → 振幅 → 始点 →
              * 終点 → 分割 長さ。 */
             c->sine = 1;
             c->stage = 10;
             return 1;
         }
-        if (!c->poly && item == 7) {
+        if (!c->poly && !c->sine && !c->spl && !c->chain && item == 7) {
             c->poly = 1;
             c->poly_deg = 45;   /* the band comes up saying `45度毎` */
             c->poly_n = 0;
@@ -4449,6 +4592,32 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (key >= '0' && key <= '9' && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if (c->command == 23 && c->chain && c->stage == 54) {
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                c->ch_r = atof(c->typed);
+            }
+            c->ch_r_on = 1;
+            c->typing = 0;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 53;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -6497,7 +6666,50 @@ static void chain_arc(JwCmd *c, Jwc *d, double qx, double qy)
         dx /= n;
         dy /= n;
     }
-    {
+    if (c->ch_line) {
+        /* ④直線: 端から**接線の上に押したところを落とした足**まで、
+         * まっすぐ引きます（測定：押しが (379,283) で足が
+         * (274.2353,274.9412)、記録の `rest[1]` は 0x27）。 */
+        const double fx = -c->ch_tx, fy = -c->ch_ty;
+        const double pr = ex * fx + ey * fy;
+        const double nx2 = c->ch_px + pr * fx, ny2 = c->ch_py + pr * fy;
+
+        if (jwc_add_line(d, (float)c->ch_px, (float)c->ch_py,
+                         (float)nx2, (float)ny2,
+                         (unsigned char)d->line_type,
+                         (unsigned char)d->pen,
+                         (unsigned char)d->write_layer)) {
+            d->lines[d->n_lines - 1].rest[1] = 0x27;
+            d->lines[d->n_lines - 1].rest[2] = 0x00;
+            c->sine_did = 1;
+        }
+        /* **進む向きは引いた線の向き**です（押したところが後ろに
+         * あれば逆を向きます）。中心は無限遠なので、次の弧のために
+         * 向きだけ残します。 */
+        {
+            const double lx = nx2 - c->ch_px, ly = ny2 - c->ch_py;
+            const double ln = sqrt(lx * lx + ly * ly);
+
+            if (ln > 0.0) {
+                c->ch_tx = lx / ln;
+                c->ch_ty = ly / ln;
+            }
+        }
+        c->ch_px = nx2;
+        c->ch_py = ny2;
+        c->ch_cx = c->ch_px - c->ch_ty * 1e6;
+        c->ch_cy = c->ch_py + c->ch_tx * 1e6;
+        c->ch_line = 0;     /* 一本だけ。行も ④直線 に戻ります */
+        return;
+    }
+    if (c->ch_r_on && c->ch_r > 0.0) {
+        /* ③半径: 中心は `P + r·d`、終わりは**押したところを円の上に
+         * 落としたところ**（測定：半径 50mm で中心 (365.9485,219.6883)、
+         * 終わりが (383.6,305.1)）。 */
+        const double sc = jwc_zukei_scale(d) > 0.0 ? jwc_zukei_scale(d) : 1.0;
+
+        t = c->ch_r / sc;
+    } else {
         const double dot = dx * -ex + dy * -ey;   /* d·(P-Q) */
 
         if (dot > -1e-9 && dot < 1e-9) {
@@ -6514,6 +6726,11 @@ static void chain_arc(JwCmd *c, Jwc *d, double qx, double qy)
     ccw = vx * c->ch_tx + vy * c->ch_ty > 0.0;
     sa = atan2(c->ch_py - cy, c->ch_px - cx) / d2r;
     ea = atan2(qy - cy, qx - cx) / d2r;
+    if (c->ch_r_on && c->ch_r > 0.0) {
+        /* 終わりの点は円の上へ落とします。 */
+        qx = cx + rr * cos(ea * d2r);
+        qy = cy + rr * sin(ea * d2r);
+    }
     while (sa < 0.0) {
         sa += 360.0;
     }
@@ -6534,6 +6751,10 @@ static void chain_arc(JwCmd *c, Jwc *d, double qx, double qy)
                        0x8e)) {
         c->sine_did = 1;
     }
+    /* **半径は一度きり**です（測定：半径 50mm のあと続けて押すと
+     * 次の弧は 87.205mm ではなく 85.606mm——接線から決まる方
+     * でした）。④直線 と同じで、一本引くと解けます。 */
+    c->ch_r_on = 0;
     /* 端と向きを進めます。 */
     c->ch_cx = cx;
     c->ch_cy = cy;
@@ -8105,6 +8326,19 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->spl_y[c->spl_n] = y;
         c->spl_n++;
         c->stage = 30 + (c->spl_n > 3 ? 3 : c->spl_n);
+        return 1;
+    }
+    if (c->command == 23 && c->chain && c->stage == 54) {
+        /* `解除 ﾏｳｽ(L) 前回と同じ ﾏｳｽ(R)`。 */
+        if (!right) {
+            c->ch_r_on = 0;     /* 解除 */
+        } else {
+            c->ch_r_on = 1;     /* 前回と同じ */
+        }
+        c->typing = 0;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        c->stage = 53;
         return 1;
     }
     if (c->command == 23 && c->chain && c->stage >= 50 && c->stage <= 53) {

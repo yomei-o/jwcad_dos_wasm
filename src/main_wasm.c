@@ -244,6 +244,9 @@ static void sync_ui(void)
     ui.sine_cycle = cmd.sine_cycle;
     ui.sine_amp = cmd.sine_amp;
     ui.sine_div = cmd.sine_div;
+    ui.ch_rev = cmd.ch_rev;
+    ui.ch_line = cmd.ch_line;
+    ui.ch_r = cmd.ch_r;
     ui.chain = cmd.chain;
     ui.spl = cmd.spl;
     ui.spl_n = cmd.spl_n;

@@ -431,6 +431,8 @@ typedef struct {
     int tan_did;
     int sine;                   /* 曲線 ①ｻｲﾝ曲線 の道 */
     double sine_cycle, sine_amp, sine_div;
+    int ch_rev, ch_line;
+    double ch_r;
     int chain;
     int spl, spl_n, spl_div;
     int sine_did;

@@ -30,6 +30,15 @@ for (const step of steps) {
         for (const ch of step.trim().slice(5)) M._jw_key(ch.charCodeAt(0));
         continue;
     }
+    /* 押さずに矢だけ動かします。帯の仮の絵（ゴムひも・次の弧）は矢の
+     * 先で決まるので、**押した点と矢の先が同じ**ところでは何も出ない
+     * ことが多く、そこだけ見ていると仮の絵を比べられません。 */
+    if (w[0] === 'move') {
+        const mx = Number(w[1]), my = Number(w[2]);
+        M._jw_mouse(mx, my);
+        lastPress = [mx, my];
+        continue;
+    }
     if (w[0] === 'key') {
         /* **Only the words the emulator also knows.**  `key 13` reached the
          * port as Enter and the emulator as nothing at all (its script takes

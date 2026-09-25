@@ -3902,17 +3902,44 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             }
             /* 曲線 ⑥連続弧 の道。 */
             if (s->command == 23 && s->chain && i == s->stage
-                && i >= 50 && i <= 53) {
+                && i >= 50 && i <= 54) {
                 if (i == 50) {
                     if (s->sine_did) {
                         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
                     }
                     jw_ui_text(v, 8, 1, 7, 0, "\x91\xe6\x82P\x82\xcc\x8c\xca\x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read |\x87@\x90\xda\x82\xb7\x82\xe9\x8c\xca\xa5\x90\xfc \x8ew\x92\xe8|");
                     jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
-                } else {
+                } else if (i == 51 || i == 52) {
                     jw_ui_text(v, 1, 1, 7, 0, i == 51 ? "[ESC]" : "[ESC]  ");
-                    jw_ui_text(v, 8, 1, 7, 0,
-                               i == 51 ? "\x91\xe6\x82P\x82\xcc\x8c\xca  \x92\x86\x8a\xd4\x93_ (L)free (R)Read " : i == 52 ? "\x91\xe6\x82P\x82\xcc\x8c\xca  \x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read " : "\x98" "A\x91\xb1\x8c\xca \x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read           |\x87@\x8fI\x97\xb9|\x87" "A\x8c\xca\x94\xbd\x93]|\x87" "B\x94\xbc\x8c" "a|\x87" "C\x92\xbc\x90\xfc|");
+                    jw_ui_text(v, 8, 1, 7, 0, i == 51 ? "\x91\xe6\x82P\x82\xcc\x8c\xca  \x92\x86\x8a\xd4\x93_ (L)free (R)Read " : "\x91\xe6\x82P\x82\xcc\x8c\xca  \x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
+                } else if (i == 53) {
+                    char one[120];
+
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    sprintf(one, "%s%s", "\x98" "A\x91\xb1\x8c\xca \x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read           |\x87@\x8fI\x97\xb9|\x87" "A\x8c\xca\x94\xbd\x93]|\x87" "B\x94\xbc\x8c" "a|",
+                            s->ch_line ? "\x87" "C \x8c\xca |" : "\x87" "C\x92\xbc\x90\xfc|");
+                    jw_ui_text(v, 8, 1, 7, 0, one);
+                } else {
+                    char one[120];
+                    int n, x;
+
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    jw_ui_text(v, 8, 1, 7, 0, "\x90\xa1\x96@ = ");
+                    sprintf(one, "%s[%10.*fmm]", "\x89\xf0\x8f\x9c \xcf\xb3\xbd(L) \x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) ", s->dec_drawing,
+                            s->ch_r);
+                    jw_ui_text(v, 36, 1, 7, 0, one);
+                    jw_ui_text(v, 15, 1, 7, 0, "        ");
+                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                        char two[4];
+
+                        two[0] = s->typed[n];
+                        two[1] = two[2] = ' ';
+                        two[3] = 0;
+                        jw_ui_text(v, 15 + n, 1, 7, 0, two);
+                    }
+                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    x = (14 + n) * 8;
+                    fill(v, x, 7, x + 7, 15, 4);
                 }
             }
             /* 曲線 ②２次曲線 の道（①ｻｲﾝ曲線 と同じ骨組み）。 */

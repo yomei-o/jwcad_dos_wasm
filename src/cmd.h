@@ -205,6 +205,10 @@ typedef struct {
     double ch_px, ch_py;        /* いまの端 */
     double ch_cx, ch_cy;        /* いまの弧の中心 */
     double ch_tx, ch_ty;        /* 端での進む向き */
+    int ch_rev;                 /* ②弧反転（掃きを逆に） */
+    int ch_line;                /* ④直線（次は線） */
+    double ch_r;                /* ③半径 の欄（実寸ミリ） */
+    int ch_r_on;                /* その半径を使うか（欄の既定とは別） */
     double sine_ux, sine_uy;    /* 基準線の向き */
     double sine_ox, sine_oy;    /* 座標原点 */
     double sine_ax, sine_ay;    /* 始点 */

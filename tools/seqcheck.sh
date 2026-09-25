@@ -46,6 +46,11 @@ for step in "$@"; do
         printf 'wait %s\n' "$WAIT" >> tmp/seq/s.txt
         continue
         ;;
+    move\ *)
+        # 押さずに矢だけ動かします（帯の仮の絵を比べるため）。
+        printf 'mouse %s\nwait %s\n' "${step#move }" "$WAIT" >> tmp/seq/s.txt
+        continue
+        ;;
     key\ *)
         printf 'key %s\nwait %s\n' "${step#key }" "$WAIT" >> tmp/seq/s.txt
         continue
