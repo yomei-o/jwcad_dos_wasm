@@ -6167,6 +6167,411 @@ static void meet_at(double p0x, double p0y, double p1x, double p1y,
     }
 }
 
+/* 包絡で残った一区間を、元の線の続きとして後ろに足します。 */
+static void env_piece(Jwc *d, const JwcLine *l, double t0, double t1)
+{
+    const double ax = l->x0 + (l->x1 - l->x0) * t0;
+    const double ay = l->y0 + (l->y1 - l->y0) * t0;
+    const double bx = l->x0 + (l->x1 - l->x0) * t1;
+    const double by = l->y0 + (l->y1 - l->y0) * t1;
+
+    if (jwc_add_line(d, (float)ax, (float)ay, (float)bx, (float)by,
+                     l->type, l->pen, l->layer)) {
+        d->lines[d->n_lines - 1].rest[1] = l->rest[1];
+        d->lines[d->n_lines - 1].rest[2] =
+            (unsigned char)(l->rest[2] & ~0x82u);
+        d->lines[d->n_lines - 1].rest[3] = l->rest[3];
+    }
+}
+
+/* 変形 ②包絡処理変形 の **包絡**（終点を左ボタンで押したとき）。
+ *
+ * 同梱の `JW_CAD.DOC` が「Ｌ型、Ｔ型、＋型、柱／壁、外形線、線連結、
+ * 範囲内消去」と数えている通りの場合分けです。ここに入っているのは
+ * **壁の交わり（Ｌ型・Ｔ型・＋型）**——枠にかかっている線を、相手の壁の
+ * 中に入っているぶんだけ切り落とします。
+ *
+ * 測った規則（`tools/mkhoraku.py` の図面、RESUME 4.45d）:
+ *
+ *   * 触れ合うのは **同じレイヤ・同じ線色・同じ線種**どうしだけです。
+ *     壁の片方だけペンを変えると何も起きませんでした。
+ *   * 線 L の上で、**互いに平行な二本 M1・M2** との交点にはさまれた
+ *     区間が消えます。ただし **M1 と M2 の関わり方が同じとき**だけ——
+ *     どちらも L を自分の内側で横切っているか、どちらも L の上で
+ *     終わっているか。片方だけ端点だと消えません（`lwall` の x=380 が
+ *     丸ごと残り、`twall` の y=260 は消えた、という測定）。
+ *   * 残った区間は、元の線の順に、L に沿って手前から並びます。
+ *
+ * **まだ入れていないのは**、枠が線を丸ごと覆っているときの「外形線」と
+ * 「線連結」です（RESUME 4.45d に測定だけ）。 */
+#define JW_ENV_MAX 50
+
+static int env_same(const JwcLine *a, const JwcLine *b)
+{
+    return a->pen == b->pen && a->type == b->type && a->layer == b->layer;
+}
+
+/* L と M の交わるところ。L の上の位置を *tl、M の上の位置を *tm に。
+ * 平行なら 0。 */
+static int env_cross(const JwcLine *l, const JwcLine *m,
+                     double *tl, double *tm)
+{
+    const double ax = l->x1 - l->x0, ay = l->y1 - l->y0;
+    const double bx = m->x1 - m->x0, by = m->y1 - m->y0;
+    const double det = ax * by - ay * bx;
+    const double la = sqrt(ax * ax + ay * ay);
+    const double lb = sqrt(bx * bx + by * by);
+
+    if (la <= 0.0 || lb <= 0.0) {
+        return 0;
+    }
+    if (det > -1e-9 * la * lb && det < 1e-9 * la * lb) {
+        return 0;               /* 平行 */
+    }
+    *tl = ((m->x0 - l->x0) * by - (m->y0 - l->y0) * bx) / det;
+    *tm = ((m->x0 - l->x0) * ay - (m->y0 - l->y0) * ax) / det;
+    return 1;
+}
+
+/* 二本が平行か。 */
+static int env_parallel(const JwcLine *a, const JwcLine *b)
+{
+    const double ax = a->x1 - a->x0, ay = a->y1 - a->y0;
+    const double bx = b->x1 - b->x0, by = b->y1 - b->y0;
+    const double det = ax * by - ay * bx;
+    const double la = sqrt(ax * ax + ay * ay);
+    const double lb = sqrt(bx * bx + by * by);
+
+    if (la <= 0.0 || lb <= 0.0) {
+        return 0;
+    }
+    return det > -1e-9 * la * lb && det < 1e-9 * la * lb;
+}
+
+/* **壁の中身**。平行な二本 A・B にはさまれ、しかも二本とも横に伸びている
+ * ところだけが「壁の中」です。点 (qx,qy) がそこに入っているか。
+ *
+ * 端で触れているだけの線を壁と見ないための決め手がこれです——SAMPLE1 の
+ * 梯子（横棒が縦の桁の上で終わっている）は、桁の右側だけが壁の中で、
+ * 左側は外。だから桁は切られません。`twall` は上が横壁の中、下が縦壁の
+ * 中なので、はさまれた区間が消えます。 */
+static int env_in_body(const Jwc *d, const long *pick, int n,
+                       const JwcLine *l, double qx, double qy)
+{
+    int a, b, got = 0;
+
+    for (a = 0; a < n; a++) {
+        const JwcLine *A = &d->lines[pick[a]];
+        double ux = A->x1 - A->x0, uy = A->y1 - A->y0;
+        double len = sqrt(ux * ux + uy * uy), nx, ny, qa, sa;
+
+        if (len <= 0.0 || !env_same(l, A)) {
+            continue;
+        }
+        ux /= len;
+        uy /= len;
+        nx = -uy;
+        ny = ux;
+        qa = (qx - A->x0) * ux + (qy - A->y0) * uy;
+        if (qa < 0.0 || qa > len) {
+            continue;           /* A の横幅の外 */
+        }
+        sa = (qx - A->x0) * nx + (qy - A->y0) * ny;
+        for (b = 0; b < n; b++) {
+            const JwcLine *B = &d->lines[pick[b]];
+            double vx = B->x1 - B->x0, vy = B->y1 - B->y0;
+            double bl = sqrt(vx * vx + vy * vy), qb, sb;
+
+            if (b == a || bl <= 0.0 || !env_same(l, B)) {
+                continue;
+            }
+            if (!env_parallel(A, B)) {
+                continue;
+            }
+            qb = (qx - B->x0) * (vx / bl) + (qy - B->y0) * (vy / bl);
+            if (qb < 0.0 || qb > bl) {
+                continue;       /* B の横幅の外 */
+            }
+            sb = (qx - B->x0) * nx + (qy - B->y0) * ny;
+            if (sa * sb < 0.0) {
+                got |= env_parallel(l, A) ? 1 : 3;
+            }
+        }
+    }
+    return got;
+}
+
+static int env_wrap(JwCmd *c, Jwc *d)
+{
+    const long n0 = d->n_lines;
+    long pick[JW_ENV_MAX + 2];
+    int full[JW_ENV_MAX + 2];
+    int n = 0, i, j, k, changed = 0, any_wall = 0;
+
+    for (i = 0; i < n0; i++) {
+        const JwcLine *l = &d->lines[i];
+        double ax = l->x0, ay = l->y0, bx = l->x1, by = l->y1;
+
+        if (!in_reach_layer(d, l->layer)) {
+            continue;
+        }
+        if (!clip_to_range(c, &ax, &ay, &bx, &by)) {
+            continue;
+        }
+        if (ax == bx && ay == by) {
+            continue;
+        }
+        if (n > JW_ENV_MAX) {
+            return -1;
+        }
+        full[n] = ax == l->x0 && ay == l->y0 && bx == l->x1 && by == l->y1;
+        pick[n++] = i;
+    }
+    if (n > JW_ENV_MAX) {
+        return -1;
+    }
+    for (i = 0; i < n0; i++) {
+        d->lines[i].rest[2] &= (unsigned char)~2u;
+    }
+    for (i = 0; i < n; i++) {
+        d->lines[pick[i]].rest[2] |= 2u;
+    }
+    /* **壁がどこかに一つでもあるか**。一つも無いまま全部が枠に
+     * 丸ごと入っているときだけ、交点で切るだけの道になります。 */
+    for (i = 0; i < n && !any_wall; i++) {
+        const JwcLine *l = &d->lines[pick[i]];
+
+        if (!c->hen_env_all && l->type != 1) {
+            continue;
+        }
+        for (j = 0; j < n && !any_wall; j++) {
+            const JwcLine *A = &d->lines[pick[j]];
+
+            if (j == i || !env_same(l, A) || env_parallel(l, A)) {
+                continue;
+            }
+            for (k = j + 1; k < n; k++) {
+                const JwcLine *B = &d->lines[pick[k]];
+
+                if (k == i || !env_same(l, B)) {
+                    continue;
+                }
+                if (env_parallel(A, B)) {
+                    any_wall = 1;
+                    break;
+                }
+            }
+        }
+    }
+    for (i = 0; i < n; i++) {
+        const JwcLine keep = d->lines[pick[i]];
+        double cut0[2 * JW_ENV_MAX], cut1[2 * JW_ENV_MAX];
+        double at[JW_ENV_MAX];
+        int end[JW_ENV_MAX], who[JW_ENV_MAX];
+        int m = 0, ncut = 0, p;
+        double from;
+
+        if (!c->hen_env_all && keep.type != 1) {
+            continue;
+        }
+        for (j = 0; j < n; j++) {
+            const JwcLine *o = &d->lines[pick[j]];
+            double tl, tm;
+
+            if (j == i || !env_same(&keep, o)) {
+                continue;
+            }
+            if (!env_cross(&keep, o, &tl, &tm)) {
+                continue;
+            }
+            if (tl < -1e-6 || tl > 1.0 + 1e-6) {
+                continue;       /* L の外 */
+            }
+            if (tm < -1e-6 || tm > 1.0 + 1e-6) {
+                continue;       /* M の外 */
+            }
+            if (m >= JW_ENV_MAX) {
+                break;
+            }
+            at[m] = tl;
+            end[m] = tm < 1e-6 || tm > 1.0 - 1e-6;
+            who[m] = (int)pick[j];
+            m++;
+        }
+        if (full[i]) {
+            /* 丸ごと入っている線（外形線・柱）は、平行で同じ関わり方を
+             * している二本にはさまれたところ**だけ**が残ります。 */
+            for (j = 0; j < m; j++) {
+                for (k = j + 1; k < m; k++) {
+                    double lo, hi;
+
+                    if (end[j] != end[k]) {
+                        continue;
+                    }
+                    if (!env_parallel(&d->lines[who[j]], &d->lines[who[k]])) {
+                        continue;
+                    }
+                    lo = at[j] < at[k] ? at[j] : at[k];
+                    hi = at[j] < at[k] ? at[k] : at[j];
+                    if (hi - lo < 1e-9) {
+                        continue;
+                    }
+                    if (ncut < 2 * JW_ENV_MAX) {
+                        cut0[ncut] = lo;
+                        cut1[ncut] = hi;
+                        ncut++;
+                    }
+                }
+            }
+        } else {
+            /* またいでいる線は、交点で切って、**両側とも壁の中身に
+             * 覆われている**区間を落とします。 */
+            const double dx = keep.x1 - keep.x0, dy = keep.y1 - keep.y0;
+            const double dl = sqrt(dx * dx + dy * dy);
+            const double nx = dl > 0.0 ? -dy / dl : 0.0;
+            const double ny = dl > 0.0 ? dx / dl : 0.0;
+            const double eps = 1e-4;
+            double sp[JW_ENV_MAX + 2];
+            int ns = 0;
+
+            sp[ns++] = 0.0;
+            for (j = 0; j < m; j++) {
+                if (at[j] > 1e-9 && at[j] < 1.0 - 1e-9 && ns <= JW_ENV_MAX) {
+                    sp[ns++] = at[j];
+                }
+            }
+            sp[ns++] = 1.0;
+            for (j = 1; j < ns; j++) {          /* 小さい順に */
+                for (k = j; k > 0 && sp[k] < sp[k - 1]; k--) {
+                    const double sw = sp[k];
+
+                    sp[k] = sp[k - 1];
+                    sp[k - 1] = sw;
+                }
+            }
+            for (j = 0; j + 1 < ns; j++) {
+                const double t = (sp[j] + sp[j + 1]) * 0.5;
+                const double mx = keep.x0 + dx * t, my = keep.y0 + dy * t;
+
+                if (sp[j + 1] - sp[j] < 1e-9) {
+                    continue;
+                }
+                {
+                const int up = env_in_body(d, pick, n, &keep,
+                                           mx + nx * eps,
+                                           my + ny * eps);
+                const int dn = env_in_body(d, pick, n, &keep,
+                                           mx - nx * eps,
+                                           my - ny * eps);
+
+                /* **両側とも壁の中で、しかもどちらかは自分と平行で
+                 * ない壁**のときだけ落ちます。平行な壁ばかりだと
+                 * 落ちません——SAMPLE1 の梯子の横棒は、上下の横棒に
+                 * はさまれていても残ります（測定）。 */
+                if (up && dn && ((up | dn) & 2)) {
+                    if (ncut < 2 * JW_ENV_MAX) {
+                        cut0[ncut] = sp[j];
+                        cut1[ncut] = sp[j + 1];
+                        ncut++;
+                    }
+                }
+                }
+            }
+        }
+        /* 壁にはさまれた区間をひとつながりにまとめ直します（手前から）。 */
+        {
+            int nkeep = 0;
+            double lo[2 * JW_ENV_MAX], hi[2 * JW_ENV_MAX];
+
+            from = 0.0;
+            for (p = 0; p < ncut; p++) {
+                int best = -1;
+
+                for (j = 0; j < ncut; j++) {
+                    if (cut1[j] <= from + 1e-9) {
+                        continue;
+                    }
+                    if (best < 0 || cut0[j] < cut0[best]) {
+                        best = j;
+                    }
+                }
+                if (best < 0) {
+                    break;
+                }
+                if (nkeep > 0 && cut0[best] <= hi[nkeep - 1] + 1e-9) {
+                    if (cut1[best] > hi[nkeep - 1]) {
+                        hi[nkeep - 1] = cut1[best];
+                    }
+                } else {
+                    lo[nkeep] = cut0[best] > 0.0 ? cut0[best] : 0.0;
+                    hi[nkeep] = cut1[best];
+                    nkeep++;
+                }
+                from = cut1[best] > from ? cut1[best] : from;
+            }
+            /* **枠が線を丸ごと覆っているときは逆になります**（測定）。
+             * またいでいる線は壁の中が消え、丸ごと入っている線は
+             * **壁の中だけ**が残ります。壁にはさまれた区間が一つも
+             * ないときは、どちらでもそのままです。 */
+            if (nkeep == 0 && full[i] && !any_wall) {
+                /* 壁が一つも見つからないまま丸ごと入っている線は、
+                 * **交点で切られるだけ**です（測定：一本ずつの十字を
+                 * まるごと囲むと四本になり、Ｔ字——相手の端点で触れて
+                 * いるだけ——は切れませんでした）。 */
+                double was = 0.0;
+
+                for (j = 0; j < m; j++) {
+                    double t = 2.0;
+                    int b2 = -1;
+
+                    for (k = 0; k < m; k++) {
+                        if (end[k] || at[k] <= was + 1e-9
+                            || at[k] >= 1.0 - 1e-9) {
+                            continue;
+                        }
+                        if (at[k] < t) {
+                            t = at[k];
+                            b2 = k;
+                        }
+                    }
+                    if (b2 < 0) {
+                        break;
+                    }
+                    env_piece(d, &keep, was, t);
+                    was = t;
+                }
+                env_piece(d, &keep, was, 1.0);
+            } else if (nkeep == 0) {
+                env_piece(d, &keep, 0.0, 1.0);
+            } else if (full[i]) {
+                for (j = 0; j < nkeep; j++) {
+                    env_piece(d, &keep, lo[j], hi[j]);
+                }
+            } else {
+                from = 0.0;
+                for (j = 0; j < nkeep; j++) {
+                    if (lo[j] > from + 1e-9) {
+                        env_piece(d, &keep, from, lo[j]);
+                    }
+                    from = hi[j];
+                }
+                if (from < 1.0 - 1e-9) {
+                    env_piece(d, &keep, from, 1.0);
+                }
+            }
+        }
+        d->lines[pick[i]].rest[2] |= 0x80u;     /* あとで外す印 */
+        changed = 1;            /* 形が変わらなくても記録は書き直され、
+                                 * 行に [ESC] が付きます（測定） */
+    }
+    for (i = (int)n0 - 1; i >= 0; i--) {
+        if (d->lines[i].rest[2] & 0x80u) {
+            jwc_remove_line(d, i);
+        }
+    }
+    return changed;
+}
+
 /* 変形 ②包絡処理変形 の **範囲内消去**（終点を右ボタンで押したとき）。
  *
  * 枠の中を切り取ります。丸ごと入っている線は消え、またいでいる線は
@@ -11007,8 +11412,8 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             }
             c->x1 = x;
             c->y1 = y;
-            if (right) {
-                const int got = env_cut(c, d);
+            {
+                const int got = right ? env_cut(c, d) : env_wrap(c, d);
 
                 if (got < 0) {
                     c->hen_env_msg = 1;
