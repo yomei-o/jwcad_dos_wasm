@@ -3474,6 +3474,16 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
             c->stage = 35;
             return 1;
         }
+        if (!c->poly && !c->sine && !c->spl && !c->chain && item == 6) {
+            /* ⑥連続弧。 */
+            c->chain = 1;
+            c->stage = 50;
+            return 1;
+        }
+        if (c->chain && c->stage == 53 && item == 1) {
+            c->stage = 50;      /* ①終了 */
+            return 1;
+        }
         if (!c->poly && !c->sine && !c->spl && item == 2) {
             /* ②２次曲線: 基準線 → 座標原点 → 通過点 → 始点 → 終点 →
              * 分割 長さ。ｻｲﾝ曲線 と同じ骨組みです。 */
@@ -6456,6 +6466,158 @@ static void bezier_draw(JwCmd *c, Jwc *d)
     }
 }
 
+/* **連続弧の一本**（曲線 ⑥連続弧）。
+ *
+ * 一本目は三点の外接円弧、二本目からは **前の弧に接しながら新しい点を
+ * 通る弧** です。前の端を P、前の中心を C0 とすると、新しい中心は
+ * `P` から `d = (P - C0)/r0` の向きに伸びた線の上にあり、
+ * `|C - Q| = |C - P|` から
+ *
+ *     t = -|P-Q|^2 / (2 d·(P-Q))
+ *     C = P + t d、半径 = |t|
+ *
+ * 回る向きは前の端の進む向きで決まります。記録は弧で、始角・終角は
+ * **反時計回りに始角から終角へ**という向きに合わせて入れます。
+ * 最後のバイトは一本目が 0x00、続きが **0x8e**（測定）。 */
+static void chain_arc(JwCmd *c, Jwc *d, double qx, double qy)
+{
+    const double ex = qx - c->ch_px, ey = qy - c->ch_py;
+    double dx, dy, t, cx, cy, rr, sa, ea, vx, vy;
+    const double d2r = 3.14159265358979323846 / 180.0;
+    int ccw;
+
+    dx = c->ch_px - c->ch_cx;
+    dy = c->ch_py - c->ch_cy;
+    {
+        const double n = sqrt(dx * dx + dy * dy);
+
+        if (n <= 0.0) {
+            return;
+        }
+        dx /= n;
+        dy /= n;
+    }
+    {
+        const double dot = dx * -ex + dy * -ey;   /* d·(P-Q) */
+
+        if (dot > -1e-9 && dot < 1e-9) {
+            return;             /* まっすぐ——いまは入れていません */
+        }
+        t = -(ex * ex + ey * ey) / (2.0 * dot);
+    }
+    cx = c->ch_px + t * dx;
+    cy = c->ch_py + t * dy;
+    rr = t < 0.0 ? -t : t;
+    /* 反時計回りの速度は `z x (P - C)`。進む向きと同じなら反時計。 */
+    vx = -(c->ch_py - cy);
+    vy = c->ch_px - cx;
+    ccw = vx * c->ch_tx + vy * c->ch_ty > 0.0;
+    sa = atan2(c->ch_py - cy, c->ch_px - cx) / d2r;
+    ea = atan2(qy - cy, qx - cx) / d2r;
+    while (sa < 0.0) {
+        sa += 360.0;
+    }
+    while (ea < 0.0) {
+        ea += 360.0;
+    }
+    if (!ccw) {
+        const double sw = sa;
+
+        sa = ea;
+        ea = sw;
+    }
+    if (jwc_add_arc_at(d, (float)cx, (float)cy, (float)rr,
+                       (long)(sa * 65536.0 + 0.5),
+                       (long)(ea * 65536.0 + 0.5),
+                       (unsigned char)d->line_type, (unsigned char)d->pen,
+                       (unsigned char)((0 << 4) | (d->write_layer & 15)),
+                       0x8e)) {
+        c->sine_did = 1;
+    }
+    /* 端と向きを進めます。 */
+    c->ch_cx = cx;
+    c->ch_cy = cy;
+    c->ch_px = qx;
+    c->ch_py = qy;
+    vx = -(qy - cy);
+    vy = qx - cx;
+    c->ch_tx = ccw ? vx : -vx;
+    c->ch_ty = ccw ? vy : -vy;
+    {
+        const double n = sqrt(c->ch_tx * c->ch_tx + c->ch_ty * c->ch_ty);
+
+        if (n > 0.0) {
+            c->ch_tx /= n;
+            c->ch_ty /= n;
+        }
+    }
+}
+
+/* 三点の外接円弧（連続弧の一本目）。中間点を通る向きに合わせます。 */
+static void chain_first(JwCmd *c, Jwc *d, double bx, double by)
+{
+    const double ax = c->ch_ax, ay = c->ch_ay;
+    const double mx = c->ch_mx, my = c->ch_my;
+    const double d1x = mx - ax, d1y = my - ay;
+    const double d2x = bx - ax, d2y = by - ay;
+    const double det = 2.0 * (d1x * d2y - d1y * d2x);
+    const double l1 = d1x * d1x + d1y * d1y;
+    const double l2 = d2x * d2x + d2y * d2y;
+    const double d2r = 3.14159265358979323846 / 180.0;
+    double cx, cy, rr, sa, ea;
+    int ccw;
+
+    if (det > -1e-9 && det < 1e-9) {
+        return;
+    }
+    cx = ax + (d2y * l1 - d1y * l2) / det;
+    cy = ay + (d1x * l2 - d2x * l1) / det;
+    rr = sqrt((cx - ax) * (cx - ax) + (cy - ay) * (cy - ay));
+    /* A から M を通って B へ回る向き。 */
+    ccw = det > 0.0;
+    sa = atan2(ay - cy, ax - cx) / d2r;
+    ea = atan2(by - cy, bx - cx) / d2r;
+    while (sa < 0.0) {
+        sa += 360.0;
+    }
+    while (ea < 0.0) {
+        ea += 360.0;
+    }
+    if (!ccw) {
+        const double sw = sa;
+
+        sa = ea;
+        ea = sw;
+    }
+    if (jwc_add_arc_at(d, (float)cx, (float)cy, (float)rr,
+                       (long)(sa * 65536.0 + 0.5),
+                       (long)(ea * 65536.0 + 0.5),
+                       (unsigned char)d->line_type, (unsigned char)d->pen,
+                       (unsigned char)((0 << 4) | (d->write_layer & 15)),
+                       0x00)) {
+        c->sine_did = 1;
+    }
+    c->ch_cx = cx;
+    c->ch_cy = cy;
+    c->ch_px = bx;
+    c->ch_py = by;
+    /* B での進む向き。 */
+    c->ch_tx = -(by - cy);
+    c->ch_ty = bx - cx;
+    if (!ccw) {
+        c->ch_tx = -c->ch_tx;
+        c->ch_ty = -c->ch_ty;
+    }
+    {
+        const double n = sqrt(c->ch_tx * c->ch_tx + c->ch_ty * c->ch_ty);
+
+        if (n > 0.0) {
+            c->ch_tx /= n;
+            c->ch_ty /= n;
+        }
+    }
+}
+
 /* **ｽﾌﾟﾗｲﾝ曲線を線の連なりにします**（曲線 ③ｽﾌﾟﾗｲﾝ）。
  *
  * 本物は **弦長で助変数を取った自然三次スプライン**でした。測定
@@ -7943,6 +8105,32 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->spl_y[c->spl_n] = y;
         c->spl_n++;
         c->stage = 30 + (c->spl_n > 3 ? 3 : c->spl_n);
+        return 1;
+    }
+    if (c->command == 23 && c->chain && c->stage >= 50 && c->stage <= 53) {
+        if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        if (c->stage == 50) {
+            c->ch_ax = x;
+            c->ch_ay = y;
+            c->stage = 51;
+            return 1;
+        }
+        if (c->stage == 51) {
+            c->ch_mx = x;
+            c->ch_my = y;
+            c->stage = 52;
+            return 1;
+        }
+        if (c->stage == 52) {
+            chain_first(c, d, x, y);
+            c->stage = 53;
+            return 1;
+        }
+        chain_arc(c, d, x, y);
         return 1;
     }
     if (c->command == 23 && c->sine == 3 && c->stage >= 40

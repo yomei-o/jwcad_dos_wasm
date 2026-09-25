@@ -3900,6 +3900,21 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     fill(v, x, 7, x + 7, 15, 4);
                 }
             }
+            /* 曲線 ⑥連続弧 の道。 */
+            if (s->command == 23 && s->chain && i == s->stage
+                && i >= 50 && i <= 53) {
+                if (i == 50) {
+                    if (s->sine_did) {
+                        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    }
+                    jw_ui_text(v, 8, 1, 7, 0, "\x91\xe6\x82P\x82\xcc\x8c\xca\x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read |\x87@\x90\xda\x82\xb7\x82\xe9\x8c\xca\xa5\x90\xfc \x8ew\x92\xe8|");
+                    jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                } else {
+                    jw_ui_text(v, 1, 1, 7, 0, i == 51 ? "[ESC]" : "[ESC]  ");
+                    jw_ui_text(v, 8, 1, 7, 0,
+                               i == 51 ? "\x91\xe6\x82P\x82\xcc\x8c\xca  \x92\x86\x8a\xd4\x93_ (L)free (R)Read " : i == 52 ? "\x91\xe6\x82P\x82\xcc\x8c\xca  \x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read " : "\x98" "A\x91\xb1\x8c\xca \x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read           |\x87@\x8fI\x97\xb9|\x87" "A\x8c\xca\x94\xbd\x93]|\x87" "B\x94\xbc\x8c" "a|\x87" "C\x92\xbc\x90\xfc|");
+                }
+            }
             /* 曲線 ②２次曲線 の道（①ｻｲﾝ曲線 と同じ骨組み）。 */
             if (s->command == 23 && s->sine == 3 && i == s->stage
                 && i >= 40 && i <= 45) {

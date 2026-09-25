@@ -198,6 +198,13 @@ typedef struct {
      * 13 振幅、14 始点、15 終点、16 分割 長さ。値は紙のミリ。 */
     int sine;                   /* 1=ｻｲﾝ曲線、2=⑧解除、3=２次曲線 */
     double sine_qa;             /* ②２次曲線 の y = a x^2 */
+    /* 曲線 ⑥連続弧。三点で一本目、あとは前の弧に接しながら伸びます。 */
+    int chain;                  /* 道が走っている */
+    double ch_ax, ch_ay;        /* 第１の弧の始点 */
+    double ch_mx, ch_my;        /* 中間点 */
+    double ch_px, ch_py;        /* いまの端 */
+    double ch_cx, ch_cy;        /* いまの弧の中心 */
+    double ch_tx, ch_ty;        /* 端での進む向き */
     double sine_ux, sine_uy;    /* 基準線の向き */
     double sine_ox, sine_oy;    /* 座標原点 */
     double sine_ax, sine_ay;    /* 始点 */
