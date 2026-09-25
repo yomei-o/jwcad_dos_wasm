@@ -14,8 +14,8 @@ from onlykind import Jwc, FAR
 
 AX, AY = 121.0, 463.0
 CX, CY = 400.0, 250.0           # 画面での中心
-A = (2.0 / math.sqrt(5), 1.0 / math.sqrt(5))
-B = (0.0, 1.0)
+A = (1.0, 0.0)
+B = (1.0 / math.sqrt(2), 1.0 / math.sqrt(2))
 HA, HB = 120.0, 80.0
 
 

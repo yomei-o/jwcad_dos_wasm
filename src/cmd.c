@@ -3144,6 +3144,18 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
             c->stage = 57;
             return 1;
         }
+        if (c->tan_tri == 20 && c->stage == 57 && item == 3) {
+            /* ③平行四辺形内接: 四本の辺で決まる平行四辺形の内接楕円。 */
+            c->tan_tri = 23;
+            c->stage = 64;
+            return 1;
+        }
+        if (c->tan_tri == 20 && c->stage == 57 && item == 2) {
+            /* ②菱形内接: 三本の辺で決まる菱形の内接楕円。 */
+            c->tan_tri = 22;
+            c->stage = 61;
+            return 1;
+        }
         if (c->tan_tri == 20 && c->stage == 57 && item == 1) {
             /* ①３点: 軸の両端と、通る点。 */
             c->tan_tri = 21;
@@ -7723,6 +7735,414 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 }
                 c->stage = 47;
                 return 1;
+            }
+        }
+        if (c->tan_tri == 23 && c->stage >= 64 && c->stage <= 67) {
+            /* ④接楕円 ③平行四辺形内接: 四本の辺の平行四辺形に内接する
+             * 楕円（四辺の中点で接するもの）。選ぶ段はありません。
+             *
+             * 半辺ベクトル `u`,`v` による単位円の像なので、主軸は
+             * 行列 `[u v]` の**特異値**です。平行な二組の間隔を hA・hB、
+             * 二つの向きのなす角を α とすると 辺の長さは
+             * `Lp = hB / |sin α|`、`Lq = hA / |sin α|` で、
+             * `u = (Lp/2)·p`、`v = (Lq/2)·q`。中心は二本の中線の交点。
+             * `tilt` は長いほうの向きで、**x が負なら 180 度足し**、
+             * 0 のときは 360 と書きます（測定：長方形で 360）。
+             *
+             * 測定（`tools/mkpara.py` の平行四辺形と SAMPLE0 の枠）:
+             *
+             * | 図形 | 記録 |
+             * |---|---|
+             * | 直交 120·(2,1)/√5 と 80·(-1,2)/√5 | `r=119.993988 flat=6666 tilt=333.441818` |
+             * | 斜め 80·(1,2)/√5 | `r=138.054108 flat=3021 tilt=323.044174` |
+             * | 斜め 80·(0,1) | `r=127.54332 flat=5277 tilt=320.497971` |
+             * | 45 度 120·(1,0) と 80·(1,1)/√2 | `r=135.199066 flat=3713 tilt=348.017273` |
+             * | SAMPLE0 の枠 | `c=(258.986511,192.249161) r=218.013489 flat=5999 tilt=360` |
+             *
+             * **記録の最後のバイトが読めていません。** 同じ押し順でも
+             * 図形によって 0x87・0x97・0x12・0x46 と変わり（同じ図形なら
+             * 何度やっても同じ）、長方形は二つとも 0x87 でした。ほかの
+             * 小項目は命令ごとに一定（①３点 0x02、②菱形内接 0x07）なので、
+             * ここだけ初期化されていない一バイトが漏れているように見えます。
+             * **当てずっぽうを置かず 0 を書いています。** */
+            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const int at = c->stage - 64;
+            double px, py;
+
+            if (k < 0) {
+                c->tan_miss = 0;
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            jw_cmd_at(w, sx, sy, &px, &py);
+            c->tan_ln[at] = k;
+            c->tan_lx[at] = px;
+            c->tan_ly[at] = py;
+            if (c->stage < 67) {
+                c->stage++;
+                return 1;
+            }
+            {
+                double ux[4], uy[4], off[4];
+                int i, j, pa = -1, pb = -1, qa = -1, qb = -1;
+
+                for (i = 0; i < 4; i++) {
+                    const JwcLine *l = &d->lines[c->tan_ln[i]];
+                    const double ex = l->x1 - l->x0, ey = l->y1 - l->y0;
+                    const double ll = sqrt(ex * ex + ey * ey);
+
+                    if (ll <= 0.0) {
+                        c->tan_miss = 2;
+                        c->missed = 1;
+                        c->stage = 64;
+                        return 1;
+                    }
+                    ux[i] = ex / ll;
+                    uy[i] = ey / ll;
+                }
+                for (i = 0; i < 4; i++) {
+                    /* 法線への射影（向きは i 番の線のもの）。 */
+                    const JwcLine *l = &d->lines[c->tan_ln[i]];
+
+                    off[i] = -uy[i] * l->x0 + ux[i] * l->y0;
+                }
+                for (i = 0; i < 4 && pa < 0; i++) {
+                    for (j = i + 1; j < 4; j++) {
+                        const double cr = ux[i] * uy[j] - uy[i] * ux[j];
+
+                        if (cr > -1e-6 && cr < 1e-6) {
+                            pa = i;
+                            pb = j;
+                            break;
+                        }
+                    }
+                }
+                if (pa < 0) {
+                    c->tan_miss = 2;
+                    c->missed = 1;
+                    c->stage = 64;
+                    return 1;
+                }
+                for (i = 0; i < 4; i++) {
+                    if (i != pa && i != pb) {
+                        if (qa < 0) {
+                            qa = i;
+                        } else {
+                            qb = i;
+                        }
+                    }
+                }
+                {
+                    const double cr = ux[pa] * uy[qa] - uy[pa] * ux[qa];
+                    const double npx = -uy[pa], npy = ux[pa];
+                    const double nqx = -uy[qa], nqy = ux[qa];
+                    double hA, hB, lp, lq, cx, cy, det;
+                    double mp, mq, aa, bb, cc, disc, l1, l2;
+                    double vx1, vy1, dxx, dyy, deg, s1, s2;
+                    long tilt;
+
+                    if (cr > -1e-6 && cr < 1e-6) {
+                        c->tan_miss = 2;
+                        c->missed = 1;
+                        c->stage = 64;
+                        return 1;
+                    }
+                    {
+                        const JwcLine *l2p = &d->lines[c->tan_ln[pb]];
+                        const JwcLine *l2q = &d->lines[c->tan_ln[qb]];
+                        const double o2p = npx * l2p->x0 + npy * l2p->y0;
+                        const double o2q = nqx * l2q->x0 + nqy * l2q->y0;
+                        const JwcLine *l1p = &d->lines[c->tan_ln[pa]];
+                        const JwcLine *l1q = &d->lines[c->tan_ln[qa]];
+                        const double o1p = npx * l1p->x0 + npy * l1p->y0;
+                        const double o1q = nqx * l1q->x0 + nqy * l1q->y0;
+
+                        hA = o2p - o1p;
+                        hB = o2q - o1q;
+                        mp = (o1p + o2p) / 2.0;
+                        mq = (o1q + o2q) / 2.0;
+                    }
+                    if (hA < 0.0) {
+                        hA = -hA;
+                    }
+                    if (hB < 0.0) {
+                        hB = -hB;
+                    }
+                    det = npx * nqy - npy * nqx;
+                    cx = (mp * nqy - mq * npy) / det;
+                    cy = (npx * mq - nqx * mp) / det;
+                    lq = hA / (cr < 0.0 ? -cr : cr);   /* q 向きの辺 */
+                    lp = hB / (cr < 0.0 ? -cr : cr);   /* p 向きの辺 */
+                    {
+                        /* M = [u v]、u = (lp/2)p、v = (lq/2)q。 */
+                        const double u1 = lp / 2.0 * ux[pa];
+                        const double u2 = lp / 2.0 * uy[pa];
+                        const double v1 = lq / 2.0 * ux[qa];
+                        const double v2 = lq / 2.0 * uy[qa];
+
+                        aa = u1 * u1 + u2 * u2;
+                        bb = u1 * v1 + u2 * v2;
+                        cc = v1 * v1 + v2 * v2;
+                        disc = sqrt((aa - cc) * (aa - cc) + 4.0 * bb * bb);
+                        l1 = (aa + cc + disc) / 2.0;
+                        l2 = (aa + cc - disc) / 2.0;
+                        if (l2 < 0.0) {
+                            l2 = 0.0;
+                        }
+                        s1 = sqrt(l1);
+                        s2 = sqrt(l2);
+                        if (bb > 1e-9 || bb < -1e-9) {
+                            const double ex2 = bb, ey2 = l1 - aa;
+                            const double en = sqrt(ex2 * ex2 + ey2 * ey2);
+
+                            vx1 = ex2 / en;
+                            vy1 = ey2 / en;
+                        } else if (aa >= cc) {
+                            vx1 = 1.0;
+                            vy1 = 0.0;
+                        } else {
+                            vx1 = 0.0;
+                            vy1 = 1.0;
+                        }
+                        dxx = u1 * vx1 + v1 * vy1;
+                        dyy = u2 * vx1 + v2 * vy1;
+                    }
+                    if (dxx < 0.0) {
+                        dxx = -dxx;
+                        dyy = -dyy;
+                    }
+                    deg = atan2(dyy, dxx)
+                        / (3.14159265358979323846 / 180.0);
+                    while (deg <= 0.0) {
+                        deg += 360.0;
+                    }
+                    while (deg > 360.0) {
+                        deg -= 360.0;
+                    }
+                    tilt = (long)(deg * 65536.0 + 0.5);
+                    if (jwc_add_arc_at(d, (float)cx, (float)cy, (float)s1,
+                                       0L, 0L,
+                                       (unsigned char)d->line_type,
+                                       (unsigned char)d->pen,
+                                       (unsigned char)((0 << 4)
+                                           | (d->write_layer & 15)), 0x00)) {
+                        JwcArc *w2 = &d->arcs[d->n_arcs - 1];
+
+                        w2->flatten = (short)(int)(10000.0 * s2 / s1);
+                        w2->tilt = tilt;
+                        c->tan_did = 1;
+                    }
+                    c->stage = 64;
+                    return 1;
+                }
+            }
+        }
+        if (c->tan_tri == 22 && c->stage >= 61 && c->stage <= 63) {
+            /* ④接楕円 ②菱形内接: 三本の辺（点ではなく線）で菱形が決まり、
+             * その内接楕円が入ります。選ぶ段はありません。
+             *
+             * 三本のうち**平行な二本**が菱形の一組の辺で、その間隔 h から
+             * 一辺の長さが出ます（`L = h / sin α`、α は残りの一本との角）。
+             * 頂点 V は「平行な二本のうち先に押したほう」と残りの一本の
+             * 交点。押したところが V から見てどちら側かで各辺の向き
+             * `u_p`・`u_q` が決まり、中心は `V + (L/2)(u_p + u_q)` です
+             * ——④２線 と同じ「押した側で決まる」形です。
+             *
+             * 対角線は `L(u_p ± u_q)`。楕円の半径はその**半分を √2 で
+             * 割ったもの**（菱形の内接楕円は、半辺ベクトルによる単位円の
+             * 像だからです）。長いほうが `r`、`flatten` は
+             * `(int)(10000 * 短 / 長)`。`tilt` は長い対角線の向きで、
+             * **x が正なら 180 度足します**（測った三つとも x が負の側に
+             * なりました：135・225・157.5）。
+             *
+             * 測定:
+             *
+             * * SAMPLE0 の 上・左・下 →
+             *   `c=(171.781113,192.249161) r=130.80809 flat=10000 tilt=225`
+             * * `tools/mkpara.py` の斜めの平行四辺形（辺 0・1・2）→
+             *   `c=(296.888519,177.222916) r=160.996887 flat=3333 tilt=135`
+             *   ——押す順を 2・1・0 にしても同じ記録でした
+             * * 同じく 1,0 と 45 度の組 →
+             *   `c=(307.284271,184.715729) r=156.787567 flat=4142
+             *   tilt=157.5`
+             *
+             * **記録の最後のバイトは 0x07**（三つとも）。 */
+            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const int at = c->stage - 61;
+            double px, py;
+
+            if (k < 0) {
+                c->tan_miss = 0;
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            jw_cmd_at(w, sx, sy, &px, &py);
+            c->tan_ln[at] = k;
+            c->tan_lx[at] = px;
+            c->tan_ly[at] = py;
+            if (c->stage < 63) {
+                c->stage++;
+                return 1;
+            }
+            {
+                double ux[3], uy[3];
+                int i, pi = -1, qi = -1, ri = -1;
+
+                for (i = 0; i < 3; i++) {
+                    const JwcLine *l = &d->lines[c->tan_ln[i]];
+                    const double ex = l->x1 - l->x0, ey = l->y1 - l->y0;
+                    const double ll = sqrt(ex * ex + ey * ey);
+
+                    if (ll <= 0.0) {
+                        c->tan_miss = 2;
+                        c->missed = 1;
+                        c->stage = 61;
+                        return 1;
+                    }
+                    ux[i] = ex / ll;
+                    uy[i] = ey / ll;
+                }
+                /* 平行な二本を探します。**先に押したほうが P**
+                 * ——頂点 V をどちらの線で取るかで tilt の向きが
+                 * 変わります（測定：SAMPLE0 の 上・左・下 で、
+                 * 下を P にすると 135 度、上なら 225 度で、原作は
+                 * 225 度でした）。 */
+                for (i = 0; i < 3 && pi < 0; i++) {
+                    int j2;
+
+                    for (j2 = i + 1; j2 < 3; j2++) {
+                        const double cr = ux[i] * uy[j2]
+                                        - uy[i] * ux[j2];
+
+                        if (cr > -1e-6 && cr < 1e-6) {
+                            pi = i;
+                            ri = j2;
+                            qi = 3 - i - j2;
+                            break;
+                        }
+                    }
+                }
+                if (pi < 0) {
+                    c->tan_miss = 2;    /* `データが不適当` */
+                    c->missed = 1;
+                    c->stage = 61;
+                    return 1;
+                }
+                {
+                    const JwcLine *lp = &d->lines[c->tan_ln[pi]];
+                    const JwcLine *lr = &d->lines[c->tan_ln[ri]];
+                    const JwcLine *lq = &d->lines[c->tan_ln[qi]];
+                    const double nx = -uy[pi], ny = ux[pi];
+                    const double h = (lr->x0 - lp->x0) * nx
+                                   + (lr->y0 - lp->y0) * ny;
+                    const double cr = ux[pi] * uy[qi] - uy[pi] * ux[qi];
+                    const double nqx = -uy[qi], nqy = ux[qi];
+                    double vx, vy, upx, upy, uqx, uqy, ll, t;
+                    double sx2, sy2, dx2, dy2, ls, ld, s1, s2, dxx, dyy, deg;
+                    long tilt;
+
+                    if (cr > -1e-6 && cr < 1e-6) {
+                        c->tan_miss = 2;
+                        c->missed = 1;
+                        c->stage = 61;
+                        return 1;
+                    }
+                    /* P と Q の交点。 */
+                    t = ((lq->x0 - lp->x0) * nqx + (lq->y0 - lp->y0) * nqy)
+                      / (ux[pi] * nqx + uy[pi] * nqy);
+                    vx = lp->x0 + t * ux[pi];
+                    vy = lp->y0 + t * uy[pi];
+                    /* 押したところ側の向き。 */
+                    upx = ux[pi];
+                    upy = uy[pi];
+                    if ((c->tan_lx[pi] - vx) * upx
+                        + (c->tan_ly[pi] - vy) * upy < 0.0) {
+                        upx = -upx;
+                        upy = -upy;
+                    }
+                    uqx = ux[qi];
+                    uqy = uy[qi];
+                    if ((c->tan_lx[qi] - vx) * uqx
+                        + (c->tan_ly[qi] - vy) * uqy < 0.0) {
+                        uqx = -uqx;
+                        uqy = -uqy;
+                    }
+                    ll = (h < 0.0 ? -h : h)
+                       / (cr < 0.0 ? -cr : cr);      /* 一辺の長さ */
+                    sx2 = upx + uqx;
+                    sy2 = upy + uqy;
+                    dx2 = upx - uqx;
+                    dy2 = upy - uqy;
+                    /* 対角線の長さは**内積から**出します。
+                     * `|u±v|^2 = 2 ± 2(u·v)` なので、直角のときに
+                     * 二つがきっちり同じ値になります——座標から
+                     * 直に足し引きすると単精度の端数で 1e-7 ほど
+                     * 食い違い、`flatten` が 10000 ではなく 9999 に
+                     * なりました（原作は 10000）。線が平行かどうかを
+                     * 見るのと同じ 1e-6 で直角も丸めます。 */
+                    {
+                        double dt = upx * uqx + upy * uqy;
+
+                        if (dt > -1e-6 && dt < 1e-6) {
+                            dt = 0.0;
+                        }
+                        ls = sqrt(2.0 + 2.0 * dt);
+                        ld = sqrt(2.0 - 2.0 * dt);
+                    }
+                    /* **同じ長さのときは差のほう**（正方形の
+                     * ときに見えます：和なら 198.43 度、原作は
+                     * 108.434952 度でした）。 */
+                    if (ls > ld + 1e-9) {
+                        s1 = ll * ls / 2.0;
+                        s2 = ll * ld / 2.0;
+                        dxx = sx2;
+                        dyy = sy2;
+                    } else {
+                        s1 = ll * ld / 2.0;
+                        s2 = ll * ls / 2.0;
+                        dxx = dx2;
+                        dyy = dy2;
+                    }
+                    s1 /= 1.41421356237309504880;
+                    s2 /= 1.41421356237309504880;
+                    if (dxx > 0.0 || (dxx == 0.0 && dyy > 0.0)) {
+                        dxx = -dxx;
+                        dyy = -dyy;
+                    }
+                    deg = atan2(dyy, dxx)
+                        / (3.14159265358979323846 / 180.0);
+                    while (deg < 0.0) {
+                        deg += 360.0;
+                    }
+                    while (deg >= 360.0) {
+                        deg -= 360.0;
+                    }
+                    tilt = (long)(deg * 65536.0 + 0.5);
+                    if (jwc_add_arc_at(d, (float)(vx + ll / 2.0 * sx2),
+                                       (float)(vy + ll / 2.0 * sy2),
+                                       (float)s1, 0L, 0L,
+                                       (unsigned char)d->line_type,
+                                       (unsigned char)d->pen,
+                                       (unsigned char)((0 << 4)
+                                           | (d->write_layer & 15)), 0x07)) {
+                        JwcArc *w2 = &d->arcs[d->n_arcs - 1];
+
+                        /* 正方形のとき二つの対角線は数学的に同じ
+                         * 長さですが、倍精度だと 1e-17 ほど食い違って
+                         * 切り捨てが 9999 に落ちます。原作は単精度で
+                         * ちょうど 10000 を書くので、ごく小さい下駄を
+                         * 履かせています（本当の比が 0.9999999 でも
+                         * 単精度なら 10000 になります）。 */
+                        w2->flatten =
+                            (short)(int)(10000.0 * s2 / s1 + 1e-9);
+                        w2->tilt = tilt;
+                        c->tan_did = 1;
+                    }
+                    c->stage = 61;
+                    return 1;
+                }
             }
         }
         if (c->tan_tri == 21 && c->stage >= 58 && c->stage <= 60) {
