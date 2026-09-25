@@ -3137,6 +3137,37 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         /* `接線 |①円～円間 |②円周点 |③指定点 |④角度指定 |` -- only ③. */
         /* ①接 線 は上の行からも選べます（測定：行が
          * `接線 |①円～円間 |②円周点 |③指定点 |④角度指定 |` になります）。 */
+        if (!c->tan_on && !c->tan_tri && item == 3) {
+            /* ③接円（３条件）。小項目の行が出ます。 */
+            c->tan_tri = 10;
+            tan_start(c, d);
+            c->stage = 50;
+            return 1;
+        }
+        if (c->tan_tri == 10 && c->stage == 50 && item == 3) {
+            /* ③１点と２線･円: 点を通り、二本の線（か円）に接する円。 */
+            c->tan_tri = 13;
+            c->stage = 51;
+            return 1;
+        }
+        if (c->tan_tri == 10 && c->stage == 50 && item == 4) {
+            /* ④３線･円: 三本の線（か円）に接する円。 */
+            c->tan_tri = 14;
+            c->stage = 54;
+            return 1;
+        }
+        if (c->tan_tri == 10 && c->stage == 50 && item == 2) {
+            /* ②２点と１線･円: 二点を通り、線か円に接する円。 */
+            c->tan_tri = 12;
+            c->stage = 47;
+            return 1;
+        }
+        if (c->tan_tri == 10 && c->stage == 50 && item == 1) {
+            /* ①３点: 三つの点を通る円、つまり外接円。 */
+            c->tan_tri = 11;
+            c->stage = 44;
+            return 1;
+        }
         if (!c->tan_on && item == 2) {
             /* ②接円（半径と２条件）。小項目の行が出ます。 */
             c->tan_on = 1;
@@ -7124,7 +7155,11 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
          * ②接円 with the right, and the first press in the drawing is what
          * chooses -- it is taken for that and nothing else.  Then ③指定点 off
          * the top line, a point, and a circle. */
-        if (!c->tan_on) {
+        /* **③接円（３条件）は tan_on を立てません。** ここを
+         * 素通りさせないと、その道の押しが ①接線 の一押し目に
+         * 化けます（測定：第２の点 を押したら行が 接線 のものに
+         * なって 1886 画素ずれました）。 */
+        if (!c->tan_on && !c->tan_tri) {
             if (right) {
                 return 0;       /* ②接円 is not done */
             }
@@ -7320,6 +7355,416 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                     return 1;
                 }
                 c->stage = sel;
+                return 1;
+            }
+        }
+        if ((c->tan_tri == 13 && c->stage >= 51 && c->stage <= 53)
+            || (c->tan_tri == 14 && c->stage >= 54 && c->stage <= 56)) {
+            /* ③１点と２線･円 と ④３線･円。**いまは線だけ**で、円を
+             * 押したときは入れていません（下の「まだのもの」）。
+             *
+             * どちらも中心は「二本の線から等しい距離」＝角の二等分線の
+             * 上にあります。候補を全部作って、**最後に押したところに
+             * 円周がいちばん近いもの**を入れます——ほかの小項目と同じ
+             * 決め方です。選ぶ段はありません。
+             *
+             * 測定（SAMPLE0、枠は 上 y=323.057、左 x=40.973、
+             * 下の横線 y=61.441）:
+             *
+             * * ③: 点 (200,200)＝図の (79,263)、上の枠線 (400,140)、
+             *   左の枠線 (162,250) で
+             *   `c=(206.641205,157.389069) r=165.668182`。
+             * * ④: 上 (400,140)、左 (162,250)、下 (400,400) で
+             *   `c=(171.781113,192.249176) r=130.808075`——内接円です。
+             *
+             * **記録の最後のバイトは 0x00**。 */
+            const int top = c->tan_tri == 13 ? 51 : 54;
+            const int last = top + 2;
+
+            if (c->tan_tri == 13 && c->stage == 51) {
+                if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                c->tan_p1x = x;
+                c->tan_p1y = y;
+                c->stage = 52;
+                return 1;
+            }
+            {
+                const long k = jw_cmd_line_at(d, w, sx, sy);
+
+                if (k < 0) {
+                    c->tan_miss = 0;
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                if (c->stage < last) {
+                    if (c->stage == top || c->stage == top + 1) {
+                        if (c->stage == last - 1) {
+                            c->tan_kb = k;
+                        } else {
+                            c->tan_la = k;
+                        }
+                    }
+                    c->stage++;
+                    return 1;
+                }
+                {
+                    /* 線の法線と切片を三本ぶん。 */
+                    const long kk[3] = { c->tan_la, c->tan_kb, k };
+                    double nx[3], ny[3], c0[3];
+                    double px, py, gx = 0.0, gy = 0.0, gr = 0.0, best = 0.0;
+                    int got = 0, i, n = c->tan_tri == 14 ? 3 : 2;
+
+                    for (i = 0; i < n; i++) {
+                        const JwcLine *l = &d->lines[kk[i + 3 - n]];
+                        const double lx = l->x1 - l->x0, ly = l->y1 - l->y0;
+                        const double ll = sqrt(lx * lx + ly * ly);
+
+                        if (ll <= 0.0) {
+                            c->tan_miss = 2;
+                            c->missed = 1;
+                            c->stage = top;
+                            return 1;
+                        }
+                        nx[i] = -ly / ll;
+                        ny[i] = lx / ll;
+                        c0[i] = nx[i] * l->x0 + ny[i] * l->y0;
+                    }
+                    jw_cmd_at(w, sx, sy, &px, &py);
+                    if (c->tan_tri == 14) {
+                        int s1, s2, s3;
+
+                        /* 八通り。符号を全部ひっくり返すと R の符号だけが
+                         * 変わるので、R > 0 だけ取れば内接円と傍接円の
+                         * 四つになります。 */
+                        for (s1 = -1; s1 <= 1; s1 += 2) {
+                        for (s2 = -1; s2 <= 1; s2 += 2) {
+                            for (s3 = -1; s3 <= 1; s3 += 2) {
+                                /* n1·C − R = c1, s2 n2·C − R = s2 c2,
+                                 * s3 n3·C − R = s3 c3 */
+                                const double a1 = s1 * nx[0];
+                                const double b1 = s1 * ny[0];
+                                const double a2 = s2 * nx[1];
+                                const double b2 = s2 * ny[1];
+                                const double a3 = s3 * nx[2];
+                                const double b3 = s3 * ny[2];
+                                const double r1 = s1 * c0[0];
+                                const double r2 = s2 * c0[1];
+                                const double r3 = s3 * c0[2];
+                                const double det =
+                                    a1 * (b2 * -1.0 - -1.0 * b3)
+                                    - b1 * (a2 * -1.0 - -1.0 * a3)
+                                    + -1.0 * (a2 * b3 - b2 * a3);
+                                double cx, cy, rr, how, far;
+
+                                if (det > -1e-9 && det < 1e-9) {
+                                    continue;
+                                }
+                                cx = (r1 * (b2 * -1.0 - -1.0 * b3)
+                                      - b1 * (r2 * -1.0 - -1.0 * r3)
+                                      + -1.0 * (r2 * b3 - b2 * r3)) / det;
+                                cy = (a1 * (r2 * -1.0 - -1.0 * r3)
+                                      - r1 * (a2 * -1.0 - -1.0 * a3)
+                                      + -1.0 * (a2 * r3 - r2 * a3)) / det;
+                                rr = (a1 * (b2 * r3 - r2 * b3)
+                                      - b1 * (a2 * r3 - r2 * a3)
+                                      + r1 * (a2 * b3 - b2 * a3)) / det;
+                                if (rr <= 0.0) {
+                                    continue;
+                                }
+                                how = sqrt((px - cx) * (px - cx)
+                                           + (py - cy) * (py - cy)) - rr;
+                                far = how < 0.0 ? -how : how;
+                                if (!got || far < best) {
+                                    best = far;
+                                    gx = cx; gy = cy; gr = rr;
+                                    got = 1;
+                                }
+                            }
+                        }
+                        }
+                    } else {
+                        int s2, j;
+
+                        for (s2 = -1; s2 <= 1; s2 += 2) {
+                            /* 二等分線 (n1 − s2 n2)·X = c1 − s2 c2 */
+                            const double ax = nx[0] - s2 * nx[1];
+                            const double ay = ny[0] - s2 * ny[1];
+                            const double bb = c0[0] - s2 * c0[1];
+                            const double alen = sqrt(ax * ax + ay * ay);
+                            double vx, vy, bx, by, p0, w0, ex, ey;
+                            double qa, qb, qc, disc;
+
+                            if (alen < 1e-9) {
+                                continue;
+                            }
+                            vx = -ay / alen;
+                            vy = ax / alen;
+                            bx = ax * bb / (alen * alen);
+                            by = ay * bb / (alen * alen);
+                            p0 = nx[0] * bx + ny[0] * by - c0[0];
+                            w0 = nx[0] * vx + ny[0] * vy;
+                            ex = bx - c->tan_p1x;
+                            ey = by - c->tan_p1y;
+                            qa = 1.0 - w0 * w0;
+                            qb = 2.0 * (vx * ex + vy * ey - p0 * w0);
+                            qc = ex * ex + ey * ey - p0 * p0;
+                            disc = qb * qb - 4.0 * qa * qc;
+                            for (j = 0; j < 2; j++) {
+                                double t, cx, cy, rr, how, far;
+
+                                if (qa > -1e-12 && qa < 1e-12) {
+                                    if (qb > -1e-12 && qb < 1e-12) {
+                                        break;
+                                    }
+                                    if (j) {
+                                        break;
+                                    }
+                                    t = -qc / qb;
+                                } else {
+                                    if (disc < 0.0) {
+                                        break;
+                                    }
+                                    t = (-qb + (j ? -sqrt(disc) : sqrt(disc)))
+                                      / (2.0 * qa);
+                                }
+                                cx = bx + t * vx;
+                                cy = by + t * vy;
+                                rr = p0 + t * w0;
+                                if (rr < 0.0) {
+                                    rr = -rr;
+                                }
+                                how = sqrt((px - cx) * (px - cx)
+                                           + (py - cy) * (py - cy)) - rr;
+                                far = how < 0.0 ? -how : how;
+                                if (!got || far < best) {
+                                    best = far;
+                                    gx = cx; gy = cy; gr = rr;
+                                    got = 1;
+                                }
+                            }
+                        }
+                    }
+                    if (!got) {
+                        c->tan_miss = 2;
+                        c->missed = 1;
+                        c->stage = top;
+                        return 1;
+                    }
+                    if (jwc_add_arc_at(d, (float)gx, (float)gy, (float)gr,
+                                       0L, 0L,
+                                       (unsigned char)d->line_type,
+                                       (unsigned char)d->pen,
+                                       (unsigned char)((0 << 4)
+                                           | (d->write_layer & 15)), 0x00)) {
+                        c->tan_did = 1;
+                    }
+                    c->stage = top;
+                    return 1;
+                }
+            }
+        }
+        if (c->tan_tri == 12 && c->stage >= 47 && c->stage <= 49) {
+            /* ③接円（３条件）②２点と１線･円: 二点を通り、線（か円）に
+             * 接する円。**選ぶ段はありません**——中心は二点の垂直二等分線の
+             * 上なので解は多くて二つで、**三つめに押したところに円周が
+             * いちばん近いほう**が入ります。
+             *
+             * 測定（SAMPLE0）。二点を画面 (400,200)(350,300) ＝ 図の
+             * (279,263)(229,163) にして、上の枠線（図の y=323.057）を
+             * 押す位置を変えると:
+             *
+             * * (320,140) → `c=(199.412,240.294) r= 82.763`
+             * * (540,140) → `c=(418.645,130.678) r=192.380`
+             *
+             * どちらも接点が押したところの近くです。
+             * **記録の最後のバイトは 0x00**（①３点 と同じ）。 */
+            if (c->stage != 49) {
+                if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                if (c->stage == 47) {
+                    c->tan_p1x = x;
+                    c->tan_p1y = y;
+                    c->stage = 48;
+                } else {
+                    c->tan_ccx[0] = x;
+                    c->tan_ccy[0] = y;
+                    c->stage = 49;
+                }
+                return 1;
+            }
+            {
+                const double ax = c->tan_p1x, ay = c->tan_p1y;
+                const double bx = c->tan_ccx[0], by = c->tan_ccy[0];
+                const double ex = bx - ax, ey = by - ay;
+                const double len = sqrt(ex * ex + ey * ey);
+                const long kl = jw_cmd_line_at(d, w, sx, sy);
+                const long ka = kl >= 0 ? -1 : jw_cmd_arc_at(d, w, sx, sy);
+                const double mx = (ax + bx) / 2.0, my = (ay + by) / 2.0;
+                double dx, dy, q, aa, bb, cc, disc, best = 0.0;
+                double px, py, gx = 0.0, gy = 0.0, gr = 0.0;
+                int got = 0, i;
+
+                if (kl < 0 && ka < 0) {
+                    c->tan_miss = 0;
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                if (len <= 0.0) {
+                    c->tan_miss = 2;
+                    c->missed = 1;
+                    c->stage = 47;
+                    return 1;
+                }
+                /* 中心は垂直二等分線 `M + u·d` の上。 */
+                dx = -ey / len;
+                dy = ex / len;
+                q = len * len / 4.0;
+                if (kl >= 0) {
+                    /* 線: 中心からの距離が半径。 */
+                    const JwcLine *l = &d->lines[kl];
+                    const double lx = l->x1 - l->x0, ly = l->y1 - l->y0;
+                    const double ll = sqrt(lx * lx + ly * ly);
+                    double nx, ny, p0, w0;
+
+                    if (ll <= 0.0) {
+                        c->tan_miss = 2;
+                        c->missed = 1;
+                        c->stage = 47;
+                        return 1;
+                    }
+                    nx = -ly / ll;
+                    ny = lx / ll;
+                    p0 = nx * (mx - l->x0) + ny * (my - l->y0);
+                    w0 = nx * dx + ny * dy;
+                    aa = w0 * w0 - 1.0;
+                    bb = 2.0 * p0 * w0;
+                    cc = p0 * p0 - q;
+                } else {
+                    /* 円: 中心からの距離が `半径 ± 円の半径`。二乗を二度
+                     * 取ると u の二次式になります。 */
+                    const JwcArc *o = &d->arcs[ka];
+                    const double ox = mx - o->cx, oy = my - o->cy;
+                    const double k0 = ox * ox + oy * oy - q
+                                    - (double)o->r * (double)o->r;
+                    const double m0 = ox * dx + oy * dy;
+
+                    aa = 4.0 * (m0 * m0 - (double)o->r * (double)o->r);
+                    bb = 4.0 * k0 * m0;
+                    cc = k0 * k0 - 4.0 * (double)o->r * (double)o->r * q;
+                }
+                jw_cmd_at(w, sx, sy, &px, &py);
+                disc = bb * bb - 4.0 * aa * cc;
+                for (i = 0; i < 2; i++) {
+                    double u, cx, cy, rr, how, far;
+
+                    if (aa > -1e-12 && aa < 1e-12) {
+                        if (bb > -1e-12 && bb < 1e-12) {
+                            break;
+                        }
+                        if (i) {
+                            break;
+                        }
+                        u = -cc / bb;
+                    } else {
+                        if (disc < 0.0) {
+                            break;
+                        }
+                        u = (-bb + (i ? -sqrt(disc) : sqrt(disc)))
+                          / (2.0 * aa);
+                    }
+                    cx = mx + u * dx;
+                    cy = my + u * dy;
+                    rr = sqrt(q + u * u);
+                    how = sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy))
+                        - rr;
+                    far = how < 0.0 ? -how : how;
+                    if (!got || far < best) {
+                        best = far;
+                        gx = cx;
+                        gy = cy;
+                        gr = rr;
+                        got = 1;
+                    }
+                }
+                if (!got) {
+                    c->tan_miss = 2;        /* `データが不適当` */
+                    c->missed = 1;
+                    c->stage = 47;
+                    return 1;
+                }
+                if (jwc_add_arc_at(d, (float)gx, (float)gy, (float)gr, 0L, 0L,
+                                   (unsigned char)d->line_type,
+                                   (unsigned char)d->pen,
+                                   (unsigned char)((0 << 4)
+                                       | (d->write_layer & 15)), 0x00)) {
+                    c->tan_did = 1;
+                }
+                c->stage = 47;
+                return 1;
+            }
+        }
+        if (c->tan_tri == 11 && c->stage >= 44 && c->stage <= 46) {
+            /* ③接円（３条件）①３点: 三つの点を通る円（外接円）。選ぶ段は
+             * なく、三つめを押したところで入ります。
+             *
+             * 測定（SAMPLE0、画面 (200,200)(400,200)(300,350) ＝ 図の
+             * (79,263)(279,263)(179,113)）:
+             * `arc c=(179.000,221.333) r=108.333 … 01 02 00 00 00 00`
+             * ——三点から等距離です。**記録の最後のバイトは 0x00**。 */
+            if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            if (c->stage == 44) {
+                c->tan_p1x = x;
+                c->tan_p1y = y;
+                c->stage = 45;
+                return 1;
+            }
+            if (c->stage == 45) {
+                c->tan_ccx[0] = x;
+                c->tan_ccy[0] = y;
+                c->stage = 46;
+                return 1;
+            }
+            {
+                const double ax = c->tan_p1x, ay = c->tan_p1y;
+                const double bx = c->tan_ccx[0], by = c->tan_ccy[0];
+                const double d1x = bx - ax, d1y = by - ay;
+                const double d2x = x - ax, d2y = y - ay;
+                const double det = 2.0 * (d1x * d2y - d1y * d2x);
+                const double l1 = d1x * d1x + d1y * d1y;
+                const double l2 = d2x * d2x + d2y * d2y;
+                double cx, cy, rr;
+
+                if (det > -1e-9 && det < 1e-9) {
+                    /* 三点が一直線。 */
+                    c->tan_miss = 2;
+                    c->missed = 1;
+                    c->stage = 44;
+                    return 1;
+                }
+                cx = ax + (d2y * l1 - d1y * l2) / det;
+                cy = ay + (d1x * l2 - d2x * l1) / det;
+                rr = sqrt((cx - ax) * (cx - ax) + (cy - ay) * (cy - ay));
+                if (jwc_add_arc_at(d, (float)cx, (float)cy, (float)rr, 0L, 0L,
+                                   (unsigned char)d->line_type,
+                                   (unsigned char)d->pen,
+                                   (unsigned char)((0 << 4)
+                                       | (d->write_layer & 15)), 0x00)) {
+                    c->tan_did = 1;
+                }
+                c->stage = 44;
                 return 1;
             }
         }

@@ -313,6 +313,8 @@ typedef struct {
     long tan_la;                /* ④２線 の（Ａ） */
     double tan_lax, tan_lay;    /* そこを押した点 */
     int tan_cn;                 /* 候補の数 */
+    /* ③接円（３条件）。10 = 小項目の行、11..14 = どの小項目か。 */
+    int tan_tri;
     int tan_miss;               /* 円を探して線が出た（線データです） */
     double tan_apx, tan_apy;    /* 円(Ａ)を押したところ */
     int tan_did;                /* 一本引いた（桁 1 の [ESC]） */

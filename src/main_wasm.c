@@ -240,6 +240,7 @@ static void sync_ui(void)
     ui.dim_arc_miss = cmd.dim_arc_miss;
     ui.tan_deg = cmd.tan_deg;
     ui.tan_did = cmd.tan_did;
+    ui.tan_tri = cmd.tan_tri;
     ui.tan_cn = cmd.tan_cn;
     ui.tan_circ = cmd.tan_circ;
     ui.tan_r = cmd.tan_r;
