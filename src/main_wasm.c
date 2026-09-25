@@ -285,7 +285,11 @@ static void sync_ui(void)
     ui.hen_dbl = cmd.hen_dbl;
     ui.hen_dbl_cap = cmd.hen_dbl_cap;
     ui.hen_dbl_edit = cmd.hen_dbl && cmd.typing;
-    ui.hen_dbl_gap = cmd.hen_dbl_gap;
+    ui.hen_dbl_gap = cmd.hen_dbl_gap;    ui.hen_env = cmd.hen_env;
+    ui.hen_env_all = cmd.hen_env_all;
+    ui.hen_env_did = cmd.hen_env_did;
+    ui.hen_env_msg = cmd.hen_env_msg;
+
     ui.dim_lot = cmd.dim_lot;
     ui.dim_arc_two = cmd.dim_arc_two;
     ui.dim_arc_unit = cmd.dim_arc_unit;
@@ -2088,12 +2092,37 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             return -1;
         }
     }
+    /* 変形（17）の行の `②包絡処理変形`（桁 33〜49、x 256〜391）。自分の
+     * 行を出し、押しを二つ取って包絡するか、終点を右で押して範囲内消去
+     * します。行の `①【実線のみ】`（桁 30〜43、x 232〜351）は始点を待って
+     * いるあいだだけで、押すと【全 線 種】に変わります。 */
+    if (ui.command == 17 && ui.hen_env && !ui.top_item && !cmd.pressed
+        && !dxf_mode && y >= 0 && y <= 15
+        && x / 8 + 1 >= 30 && x / 8 + 1 <= 43) {
+        cmd.hen_env_all = !cmd.hen_env_all;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    if (ui.command == 17 && !ui.top_item && !cmd.pressed && !dxf_mode
+        && y >= 0 && y <= 15 && x / 8 + 1 >= 33 && x / 8 + 1 <= 49) {
+        cmd.hen_env = 1;
+        cmd.hen_dbl = 0;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
     /* 変形（17）の行の `③複線化`（桁 51〜58、x 400〜471）。範囲の道は
      * ①パラメトリック変形 と同じものを通り、①範囲確定 のあとの行だけ
      * 変わります。①パラメトリック変形（桁 9〜31）を押し直すと戻ります。 */
     if (ui.command == 17 && !ui.top_item && !cmd.pressed && !dxf_mode
         && y >= 0 && y <= 15 && x / 8 + 1 >= 51 && x / 8 + 1 <= 58) {
         cmd.hen_dbl = 1;
+        cmd.hen_env = 0;
         mouse_x = x;
         mouse_y = y;
         sync_ui();
@@ -2103,6 +2132,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     if (ui.command == 17 && !ui.top_item && !cmd.pressed && !dxf_mode
         && y >= 0 && y <= 15 && x / 8 + 1 >= 9 && x / 8 + 1 <= 31) {
         cmd.hen_dbl = 0;
+        cmd.hen_env = 0;
         mouse_x = x;
         mouse_y = y;
         sync_ui();

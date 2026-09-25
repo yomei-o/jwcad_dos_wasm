@@ -447,6 +447,10 @@ typedef struct {
     int hen_dbl;
     int hen_dbl_cap;
     int hen_dbl_edit;
+    int hen_env;
+    int hen_env_all;
+    int hen_env_did;
+    int hen_env_msg;
     double hen_dbl_gap;
     int dim_lot;
     int dim_arc_two;

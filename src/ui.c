@@ -4769,6 +4769,35 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
         }
+    /* 変形 ②包絡処理変形 の行。始点を待つあいだは `①【実線のみ】` の
+     * 切り替えと `[BS]前項`、終点を待つあいだは `ﾏｳｽ(L)` で包絡、
+     * `ﾏｳｽ(R)` で範囲内消去 です（測定）。 */
+    if (s->command == 17 && s->hen_env && !s->top_item) {
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        if (!s->stage) {
+            char one[120];
+
+            if (s->hen_env_did) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            }
+
+            sprintf(one, "%s%s%s", "\x95\xef\x97\x8d\x94\xcd\x88\xcd  \x81@\x8en\x93_\x8ew\x8e\xa6 |\x87@\x81y", s->hen_env_all ? "\x91S \x90\xfc \x8e\xed" : "\x8e\xc0\x90\xfc\x82\xcc\x82\xdd", "\x81z|(\x93\xaf\x88\xea\x90\xfc\x90" "F\x81" "E\x90\xfc\x8e\xed\x82\xf0\x95\xef\x97\x8d)");
+            jw_ui_text(v, 8, 1, 7, 0, one);
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+            if (s->hen_env_msg) {
+                jw_ui_text(v, 20, 2, 7, 0, "\x07" "\x90\xfc\x90\x94\x82\xcd\x82T\x82O\x82\xdc\x82\xc5\x82\xc5\x82\xb7");
+            }
+        } else {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+            jw_ui_text(v, 8, 1, 7, 0, "\x95\xef\x97\x8d\x94\xcd\x88\xcd  \x81@");
+            jw_ui_text(v, 20, 1, 7, 0, "\x8fI\x93_\x8ew\x8e\xa6 ");
+            jw_ui_text(v, 29, 1, 7, 0, "\xcf\xb3\xbd(L) ");
+            jw_ui_text(v, 38, 1, 7, 0, "\x94\xcd\x88\xcd\x93\xe0");
+            jw_ui_text(v, 44, 1, 7, 0, "\x8f\xc1\x8b\x8e ");
+            jw_ui_text(v, 49, 1, 7, 0, "\xcf\xb3\xbd(R) ");
+        }
+    }
     /* 変形 ③複線化 を選んだところ。命令の行のかわりに自分の行が出ます。 */
     if (s->command == 17 && s->hen_dbl && !s->stage && !s->top_item) {
         fill(v, 0, 0, 639, 15, 0);

@@ -6167,6 +6167,123 @@ static void meet_at(double p0x, double p0y, double p1x, double p1y,
     }
 }
 
+/* 変形 ②包絡処理変形 の **範囲内消去**（終点を右ボタンで押したとき）。
+ *
+ * 枠の中を切り取ります。丸ごと入っている線は消え、またいでいる線は
+ * 枠の線ちょうどで切られ、**外に出ているぶんだけ**が新しい記録として
+ * 後ろに並びます。測定：TEST8 の壁四本
+ * （y=240・y=260 が x 150..550、x=340・x=360 が y 120..380）を
+ * (300,200)-(400,300) で切ると、線ごとに手前側・向こう側の順に八本。
+ * 線種・ペン・レイヤと残りのバイトは元のものをそのまま継ぎます。 */
+static int env_cut(JwCmd *c, Jwc *d)
+{
+    const long n0 = d->n_lines;
+    long k, picked = 0;
+    int changed = 0;
+
+    /* **枠にかかる線は五十本まで**です。越えると原作は行 2 の桁 20 に
+     * `.線数は５０までです` と出して、何もしません（測定：五十本ちょうどは
+     * 切れて百本になり、五十一本はそのまま残りました）。数えるのは
+     * ①【実線のみ】で触らない線種も込みです。 */
+    for (k = 0; k < n0; k++) {
+        const JwcLine *l = &d->lines[k];
+        double ax = l->x0, ay = l->y0, bx = l->x1, by = l->y1;
+
+        if (!in_reach_layer(d, l->layer)) {
+            continue;
+        }
+        if (!clip_to_range(c, &ax, &ay, &bx, &by)) {
+            continue;
+        }
+        if (ax == bx && ay == by) {
+            continue;
+        }
+        picked++;
+    }
+    if (picked > 50) {
+        return -1;
+    }
+    /* 触ったものの印（rest[2] の bit 1）。まず全部落としてから、
+     * 枠にかかったものに立てます（測定：SAMPLE0 では枠の外の線の
+     * 0x03 が 0x01 に、0x02 が 0x00 に落ちていました）。 */
+    for (k = 0; k < n0; k++) {
+        d->lines[k].rest[2] &= (unsigned char)~2u;
+    }
+    for (k = 0; k < n0; k++) {
+        JwcLine *l = &d->lines[k];
+        double ax = l->x0, ay = l->y0, bx = l->x1, by = l->y1;
+
+        if (!in_reach_layer(d, l->layer)) {
+            continue;
+        }
+        if (!clip_to_range(c, &ax, &ay, &bx, &by)) {
+            continue;
+        }
+        if (ax == bx && ay == by) {
+            continue;
+        }
+        l->rest[2] |= 2u;
+    }
+    for (k = 0; k < n0; k++) {
+        const JwcLine *l = &d->lines[k];
+        double ax = l->x0, ay = l->y0, bx = l->x1, by = l->y1;
+        const double ox = ax, oy = ay, px = bx, py = by;
+        const unsigned char ty = l->type, pn = l->pen, la = l->layer;
+        const unsigned char r1 = l->rest[1], r2 = l->rest[2], r3 = l->rest[3];
+
+        if (!in_reach_layer(d, l->layer)) {
+            continue;
+        }
+        if (!c->hen_env_all && l->type != 1) {
+            continue;       /* ①【実線のみ】——実線しか触りません */
+        }
+        if (!clip_to_range(c, &ax, &ay, &bx, &by)) {
+            continue;
+        }
+        if (ax == bx && ay == by) {
+            continue;           /* 角を掠めただけ */
+        }
+        if (ox != ax || oy != ay) {
+            if (jwc_add_line(d, (float)ox, (float)oy, (float)ax, (float)ay,
+                             ty, pn, la)) {
+                d->lines[d->n_lines - 1].rest[1] = r1;
+                d->lines[d->n_lines - 1].rest[2] = r2;
+                d->lines[d->n_lines - 1].rest[3] = r3;
+            }
+        }
+        if (px != bx || py != by) {
+            if (jwc_add_line(d, (float)bx, (float)by, (float)px, (float)py,
+                             ty, pn, la)) {
+                d->lines[d->n_lines - 1].rest[1] = r1;
+                d->lines[d->n_lines - 1].rest[2] = r2;
+                d->lines[d->n_lines - 1].rest[3] = r3;
+            }
+        }
+    }
+    /* 同じ問いをもう一度立てて、元の記録を後ろから外します（足したぶんは
+     * n0 より後ろなので番号は動いていません）。 */
+    for (k = n0 - 1; k >= 0; k--) {
+        const JwcLine *l = &d->lines[k];
+        double ax = l->x0, ay = l->y0, bx = l->x1, by = l->y1;
+
+        if (!in_reach_layer(d, l->layer)) {
+            continue;
+        }
+        if (!c->hen_env_all && l->type != 1) {
+            continue;       /* ①【実線のみ】——実線しか触りません */
+        }
+        if (!clip_to_range(c, &ax, &ay, &bx, &by)) {
+            continue;
+        }
+        if (ax == bx && ay == by) {
+            continue;
+        }
+        jwc_remove_line(d, k);
+        changed = 1;
+    }
+    return changed;
+}
+
 /* 変形 ③複線化 —— 範囲に丸ごと入っている線を一本の折れ線につなぎ、その
  * 両側に 間隔 ぶん離した輪郭を入れます。
  *
@@ -10876,6 +10993,33 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
          * the same but for the word in front (src/copy.h).  Where it differs
          * is after 範囲確定: 消去 asks ①実行, 複写 asks **how** to copy. */
         jw_cmd_at(w, sx, sy, &x, &y);
+        /* 変形 ②包絡処理変形 の二押し。始点はどちらのボタンでも取れ、
+         * 終点は左で包絡、**右で範囲内消去** です。取るのは free で、
+         * 行にも (L)free (R)Read とは出ません。 */
+        if (c->command == 17 && c->hen_env) {
+            c->hen_env_msg = 0;
+            if (!c->pressed) {
+                c->x0 = x;
+                c->y0 = y;
+                c->pressed = 1;
+                c->stage = 1;
+                return 0;
+            }
+            c->x1 = x;
+            c->y1 = y;
+            if (right) {
+                const int got = env_cut(c, d);
+
+                if (got < 0) {
+                    c->hen_env_msg = 1;
+                } else if (got) {
+                    c->hen_env_did = 1;
+                }
+            }
+            c->pressed = 0;
+            c->stage = 0;
+            return 1;
+        }
         if (JW_MOVE_CMD(c->command) && c->stage == 7) {
             /* 前回と同じ ﾏｳｽ(R): copy at the distance it remembers. */
             if (!right) {

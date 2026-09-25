@@ -121,7 +121,11 @@ typedef struct {
     int hen_dbl;                /* 1 = ③複線化 の道 */
     int hen_dbl_cap;            /* ④留線【有】 */
     double hen_dbl_gap;         /* ③間隔（紙のミリ） */
-    long hen_dbl_from;          /* 入れた線の先頭 */
+    long hen_dbl_from;          /* 入れた線の先頭 */    int hen_env;                /* 1 = ②包絡処理変形 の道 */
+    int hen_env_all;            /* ①【全 線 種】（既定は【実線のみ】） */
+    int hen_env_did;            /* 一度でも包絡・消去した（行に [ESC]） */
+    int hen_env_msg;            /* `.線数は５０までです` を出している */
+
     unsigned char *hen_end;
     /* [ESC] has thrown the point away and the command is asking for it again.
      * The line it wrote over is still there, so the chrome replays the stage
