@@ -3900,6 +3900,44 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     fill(v, x, 7, x + 7, 15, 4);
                 }
             }
+            /* 曲線 ②２次曲線 の道（①ｻｲﾝ曲線 と同じ骨組み）。 */
+            if (s->command == 23 && s->sine == 3 && i == s->stage
+                && i >= 40 && i <= 45) {
+                char one[80];
+
+                if (i == 40) {
+                    if (s->sine_did) {
+                        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    }
+                    jw_ui_text(v, 8, 1, 7, 0, "\x82Q\x8e\x9f\x8b\xc8\x90\xfc  \x81\x9e\x8a\xee\x8f\x80\x90\xfc\x81@\x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
+                    jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                } else if (i <= 44) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    jw_ui_text(v, 8, 1, 7, 0,
+                               i == 41 ? "\x82Q\x8e\x9f\x8b\xc8\x90\xfc\x82\xcc\x8d\xc0\x95W\x8c\xb4\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read " : i == 42 ? "\x82Q\x8e\x9f\x8b\xc8\x90\xfc\x82\xcc\x92\xca\x89\xdf\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read "
+                               : i == 43 ? "\x82Q\x8e\x9f\x8b\xc8\x90\xfc\x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read " : "\x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
+                } else {
+                    int n, x;
+
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    jw_ui_text(v, 8, 1, 7, 0, "\x95\xaa\x8a\x84 \x92\xb7\x82\xb3 =");
+                    jw_ui_text(v, 44, 1, 7, 0, "\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) ");
+                    sprintf(one, "[%9.*fmm]", s->dec_drawing, s->sine_div);
+                    jw_ui_text(v, 62, 1, 7, 0, one);
+                    jw_ui_text(v, 20, 1, 7, 0, "        ");
+                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                        char two[4];
+
+                        two[0] = s->typed[n];
+                        two[1] = two[2] = ' ';
+                        two[3] = 0;
+                        jw_ui_text(v, 20 + n, 1, 7, 0, two);
+                    }
+                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    x = (19 + n) * 8;
+                    fill(v, x, 7, x + 7, 15, 4);
+                }
+            }
             /* 曲線 ①ｻｲﾝ曲線 の道。 */
             if (s->command == 23 && s->sine == 2 && i == 20
                 && s->stage == 20) {

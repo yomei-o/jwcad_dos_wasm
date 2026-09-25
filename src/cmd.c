@@ -3474,6 +3474,13 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
             c->stage = 35;
             return 1;
         }
+        if (!c->poly && !c->sine && !c->spl && item == 2) {
+            /* ②２次曲線: 基準線 → 座標原点 → 通過点 → 始点 → 終点 →
+             * 分割 長さ。ｻｲﾝ曲線 と同じ骨組みです。 */
+            c->sine = 3;
+            c->stage = 40;
+            return 1;
+        }
         if (!c->poly && !c->sine && item == 8) {
             /* ⑧解除: 曲線のつながりをほどきます。 */
             c->sine = 2;
@@ -4432,6 +4439,33 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (key >= '0' && key <= '9' && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if (c->command == 23 && c->sine == 3 && c->stage == 45) {
+        /* ②２次曲線 の 分割 長さ。 */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                c->sine_div = atof(c->typed);
+            }
+            c->typing = 0;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            sine_draw(c, d);
+            c->stage = 40;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -6519,28 +6553,36 @@ static void sine_draw(JwCmd *c, Jwc *d)
     double len2 = s2 < 0.0 ? -s2 : s2;
     int n1, n2, i, first = -1, last = -1;
 
-    if (cyc <= 0.0 || c->sine_div <= 0.0) {
+    if (c->sine_div <= 0.0 || (c->sine != 3 && cyc <= 0.0)) {
         return;
     }
     if (s1 * s2 < 0.0) {
         /* **座標原点が始点と終点のあいだにある**ふつうの形。刻みは
-         * 後半（原点→終点）から決まり、前半はその刻みに合わせて
-         * 割ります——だから同じ前半でも後半の長さで本数が変わります。 */
-        n2 = (int)(len2 * sc / c->sine_div);
-        if ((double)n2 * c->sine_div / sc < len2 - 1e-9) {
-            n2++;
+         * **長いほうの腕**から決まり、短いほうはその刻みに合わせて
+         * 割ります——だから同じ腕でも相手の長さで本数が変わります。
+         * （②２次曲線 で始点の側が長い例を測って分かりました。ｻｲﾝ曲線で
+         * 測った十通りは、たまたま終点の側が長いものばかりでした。） */
+        const double big = len1 > len2 ? len1 : len2;
+        const double small = len1 > len2 ? len2 : len1;
+        int nb, ns;
+
+        nb = (int)(big * sc / c->sine_div);
+        if ((double)nb * c->sine_div / sc < big - 1e-9) {
+            nb++;
         }
-        if (n2 < 2) {
-            n2 = 2;
+        if (nb < 2) {
+            nb = 2;
         }
-        step = len2 / n2;
-        n1 = (int)(len1 / step);
-        if ((double)n1 * step < len1 - 1e-9) {
-            n1++;
+        step = big / nb;
+        ns = (int)(small / step);
+        if ((double)ns * step < small - 1e-9) {
+            ns++;
         }
-        if (n1 < 1) {
-            n1 = 1;
+        if (ns < 1) {
+            ns = 1;
         }
+        n1 = len1 > len2 ? nb : ns;
+        n2 = len1 > len2 ? ns : nb;
     } else {
         /* **原点が範囲の外**（始点と終点が同じ側、または片方が原点）。
          * こちらは始点から終点まで一様に割り、本数は
@@ -6583,10 +6625,19 @@ static void sine_draw(JwCmd *c, Jwc *d)
             sa = lo + (hi - lo) * (double)i / n2;
             sb = lo + (hi - lo) * (double)(i + 1) / n2;
         }
-        ax = c->sine_ox + sa * ux + amp * sin(tau * sa / cyc) * nx;
-        ay = c->sine_oy + sa * uy + amp * sin(tau * sa / cyc) * ny;
-        bx = c->sine_ox + sb * ux + amp * sin(tau * sb / cyc) * nx;
-        by = c->sine_oy + sb * uy + amp * sin(tau * sb / cyc) * ny;
+        {
+            /* ②２次曲線 は `y = a x^2`、①ｻｲﾝ曲線 は正弦。道も刻みも
+             * 同じなので、ここだけ分けています。 */
+            const double fa = c->sine == 3 ? c->sine_qa * sa * sa
+                                           : amp * sin(tau * sa / cyc);
+            const double fb = c->sine == 3 ? c->sine_qa * sb * sb
+                                           : amp * sin(tau * sb / cyc);
+
+            ax = c->sine_ox + sa * ux + fa * nx;
+            ay = c->sine_oy + sa * uy + fa * ny;
+            bx = c->sine_ox + sb * ux + fb * nx;
+            by = c->sine_oy + sb * uy + fb * ny;
+        }
         if (ay < -100.0 || ay > 600.0 || by < -100.0 || by > 600.0) {
             continue;
         }
@@ -7892,6 +7943,85 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->spl_y[c->spl_n] = y;
         c->spl_n++;
         c->stage = 30 + (c->spl_n > 3 ? 3 : c->spl_n);
+        return 1;
+    }
+    if (c->command == 23 && c->sine == 3 && c->stage >= 40
+        && c->stage <= 45) {
+        if (c->stage == 40) {
+            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const JwcLine *l;
+            double ex, ey, ll;
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            l = &d->lines[k];
+            ex = l->x1 - l->x0;
+            ey = l->y1 - l->y0;
+            ll = sqrt(ex * ex + ey * ey);
+            if (ll <= 0.0) {
+                return 0;
+            }
+            c->sine_ux = ex / ll;
+            c->sine_uy = ey / ll;
+            c->stage = 41;
+            return 1;
+        }
+        if (c->stage == 45) {
+            if (!right) {
+                return 0;
+            }
+            c->typing = 0;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            sine_draw(c, d);
+            c->stage = 40;
+            return 1;
+        }
+        if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        if (c->stage == 41) {
+            c->sine_ox = x;
+            c->sine_oy = y;
+            c->stage = 42;
+            return 1;
+        }
+        if (c->stage == 42) {
+            /* 通過点。基準線の枠で `(px, py)` に直して `a = py / px^2`。
+             * **軸の上（py が 0）だと決まらないので訊き直します**
+             * （測定：行がもう一度 通過点 に戻りました）。 */
+            const double px2 = (x - c->sine_ox) * c->sine_ux
+                             + (y - c->sine_oy) * c->sine_uy;
+            const double py2 = (x - c->sine_ox) * -c->sine_uy
+                             + (y - c->sine_oy) * c->sine_ux;
+
+            if (px2 > -1e-9 && px2 < 1e-9) {
+                return 1;
+            }
+            if (py2 > -1e-9 && py2 < 1e-9) {
+                return 1;
+            }
+            c->sine_qa = py2 / (px2 * px2);
+            c->stage = 43;
+            return 1;
+        }
+        if (c->stage == 43) {
+            c->sine_ax = x;
+            c->sine_ay = y;
+            c->stage = 44;
+            return 1;
+        }
+        c->sine_bx = x;
+        c->sine_by = y;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        c->stage = 45;
         return 1;
     }
     if (c->command == 23 && c->sine == 2 && c->stage == 20) {

@@ -196,7 +196,8 @@ typedef struct {
      * corner is rounded there.  See jw_cmd_press and RESUME 4.20b. */
     /* 曲線 ①ｻｲﾝ曲線。段 10 基準線、11 座標原点、12 1ｻｲｸﾙの長さ、
      * 13 振幅、14 始点、15 終点、16 分割 長さ。値は紙のミリ。 */
-    int sine;
+    int sine;                   /* 1=ｻｲﾝ曲線、2=⑧解除、3=２次曲線 */
+    double sine_qa;             /* ②２次曲線 の y = a x^2 */
     double sine_ux, sine_uy;    /* 基準線の向き */
     double sine_ox, sine_oy;    /* 座標原点 */
     double sine_ax, sine_ay;    /* 始点 */
