@@ -3859,7 +3859,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     || s->stage == 22 || s->stage == 23
                     || s->stage == 24 || s->stage == 25
                     || s->stage == 26 || s->stage == 27 || s->stage == 28
-                    || s->stage == 29 || s->stage == 31)) {
+                    || s->stage == 29 || s->stage == 31
+                    || s->stage == 32 || s->stage == 33
+                    || s->stage == 34 || s->stage == 35
+                    || (s->stage >= 36 && s->stage <= 43))) {
                 char one[80];
 
                 if (i == 30) {
@@ -3894,6 +3897,78 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
                     }
                 } else if (i == 26) {
+                    int n, x;
+
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    jw_ui_text(v, 8, 1, 7, 0, "\x95\xcf\x8dX\x94\xbc\x8c" "a=");
+                    sprintf(one, "[%10.*f mm]", s->dec_drawing, s->tan_r);
+                    jw_ui_text(v, 50, 1, 7, 0, one);
+                    jw_ui_text(v, 17, 1, 7, 0, "        ");
+                    x = 16 * 8;
+                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                        char two[4];
+
+                        two[0] = s->typed[n];
+                        two[1] = two[2] = ' ';
+                        two[3] = 0;
+                        jw_ui_text(v, 17 + n, 1, 7, 0, two);
+                    }
+                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    x += n * 8;
+                    fill(v, x, 7, x + 7, 15, 4);
+                } else if (i == 36 || i == 37 || i == 40 || i == 41) {
+                    /* ③１円１点 は 円 → 点、①１線１円 は 線 → 円。 */
+                    if (s->tan_did || i == 37 || i == 41) {
+                        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    }
+                    sprintf(one, "%s%8.*f|",
+                            i == 36 ? "\x82P\x89~  \x83}\x83" "E\x83X\x8ew\x8e\xa6   |\x87@\x90\xda\x89~\x94\xbc\x8c" "a=" : i == 37 ? "\x82P\x93_ \x8ew\x8e\xa6 (L)free (R)Read   |\x87@\x90\xda\x89~\x94\xbc\x8c" "a="
+                            : i == 40 ? "\x82P\x90\xfc  \x83}\x83" "E\x83X\x8ew\x8e\xa6   |\x87@\x90\xda\x89~\x94\xbc\x8c" "a=" : "\x82P\x89~  \x83}\x83" "E\x83X\x8ew\x8e\xa6   |\x87@\x90\xda\x89~\x94\xbc\x8c" "a=",
+                            s->dec_drawing, s->tan_r);
+                    jw_ui_text(v, 8, 1, 7, 0, one);
+                    if (i == 36 || i == 40) {
+                        jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                    }
+                } else if (i == 38 || i == 42) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    sprintf(one, "\x90\xda\x89~\x91I\x91\xf0\x81\x81\x83}\x83" "E\x83X\x88\xda\x93\xae\x81@\x81@ \x81@\x8am\x92\xe8\x81\x81\x83N\x83\x8a\x83" "b\x83N\x81@\x81@\x81i\x90\xda\x89~\x90\x94%d\x81j", s->tan_cn);
+                    jw_ui_text(v, 8, 1, 7, 0, one);
+                } else if (i == 39 || i == 43) {
+                    int n, x;
+
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    jw_ui_text(v, 8, 1, 7, 0, "\x95\xcf\x8dX\x94\xbc\x8c" "a=");
+                    sprintf(one, "[%10.*f mm]", s->dec_drawing, s->tan_r);
+                    jw_ui_text(v, 50, 1, 7, 0, one);
+                    jw_ui_text(v, 17, 1, 7, 0, "        ");
+                    x = 16 * 8;
+                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                        char two[4];
+
+                        two[0] = s->typed[n];
+                        two[1] = two[2] = ' ';
+                        two[3] = 0;
+                        jw_ui_text(v, 17 + n, 1, 7, 0, two);
+                    }
+                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    x += n * 8;
+                    fill(v, x, 7, x + 7, 15, 4);
+                } else if (i == 32 || i == 33) {
+                    /* ②１点１線。二つめの段の [ESC]/[BS] は ④２線 と同じ。 */
+                    if (s->tan_did || i == 33) {
+                        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    }
+                    sprintf(one, "%s%8.*f|", i == 32 ? "\x82P\x93_ \x8ew\x8e\xa6 (L)free (R)Read   |\x87@\x90\xda\x89~\x94\xbc\x8c" "a=" : "\x82P\x90\xfc  \x83}\x83" "E\x83X\x8ew\x8e\xa6   |\x87@\x90\xda\x89~\x94\xbc\x8c" "a=",
+                            s->dec_drawing, s->tan_r);
+                    jw_ui_text(v, 8, 1, 7, 0, one);
+                    if (i == 32) {
+                        jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                    }
+                } else if (i == 34) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    sprintf(one, "\x90\xda\x89~\x91I\x91\xf0\x81\x81\x83}\x83" "E\x83X\x88\xda\x93\xae\x81@\x81@ \x81@\x8am\x92\xe8\x81\x81\x83N\x83\x8a\x83" "b\x83N\x81@\x81@\x81i\x90\xda\x89~\x90\x94%d\x81j", s->tan_cn);
+                    jw_ui_text(v, 8, 1, 7, 0, one);
+                } else if (i == 35) {
                     int n, x;
 
                     jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");

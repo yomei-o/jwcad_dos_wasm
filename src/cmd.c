@@ -352,7 +352,9 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
      * 押しのあとだけ 28 画素の差）。 */
     /* 円線接 ②接円 の選びかけ: 候補のうち **円周が矢の先にいちばん近い
      * もの** を色 2 で描きます（測定：選ぶところで赤が 526 画素）。 */
-    if (c->command == 26 && (c->stage == 22 || c->stage == 29)
+    if (c->command == 26
+        && (c->stage == 22 || c->stage == 29 || c->stage == 34
+            || c->stage == 38 || c->stage == 42)
         && c->tan_cn > 0 && d) {
         JwcArc a;
         double px, py, away = 0.0;
@@ -386,8 +388,22 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
             const double cx = (a.cx - w->ox) * w->scale + w->ax;
             const double cy = w->ay - (a.cy - w->oy) * w->scale;
             const double rr = a.r * w->scale;
-            jw_arc_poly(v, cx, cy, rr, 10000, 0L, 0L, 0L, 2u, 0x18,
-                        jw_view_line_style(a.type));
+            /* **jw_view_arc と同じ分かれ道**。十画素より小さくて
+             * 作図領域に丸ごと収まる真円は画素ルーチンで描かれます
+             * ——折れ線で描くと ①１線１円 を既定の半径（8.72 単位）
+             * で選ぶところが 52 画素ずれました。jw_view_arc 自身は
+             * 置き換えで描くので、ここは呼ばずに書き写しています。 */
+            const int rx = (int)rr;
+
+            if (rx < 10
+                && cx - rr >= v->clip_x0 && cx + rr <= v->clip_x1
+                && cy - rr >= v->clip_y0 && cy + rr <= v->clip_y1) {
+                jw_arc(v, cx, cy, rr, 0.0, 360.0, 2u, 0x18,
+                       jw_view_line_style(a.type));
+            } else {
+                jw_arc_poly(v, cx, cy, rr, 10000, 0L, 0L, 0L, 2u, 0x18,
+                            jw_view_line_style(a.type));
+            }
         }
         return;
     }
@@ -3129,6 +3145,24 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
             c->stage = 30;
             return 1;
         }
+        if (c->tan_on && c->stage == 30 && item == 1) {
+            /* ①１線１円: 線と円に接する、決めた半径の円。 */
+            c->tan_circ = 1;
+            c->stage = 40;
+            return 1;
+        }
+        if (c->tan_on && c->stage == 30 && item == 3) {
+            /* ③１円１点: 円に接し、点を通る、決めた半径の円。 */
+            c->tan_circ = 3;
+            c->stage = 36;
+            return 1;
+        }
+        if (c->tan_on && c->stage == 30 && item == 2) {
+            /* ②１点１線: 点を通り、線に接する、決めた半径の円。 */
+            c->tan_circ = 2;
+            c->stage = 32;
+            return 1;
+        }
         if (c->tan_on && c->stage == 30 && item == 5) {
             /* ⑤２円: 二つの円に接する、決めた半径の円。 */
             c->tan_circ = 5;
@@ -3145,6 +3179,30 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
             /* ⑥２点: 二点を通る、決めた半径の円。 */
             c->tan_circ = 6;
             c->stage = 20;
+            return 1;
+        }
+        if (c->tan_on && c->tan_circ == 3
+            && (c->stage == 36 || c->stage == 37) && item == 1) {
+            c->typing = 1;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 39;
+            return 1;
+        }
+        if (c->tan_on && c->tan_circ == 1
+            && (c->stage == 40 || c->stage == 41) && item == 1) {
+            c->typing = 1;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 43;
+            return 1;
+        }
+        if (c->tan_on && c->tan_circ == 2
+            && (c->stage == 32 || c->stage == 33) && item == 1) {
+            c->typing = 1;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 35;
             return 1;
         }
         if (c->tan_on && c->tan_circ == 5
@@ -4008,6 +4066,61 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typing = 0;
             c->typed[0] = 0;
             c->typed_n = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if (c->command == 26 && c->tan_on
+        && (c->stage == 39 || c->stage == 43)) {
+        /* ③１円１点・①１線１円 の ①接円半径 の欄。 */
+        const int back = c->stage == 39 ? 36 : 40;
+
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                c->tan_r = atof(c->typed);
+            }
+            c->typing = 0;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = back;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if (c->command == 26 && c->tan_on && c->stage == 35) {
+        /* ②１点１線 の ①接円半径 の欄（戻る段だけ違います）。 */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                c->tan_r = atof(c->typed);
+            }
+            c->typing = 0;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 32;
             return 1;
         }
         if (key == 8) {
@@ -7020,6 +7133,318 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->pressed = 1;
             c->stage = 1;
             return 1;
+        }
+        if ((c->tan_circ == 3 && c->stage >= 36 && c->stage <= 38)
+            || (c->tan_circ == 1 && c->stage >= 40 && c->stage <= 42)) {
+            /* ③１円１点 は 円 → 点、①１線１円 は 線 → 円。どちらも
+             * `接円選択` で選びます。
+             *
+             * 測定（TEST1 から作った TEST8、円は (129,343) r=30 と
+             * (329,343) r=50、半径 20000mm ＝ 174.411 単位）:
+             *
+             * * ③１円１点: １円 を画面 (280,120)、１点 を (500,120)
+             *   ＝ 図の (379,343)、選ぶ矢の先 (350,300) で
+             *   `arc c=(234.871,244.787) r=174.411 … 01 02 04 00 00 15`。
+             *   |C−A| = 174.411−30、|C−P| = 174.411 で `（接円数4）`。
+             *   **記録の最後のバイトは 0x15**。
+             * * ①１線１円: １線 を (286,300)（図の x=165 の縦線）、
+             *   １円 を (280,120)、選ぶ矢の先 (350,300) で
+             *   `arc c=(-9.411,192.580) r=174.411 … 01 02 04 00 00 70`。
+             *   線から半径ぶん離れた側 x=−9.411 の上で、|C−A| = 174.411+30。
+             *   もう一方の側 x=339.411 は円から遠すぎて交わらないので
+             *   `（接円数4）`。**記録の最後のバイトは 0x70**。 */
+            const int sel = c->tan_circ == 3 ? 38 : 42;
+            const int top = c->tan_circ == 3 ? 36 : 40;
+            double px, py;
+
+            if (c->stage == sel) {
+                jw_cmd_at(w, sx, sy, &px, &py);
+                if (c->tan_cn > 0) {
+                    int best = 0, i;
+                    double away = 0.0;
+
+                    for (i = 0; i < c->tan_cn; i++) {
+                        const double dx = px - c->tan_ccx[i];
+                        const double dy = py - c->tan_ccy[i];
+                        const double how = sqrt(dx * dx + dy * dy)
+                                         - c->tan_cr;
+                        const double far = how < 0.0 ? -how : how;
+
+                        if (!i || far < away) {
+                            away = far;
+                            best = i;
+                        }
+                    }
+                    if (jwc_add_arc_at(d, (float)c->tan_ccx[best],
+                                       (float)c->tan_ccy[best],
+                                       (float)c->tan_cr, 0L, 0L,
+                                       (unsigned char)d->line_type,
+                                       (unsigned char)d->pen,
+                                       (unsigned char)((0 << 4)
+                                           | (d->write_layer & 15)),
+                                       (unsigned char)(c->tan_circ == 3
+                                                       ? 0x15 : 0x70))) {
+                        c->tan_did = 1;
+                    }
+                }
+                c->tan_cn = 0;
+                c->stage = top;
+                return 1;
+            }
+            if (c->stage == top) {
+                /* ③ は円、① は線。 */
+                const long k = c->tan_circ == 3
+                             ? jw_cmd_arc_at(d, w, sx, sy)
+                             : jw_cmd_line_at(d, w, sx, sy);
+
+                if (k < 0) {
+                    c->tan_miss = c->tan_circ == 3
+                                && jw_cmd_line_at(d, w, sx, sy) >= 0 ? 1 : 0;
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                c->tan_la = k;
+                c->stage = top + 1;
+                return 1;
+            }
+            {
+                const double r = c->tan_r / (jwc_zukei_scale(d) > 0.0
+                                             ? jwc_zukei_scale(d) : 1.0);
+
+                c->tan_cn = 0;
+                c->tan_cr = r;
+                if (c->tan_circ == 3) {
+                    /* 二つめは点（(L)free / (R)Read）。 */
+                    const JwcArc *a = &d->arcs[c->tan_la];
+                    double span, ux, uy;
+                    int s1;
+
+                    if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                        c->missed = 1;
+                        return 0;
+                    }
+                    c->missed = 0;
+                    ux = x - a->cx;
+                    uy = y - a->cy;
+                    span = sqrt(ux * ux + uy * uy);
+                    if (span > 1e-9) {
+                        ux /= span;
+                        uy /= span;
+                        for (s1 = -1; s1 <= 1; s1 += 2) {
+                            const double d1 = r + s1 * (double)a->r;
+                            const double mid = (d1 * d1 - r * r
+                                                + span * span) / (2.0 * span);
+                            const double h2 = d1 * d1 - mid * mid;
+                            double hh, fx, fy;
+
+                            if (d1 < 0.0 || h2 < 0.0) {
+                                continue;
+                            }
+                            hh = sqrt(h2);
+                            fx = a->cx + mid * ux;
+                            fy = a->cy + mid * uy;
+                            /* 矢の先が二つから同じだけ離れていると
+                             * 先のほうが取られるので、順が見えます
+                             * （測定：点を円の中心と同じ高さで押すと
+                             * 二つが同距離になりました）。 */
+                            c->tan_ccx[c->tan_cn] = fx - hh * uy;
+                            c->tan_ccy[c->tan_cn] = fy + hh * ux;
+                            c->tan_cn++;
+                            c->tan_ccx[c->tan_cn] = fx + hh * uy;
+                            c->tan_ccy[c->tan_cn] = fy - hh * ux;
+                            c->tan_cn++;
+                        }
+                    }
+                } else {
+                    /* 二つめは円。一つめの線から半径ぶん離れた両側の
+                     * 平行線の上で、円の中心からの距離が `r ± 円の半径`。 */
+                    const JwcLine *l = &d->lines[c->tan_la];
+                    const long k = jw_cmd_arc_at(d, w, sx, sy);
+                    const double adx = l->x1 - l->x0, ady = l->y1 - l->y0;
+                    const double alen = sqrt(adx * adx + ady * ady);
+                    double nx, ny, ux, uy, c0;
+                    int s1, s2;
+
+                    if (k < 0) {
+                        c->tan_miss = jw_cmd_line_at(d, w, sx, sy) >= 0
+                                    ? 1 : 0;
+                        c->missed = 1;
+                        return 0;
+                    }
+                    c->missed = 0;
+                    if (alen <= 0.0) {
+                        c->tan_miss = 2;
+                        c->missed = 1;
+                        c->stage = top;
+                        return 1;
+                    }
+                    nx = -ady / alen;
+                    ny = adx / alen;
+                    ux = adx / alen;
+                    uy = ady / alen;
+                    c0 = nx * l->x0 + ny * l->y0;
+                    for (s1 = -1; s1 <= 1; s1 += 2) {
+                        const JwcArc *a = &d->arcs[k];
+                        const double off = c0 + s1 * r
+                                         - (nx * a->cx + ny * a->cy);
+
+                        for (s2 = -1; s2 <= 1; s2 += 2) {
+                            const double d1 = r + s2 * (double)a->r;
+                            const double t2 = d1 * d1 - off * off;
+                            double tt, fx, fy;
+
+                            if (d1 < 0.0 || t2 < 0.0) {
+                                continue;
+                            }
+                            tt = sqrt(t2);
+                            fx = a->cx + off * nx;
+                            fy = a->cy + off * ny;
+                            /* 同距離のときは **線の向きの正の側**が
+                             * 先（測定：①１線１円 を既定の半径で
+                             * 選ぶところ、原作は (156.28,315.52) を
+                             * 出しました）。 */
+                            c->tan_ccx[c->tan_cn] = fx + tt * ux;
+                            c->tan_ccy[c->tan_cn] = fy + tt * uy;
+                            c->tan_cn++;
+                            c->tan_ccx[c->tan_cn] = fx - tt * ux;
+                            c->tan_ccy[c->tan_cn] = fy - tt * uy;
+                            c->tan_cn++;
+                        }
+                    }
+                }
+                if (c->tan_cn <= 0) {
+                    c->tan_miss = 2;            /* `データが不適当` */
+                    c->missed = 1;
+                    c->stage = top;
+                    return 1;
+                }
+                c->stage = sel;
+                return 1;
+            }
+        }
+        if (c->tan_circ == 2
+            && (c->stage == 32 || c->stage == 33 || c->stage == 34)) {
+            /* ②１点１線: 点を通り、線に接する、決めた半径の円。
+             * 中心は線から半径ぶん離れた**両側の**平行線の上にあり、
+             * それぞれを点を中心とする半径の円と交えます。成り立つ交点
+             * だけが候補です。
+             *
+             * 測定（SAMPLE0、半径 1000mm ＝ 1744.108 単位。１点 を画面
+             * (600,450) ＝ 図の (479,13)、１線 は上の枠線 y=323.057）:
+             * `arc c=(-513.679,-1421.051) r=1744.108 … 01 02 00 00 00 00`
+             * ——`（接円数2）`。上側の平行線 y=2067.165 は点から遠すぎて
+             * 交わらないので、下側の二つだけです。
+             * **記録の最後のバイトは 0x00**（⑥２点 0x24、④２線 0x2c、
+             * ⑤２円 0x22）。 */
+            double px, py;
+
+            if (c->stage == 34) {
+                jw_cmd_at(w, sx, sy, &px, &py);
+                if (c->tan_cn > 0) {
+                    int best = 0, i;
+                    double away = 0.0;
+
+                    for (i = 0; i < c->tan_cn; i++) {
+                        const double dx = px - c->tan_ccx[i];
+                        const double dy = py - c->tan_ccy[i];
+                        const double how = sqrt(dx * dx + dy * dy)
+                                         - c->tan_cr;
+                        const double far = how < 0.0 ? -how : how;
+
+                        if (!i || far < away) {
+                            away = far;
+                            best = i;
+                        }
+                    }
+                    if (jwc_add_arc_at(d, (float)c->tan_ccx[best],
+                                       (float)c->tan_ccy[best],
+                                       (float)c->tan_cr, 0L, 0L,
+                                       (unsigned char)d->line_type,
+                                       (unsigned char)d->pen,
+                                       (unsigned char)((0 << 4)
+                                           | (d->write_layer & 15)),
+                                       0x00)) {
+                        c->tan_did = 1;
+                    }
+                }
+                c->tan_cn = 0;
+                c->stage = 32;
+                return 1;
+            }
+            if (c->stage == 32) {
+                if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                c->tan_p1x = x;
+                c->tan_p1y = y;
+                c->stage = 33;
+                return 1;
+            }
+            {
+                const long k = jw_cmd_line_at(d, w, sx, sy);
+
+                if (k < 0) {
+                    c->tan_miss = 0;
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                {
+                    const JwcLine *a = &d->lines[k];
+                    const double adx = a->x1 - a->x0, ady = a->y1 - a->y0;
+                    const double alen = sqrt(adx * adx + ady * ady);
+                    const double r = c->tan_r / (jwc_zukei_scale(d) > 0.0
+                                                 ? jwc_zukei_scale(d) : 1.0);
+                    double nx, ny, c0, ux, uy;
+                    int s1;
+
+                    c->tan_cn = 0;
+                    c->tan_cr = r;
+                    if (alen <= 0.0) {
+                        c->tan_miss = 2;
+                        c->missed = 1;
+                        c->stage = 32;
+                        return 1;
+                    }
+                    nx = -ady / alen;
+                    ny = adx / alen;
+                    ux = adx / alen;
+                    uy = ady / alen;
+                    c0 = nx * a->x0 + ny * a->y0;
+                    for (s1 = -1; s1 <= 1; s1 += 2) {
+                        /* 点からその平行線までの符号つき距離。 */
+                        const double off = c0 + s1 * r
+                                         - (nx * c->tan_p1x
+                                            + ny * c->tan_p1y);
+                        const double t2 = r * r - off * off;
+                        double tt, fx, fy;
+
+                        if (t2 < 0.0) {
+                            continue;
+                        }
+                        tt = sqrt(t2);
+                        fx = c->tan_p1x + off * nx;
+                        fy = c->tan_p1y + off * ny;
+                        c->tan_ccx[c->tan_cn] = fx + tt * ux;
+                        c->tan_ccy[c->tan_cn] = fy + tt * uy;
+                        c->tan_cn++;
+                        c->tan_ccx[c->tan_cn] = fx - tt * ux;
+                        c->tan_ccy[c->tan_cn] = fy - tt * uy;
+                        c->tan_cn++;
+                    }
+                    if (c->tan_cn <= 0) {
+                        c->tan_miss = 2;        /* `データが不適当` */
+                        c->missed = 1;
+                        c->stage = 32;
+                        return 1;
+                    }
+                    c->stage = 34;
+                    return 1;
+                }
+            }
         }
         if (c->tan_circ == 5
             && (c->stage == 27 || c->stage == 28 || c->stage == 29)) {
