@@ -6301,11 +6301,46 @@ static int env_in_body(const Jwc *d, const long *pick, int n,
     return got;
 }
 
+/* 平行な仲間の中で、**いちばん端か**（外形線でどれが残るかを決めます）。
+ * 法線に落とした位置で並べ、最小か最大なら端です。 */
+static int env_outermost(const Jwc *d, const long *pick, int n,
+                         const JwcLine *l)
+{
+    const double ax = l->x1 - l->x0, ay = l->y1 - l->y0;
+    const double al = sqrt(ax * ax + ay * ay);
+    double nx, ny, me;
+    int j, less = 0, more = 0;
+
+    if (al <= 0.0) {
+        return 1;
+    }
+    nx = -ay / al;
+    ny = ax / al;
+    me = l->x0 * nx + l->y0 * ny;
+    for (j = 0; j < n; j++) {
+        const JwcLine *o = &d->lines[pick[j]];
+        double at;
+
+        if (o == l || !env_same(l, o) || !env_parallel(l, o)) {
+            continue;
+        }
+        at = o->x0 * nx + o->y0 * ny;
+        if (at < me - 1e-6) {
+            less = 1;
+        }
+        if (at > me + 1e-6) {
+            more = 1;
+        }
+    }
+    return !(less && more);
+}
+
 static int env_wrap(JwCmd *c, Jwc *d)
 {
     const long n0 = d->n_lines;
     long pick[JW_ENV_MAX + 2];
     int full[JW_ENV_MAX + 2];
+    int drop[JW_ENV_MAX + 2];
     int n = 0, i, j, k, changed = 0, any_wall = 0;
 
     for (i = 0; i < n0; i++) {
@@ -6336,6 +6371,67 @@ static int env_wrap(JwCmd *c, Jwc *d)
     for (i = 0; i < n; i++) {
         d->lines[pick[i]].rest[2] |= 2u;
     }
+    /* **線連結**。一直線に並んでいる仲間は、先に一本につながります
+     * （測定：離れた二本の内側の端が枠の中にあると一本に。端が枠の縁
+     * ちょうどだと、その線は選ばれないのでつながりません）。 */
+    for (i = 0; i < n; i++) {
+        JwcLine *a = &d->lines[pick[i]];
+
+        for (j = i + 1; j < n; j++) {
+            const JwcLine *b = &d->lines[pick[j]];
+            double ux = a->x1 - a->x0, uy = a->y1 - a->y0;
+            double al = sqrt(ux * ux + uy * uy);
+            double off, t0, t1, t2, t3, lo, hi;
+
+            if (al <= 0.0 || !env_same(a, b) || !env_parallel(a, b)) {
+                continue;
+            }
+            ux /= al;
+            uy /= al;
+            off = (b->x0 - a->x0) * -uy + (b->y0 - a->y0) * ux;
+            if (off > 1e-4 || off < -1e-4) {
+                continue;               /* 同じ一直線の上ではありません */
+            }
+            t0 = 0.0;
+            t1 = al;
+            t2 = (b->x0 - a->x0) * ux + (b->y0 - a->y0) * uy;
+            t3 = (b->x1 - a->x0) * ux + (b->y1 - a->y0) * uy;
+            lo = t0 < t1 ? t0 : t1;
+            hi = t0 < t1 ? t1 : t0;
+            if (t2 < lo) {
+                lo = t2;
+            }
+            if (t3 < lo) {
+                lo = t3;
+            }
+            if (t2 > hi) {
+                hi = t2;
+            }
+            if (t3 > hi) {
+                hi = t3;
+            }
+            a->x0 = (float)(a->x0 + ux * lo);
+            a->y0 = (float)(a->y0 + uy * lo);
+            a->x1 = (float)(a->x0 + ux * (hi - lo));
+            a->y1 = (float)(a->y0 + uy * (hi - lo));
+            d->lines[pick[j]].rest[2] |= 0x80u;
+            for (k = j; k + 1 < n; k++) {
+                pick[k] = pick[k + 1];
+                full[k] = full[k + 1];
+            }
+            n--;
+            j--;
+        }
+    }
+    /* つないだので、枠に丸ごと入っているかを取り直します。 */
+    for (i = 0; i < n; i++) {
+        const JwcLine *l = &d->lines[pick[i]];
+        double ax = l->x0, ay = l->y0, bx = l->x1, by = l->y1;
+
+        full[i] = clip_to_range(c, &ax, &ay, &bx, &by)
+                  && ax == l->x0 && ay == l->y0
+                  && bx == l->x1 && by == l->y1;
+    }
     /* **壁がどこかに一つでもあるか**。一つも無いまま全部が枠に
      * 丸ごと入っているときだけ、交点で切るだけの道になります。 */
     for (i = 0; i < n && !any_wall; i++) {
@@ -6363,11 +6459,56 @@ static int env_wrap(JwCmd *c, Jwc *d)
             }
         }
     }
+    /* **真ん中の線を落とすかどうか**。仲間の中でいちばん端でない線が
+     * **直角の向きにもある**ときだけ落とします（測定）。 */
+    for (i = 0; i < n; i++) {
+        drop[i] = 0;
+    }
+    {
+        int mid = 0;
+
+        for (i = 0; i < n; i++) {
+            const JwcLine *l = &d->lines[pick[i]];
+
+            if (!full[i] || (!c->hen_env_all && l->type != 1)) {
+                continue;
+            }
+            if (!env_outermost(d, pick, n, l)) {
+                for (j = 0; j < n; j++) {
+                    const JwcLine *o = &d->lines[pick[j]];
+
+                    if (!full[j] || j == i || !env_same(l, o)) {
+                        continue;
+                    }
+                    if (env_parallel(l, o)) {
+                        continue;
+                    }
+                    if (!env_outermost(d, pick, n, o)) {
+                        mid = 1;
+                        break;
+                    }
+                }
+            }
+            if (mid) {
+                break;
+            }
+        }
+        if (mid) {
+            for (i = 0; i < n; i++) {
+                const JwcLine *l = &d->lines[pick[i]];
+
+                if (full[i] && !env_outermost(d, pick, n, l)) {
+                    drop[i] = 1;
+                }
+            }
+        }
+    }
     for (i = 0; i < n; i++) {
         const JwcLine keep = d->lines[pick[i]];
         double cut0[2 * JW_ENV_MAX], cut1[2 * JW_ENV_MAX];
         double at[JW_ENV_MAX];
         int end[JW_ENV_MAX], who[JW_ENV_MAX];
+        int onm[JW_ENV_MAX], onl[JW_ENV_MAX];
         int m = 0, ncut = 0, p;
         double from;
 
@@ -6384,10 +6525,10 @@ static int env_wrap(JwCmd *c, Jwc *d)
             if (!env_cross(&keep, o, &tl, &tm)) {
                 continue;
             }
-            if (tl < -1e-6 || tl > 1.0 + 1e-6) {
+            if (!full[i] && (tl < -1e-6 || tl > 1.0 + 1e-6)) {
                 continue;       /* L の外 */
             }
-            if (tm < -1e-6 || tm > 1.0 + 1e-6) {
+            if (!full[i] && (tm < -1e-6 || tm > 1.0 + 1e-6)) {
                 continue;       /* M の外 */
             }
             if (m >= JW_ENV_MAX) {
@@ -6395,34 +6536,72 @@ static int env_wrap(JwCmd *c, Jwc *d)
             }
             at[m] = tl;
             end[m] = tm < 1e-6 || tm > 1.0 - 1e-6;
+            onm[m] = tm > -1e-6 && tm < 1.0 + 1e-6;
+            onl[m] = tl > 1e-9 && tl < 1.0 - 1e-9;
             who[m] = (int)pick[j];
             m++;
         }
         if (full[i]) {
-            /* 丸ごと入っている線（外形線・柱）は、平行で同じ関わり方を
-             * している二本にはさまれたところ**だけ**が残ります。 */
-            for (j = 0; j < m; j++) {
-                for (k = j + 1; k < m; k++) {
-                    double lo, hi;
+            /* **外形線**。丸ごと入っている線は、直角の向きの仲間との
+             * 交わりの**端から端まで**に伸び縮みします（測定：離れた
+             * 長方形二つを丸ごと囲むと外接長方形になりました）。交わる
+             * 相手が一本しかないときはそのままです。
+             *
+             * 真ん中の線（仲間の中でいちばん端でないもの）は、**両方の
+             * 向きに真ん中の線があるときだけ**消えます——格子や入れ子は
+             * 外の四本だけになり、棚（真ん中の横線が一本）や段（縦線が
+             * 真ん中に無い）はそのまま残りました。 */
+            double lo = 2.0, hi = -1.0;
+            int nper = 0;
 
-                    if (end[j] != end[k]) {
-                        continue;
-                    }
-                    if (!env_parallel(&d->lines[who[j]], &d->lines[who[k]])) {
-                        continue;
-                    }
-                    lo = at[j] < at[k] ? at[j] : at[k];
-                    hi = at[j] < at[k] ? at[k] : at[j];
-                    if (hi - lo < 1e-9) {
-                        continue;
-                    }
-                    if (ncut < 2 * JW_ENV_MAX) {
-                        cut0[ncut] = lo;
-                        cut1[ncut] = hi;
-                        ncut++;
-                    }
+            for (j = 0; j < m; j++) {
+                nper++;
+                if (at[j] < lo) {
+                    lo = at[j];
+                }
+                if (at[j] > hi) {
+                    hi = at[j];
                 }
             }
+            if (!any_wall) {
+                /* 壁が一つも見つからないときは、**交点で切られるだけ**
+                 * です（測定：一本ずつの十字を丸ごと囲むと四本になり、
+                 * Ｔ字——相手の端点で触れているだけ——は切れません）。 */
+                double was = 0.0;
+
+                for (j = 0; j < m; j++) {
+                    double t = 2.0;
+                    int b2 = -1;
+
+                    for (k = 0; k < m; k++) {
+                        if (end[k] || !onm[k] || !onl[k]
+                            || at[k] <= was + 1e-9) {
+                            continue;
+                        }
+                        if (at[k] < t) {
+                            t = at[k];
+                            b2 = k;
+                        }
+                    }
+                    if (b2 < 0) {
+                        break;
+                    }
+                    env_piece(d, &keep, was, t);
+                    was = t;
+                }
+                env_piece(d, &keep, was, 1.0);
+            } else if (drop[i]) {
+                (void)0;                /* 真ん中の線は消えます */
+            } else if (nper >= 2 && hi - lo > 1e-9) {
+                env_piece(d, &keep, lo, hi);
+            } else {
+                env_piece(d, &keep, 0.0, 1.0);
+            }
+            d->lines[pick[i]].rest[2] |= 0x80u;
+            changed = 1;
+            continue;
+        }
+        if (0) {
         } else {
             /* またいでいる線は、交点で切って、**両側とも壁の中身に
              * 覆われている**区間を落とします。 */
@@ -6563,6 +6742,25 @@ static int env_wrap(JwCmd *c, Jwc *d)
         d->lines[pick[i]].rest[2] |= 0x80u;     /* あとで外す印 */
         changed = 1;            /* 形が変わらなくても記録は書き直され、
                                  * 行に [ESC] が付きます（測定） */
+    }
+    /* **線連結**。外形線で伸ばすと、一直線に並んでいた二本が同じ一本に
+     * なります。原作は一本しか残しませんでした（測定：並んだ長方形二つ、
+     * 積んだ長方形二つ）。 */
+    for (i = (int)d->n_lines - 1; i >= (int)n0; i--) {
+        const JwcLine *a = &d->lines[i];
+        long q;
+
+        for (q = n0; q < i; q++) {
+            const JwcLine *b = &d->lines[q];
+
+            if (a->x0 == b->x0 && a->y0 == b->y0
+                && a->x1 == b->x1 && a->y1 == b->y1
+                && a->type == b->type && a->pen == b->pen
+                && a->layer == b->layer) {
+                jwc_remove_line(d, i);
+                break;
+            }
+        }
     }
     for (i = (int)n0 - 1; i >= 0; i--) {
         if (d->lines[i].rest[2] & 0x80u) {
