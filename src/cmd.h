@@ -315,7 +315,8 @@ typedef struct {
     int tan_cn;                 /* 候補の数 */
     /* ③接円（３条件）。10 = 小項目の行、11..14 = どの小項目か。 */
     int tan_tri;
-    long tan_ln[4];             /* 接楕円が押した線 */
+    long tan_ln[4];             /* 接楕円・接円が押した線か円 */
+    int tan_lk[4];              /* 0 = 線、1 = 円 */
     double tan_lx[4], tan_ly[4];        /* その押したところ */
     int tan_miss;               /* 円を探して線が出た（線データです） */
     double tan_apx, tan_apy;    /* 円(Ａ)を押したところ */
