@@ -3349,6 +3349,12 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     if (c->command == 23) {
         /* 曲線's own line, `|①ｻｲﾝ曲線|②２次曲線|③ｽﾌﾟﾗｲﾝ|④ﾍﾞｼﾞｪ|⑤手書線|
          * ⑥連続弧|⑦連線|⑧解除|`.  Only ⑦連線 is done. */
+        if (!c->poly && !c->sine && item == 8) {
+            /* ⑧解除: 曲線のつながりをほどきます。 */
+            c->sine = 2;
+            c->stage = 20;
+            return 1;
+        }
         if (!c->poly && !c->sine && item == 1) {
             /* ①ｻｲﾝ曲線: 基準線 → 座標原点 → 1ｻｲｸﾙ → 振幅 → 始点 →
              * 終点 → 分割 長さ。 */
@@ -7548,6 +7554,53 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         mirror_range(c, d, m);
         c->mirror = 2;
         c->stage = 12;
+        return 1;
+    }
+    if (c->command == 23 && c->sine == 2 && c->stage == 20) {
+        /* ⑧解除: 押した線の属する連なりの印（`rest[2]` の 0x40/0x80/0xc0）を
+         * 全部 0 にして、**押した一本だけ 0x01** にします（測定：ｻｲﾝ曲線を
+         * 引いてから一本目を押すと `01 00 00 00`、三本目を押すと
+         * `00 00 00 01` の並びになりました）。連なりはファイルの中で
+         * 0x40 から 0xc0 までひと続きです。 */
+        const long k = jw_cmd_line_at(d, w, sx, sy);
+        long i;
+
+        if (k < 0) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        {
+            const unsigned char m = d->lines[k].rest[2];
+
+            if (m != 0x40 && m != 0x80 && m != 0xc0) {
+                return 0;
+            }
+        }
+        for (i = k; i >= 0; i--) {
+            const unsigned char m = d->lines[i].rest[2];
+
+            if (m != 0x40 && m != 0x80 && m != 0xc0) {
+                break;
+            }
+            d->lines[i].rest[2] = 0x00;
+            if (m == 0x40) {
+                break;
+            }
+        }
+        for (i = k + 1; i < d->n_lines; i++) {
+            const unsigned char m = d->lines[i].rest[2];
+
+            if (m != 0x40 && m != 0x80 && m != 0xc0) {
+                break;
+            }
+            d->lines[i].rest[2] = 0x00;
+            if (m == 0xc0) {
+                break;
+            }
+        }
+        d->lines[k].rest[2] = 0x01;
+        c->sine_did = 1;        /* ほどいたあとは桁 1 に [ESC] */
         return 1;
     }
     if (c->command == 23 && c->sine) {

@@ -3854,7 +3854,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
             /* 曲線 ①ｻｲﾝ曲線 の道。 */
-            if (s->command == 23 && s->sine && i == s->stage
+            if (s->command == 23 && s->sine == 2 && i == 20
+                && s->stage == 20) {
+                if (s->sine_did) {
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                }
+                jw_ui_text(v, 8, 1, 7, 0, "\x89\xf0\x8f\x9c\x82\xb7\x82\xe9\x8b\xc8\x90\xfc\x82\xf0\x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
+                jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+            }
+            if (s->command == 23 && s->sine == 1 && i == s->stage
                 && i >= 10 && i <= 16) {
                 char one[80];
 
