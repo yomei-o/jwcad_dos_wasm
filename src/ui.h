@@ -429,6 +429,7 @@ typedef struct {
     int dim_arc_miss;
     double tan_deg;
     int tan_did;
+    int tan_cn;                 /* 接円の候補の数（`（接円数n）`） */
     int tan_circ;
     double tan_r;
     int tan_miss;

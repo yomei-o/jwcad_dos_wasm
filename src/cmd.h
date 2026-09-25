@@ -306,7 +306,9 @@ typedef struct {
     int tan_circ;
     double tan_r;               /* ①接円半径（本当の大きさのミリ） */
     double tan_p1x, tan_p1y;    /* 第１点 */
-    double tan_ccx[2], tan_ccy[2];      /* 接円の候補 */
+    /* 接円の候補。⑥２点 は二つですが、⑤２円 は最大八つ——相手の円を
+     * 内と外のどちらで抱えるかで四通り、それぞれ交点が二つです。 */
+    double tan_ccx[8], tan_ccy[8];
     double tan_cr;              /* その半径（図面の単位） */
     long tan_la;                /* ④２線 の（Ａ） */
     double tan_lax, tan_lay;    /* そこを押した点 */
