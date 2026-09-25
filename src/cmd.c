@@ -3137,6 +3137,19 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         /* `接線 |①円～円間 |②円周点 |③指定点 |④角度指定 |` -- only ③. */
         /* ①接 線 は上の行からも選べます（測定：行が
          * `接線 |①円～円間 |②円周点 |③指定点 |④角度指定 |` になります）。 */
+        if (!c->tan_on && !c->tan_tri && item == 4) {
+            /* ④接楕円。小項目の行が出ます。 */
+            c->tan_tri = 20;
+            tan_start(c, d);
+            c->stage = 57;
+            return 1;
+        }
+        if (c->tan_tri == 20 && c->stage == 57 && item == 1) {
+            /* ①３点: 軸の両端と、通る点。 */
+            c->tan_tri = 21;
+            c->stage = 58;
+            return 1;
+        }
         if (!c->tan_on && !c->tan_tri && item == 3) {
             /* ③接円（３条件）。小項目の行が出ます。 */
             c->tan_tri = 10;
@@ -7709,6 +7722,115 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                     c->tan_did = 1;
                 }
                 c->stage = 47;
+                return 1;
+            }
+        }
+        if (c->tan_tri == 21 && c->stage >= 58 && c->stage <= 60) {
+            /* ④接楕円 ①３点: 軸の両端を押してから、通る点をひとつ。
+             * 選ぶ段はなく、三つめで楕円が入ります。
+             *
+             * 中心は軸の中点、a は軸の半分。三つめの点を軸の枠で
+             * (x', y') に直すと、もう一方の半径は
+             * `b = |y'| / sqrt(1 - (x'/a)^2)` ——本当に通る楕円です。
+             * **記録は長いほうを `r` に入れます**: `flatten` は
+             * `(int)(10000 * 短い/長い)`（切り捨て）、`tilt` は長いほうの
+             * 向きの図面での角度（度、16.16、`round(度 * 65536)`）。
+             * 長いほうが軸なら向きは始点→終点、垂線のほうが長ければ
+             * 三つめの点の側です。
+             *
+             * 測定（SAMPLE0）:
+             *
+             * * 軸 (200,200)-(400,200)、点 (300,350) →
+             *   `c=(179,263) r=150 flat=6666 tilt=270`
+             * * 軸 (200,200)-(500,200)、点 (350,300) →
+             *   `c=(229,263) r=150 flat=6666 tilt=0`
+             * * 軸 (200,200)-(400,300)、点 (300,150) →
+             *   `c=(179,213) r=111.803398 flat=8728 tilt=333.434952`
+             *
+             * **記録の最後のバイトは 0x02**。 */
+            if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            if (c->stage == 58) {
+                c->tan_p1x = x;
+                c->tan_p1y = y;
+                c->stage = 59;
+                return 1;
+            }
+            if (c->stage == 59) {
+                c->tan_ccx[0] = x;
+                c->tan_ccy[0] = y;
+                c->stage = 60;
+                return 1;
+            }
+            {
+                const double ax = c->tan_p1x, ay = c->tan_p1y;
+                const double bx = c->tan_ccx[0], by = c->tan_ccy[0];
+                const double mx = (ax + bx) / 2.0, my = (ay + by) / 2.0;
+                const double ex = bx - ax, ey = by - ay;
+                const double len = sqrt(ex * ex + ey * ey);
+                const double d2r = 3.14159265358979323846 / 180.0;
+                double ux, uy, pxx, pyy, aa, xx, yy, bb, dxx, dyy, deg;
+                long tilt;
+                int flat;
+
+                if (len <= 0.0) {
+                    c->tan_miss = 2;
+                    c->missed = 1;
+                    c->stage = 58;
+                    return 1;
+                }
+                ux = ex / len;
+                uy = ey / len;
+                pxx = -uy;
+                pyy = ux;
+                aa = len / 2.0;
+                xx = (x - mx) * ux + (y - my) * uy;
+                yy = (x - mx) * pxx + (y - my) * pyy;
+                {
+                    const double k = 1.0 - (xx / aa) * (xx / aa);
+
+                    if (k <= 1e-12) {
+                        c->tan_miss = 2;
+                        c->missed = 1;
+                        c->stage = 58;
+                        return 1;
+                    }
+                    bb = (yy < 0.0 ? -yy : yy) / sqrt(k);
+                }
+                if (aa >= bb) {
+                    dxx = ux;
+                    dyy = uy;
+                } else {
+                    const double sg = yy < 0.0 ? -1.0 : 1.0;
+
+                    dxx = pxx * sg;
+                    dyy = pyy * sg;
+                }
+                deg = atan2(dyy, dxx) / d2r;
+                while (deg < 0.0) {
+                    deg += 360.0;
+                }
+                while (deg >= 360.0) {
+                    deg -= 360.0;
+                }
+                tilt = (long)(deg * 65536.0 + 0.5);
+                flat = (int)(10000.0 * (aa >= bb ? bb / aa : aa / bb));
+                if (jwc_add_arc_at(d, (float)mx, (float)my,
+                                   (float)(aa >= bb ? aa : bb), 0L, 0L,
+                                   (unsigned char)d->line_type,
+                                   (unsigned char)d->pen,
+                                   (unsigned char)((0 << 4)
+                                       | (d->write_layer & 15)), 0x02)) {
+                    JwcArc *w2 = &d->arcs[d->n_arcs - 1];
+
+                    w2->flatten = (short)flat;
+                    w2->tilt = tilt;
+                    c->tan_did = 1;
+                }
+                c->stage = 58;
                 return 1;
             }
         }
