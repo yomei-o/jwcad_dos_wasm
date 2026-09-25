@@ -3025,6 +3025,7 @@ static void tangent_pair(JwCmd *c, Jwc *d, long kb, double px, double py);
 static void tan_start(JwCmd *c, const Jwc *d);
 static void sine_draw(JwCmd *c, Jwc *d);
 static void spline_draw(JwCmd *c, Jwc *d);
+static void bezier_draw(JwCmd *c, Jwc *d);
 static void henkei_double(JwCmd *c, Jwc *d);
 
 static int cmd_top(JwCmd *c, Jwc *d, int item)
@@ -3436,6 +3437,13 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     if (c->command == 23) {
         /* 曲線's own line, `|①ｻｲﾝ曲線|②２次曲線|③ｽﾌﾟﾗｲﾝ|④ﾍﾞｼﾞｪ|⑤手書線|
          * ⑥連続弧|⑦連線|⑧解除|`.  Only ⑦連線 is done. */
+        if (!c->poly && !c->sine && !c->spl && item == 4) {
+            /* ④ﾍﾞｼﾞｪ。③ｽﾌﾟﾗｲﾝ と同じ道で、曲線だけ違います。 */
+            c->spl = 2;
+            c->spl_n = 0;
+            c->stage = 30;
+            return 1;
+        }
         if (!c->poly && !c->sine && !c->spl && item == 3) {
             /* ③ｽﾌﾟﾗｲﾝ。点を並べます。 */
             c->spl = 1;
@@ -3448,7 +3456,12 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
             return 1;
         }
         if (c->spl && c->stage == 34 && item == 1) {
-            spline_draw(c, d);  /* ①作図開始 */
+            /* ①作図開始 */
+            if (c->spl == 2) {
+                bezier_draw(c, d);
+            } else {
+                spline_draw(c, d);
+            }
             c->sine_did = 1;    /* 描いたあとは桁 1 に [ESC] */
             c->spl_n = 0;
             c->stage = 30;
@@ -6341,6 +6354,71 @@ static void jw_natural_spline(const double *ts, const double *ys, int n,
         c[j] = z[j] - mu[j] * c[j + 1];
         b[j] = (ys[j + 1] - ys[j]) / h[j] - h[j] * (c[j + 1] + 2.0 * c[j]) / 3.0;
         d[j] = (c[j + 1] - c[j]) / (3.0 * h[j]);
+    }
+}
+
+/* **ﾍﾞｼﾞｪ曲線を線の連なりにします**（曲線 ④ﾍﾞｼﾞｪ）。
+ *
+ * 取った点は**通過点ではなく制御点**で、曲線は点の数 k に対する
+ * **次数 k-1 のﾍﾞｼﾞｪ**です（測定：三点で二次、四点で三次。真ん中の
+ * 制御点は通りません）。標本は
+ *
+ *     点の数 = (k - 1) * 区間分割数        （両端を含む）
+ *     t = i / (点の数 - 1)
+ *
+ * ——三点・分割 20 で 40 点 39 本、四点・分割 5 で 15 点 14 本でした。
+ * ド・カステリョで評価しています（次数が上がっても崩れないので）。
+ *
+ * 記録の印は ③ｽﾌﾟﾗｲﾝ と同じ `rest[1] = 0x12` と 0x40/0x80/0xc0。 */
+static void bezier_draw(JwCmd *c, Jwc *d)
+{
+    const int k = c->spl_n;
+    int total, i, first = -1, last = -1;
+    double px = 0.0, py = 0.0;
+
+    if (k < 2 || c->spl_div < 1) {
+        return;
+    }
+    total = (k - 1) * c->spl_div;
+    if (total < 2) {
+        return;
+    }
+    for (i = 0; i < total; i++) {
+        const double t = (double)i / (total - 1);
+        double bx[50], by[50];
+        int j, m;
+
+        for (j = 0; j < k; j++) {
+            bx[j] = c->spl_x[j];
+            by[j] = c->spl_y[j];
+        }
+        for (m = k - 1; m > 0; m--) {
+            for (j = 0; j < m; j++) {
+                bx[j] += (bx[j + 1] - bx[j]) * t;
+                by[j] += (by[j + 1] - by[j]) * t;
+            }
+        }
+        if (i > 0) {
+            if (!jwc_add_line(d, (float)px, (float)py,
+                              (float)bx[0], (float)by[0],
+                              (unsigned char)d->line_type,
+                              (unsigned char)d->pen,
+                              (unsigned char)d->write_layer)) {
+                break;
+            }
+            d->lines[d->n_lines - 1].rest[1] = 0x12;
+            d->lines[d->n_lines - 1].rest[2] = 0x80;
+            if (first < 0) {
+                first = (int)(d->n_lines - 1);
+            }
+            last = (int)(d->n_lines - 1);
+        }
+        px = bx[0];
+        py = by[0];
+    }
+    if (first >= 0) {
+        d->lines[first].rest[2] = 0x40;
+        d->lines[last].rest[2] = 0xc0;
     }
 }
 
