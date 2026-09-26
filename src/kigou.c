@@ -411,7 +411,14 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
         if (p->kind == JW_KIGOU_ARC) {
             /* **角度は記号の枠のもの**なので、指示線の角度を
              * 足して図面の角度にします。半径は紙の mm です。 */
-            const double turn = atan2(uy, ux) * 180.0 / 3.14159265358979323846;
+            /* **始角・終角がどちらの指示線に追従するか**は制御(2) の
+             * 1 の位です（§３-５〜８）。1 なら両方とも指示線 1、
+             * 2 なら始点だけ、3 なら終点だけ、4 なら両方が指示線 2。 */
+            const double t1 = atan2(uy, ux) * 180.0 / 3.14159265358979323846;
+            const double t2 = atan2(ny, nx) * 180.0 / 3.14159265358979323846;
+            const long f = c2 % 10;
+            const double ts = f == 2 || f == 4 ? t1 : t1;
+            const double te = f == 3 || f == 4 ? t1 : t1;
             JwcArc a;
 
             memset(&a, 0, sizeof a);
@@ -420,8 +427,8 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             a.r = (float)(p->radius * mm * sc * (flip ? -1.0 : 1.0));
             a.flatten = p->flat > 0.0
                       ? (short)(p->flat * 10000.0 + 0.5) : 10000;
-            a.start = (long)((p->x2 + turn) * 65536.0);
-            a.end = (long)((p->y2 + turn) * 65536.0);
+            a.start = (long)((p->x2 + ts) * 65536.0);
+            a.end = (long)((p->y2 + te) * 65536.0);
             a.type = base->type;
             a.pen = base->pen;
             a.layer = base->layer;
