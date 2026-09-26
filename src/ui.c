@@ -4,6 +4,7 @@
 #include "draw.h"
 #include "fontx.h"
 #include "read.h"
+#include "kigou.h"
 #include "view.h"
 
 #include "prompt.h"
@@ -3129,6 +3130,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             fill(v, 122, 17, 638, 462, 0);
             fill(v, 122, 463, 638, 478, 0);
         }
+        /* 変形 ④線記号変形 の一覧も作図範囲いっぱいです。帯は
+         * `電卓[Z 範囲記憶` だけ残ります（建具平面と同じ）。 */
+        if (s->kigou) {
+            fill(v, 122, 17, 638, 462, 0);
+            fill(v, 122, 463, 638, 478, 0);
+        }
         /* 図形 ④ｸﾞﾙｰﾌﾟ変 takes the whole drawing area, and so does the
          * list of figures 図形 ①登録 puts up once its base point is down. */
         if ((s->command == 27 && s->top_item == 4) || zukei_list_up(s)) {
@@ -3657,6 +3664,29 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     break;
                 }
             }
+        }
+        /* 変形 ④線記号変形 の一覧 —— 記号の名前と罫。
+         *
+         * 実測（`STR=1 sh tools/seqcheck.sh "30 88 left" "500 8 left"`）:
+         * 名前は 桁 18/34/50/66・行 2/8/14/20、罫は 横 y=16,112,208,304,400、
+         * 縦 x=251,381,511（y 16..400）。**ｵﾌﾟｼｮﾝ ③立面 と同じ並び**です。
+         * 名前は JW_OPT4.DAT の並び順そのまま。 */
+        if (s->kigou) {
+            const JwKigou *g = jw_kigou_lib(s->kigou_group);
+            int k;
+
+            if (g) {
+                for (k = 0; k < g->n && k < 16; k++) {
+                    jw_ui_text(v, 18 + 16 * (k % 4), 2 + 6 * (k / 4), 7, 0,
+                               g->sym[k].name);
+                }
+            }
+            for (k = 0; k < 5; k++) {
+                fill(v, 122, 16 + k * 96, 638, 16 + k * 96, 7);
+            }
+            fill(v, 251, 16, 251, 400, 7);
+            fill(v, 381, 16, 381, 400, 7);
+            fill(v, 511, 16, 511, 400, 7);
         }
         /* The rules go **after** the labels: ③立面's names sit on the same
          * text row as the rule above their cell, and the original's rule is
@@ -4879,6 +4909,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
         }
+    /* 変形 ④線記号変形 の一覧が出ているあいだの行（実測）。 */
+    if (s->kigou) {
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0,
+                   "\x83}\x83" "E\x83X\x8ew\x8e\xa6 |\x87@"
+                   "\x8e\xed\x97\xde\x81yA\x81z\x95\xcf\x8dX|");
+    }
     /* 変形 ②包絡処理変形 の行。始点を待つあいだは `①【実線のみ】` の
      * 切り替えと `[BS]前項`、終点を待つあいだは `ﾏｳｽ(L)` で包絡、
      * `ﾏｳｽ(R)` で範囲内消去 です（測定）。 */

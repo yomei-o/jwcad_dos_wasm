@@ -321,6 +321,9 @@ typedef struct {
     double dim_ext_mm;
     /* 寸法値の書き方。`_on` は盤の【有】を 1 に直したものです。 */
     int dim_unit;
+    /* 変形 ④線記号変形。一覧が出ているかと、どのグループか。 */
+    int hen_kigou;
+    int kigou_group;
     int dim_dec;
     int dim_comma_on;
     int dim_pen_point;

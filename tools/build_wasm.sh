@@ -25,7 +25,7 @@ EXPORTS=$EXPORTS,_jw_count
 EXPORTS=$EXPORTS,_jw_top_item,_jw_io_stage
 EXPORTS=$EXPORTS,_malloc,_free
 
-SRC="src/main_wasm.c src/dxf.c src/tategu.c src/view.c src/draw.c src/vga.c src/jwc.c src/fontx.c src/ui.c src/cmd.c src/read.c src/plot.c src/png.c"
+SRC="src/main_wasm.c src/dxf.c src/tategu.c src/kigou.c src/view.c src/draw.c src/vga.c src/jwc.c src/fontx.c src/ui.c src/cmd.c src/read.c src/plot.c src/png.c"
 
 EMBED=""
 # JW_SAMPL.BAT is on the disk because ｵﾌﾟｼｮﾝ ⑦外部処理 lists `*.bat` and the

@@ -289,6 +289,8 @@ static void sync_ui(void)
     ui.hand_step = cmd.hand_step;
     ui.hand_did = cmd.hand_did;
     ui.hen_env = cmd.hen_env;
+    ui.kigou = cmd.hen_kigou;
+    ui.kigou_group = cmd.kigou_group;
     ui.hen_env_all = cmd.hen_env_all;
     ui.hen_env_did = cmd.hen_env_did;
     ui.hen_env_msg = cmd.hen_env_msg;
@@ -2506,9 +2508,23 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         present();
         return -1;
     }
+    /* 変形 の行の `④線記号変形`（桁 60〜71、x 472〜575）。押すと
+     * 記号の一覧（4×4 の 16 升）が作図範囲いっぱいに出ます。 */
+    if (ui.command == 17 && !ui.top_item && !cmd.pressed && !dxf_mode
+        && y >= 0 && y <= 15 && x / 8 + 1 >= 60 && x / 8 + 1 <= 71) {
+        cmd.hen_kigou = 1;
+        cmd.hen_env = 0;
+        cmd.hen_dbl = 0;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
     if (ui.command == 17 && !ui.top_item && !cmd.pressed && !dxf_mode
         && y >= 0 && y <= 15 && x / 8 + 1 >= 33 && x / 8 + 1 <= 49) {
         cmd.hen_env = 1;
+        cmd.hen_kigou = 0;
         cmd.hen_dbl = 0;
         mouse_x = x;
         mouse_y = y;
@@ -2523,6 +2539,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         && y >= 0 && y <= 15 && x / 8 + 1 >= 51 && x / 8 + 1 <= 58) {
         cmd.hen_dbl = 1;
         cmd.hen_env = 0;
+        cmd.hen_kigou = 0;
         mouse_x = x;
         mouse_y = y;
         sync_ui();
@@ -2533,6 +2550,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         && y >= 0 && y <= 15 && x / 8 + 1 >= 9 && x / 8 + 1 <= 31) {
         cmd.hen_dbl = 0;
         cmd.hen_env = 0;
+        cmd.hen_kigou = 0;
         mouse_x = x;
         mouse_y = y;
         sync_ui();

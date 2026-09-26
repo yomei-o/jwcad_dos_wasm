@@ -311,6 +311,9 @@ typedef struct {
     int dim_edit;
     char dim_typed[16];
     int dim_typed_n;
+    /* 変形 ④線記号変形 の一覧が出ているか、と どのグループ（A〜J）。 */
+    int kigou;
+    int kigou_group;
     int meas_unit;
     int meas_dec;
     int char_edit;
