@@ -18,6 +18,7 @@
 #include "cmd.h"
 #include "jwc.h"
 #include "plot.h"
+#include "kigou.h"
 #include "ui.h"
 #include "dxf.h"
 #include "draw.h"
@@ -290,6 +291,7 @@ static void sync_ui(void)
     ui.hand_did = cmd.hand_did;
     ui.hen_env = cmd.hen_env;
     ui.kigou = cmd.hen_kigou;
+    ui.kigou_pick = cmd.kigou_pick;
     ui.kigou_group = cmd.kigou_group;
     ui.hen_env_all = cmd.hen_env_all;
     ui.hen_env_did = cmd.hen_env_did;
@@ -2508,11 +2510,39 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         present();
         return -1;
     }
+    /* 線記号変形の一覧が出ているあいだ。上の行の `①種類【A】変更`
+     * （桁 19〜35、x 144〜279）でグループの一覧、その升でグループを
+     * 選びます。升は x 144..576 を 3 列、y 40..328 を 9 行（実測）。 */
+    if (ui.kigou && !cmd.kigou_pick && !dxf_mode
+        && y >= 0 && y <= 15 && x >= 144 && x <= 279) {
+        cmd.kigou_pick = 1;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    if (ui.kigou && cmd.kigou_pick && !dxf_mode
+        && x >= 144 && x < 576 && y >= 40 && y < 328) {
+        const int cell = (y - 40) / 32 * 3 + (x - 144) / 144;
+
+        if (cell >= 1 && cell <= JW_KIGOU_FILES
+            && jw_kigou_lib(cell - 1)) {
+            cmd.kigou_group = cell - 1;
+            cmd.kigou_pick = 0;
+        }
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
     /* 変形 の行の `④線記号変形`（桁 60〜71、x 472〜575）。押すと
      * 記号の一覧（4×4 の 16 升）が作図範囲いっぱいに出ます。 */
     if (ui.command == 17 && !ui.top_item && !cmd.pressed && !dxf_mode
         && y >= 0 && y <= 15 && x / 8 + 1 >= 60 && x / 8 + 1 <= 71) {
         cmd.hen_kigou = 1;
+        cmd.kigou_pick = 0;
         cmd.hen_env = 0;
         cmd.hen_dbl = 0;
         mouse_x = x;

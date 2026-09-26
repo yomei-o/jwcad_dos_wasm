@@ -323,6 +323,7 @@ typedef struct {
     int dim_unit;
     /* 変形 ④線記号変形。一覧が出ているかと、どのグループか。 */
     int hen_kigou;
+    int kigou_pick;
     int kigou_group;
     int dim_dec;
     int dim_comma_on;

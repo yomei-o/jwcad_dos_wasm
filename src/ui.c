@@ -1516,6 +1516,11 @@ static void kigou_cells(VGA *v, const JwUi *s)
         /* 記号の 1 単位は紙の 1mm です（種 2 の 2.5mm 幅が 12.4 画素
          * ＝ 1 単位 5 画素 と合います）。 */
         tmp->unit_mm = 1.0f;
+        /* **層は全部見えるようにします。** jw_view_line は層が
+         * 見えるかを確かめるので、空のままだと線が 1 本も出ません
+         * （0 画素だった升が 1,722 画素に増えました）。 */
+        memset(tmp->layer_on, 1, sizeof tmp->layer_on);
+        memset(tmp->group_on, 1, sizeof tmp->group_on);
     }
     for (i = 0; i < g->n && i < 16; i++) {
         const JwKigouSym *sym = &g->sym[i];
@@ -1703,9 +1708,49 @@ static void kigou_cells(VGA *v, const JwUi *s)
                 v->clip_y1 = cy1;
                 continue;
             }
-            bx = ox + p->x2 * scale;
-            by = oy - p->y2 * scale;
-            clip_line(v, ax, ay, bx, by, x0, y0, x1, y1, ink);
+            /* **線も図面の経路へ。** 線種（点線・一点鎖線…）を
+             * 自分で持たずに済みます —— グループ G の「屋外」は
+             * 線種 7 で、実線で引くと 12 画素ずれました。 */
+            {
+                JwcLine l;
+                JwView w;
+                const int cx0 = v->clip_x0, cy0 = v->clip_y0;
+                const int cx1 = v->clip_x1, cy1 = v->clip_y1;
+
+                (void)ax;
+                (void)ay;
+                (void)bx;
+                (void)by;
+                memset(&l, 0, sizeof l);
+                l.x0 = (float)p->x1;
+                l.y0 = (float)p->y1;
+                l.x1 = (float)p->x2;
+                l.y1 = (float)p->y2;
+                l.type = (unsigned char)(p->has_attr && p->type > 0
+                                        ? p->type % 10 : 1);
+                /* **jw_view_line は渡した色を使いません** —— 記録の
+                 * ペン番号から引きます。こちらが出したい色になるペンを
+                 * 入れておきます（赤はペン 7、白はペン 2）。 */
+                l.pen = (unsigned char)(p->c1 >= 100 ? 7
+                        : p->has_attr && p->pen > 0 ? p->pen : 2);
+                memset(&w, 0, sizeof w);
+                w.ax = (float)ox;
+                w.ay = (float)oy;
+                w.scale = (float)scale;
+                w.x0 = x0;
+                w.y0 = y0;
+                w.x1 = x1;
+                w.y1 = y1;
+                v->clip_x0 = x0;
+                v->clip_y0 = y0;
+                v->clip_x1 = x1;
+                v->clip_y1 = y1;
+                jw_view_line(v, tmp, &l, &w, ink);
+                v->clip_x0 = cx0;
+                v->clip_y0 = cy0;
+                v->clip_x1 = cx1;
+                v->clip_y1 = cy1;
+            }
         }
     }
 }
@@ -3907,7 +3952,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * 名前は 桁 18/34/50/66・行 2/8/14/20、罫は 横 y=16,112,208,304,400、
          * 縦 x=251,381,511（y 16..400）。**ｵﾌﾟｼｮﾝ ③立面 と同じ並び**です。
          * 名前は JW_OPT4.DAT の並び順そのまま。 */
-        if (s->kigou) {
+        if (s->kigou && !s->kigou_pick) {
             const JwKigou *g = jw_kigou_lib(s->kigou_group);
             int k;
 
@@ -3924,6 +3969,45 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             fill(v, 381, 16, 381, 400, 7);
             fill(v, 511, 16, 511, 400, 7);
             kigou_cells(v, s);
+        }
+        /* ①種類【A】変更 —— グループを選ぶ一覧（実測）。
+         * 枠は 縦 x=144,288,432,576 の y 40..328、横は 32 ごとに 10 本。
+         * 升は 3 列 x 9 行で、1 つめが `ﾃﾞｨﾚｸﾄﾘ変更`、そのあと A〜J。
+         * 升の中は 記号が左端 +8、名前が +24、字は上端 +8 の行。 */
+        if (s->kigou_pick) {
+            int k;
+
+            jw_ui_text(v, 22, 2, 7, 0, "A:" "\x5c");
+            for (k = 0; k <= 9; k++) {
+                fill(v, 144, 40 + k * 32, 576, 40 + k * 32, 7);
+            }
+            for (k = 0; k < 4; k++) {
+                fill(v, 144 + k * 144, 40, 144 + k * 144, 328, 7);
+            }
+            for (k = 0; k <= JW_KIGOU_FILES; k++) {
+                const int cc = 20 + 18 * (k % 3);
+                const int rr = 4 + 2 * (k / 3);
+
+                if (!k) {
+                    jw_ui_text(v, cc + 2, rr, 7, 0,
+                               "\xc3\xde\xa8\xda\xb8\xc4\xd8"
+                               "\x95\xcf\x8dX");
+                    continue;
+                }
+                {
+                    const JwKigou *g = jw_kigou_lib(k - 1);
+                    char one[4];
+
+                    if (!g) {
+                        continue;
+                    }
+                    one[0] = jw_kigou_letter(k - 1);
+                    one[1] = ' ';
+                    one[2] = 0;
+                    jw_ui_text(v, cc, rr, 7, 0, one);
+                    jw_ui_text(v, cc + 2, rr, 7, 0, g->group);
+                }
+            }
         }
         /* The rules go **after** the labels: ③立面's names sit on the same
          * text row as the rule above their cell, and the original's rule is
@@ -5146,14 +5230,29 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
         }
-    /* 変形 ④線記号変形 の一覧が出ているあいだの行（実測）。 */
-    if (s->kigou) {
+    /* ①種類【A】変更 の一覧が出ているあいだの行（実測）。 */
+    if (s->kigou_pick) {
         fill(v, 0, 0, 639, 15, 0);
         top_clear();
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
         jw_ui_text(v, 8, 1, 7, 0,
-                   "\x83}\x83" "E\x83X\x8ew\x8e\xa6 |\x87@"
-                   "\x8e\xed\x97\xde\x81yA\x81z\x95\xcf\x8dX|");
+                   "\x8e\xed\x97\xde \x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
+    }
+    /* 変形 ④線記号変形 の一覧が出ているあいだの行（実測）。 */
+    if (s->kigou && !s->kigou_pick) {
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        {
+            /* 【 】の中は**いま選んでいるグループの記号**です。 */
+            char one[48];
+
+            sprintf(one,
+                    "\x83}\x83" "E\x83X\x8ew\x8e\xa6 |\x87@"
+                    "\x8e\xed\x97\xde\x81y%c\x81z\x95\xcf\x8dX|",
+                    jw_kigou_letter(s->kigou_group));
+            jw_ui_text(v, 8, 1, 7, 0, one);
+        }
     }
     /* 変形 ②包絡処理変形 の行。始点を待つあいだは `①【実線のみ】` の
      * 切り替えと `[BS]前項`、終点を待つあいだは `ﾏｳｽ(L)` で包絡、
