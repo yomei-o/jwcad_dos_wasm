@@ -207,6 +207,13 @@ int jw_kigou_read(const char *path, JwKigou *out)
             continue;
         }
         if (separator(line, &sep, &mul)) {
+            /* **区切りは、いま読み終えた記号のもの**です。一覧での
+             * 大きさは「その記号を閉じる区切り」が決めます（990 が 0.1、
+             * 999 が 1.0）——手前の区切りではありません。 */
+            if (sym) {
+                sym->sep = sep;
+                sym->sep_mul = mul;
+            }
             want_head = 1;
             continue;
         }
@@ -235,8 +242,8 @@ int jw_kigou_read(const char *path, JwKigou *out)
             }
             sym = &out->sym[out->n++];
             memset(sym, 0, sizeof(*sym));
-            sym->sep = sep;
-            sym->sep_mul = mul;
+            sym->sep = 999;
+            sym->sep_mul = 0.0;
             if (numbers(line, v, 1, 0, &rest) == 1) {
                 sym->picks = (int)v[0];
             }

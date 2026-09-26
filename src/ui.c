@@ -1474,6 +1474,99 @@ static double across(int v, double unit, double step)
     return k * step + (v - k * 1000) * unit;
 }
 
+/* 変形 ④線記号変形 の一覧 —— 升の中の記号。
+ *
+ * 測った寸法（本物の画面から）:
+ *
+ *   原点     升の左端 + 64、升の上端 + 54
+ *   基準     1 単位 = 5 画素
+ *   倍率     記号を**閉じる**区切りの数。999 が 1.0 で、990 まで 0.1 ずつ
+ *            （JW_OPT4.DAT の §１-５ のとおり）
+ *
+ * 「直線消」は `110 08 -12 0 12 0` の 1 本だけで、本物では x 125..245 の
+ * y=166 に出ます。原点 (185,166)・1 単位 5 画素とぴったりです。
+ *
+ * **まだ測っていないもの**: 文字の部材、`700`/`800` の倍率指定、
+ * 制御コードによる色の決まり方（いまは 3 桁なら赤、そうでなければ
+ * 行にある線色）。 */
+static void kigou_cells(VGA *v, const JwUi *s)
+{
+    const JwKigou *g = jw_kigou_lib(s->kigou_group);
+    int i;
+
+    if (!g) {
+        return;
+    }
+    for (i = 0; i < g->n && i < 16; i++) {
+        const JwKigouSym *sym = &g->sym[i];
+        const int col = i % 4;
+        const int row = i / 4;
+        const double ox = 185.0 + col * 130.0;
+        const double oy = 70.0 + row * 96.0;
+        const double mul = sym->sep >= 990 && sym->sep <= 999
+                         ? (sym->sep - 989) / 10.0 : 1.0;
+        const int x0 = col ? 122 + col * 130 : 122;
+        const int x1 = col == 3 ? 638 : 250 + col * 130;
+        const int y0 = 16 + row * 96 + 1;
+        const int y1 = 112 + row * 96 - 1;
+        double scale = 5.0 * mul;
+        int k;
+
+        for (k = 0; k < sym->n; k++) {
+            const JwKigouPart *p = &sym->part[k];
+            const long c1 = p->c1 % 100, c2 = p->c2 % 100;
+            unsigned ink;
+            double ax, ay, bx, by;
+
+            if (p->kind == JW_KIGOU_SCALE) {
+                /* **700／800 の倍率は、一覧ではまだ当てていません。**
+                 * 当てると「Ｒ面取」（800 10）が 10 倍になって升から
+                 * はみ出し、何も出なくなりました。本物のあの升は
+                 * 升の下のほうに小さく出ています——測り直すまで素通り。 */
+                continue;
+            }
+            if (p->kind != JW_KIGOU_LINE && p->kind != JW_KIGOU_ARC) {
+                continue;       /* 文字・実点・連鎖・命令は次の段で */
+            }
+            if (c1 == 9 || c2 == 9) {
+                continue;       /* ダミー */
+            }
+            /* 3 桁の制御コードは「指示線と同じ線色」——一覧では赤です
+             * （JW_OPT4.DAT の §４-２、§４-３）。 */
+            ink = p->c1 >= 100 ? 2u
+                : p->has_attr ? jw_view_pen_colour((unsigned)p->pen)
+                : jw_view_pen_colour(2u);
+            ax = ox + p->x1 * scale;
+            ay = oy - p->y1 * scale;
+            if (p->kind == JW_KIGOU_ARC) {
+                const double r = p->radius * scale;
+                const int cx0 = v->clip_x0, cy0 = v->clip_y0;
+                const int cx1 = v->clip_x1, cy1 = v->clip_y1;
+                double a0 = -p->y2, a1 = -p->x2;
+
+                if (a1 < a0) {
+                    a1 += 360.0;
+                }
+                v->clip_x0 = x0;
+                v->clip_y0 = y0;
+                v->clip_x1 = x1;
+                v->clip_y1 = y1;
+                jw_arc_poly(v, ax, ay, r, 10000,
+                            (long)(a0 * 65536.0), (long)(a1 * 65536.0), 0,
+                            ink, ROP_REPLACE, JW_STYLE_SOLID);
+                v->clip_x0 = cx0;
+                v->clip_y0 = cy0;
+                v->clip_x1 = cx1;
+                v->clip_y1 = cy1;
+                continue;
+            }
+            bx = ox + p->x2 * scale;
+            by = oy - p->y2 * scale;
+            clip_line(v, ax, ay, bx, by, x0, y0, x1, y1, ink);
+        }
+    }
+}
+
 /* The sixteen shapes ｵﾌﾟｼｮﾝ ①建具平面 ②断面 ③立面 show, out of the library
  * files that ship with the program.  See src/tategu.h for the format and the
  * top of tmp/tatedraw.py's note for where the numbers came from.
@@ -3687,6 +3780,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             fill(v, 251, 16, 251, 400, 7);
             fill(v, 381, 16, 381, 400, 7);
             fill(v, 511, 16, 511, 400, 7);
+            kigou_cells(v, s);
         }
         /* The rules go **after** the labels: ③立面's names sit on the same
          * text row as the rule above their cell, and the original's rule is
