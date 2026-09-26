@@ -2642,7 +2642,16 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
                 cmd.kigou_px = px;
                 cmd.kigou_py = py;
                 if (!sym->picks) {
-                    place_kigou(sym, px, py);
+                    /* **指示回数 0 は線の端が原点**です（「方位 (40mm)」
+                     * の実測：押した点ではなく、押したほうに近い端）。 */
+                    const JwcLine *l = &drawing->lines[k];
+                    const double q0 = (l->x0 - px) * (l->x0 - px)
+                                    + (l->y0 - py) * (l->y0 - py);
+                    const double q1 = (l->x1 - px) * (l->x1 - px)
+                                    + (l->y1 - py) * (l->y1 - py);
+
+                    place_kigou(sym, q0 <= q1 ? l->x0 : l->x1,
+                                q0 <= q1 ? l->y0 : l->y1);
                 }
             }
         } else if (sym && jw_kigou_wants2(sym) && cmd.kigou_line2 < 0) {
