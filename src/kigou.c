@@ -283,6 +283,18 @@ int jw_kigou_read(const char *path, JwKigou *out)
  * **まだ入っていないもの**: 指示線 2、指示回数 2 以上、倍率（700／800 と
  * ①倍率 横,縦）、円・文字・実点の部材、文字入力、他コマンドへの移行。
  */
+int jw_kigou_wants2(const JwKigouSym *sym)
+{
+    int k;
+
+    for (k = 0; k < sym->n; k++) {
+        if (sym->part[k].c1 % 100 == 20 || sym->part[k].c2 % 100 == 20) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                  const JwcLine *base2, double ox, double oy)
 {

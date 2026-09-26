@@ -5241,12 +5241,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 6, 1, 7, 0, "\x81" "E");
         jw_ui_text(v, 8, 1, 7, 0,
                    "\x8ew\x8e\xa6\x90\xfc(1)\x83}\x83" "E\x83X\x8ew\x8e\xa6  |\x87@\x94{\x97\xa6 \x89\xa1,\x8f" "c(  1.00,  1.00)|\x87" "A\x91\xbc\x8bL\x8d\x86\x91I\x91\xf0|");
-        if (s->kigou_wait) {
-            /* 指示線を拾ったあとは位置を待ちます（実測）。 */
+        if (s->kigou_wait && s->kigou_two) {
+            /* データに 20 があるときは**指示線 2** を待ちます（実測）。 */
             jw_ui_text(v, 8, 1, 7, 0,
-                       "\x81\x9b\x88\xca\x92u(L)free (R)Read  |\x87@\x94{\x97\xa6 \x89\xa1,\x8f" "c(  1.00,  1.00)|\x87" "A\x91\xbc\x8bL\x8d\x86\x91I\x91\xf0|");
-        }
-        if (s->kigou_wait) {
+                       "\x8ew\x8e\xa6\x90\xfc(2)\x81\x9f\x83}\x83" "E\x83X\x8ew\x8e\xa6  |\x87@\x94{\x97\xa6 \x89\xa1,\x8f" "c(  1.00,  1.00)|\x87" "A\x91\xbc\x8bL\x8d\x86\x91I\x91\xf0|");
+        } else if (s->kigou_wait) {
             /* 指示線を拾ったあとは位置を待ちます（実測）。 */
             jw_ui_text(v, 8, 1, 7, 0,
                        "\x81\x9b\x88\xca\x92u(L)free (R)Read  |\x87@\x94{\x97\xa6 \x89\xa1,\x8f" "c(  1.00,  1.00)|\x87" "A\x91\xbc\x8bL\x8d\x86\x91I\x91\xf0|");

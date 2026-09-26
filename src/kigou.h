@@ -102,6 +102,10 @@ int jw_kigou_read(const char *path, JwKigou *out);
  * …、9 が `JW_OPT4J.DAT`。一度読んだら持ち続けます。範囲外は NULL。 */
 const JwKigou *jw_kigou_lib(int which);
 
+/* その記号が**指示線 2 を押させるか**。データに 20 の制御コードが
+ * あるかどうかで決まります（指示回数ではありません）。 */
+int jw_kigou_wants2(const JwKigouSym *sym);
+
 /* 記号を図面に置きます。`base` は指示線 1、`(ox,oy)` は記号の原点
  * （押した位置を指示線に落とした点）。置いた線の数を返します。 */
 int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,

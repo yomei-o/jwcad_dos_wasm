@@ -361,6 +361,12 @@ static void sync_ui(void)
     ui.kigou_pick = cmd.kigou_pick;
     ui.kigou_sym = cmd.kigou_sym;
     ui.kigou_wait = cmd.kigou_line >= 0;
+    {
+        const JwKigou *kg = jw_kigou_lib(cmd.kigou_group);
+
+        ui.kigou_two = kg && cmd.kigou_sym > 0 && cmd.kigou_sym <= kg->n
+                     && jw_kigou_wants2(&kg->sym[cmd.kigou_sym - 1]);
+    }
     ui.kigou_group = cmd.kigou_group;
     ui.hen_env_all = cmd.hen_env_all;
     ui.hen_env_did = cmd.hen_env_did;
@@ -2639,8 +2645,10 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
                     place_kigou(sym, px, py);
                 }
             }
-        } else if (sym && sym->picks >= 2 && cmd.kigou_line2 < 0) {
-            /* 指示回数 2 は**線を 2 本**です（「コーナー」「線伸縮」）。 */
+        } else if (sym && jw_kigou_wants2(sym) && cmd.kigou_line2 < 0) {
+            /* **データに 20 があれば指示線 2** を押させます（実測）。
+             * 指示回数ではありません——「Ｒ面取」は 指示回数 1 でも
+             * `指示線(2)◆マウス指示` と出ます。 */
             const long k = jw_cmd_line_at(drawing, &view, x, y);
 
             if (k >= 0 && k != cmd.kigou_line) {
