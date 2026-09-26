@@ -317,6 +317,10 @@ typedef struct {
     int kigou_sym;    /* 選んだ記号、1 から。0 なら一覧のまま */
     int kigou_wait;   /* 位置か指示線 2 を待っているか */
     int kigou_two;    /* 待っているのが指示線 2 か */
+    int kigou_input;  /* 文字入力の盤 */
+    int kigou_in_kind;   /* その文字の文字種（下 2 桁） */
+    int kigou_in_base;   /* 基点（100 の位）。0 なら左下 */
+    const char *kigou_in_text;   /* 既定の文字列 */
     int kigou_group;
     int meas_unit;
     int meas_dec;

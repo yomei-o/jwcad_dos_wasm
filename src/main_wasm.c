@@ -361,6 +361,18 @@ static void sync_ui(void)
     ui.kigou_pick = cmd.kigou_pick;
     ui.kigou_sym = cmd.kigou_sym;
     ui.kigou_wait = cmd.kigou_line >= 0;
+    ui.kigou_input = cmd.kigou_input;
+    {
+        const JwKigou *kg2 = jw_kigou_lib(cmd.kigou_group);
+        const JwKigouPart *ip = kg2 && cmd.kigou_sym > 0
+                                && cmd.kigou_sym <= kg2->n
+                              ? jw_kigou_input(&kg2->sym[cmd.kigou_sym - 1],
+                                               cmd.kigou_in_at) : 0;
+
+        ui.kigou_in_kind = ip ? ip->type % 100 : 1;
+        ui.kigou_in_base = ip && ip->type > 0 ? (ip->type / 100) % 10 : 0;
+        ui.kigou_in_text = ip ? ip->text : 0;
+    }
     {
         const JwKigou *kg = jw_kigou_lib(cmd.kigou_group);
 
@@ -2641,7 +2653,12 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
                 cmd.kigou_line2 = -1;
                 cmd.kigou_px = px;
                 cmd.kigou_py = py;
-                if (!sym->picks) {
+                if (jw_kigou_input(sym, 0)) {
+                    /* **文字入力の指定があれば、置く前に盤を出します。**
+                     * まだ打鍵は受けません（絵を先に合わせます）。 */
+                    cmd.kigou_input = 1;
+                    cmd.kigou_in_at = 0;
+                } else if (!sym->picks) {
                     /* **指示回数 0 は線の端が原点**です（「方位 (40mm)」
                      * の実測：押した点ではなく、押したほうに近い端）。 */
                     const JwcLine *l = &drawing->lines[k];

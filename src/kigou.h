@@ -106,6 +106,9 @@ const JwKigou *jw_kigou_lib(int which);
  * あるかどうかで決まります（指示回数ではありません）。 */
 int jw_kigou_wants2(const JwKigouSym *sym);
 
+/* 文字入力の指定（制御コード 20000 以上）の部材。無ければ NULL。 */
+const JwKigouPart *jw_kigou_input(const JwKigouSym *sym, int nth);
+
 /* 記号を図面に置きます。`base` は指示線 1、`(ox,oy)` は記号の原点
  * （押した位置を指示線に落とした点）。置いた線の数を返します。 */
 int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,

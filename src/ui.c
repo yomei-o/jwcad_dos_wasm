@@ -5251,10 +5251,51 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\x81\x9b\x88\xca\x92u(L)free (R)Read  |\x87@\x94{\x97\xa6 \x89\xa1,\x8f" "c(  1.00,  1.00)|\x87" "A\x91\xbc\x8bL\x8d\x86\x91I\x91\xf0|");
         }
         jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
-        if (g && s->kigou_sym <= g->n) {
+        if (g && s->kigou_sym <= g->n && !s->kigou_input) {
             jw_ui_text(v, 18, 2, 7, 0xffffu,
                        g->sym[s->kigou_sym - 1].name);
         }
+    }
+    /* 文字入力の盤（制御コード 20000 の記号）。文字 (13) の盤と
+     * まったく同じ作りで、違うのは基点の名前と種の数字だけです。 */
+    if (s->kigou_input) {
+        static const char *const BASE[9] = {
+            "\x8d\xb6\x89\xba", "\x92\x86\x89\xba",
+            "\x89\x45\x89\xba", "\x8d\xb6\x92\x86",
+            "\x92\x86\x92\x86", "\x89\x45\x92\x86",
+            "\x8d\xb6\x8f\xe3", "\x92\x86\x8f\xe3",
+            "\x89\x45\x8f\xe3"
+        };
+        char one[32];
+        int b = s->kigou_in_base;
+
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 1, 1, 7, 0,
+                   "\x95\xb6\x8e\x9a\x97\xf1\x93\xfc\x97\xcd");
+        jw_ui_text(v, 11, 1, 7, 0, "\x81|\x81|\x81|\x81|");
+        jw_ui_text(v, 19, 1, 7, 0,
+                   "10\x81|\x81|\x81|\x81|\x81{\x81|\x81|\x81|\x81|"
+                   "20\x81|\x81|\x81|\x81|\x81{\x81|\x81|\x81|\x81|"
+                   "30\x81|\x81|\x81|\x81|\x81{\x81|\x81|\x81|\x81|"
+                   "40");
+        if (b < 0 || b > 8) {
+            b = 0;
+        }
+        jw_ui_text(v, 1, 4, 7, 0xffffu, BASE[b]);
+        sprintf(one, "|\x8e\xed %d|Paste", s->kigou_in_kind);
+        jw_ui_text(v, 5, 4, 7, 0xffffu, one);
+        if (s->kigou_in_text) {
+            /* **空白で埋めて**書きます—— の残りが出ます。 */
+            char pad[32];
+
+            sprintf(pad, "%-10s", s->kigou_in_text);
+            jw_ui_text(v, 1, 1, 7, 0, pad);
+        }
+        /* **下の帯と、数え札の箱も消えます**（実測）。行 2・行 3 は
+         * 本物では真っ黒で、 も  も出ません。 */
+        fill(v, 0, 464, 639, 479, 0);
+        fill(v, 0, 16, 121, 47, 0);
     }
     /* ①種類【A】変更 の一覧が出ているあいだの行（実測）。 */
     if (s->kigou_pick) {

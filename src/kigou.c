@@ -295,6 +295,24 @@ int jw_kigou_wants2(const JwKigouSym *sym)
     return 0;
 }
 
+const JwKigouPart *jw_kigou_input(const JwKigouSym *sym, int nth)
+{
+    int k, n = 0;
+
+    for (k = 0; k < sym->n; k++) {
+        const JwKigouPart *p = &sym->part[k];
+
+        if (p->kind == JW_KIGOU_TEXT_PART && p->c1 >= 20000
+            && p->c1 < 22000) {
+            if (n == nth) {
+                return p;
+            }
+            n++;
+        }
+    }
+    return 0;
+}
+
 int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                  const JwcLine *base2, double ox, double oy)
 {
