@@ -1560,11 +1560,59 @@ static void kigou_cells(VGA *v, const JwUi *s)
                 if (kind < 1 || kind > 10) {
                     kind = 1;
                 }
-                memset(&t, 0, sizeof t);
-                t.x0 = (float)p->x1;
-                t.y0 = (float)p->y1;
-                t.x1 = (float)p->x2;
-                t.y1 = (float)p->y2;
+                /* **基点は文字種の 100 の位**（§５-３）。1 中下、
+                 * 2 右下、3 左中、4 中中、5 右中、6 左上、
+                 * 7 中上、8 右上。無ければ左下です。
+                 * 升 13 の `ＡＷ` は 102（中下）、`INPUT` は
+                 * 702（中上）で、どちらも中寄せになります。 */
+                {
+                    const int base = p->type > 0
+                                   ? (p->type / 100) % 10 : 0;
+                    const double em = s->char_tab_w[kind] / 10.0;
+                    const double hi = s->char_tab_h[kind] / 10.0;
+                    const double gap = s->char_tab_gap[kind] / 10.0;
+                    double wide = 0.0;
+                    const unsigned char *q =
+                        (const unsigned char *)p->text;
+                    double dx = p->x2 - p->x1, dy = p->y2 - p->y1;
+                    double len = sqrt(dx * dx + dy * dy);
+                    double along = 0.0, up = 0.0;
+
+                    while (*q) {
+                        if (*q >= 0x81 && *q != 0x7f && q[1]) {
+                            wide += em + gap;
+                            q += 2;
+                        } else {
+                            wide += em / 2.0 + gap / 2.0;
+                            q++;
+                        }
+                    }
+                    if (wide > 0.0) {
+                        wide -= gap;
+                    }
+                    if (base == 1 || base == 4 || base == 7) {
+                        along = -wide / 2.0;
+                    } else if (base == 2 || base == 5 || base == 8) {
+                        along = -wide;
+                    }
+                    if (base >= 3 && base <= 5) {
+                        up = -hi / 2.0;
+                    } else if (base >= 6) {
+                        up = -hi;
+                    }
+                    if (len > 0.0) {
+                        dx /= len;
+                        dy /= len;
+                    } else {
+                        dx = 1.0;
+                        dy = 0.0;
+                    }
+                    memset(&t, 0, sizeof t);
+                    t.x0 = (float)(p->x1 + along * dx - up * dy);
+                    t.y0 = (float)(p->y1 + along * dy + up * dx);
+                    t.x1 = (float)(p->x2 + along * dx - up * dy);
+                    t.y1 = (float)(p->y2 + along * dy + up * dx);
+                }
                 t.size = (unsigned char)kind;
                 t.text = p->text;
                 memset(&w, 0, sizeof w);
@@ -1585,8 +1633,13 @@ static void kigou_cells(VGA *v, const JwUi *s)
                     v->clip_y0 = y0;
                     v->clip_x1 = x1;
                     v->clip_y1 = y1;
+                    /* **文字入力の指定（20000〜）は赤**です。
+                     * 升 13 の `INPUT` がそれで、隣の `ＡＷ`
+                     * （ふつうの文字）は水色でした。 */
                     jw_view_text(v, tmp, &t, &w,
-                                 jw_view_text_colour(tmp, t.size));
+                                 p->c1 >= 20000 ? 2u
+                                 : jw_view_text_colour(tmp,
+                                                       t.size));
                     v->clip_x0 = cx0;
                     v->clip_y0 = cy0;
                     v->clip_x1 = cx1;
