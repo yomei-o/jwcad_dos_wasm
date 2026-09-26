@@ -1665,23 +1665,38 @@ static void kigou_cells(VGA *v, const JwUi *s)
             ax = ox + p->x1 * scale;
             ay = oy - p->y1 * scale;
             if (p->kind == JW_KIGOU_ARC) {
-                const double r = p->radius * scale;
+                /* **図面の円を描く経路に流します。** 本物は「まん丸で
+                 * 直径 10 画素未満」のときだけ画素を置く routine を使い、
+                 * それ以外は折れ線です（jw_view_arc の注釈）。自分で
+                 * 折れ線のほうだけ呼んでいたので、「R [1mm]」の半径
+                 * 5 画素の半円が 6 画素になっていました。 */
+                JwcArc c;
+                JwView w;
                 const int cx0 = v->clip_x0, cy0 = v->clip_y0;
                 const int cx1 = v->clip_x1, cy1 = v->clip_y1;
-                double a0 = -p->y2, a1 = -p->x2;
 
-                if (a1 < a0) {
-                    a1 += 360.0;
-                }
+                memset(&c, 0, sizeof c);
+                c.cx = (float)p->x1;
+                c.cy = (float)p->y1;
+                c.r = (float)p->radius;
+                c.flatten = p->flat > 0.0
+                          ? (short)(p->flat * 10000.0 + 0.5) : 10000;
+                c.start = (long)(p->x2 * 65536.0);
+                c.end = (long)(p->y2 * 65536.0);
+                c.type = (unsigned char)(p->type > 0 ? p->type % 10 : 1);
+                memset(&w, 0, sizeof w);
+                w.ax = (float)ox;
+                w.ay = (float)oy;
+                w.scale = (float)scale;
+                w.x0 = x0;
+                w.y0 = y0;
+                w.x1 = x1;
+                w.y1 = y1;
                 v->clip_x0 = x0;
                 v->clip_y0 = y0;
                 v->clip_x1 = x1;
                 v->clip_y1 = y1;
-                /* 半径が負なら楕円で、続く数が偏平率です（§３-１１）。 */
-                jw_arc_poly(v, ax, ay, r,
-                            p->flat > 0.0 ? (long)(p->flat * 10000.0) : 10000,
-                            (long)(a0 * 65536.0), (long)(a1 * 65536.0), 0,
-                            ink, ROP_REPLACE, JW_STYLE_SOLID);
+                jw_view_arc(v, tmp, &c, &w, ink);
                 v->clip_x0 = cx0;
                 v->clip_y0 = cy0;
                 v->clip_x1 = cx1;
