@@ -128,6 +128,12 @@ typedef struct {
     int grid_mode;
     double grid_x, grid_y;      /* its spacing, millimetres of paper */
     int calc;
+    /* 電卓の表示。桁 13 で右に揃えて出し、桁 15 は 度分秒 の印。 */
+    char calc_disp[24];
+    char calc_mark;
+    char calc_pend[24];         /* 行 20 の、片付いたぶん */
+    int calc_op;                /* 行 20 桁 14 の演算子 */
+    char calc_unit;             /* 行 23 の ' や " */
     int kept;
     /* ｵﾌﾟｼｮﾝ (29) is a menu of menus too.  0 is the one the item itself
      * puts up; JW_OPT_* say which of its own is showing. */

@@ -2031,8 +2031,44 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 1, 23, 6, 0, JW_CALC_R2);
         jw_ui_text(v, 1, 24, 6, 0, JW_CALC_R3);
         jw_ui_text(v, 1, 25, 6, 0, JW_CALC_R4);
-        jw_ui_text(v, 13, 21, 7, 0, "0");
-        jw_ui_text(v, 12, 23, 6, 0, " \xdf");
+        {
+            /* 打った数は **桁 13 で右に揃えて**出ます（測定：`0` は
+             * 桁 13、`78` は桁 12 から、`7.5` は桁 11 から）。桁 15 は
+             * ふつう空白で、ﾟ を押すと `'` になります。 */
+            const char *t = s->calc_disp[0] ? s->calc_disp : "0";
+            const int n = (int)strlen(t);
+            char one[2];
+
+            jw_ui_text(v, 14 - (n > 13 ? 13 : n), 21, 7, 0, t);
+            one[0] = s->calc_mark ? s->calc_mark : ' ';
+            one[1] = 0;
+            /* 度分秒 の印は**白地に黒**で出ます（測定：桁 15 の枡が
+             * 丸ごと白くなり、字だけ黒でした）。 */
+            jw_ui_text(v, 15, 21, 7, s->calc_mark ? 0xffffu : 0u, one);
+            if (s->calc_pend[0]) {
+                /* 行 20 は**片付いたぶん**と待っている演算子です
+                 * （測定：7＋ で `7` と `＋`、7＋9＝ で `16`）。 */
+                const int m = (int)strlen(s->calc_pend);
+
+                jw_ui_text(v, 14 - (m > 13 ? 13 : m), 20, 7, 0,
+                           s->calc_pend);
+                if (s->calc_op) {
+                    jw_ui_text(v, 14, 20, 7, 0,
+                               s->calc_op == '^' ? "^ "
+                               : s->calc_op == '+' ? "\x81{"
+                               : s->calc_op == '-' ? "\x81|"
+                               : s->calc_op == '*' ? "\x81~"
+                               : "\x81\x80");
+                }
+                /* 行 20 の字は y=304 まで塗るので、**盤との境の白い線を
+                 * 引き直します**（原作の字は y=305 から）。 */
+                fill(v, 0, 304, 121, 304, 7);
+            }
+        }
+        jw_ui_text(v, 12, 23, 6, 0,
+                   s->calc_unit == '"' ? " \x22"
+                   : s->calc_unit == '\'' ? " '"
+                   : " \xdf");
         /* The grid goes on **after** the keys: each row of them paints
          * black behind itself and would cut the lines otherwise. */
         /* The keys sit in a grid: a line every sixteen rows from y=336, and

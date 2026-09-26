@@ -1628,10 +1628,193 @@ static int layer_at(int x, int y)
     return row * 8 + k;
 }
 
+/* **帯の 電卓**。升目を押すと数が組み上がり、演算子で前の計算が
+ * 片付きます。測定（[f1]計算結果表示 が置く文字で読みました）:
+ *
+ *   7＋9＝ → 16、7×9＝ → 63、100÷4＝ → 25、7･5＝ → 7.5、
+ *   7＋9＋2＝ → 18、7＋9＋ → 16（演算子で前のぶんが片付く）、
+ *   9[F7] → 3、90[F9] → 1、0[F8] → 1、2[F6]3＝ → 8。
+ *   **[F8][F9][F10] は度**です（30[F9] が 0.5）。
+ *
+ * 表示は打っている数だけで、**答えは出ません**——7＋9＝ のあとの
+ * 表示は `0` で、16 は [f1] か [f2] で取り出します。 */
+static char calc_entry[24] = "0";   /* 表示している数 */
+static double calc_acc;             /* 答えの置き場 */
+static int calc_op;                 /* 待っている演算子 */
+static int calc_fresh = 1;          /* 次の数字で打ち直す */
+
+/* 行 20 に「片付いたぶん」を置きます。 */
+static void calc_pend_set(double v)
+{
+    sprintf(ui.calc_pend, "%.10g", v);
+}
+
+static void calc_show(void)
+{
+    strncpy(ui.calc_disp, calc_entry, sizeof ui.calc_disp - 1);
+    ui.calc_disp[sizeof ui.calc_disp - 1] = 0;
+}
+
+/* 打った数を、桁あふれのない形で文字にします。 */
+static void calc_put(double v)
+{
+    char one[40];
+    int i;
+
+    sprintf(one, "%.10g", v);
+    for (i = 0; one[i] && i < (int)sizeof calc_entry - 1; i++) {
+        calc_entry[i] = one[i];
+    }
+    calc_entry[i] = 0;
+}
+
+static double calc_apply(double a, int op, double b)
+{
+    switch (op) {
+    case '+': return a + b;
+    case '-': return a - b;
+    case '*': return a * b;
+    case '/': return b != 0.0 ? a / b : 0.0;
+    case '^': return pow(a, b);
+    default:  return b;
+    }
+}
+
+/* 升目のひとつ。行は y=336 から 16 ごと、桁は x 0/24/48/72/102/121 で、
+ * **87 の仕切りは上三行だけ**（＝ と ＋ は二つぶん）。 */
+static int calc_key(int x, int y)
+{
+    static const char *row[4] = { "789-/~", "456*dA", "123+C", "0,.=E" };
+    const int r = (y - 336) / 16;
+    int c;
+
+    if (r < 0 || r > 3) {
+        return 0;
+    }
+    if (x < 24) {
+        c = 0;
+    } else if (x < 48) {
+        c = 1;
+    } else if (x < 72) {
+        c = 2;
+    } else if (x < 87 && r < 2) {
+        c = 3;
+    } else if (x < 102) {
+        c = r < 2 ? 4 : 3;
+    } else {
+        c = r < 2 ? 5 : 4;
+    }
+    return row[r][c];
+}
+
+/* 電卓の升目を押したとき。1 を返したら画面を描き直します。 */
+static int calc_press(int x, int y)
+{
+    const int k = calc_key(x, y);
+    int n = (int)strlen(calc_entry);
+
+    if (!k) {
+        return 0;
+    }
+    if (k >= '0' && k <= '9') {
+        if (calc_fresh) {
+            calc_entry[0] = (char)k;
+            calc_entry[1] = 0;
+            calc_fresh = 0;
+        } else if (n < 13) {
+            if (n == 1 && calc_entry[0] == '0') {
+                calc_entry[0] = (char)k;
+            } else {
+                calc_entry[n] = (char)k;
+                calc_entry[n + 1] = 0;
+            }
+        }
+    } else if (k == '.') {
+        if (calc_fresh) {
+            strcpy(calc_entry, "0.");
+            calc_fresh = 0;
+        } else if (!strchr(calc_entry, '.') && n < 13) {
+            calc_entry[n] = '.';
+            calc_entry[n + 1] = 0;
+        }
+    } else if (k == '~') {
+        /* ± は打っている数の符号を返します（測定：7 のあと `-7`）。 */
+        if (calc_entry[0] == '-') {
+            memmove(calc_entry, calc_entry + 1, strlen(calc_entry));
+        } else if (strcmp(calc_entry, "0") != 0) {
+            memmove(calc_entry + 1, calc_entry, strlen(calc_entry) + 1);
+            calc_entry[0] = '-';
+        }
+    } else if (k == 'A') {
+        calc_acc = 0.0;
+        calc_op = 0;
+        strcpy(calc_entry, "0");
+        calc_fresh = 1;
+        ui.calc_mark = 0;
+        ui.calc_pend[0] = 0;
+        ui.calc_op = 0;
+        ui.calc_unit = 0;
+    } else if (k == 'C') {
+        strcpy(calc_entry, "0");
+        calc_fresh = 1;
+    } else if (k == 'd') {
+        /* ﾟ は度分秒の入力に移ります（桁 15 の印が `\'` に）。 */
+        /* **度→分→秒**と進みます（測定：7ﾟ30ﾟ で行 20 が 7.5、
+         * 印と札が `'` から `"` へ）。 */
+        if (ui.calc_unit == '\'') {
+            calc_acc += atof(calc_entry) / 60.0;
+            ui.calc_mark = '"';
+            ui.calc_unit = '"';
+        } else if (ui.calc_unit == '"') {
+            calc_acc += atof(calc_entry) / 3600.0;
+        } else {
+            calc_acc = atof(calc_entry);
+            ui.calc_mark = '\'';
+            ui.calc_unit = '\'';
+        }
+        calc_pend_set(calc_acc);
+        ui.calc_op = 0;
+        strcpy(calc_entry, "0");
+        calc_fresh = 1;
+    } else if (k == '=') {
+        /* **打ち直し中なら相手は答えの置き場そのもの**です（測定：
+         * 9[F7] で 3 になったあと ＝ を押しても 3 のまま）。 */
+        calc_acc = calc_apply(calc_acc, calc_op,
+                              calc_fresh ? calc_acc : atof(calc_entry));
+        calc_op = 0;
+        calc_pend_set(calc_acc);
+        ui.calc_op = 0;
+        strcpy(calc_entry, "0");
+        calc_fresh = 1;
+    } else if (k == 'E') {
+        calc_fresh = 1;
+    } else {
+        calc_acc = calc_apply(calc_acc, calc_op,
+                              calc_fresh ? calc_acc : atof(calc_entry));
+        calc_op = k;
+        calc_pend_set(calc_acc);
+        ui.calc_op = k;
+        strcpy(calc_entry, "0");
+        calc_fresh = 1;
+    }
+    calc_show();
+    return 1;
+}
+
 EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 {
     const int pick = jw_ui_menu_hit(x, y);
     const int bar = jw_ui_bar_item(x, y);
+
+    /* 電卓の升目。盤と同じで、menu より先に答えます。 */
+    if (ui.calc && x >= 0 && x <= 120 && y >= 336 && y <= 399
+        && calc_press(x, y)) {
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
 
     /* ペン's board answers presses of its own, and it is over the menu, so
      * it has to come before the menu.  Rows 5..10 are the six pens and
@@ -1676,6 +1859,15 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             jw_ui_from(&ui, drawing);
             ui.calc = 1;        /* after jw_ui_from, which memsets */
             ui.kept = was_kept;
+            strcpy(calc_entry, "0");
+            calc_acc = 0.0;
+            calc_op = 0;
+            calc_fresh = 1;
+            ui.calc_mark = 0;
+            ui.calc_pend[0] = 0;
+            ui.calc_op = 0;
+            ui.calc_unit = 0;
+            calc_show();
         } else if ((bar == JW_BAR_KEEP || bar == JW_BAR_OFFSET) && drawing) {
             /* 範囲記憶 and ｵﾌｾｯﾄ both leave the original **in 入出力**, the
              * same way 紙, the scale and サブ画面表示 do -- the item's row
@@ -2911,6 +3103,56 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
  * original does with them here; anything else is ignored for now. */
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
+
+    /* 電卓の [F6]〜[F10]。**度**で計算します（測定：30[F9] が 0.5、
+     * 9[F7] が 3、2[F6]3＝ が 8）。 */
+    if (ui.calc && key >= JW_KEY_F1 && key <= JW_KEY_F10) {
+        const double d2r = 3.14159265358979323846 / 180.0;
+        const double v = atof(calc_entry);
+
+        if (key == JW_KEY_F1 + 5) {         /* [F6] べき乗 */
+            calc_acc = calc_apply(calc_acc, calc_op,
+                                  calc_fresh ? calc_acc : v);
+            calc_op = '^';
+            calc_pend_set(calc_acc);
+            ui.calc_op = '^';
+            strcpy(calc_entry, "0");
+            calc_fresh = 1;
+        } else if (key == JW_KEY_F1 + 6) {  /* [F7] ﾙｰﾄ */
+            calc_acc = v > 0.0 ? sqrt(v) : 0.0;
+            calc_op = 0;
+            calc_pend_set(calc_acc);
+            ui.calc_op = 0;
+            strcpy(calc_entry, "0");
+            calc_fresh = 1;
+        } else if (key == JW_KEY_F1 + 7) {  /* [F8] COS */
+            calc_acc = cos(v * d2r);
+            calc_op = 0;
+            calc_pend_set(calc_acc);
+            ui.calc_op = 0;
+            strcpy(calc_entry, "0");
+            calc_fresh = 1;
+        } else if (key == JW_KEY_F1 + 8) {  /* [F9] SIN */
+            calc_acc = sin(v * d2r);
+            calc_op = 0;
+            calc_pend_set(calc_acc);
+            ui.calc_op = 0;
+            strcpy(calc_entry, "0");
+            calc_fresh = 1;
+        } else if (key == JW_KEY_F10) {     /* [F10] ATAN */
+            calc_acc = atan(v) / d2r;
+            calc_op = 0;
+            calc_pend_set(calc_acc);
+            ui.calc_op = 0;
+            strcpy(calc_entry, "0");
+            calc_fresh = 1;
+        } else {
+            return 0;
+        }
+        calc_show();
+        present();
+        return -1;
+    }
     int pick;
 
     /* 紙 has the keyboard while it is asking for a size.  Measured: a digit
