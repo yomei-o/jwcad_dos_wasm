@@ -105,7 +105,7 @@ const JwKigou *jw_kigou_lib(int which);
 /* 記号を図面に置きます。`base` は指示線 1、`(ox,oy)` は記号の原点
  * （押した位置を指示線に落とした点）。置いた線の数を返します。 */
 int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
-                 double ox, double oy);
+                 const JwcLine *base2, double ox, double oy);
 
 /* そのグループの名札（`A`〜`J`）。範囲外は 0。 */
 char jw_kigou_letter(int which);

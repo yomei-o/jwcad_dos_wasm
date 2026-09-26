@@ -137,30 +137,69 @@ EMSCRIPTEN_KEEPALIVE void jw_init(void)
 /* Everything the chrome shows that belongs to the command in hand.  Three
  * places need it -- moving the pointer, pressing, and typing -- so it is in
  * one place. */
-/* 拾った指示線に記号を置いて、その線を消します。原点は**押したところを
- * 指示線に落とした点**です（「幅 [1mm]」の実測）。 */
+/* 拾った指示線に記号を置いて、その線を消します。
+ *
+ * 原点は、指示線 1 だけのときは**押したところを指示線に落とした点**
+ * （「幅 [1mm]」の実測）、指示線 2 もあるときは**2 本の交点**です。 */
 static void place_kigou(const JwKigouSym *sym, double px, double py)
 {
-    JwcLine base;
+    JwcLine base, base2;
+    const JwcLine *two = 0;
     double ax, ay, dx, dy, len, t, ox, oy;
 
     if (!drawing || cmd.kigou_line < 0
         || cmd.kigou_line >= drawing->n_lines) {
         cmd.kigou_line = -1;
+        cmd.kigou_line2 = -1;
+        cmd.kigou_line2 = -1;
         return;
     }
     base = drawing->lines[cmd.kigou_line];
+    if (cmd.kigou_line2 >= 0 && cmd.kigou_line2 < drawing->n_lines) {
+        base2 = drawing->lines[cmd.kigou_line2];
+        two = &base2;
+    }
     ax = base.x0;
     ay = base.y0;
     dx = base.x1 - ax;
     dy = base.y1 - ay;
+    if (two) {
+        /* 2 本の交点。平行なら押したところを落とした点に逃がします。 */
+        const double ex = base2.x1 - base2.x0, ey = base2.y1 - base2.y0;
+        const double det = dx * ey - dy * ex;
+
+        if (det > 1e-9 || det < -1e-9) {
+            const double s2 = ((base2.x0 - ax) * ey
+                               - (base2.y0 - ay) * ex) / det;
+
+            ox = ax + s2 * dx;
+            oy = ay + s2 * dy;
+            jw_kigou_put(drawing, sym, &base, two, ox, oy);
+            /* **あとのほうから消します。** 先に小さい番号を消すと、
+             * もう一方の番号がひとつ前にずれます。 */
+            if (cmd.kigou_line2 > cmd.kigou_line) {
+                jwc_remove_line(drawing, cmd.kigou_line2);
+                jwc_remove_line(drawing, cmd.kigou_line);
+            } else {
+                jwc_remove_line(drawing, cmd.kigou_line);
+                jwc_remove_line(drawing, cmd.kigou_line2);
+            }
+            cmd.kigou_line = -1;
+            cmd.kigou_line2 = -1;
+            cmd.kigou_line2 = -1;
+            ui.n_lines = drawing->n_lines;
+            ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+            return;
+        }
+    }
     len = dx * dx + dy * dy;
     t = len > 0.0 ? ((px - ax) * dx + (py - ay) * dy) / len : 0.0;
     ox = ax + t * dx;
     oy = ay + t * dy;
-    jw_kigou_put(drawing, sym, &base, ox, oy);
+    jw_kigou_put(drawing, sym, &base, two, ox, oy);
     jwc_remove_line(drawing, cmd.kigou_line);
     cmd.kigou_line = -1;
+    cmd.kigou_line2 = -1;
     ui.n_lines = drawing->n_lines;
     ui.n_arcs = drawing->n_arcs + drawing->n_texts;
 }
@@ -2593,11 +2632,20 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
             if (k >= 0) {
                 cmd.kigou_line = k;
+                cmd.kigou_line2 = -1;
                 cmd.kigou_px = px;
                 cmd.kigou_py = py;
                 if (!sym->picks) {
                     place_kigou(sym, px, py);
                 }
+            }
+        } else if (sym && sym->picks >= 2 && cmd.kigou_line2 < 0) {
+            /* 指示回数 2 は**線を 2 本**です（「コーナー」「線伸縮」）。 */
+            const long k = jw_cmd_line_at(drawing, &view, x, y);
+
+            if (k >= 0 && k != cmd.kigou_line) {
+                cmd.kigou_line2 = k;
+                place_kigou(sym, px, py);
             }
         } else if (sym) {
             place_kigou(sym, px, py);

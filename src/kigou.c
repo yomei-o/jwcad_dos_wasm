@@ -284,12 +284,20 @@ int jw_kigou_read(const char *path, JwKigou *out)
  * ①倍率 横,縦）、円・文字・実点の部材、文字入力、他コマンドへの移行。
  */
 int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
-                 double ox, double oy)
+                 const JwcLine *base2, double ox, double oy)
 {
-    const double dx = base->x1 - base->x0, dy = base->y1 - base->y0;
-    const double len = sqrt(dx * dx + dy * dy);
     const double mm = d->unit_mm > 0.0f ? (double)d->unit_mm : 1.0;
-    double ux, uy, nx, ny;
+    /* **端に合わせるときは原点から遠いほうの端**です（「コーナー」と
+     * 「幅 [1mm]」の実測）。記号の +x も、その遠い端から原点への向き。 */
+    const double d0 = (base->x0 - ox) * (base->x0 - ox)
+                    + (base->y0 - oy) * (base->y0 - oy);
+    const double d1 = (base->x1 - ox) * (base->x1 - ox)
+                    + (base->y1 - oy) * (base->y1 - oy);
+    const double fx = d0 >= d1 ? base->x0 : base->x1;
+    const double fy = d0 >= d1 ? base->y0 : base->y1;
+    const double dx = ox - fx, dy = oy - fy;
+    const double len = sqrt(dx * dx + dy * dy);
+    double ux, uy, nx, ny, gx = 0.0, gy = 0.0;
     int k, put = 0;
 
     if (len <= 0.0) {
@@ -299,41 +307,100 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
     uy = dy / len;
     nx = -uy;
     ny = ux;
+    if (base2) {
+        /* **指示線 2 があれば、記号の y はその向き**です
+         * （JW_OPT4.DAT §２-２）。こちらも遠いほうの端から原点へ。 */
+        const double e0 = (base2->x0 - ox) * (base2->x0 - ox)
+                        + (base2->y0 - oy) * (base2->y0 - oy);
+        const double e1 = (base2->x1 - ox) * (base2->x1 - ox)
+                        + (base2->y1 - oy) * (base2->y1 - oy);
+        const double ex = ox - (e0 >= e1 ? base2->x0 : base2->x1);
+        const double ey = oy - (e0 >= e1 ? base2->y0 : base2->y1);
+        const double el = sqrt(ex * ex + ey * ey);
+
+        gx = e0 >= e1 ? base2->x0 : base2->x1;
+        gy = e0 >= e1 ? base2->y0 : base2->y1;
+        if (el > 0.0) {
+            nx = -ex / el;
+            ny = -ey / el;
+        }
+    }
     for (k = 0; k < sym->n; k++) {
         const JwKigouPart *p = &sym->part[k];
         const long c1 = p->c1 % 100, c2 = p->c2 % 100;
         JwcLine l;
 
-        if (p->kind != JW_KIGOU_LINE) {
-            continue;           /* 円・文字・実点はまだ */
+        if (p->kind != JW_KIGOU_LINE && p->kind != JW_KIGOU_ARC) {
+            continue;           /* 文字・実点はまだ */
         }
         if (c1 % 10 == 8 || c2 % 10 == 8 || c1 % 10 == 9 || c2 % 10 == 9) {
             continue;           /* 表のみ・ダミーは作図しません */
         }
-        if (c1 == 20 || c2 == 20) {
-            continue;           /* 指示線 2 はまだ */
+        if ((c1 == 20 || c2 == 20) && !base2) {
+            continue;           /* 指示線 2 が無ければ置けません */
+        }
+        if (p->kind == JW_KIGOU_ARC) {
+            /* **角度は記号の枠のもの**なので、指示線の角度を
+             * 足して図面の角度にします。半径は紙の mm です。 */
+            const double turn = atan2(uy, ux) * 180.0 / 3.14159265358979323846;
+            JwcArc a;
+
+            memset(&a, 0, sizeof a);
+            a.cx = (float)(ox + (p->x1 * ux + p->y1 * nx) * mm);
+            a.cy = (float)(oy + (p->x1 * uy + p->y1 * ny) * mm);
+            a.r = (float)(p->radius * mm);
+            a.flatten = p->flat > 0.0
+                      ? (short)(p->flat * 10000.0 + 0.5) : 10000;
+            a.start = (long)((p->x2 + turn) * 65536.0);
+            a.end = (long)((p->y2 + turn) * 65536.0);
+            a.type = base->type;
+            a.pen = base->pen;
+            a.layer = base->layer;
+            memcpy(a.rest, base->rest, sizeof a.rest);
+            if (!(p->c1 >= 100 && p->c1 < 300)) {
+                if (p->has_attr && p->pen > 0) {
+                    a.pen = (unsigned char)p->pen;
+                }
+                if (p->has_attr && p->type > 0) {
+                    a.type = (unsigned char)(p->type % 10);
+                }
+            }
+            if (jwc_put_arc(d, &a)) {
+                put++;
+            }
+            continue;
         }
         memset(&l, 0, sizeof l);
         if (c1 == 10) {
-            l.x0 = base->x0;
-            l.y0 = base->y0;
+            l.x0 = (float)fx;
+            l.y0 = (float)fy;
+        } else if (c1 == 20 && base2) {
+            l.x0 = (float)gx;
+            l.y0 = (float)gy;
         } else {
             l.x0 = (float)(ox + (p->x1 * ux + p->y1 * nx) * mm);
             l.y0 = (float)(oy + (p->x1 * uy + p->y1 * ny) * mm);
         }
         if (c2 == 10) {
-            l.x1 = base->x1;
-            l.y1 = base->y1;
+            l.x1 = (float)fx;
+            l.y1 = (float)fy;
+        } else if (c2 == 20 && base2) {
+            l.x1 = (float)gx;
+            l.y1 = (float)gy;
         } else {
             l.x1 = (float)(ox + (p->x2 * ux + p->y2 * nx) * mm);
             l.y1 = (float)(oy + (p->x2 * uy + p->y2 * ny) * mm);
         }
         /* 100 の位が 1 なら線色・線種・レイヤは指示線 1 と同じ。 */
         if (p->c1 >= 100 && p->c1 < 300) {
-            l.type = base->type;
-            l.pen = base->pen;
-            l.layer = base->layer;
-            memcpy(l.rest, base->rest, sizeof l.rest);
+            /* 100 の位が 1 なら指示線 1、2 なら指示線 2 の
+             * 線色・線種・レイヤです（§４-２、§４-３）。 */
+            const JwcLine *from = p->c1 >= 200 && base2 ? base2 : base;
+
+            l.type = from->type;
+            l.pen = from->pen;
+            l.layer = from->layer;
+            memcpy(l.rest, from->rest, sizeof l.rest);
         } else {
             l.type = (unsigned char)(p->has_attr && p->type > 0
                                      ? p->type % 10 : base->type);
