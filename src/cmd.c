@@ -31,6 +31,17 @@ void jw_cmd_pick(JwCmd *c, int command)
     /* ２線's `①基準線からの間隔＝ 75.000 , 75.000 (mm)`, likewise. */
     c->gap_two[0] = c->gap_two[1] = 75.0;
     /* 分割's `[2]`, the count it offers as 前回と同じ. */
+    /* **寸法設定の既定。** 本物は最初からこの値を持っています。
+     * ページ側（src/main_wasm.c）にしか無かったので、`JwCmd` を
+     * 直に作る検査では小数桁が 0 になり、`29.8` が `30` に
+     * なっていました（273 画素）。 */
+    c->dim_pen = 1;
+    c->dim_pen_point = 1;
+    c->dim_gap_mm = 0.5;
+    c->dim_arrow_mm = 3.0;
+    c->dim_angle_deg = 15.0;
+    c->dim_dec = 1;
+    c->dim_comma_on = 1;
     c->divisions = 2;
     /* 正多角形's `[5]`, likewise. */
     c->sides = 5;

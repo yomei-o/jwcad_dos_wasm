@@ -856,6 +856,12 @@ void jw_ui_default(JwUi *s)
     s->dim_ck_prev = 90.0;              /* 寸法 ④円･角 の前回の角 */
     s->hatch_angle = 45.0;              /* ハッチ の角度 */
     s->hatch_pitch = 10.0;              /* ハッチ のピッチ */
+    s->dim_pen_line = 1;                /* 寸法設定 —— ペン */
+    s->dim_pen_point = 1;
+    s->dim_gap = 0.5;                   /* 寸法値の離れ(mm) */
+    s->dim_arrow = 3.0;                 /* 矢の長さ(mm) */
+    s->dim_angle = 15.0;                /* 矢の角(度) */
+    s->dim_dec = 1;                     /* 小数桁 */
     s->paper = 3;
     s->denom = 100.0;
     s->group = 0;
