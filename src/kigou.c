@@ -295,9 +295,11 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                     + (base->y1 - oy) * (base->y1 - oy);
     const double fx = d0 >= d1 ? base->x0 : base->x1;
     const double fy = d0 >= d1 ? base->y0 : base->y1;
+    const double sx = d0 >= d1 ? base->x1 : base->x0;
+    const double sy = d0 >= d1 ? base->y1 : base->y0;
     const double dx = ox - fx, dy = oy - fy;
     const double len = sqrt(dx * dx + dy * dy);
-    double ux, uy, nx, ny, gx = 0.0, gy = 0.0;
+    double ux, uy, nx, ny, gx = 0.0, gy = 0.0, hx = 0.0, hy = 0.0;
     int k, put = 0;
 
     if (len <= 0.0) {
@@ -320,6 +322,8 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
 
         gx = e0 >= e1 ? base2->x0 : base2->x1;
         gy = e0 >= e1 ? base2->y0 : base2->y1;
+        hx = e0 >= e1 ? base2->x1 : base2->x0;
+        hy = e0 >= e1 ? base2->y1 : base2->y0;
         if (el > 0.0) {
             nx = -ex / el;
             ny = -ey / el;
@@ -375,15 +379,17 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             l.x0 = (float)fx;
             l.y0 = (float)fy;
         } else if (c1 == 20 && base2) {
-            l.x0 = (float)gx;
-            l.y0 = (float)gy;
+            /* 制御(1) の 20 は指示線 2 の**近い**端です。 */
+            l.x0 = (float)hx;
+            l.y0 = (float)hy;
         } else {
             l.x0 = (float)(ox + (p->x1 * ux + p->y1 * nx) * mm);
             l.y0 = (float)(oy + (p->x1 * uy + p->y1 * ny) * mm);
         }
         if (c2 == 10) {
-            l.x1 = (float)fx;
-            l.y1 = (float)fy;
+            /* 制御(2) の 10 は指示線 1 の**近い**端です。 */
+            l.x1 = (float)sx;
+            l.y1 = (float)sy;
         } else if (c2 == 20 && base2) {
             l.x1 = (float)gx;
             l.y1 = (float)gy;
