@@ -18,7 +18,7 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/read
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 DRAWING="${DRAWING:-SAMPLE0}"
 x=$1; y=$2
 {

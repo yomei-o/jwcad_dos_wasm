@@ -13,7 +13,7 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/optpick
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ $# -ge 3 ] || { echo "usage: sh tools/optpick.sh <item> <x> <y> [<x> <y> ...]" >&2; exit 2; }
 
 ITEM="$1"; shift

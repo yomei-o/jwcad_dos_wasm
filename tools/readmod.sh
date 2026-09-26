@@ -17,7 +17,7 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/read
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 DRAWING="${DRAWING:-SAMPLE0}"
 CMD="${CMD:-90 104}"            # which command to be in; the default is ／
 mod=$1; x=$2; y=$3; mx=$4; my=$5; second=$6; ex=$7; ey=$8

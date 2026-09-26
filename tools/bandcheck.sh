@@ -7,7 +7,7 @@
 # whole screen.
 set -e
 cd "$(dirname "$0")/.."
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 mkdir -p tmp/band
 n=$1; x0=$2; y0=$3; x1=$4; y1=$5

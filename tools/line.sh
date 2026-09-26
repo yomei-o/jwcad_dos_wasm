@@ -16,7 +16,7 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/line
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 X0=${1:-300}; Y0=${2:-200}; X1=${3:-400}; Y1=${4:-300}
 DRAWING="${DRAWING:-SAMPLE0}"

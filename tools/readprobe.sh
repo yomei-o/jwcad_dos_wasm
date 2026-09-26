@@ -9,7 +9,7 @@ set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/probe
 rm -f tmp/probe/*.raw
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 DRAWING="${DRAWING:-SAMPLE0}"
 # how long to hold the button and how long to let the answer settle
 HOLD="${HOLD:-3000000}"

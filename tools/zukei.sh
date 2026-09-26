@@ -19,7 +19,7 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/zukei
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first" >&2; exit 2; }
 
 BOOT="${BOOT:-40000000}"

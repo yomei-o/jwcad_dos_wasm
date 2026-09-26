@@ -14,7 +14,7 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/rc
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 DRAWING="${DRAWING:-SAMPLE0}"
 # Which item on the top line.  520 is x of the sixth, 回転 (columns 63-68);

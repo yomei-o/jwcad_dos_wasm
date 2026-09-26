@@ -3,7 +3,7 @@
 # decoded, with the instruction count, the column and the row.
 set -e
 cd "$(dirname "$0")/.."
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 ROOT="${ROOT:-tmp/sroot}"
 DRAWING="${DRAWING:-SAMPLE0}"
 DOSEMU_BP=+0DEF:23C5 DOSEMU_BPSTR=2 DOSEMU_BPN=20000 \

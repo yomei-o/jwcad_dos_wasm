@@ -16,7 +16,7 @@ set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/screens
 
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 [ -f tmp/mask_none.raw ] || { echo "tmp/mask_none.raw is missing" >&2; exit 2; }
 

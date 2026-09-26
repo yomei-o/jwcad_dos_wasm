@@ -9,7 +9,7 @@
 # drawing went into it and when.
 set -e
 cd "$(dirname "$0")/.."
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 BOOT="${BOOT:-40000000}"
 WAIT="${WAIT:-22000000}"
 

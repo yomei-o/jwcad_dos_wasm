@@ -9,7 +9,7 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/div
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 DRAWING="${DRAWING:-SAMPLE0}"
 ax=$1; ay=$2; bx=$3; by=$4; n=${5:-4}
 {

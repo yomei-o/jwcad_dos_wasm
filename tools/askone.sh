@@ -11,7 +11,7 @@ set -e
 cd "$(dirname "$0")/.."
 name="$1"; kind="$2"; which="$3"
 [ -n "$which" ] || { echo "usage: sh tools/askone.sh TEST2 texts 18" >&2; exit 2; }
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first" >&2; exit 2; }
 mkdir -p tmp/ask
 python tools/onerec.py "orig/$name.JWC" "$kind" "$which" orig/ONE.JWC

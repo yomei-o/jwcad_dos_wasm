@@ -17,10 +17,14 @@ if [ $# -gt 0 ]; then cmds="$*"; else cmds=$(seq 1 30); fi
 # that had been drawn with a phantom Ctrl held; 入出力 came out 13047 pixels
 # different against a capture two days old, and 0 once it was taken again.  So
 # say so rather than let a stale reference read as a regression.
-EMU=../dosv_emu_cpp/dosemu.exe
-if [ -f "$EMU" ] && [ -f tmp/menus/c01.raw ] && [ "$EMU" -nt tmp/menus/c01.raw ]
+# **絵を作った当人と比べます。** ここで見るのは `tools/emu.sh`
+# （絵を取っておくための覆い）ではなく、その下で走る本体です——
+# 覆いを足した日に、撮った絵は何も変わっていないのに毎回
+# 「撮り直せ」と言うようになりました。
+REAL=../dosv_emu_cpp/dosemu.exe
+if [ -f "$REAL" ] && [ -f tmp/menus/c01.raw ] && [ "$REAL" -nt tmp/menus/c01.raw ]
 then
-    echo "tmp/menus/*.raw is older than $EMU -- run sh tools/menus.sh again" >&2
+    echo "tmp/menus/*.raw is older than $REAL -- run sh tools/menus.sh again" >&2
 fi
 total=0
 for n in $cmds; do

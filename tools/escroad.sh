@@ -14,7 +14,7 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/esc
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first" >&2; exit 2; }
 [ $# -ge 2 ] || { echo "usage: sh tools/escroad.sh <x> <y>" >&2; exit 2; }
 

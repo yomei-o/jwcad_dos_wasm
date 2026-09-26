@@ -18,7 +18,7 @@ wait="${2:-60000000}"
 [ -f "orig/$name.JWC" ] || { echo "no orig/$name.JWC" >&2; exit 2; }
 mkdir -p tmp/only
 
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 
 short=$(echo "$name" | cut -c1-2)

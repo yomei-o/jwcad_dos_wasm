@@ -15,7 +15,7 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/sw
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 
 WATCH="${WATCH:-A2EFD-A2EFD}"

@@ -16,7 +16,7 @@
 # The words go to <out>.txt.
 set -e
 cd "$(dirname "$0")/.."
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first" >&2; exit 2; }
 [ $# -ge 5 ] || { echo "usage: sh tools/onebranch.sh <x> <y> <bx> <left|right> <out.raw>" >&2; exit 2; }
 

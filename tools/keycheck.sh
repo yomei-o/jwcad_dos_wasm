@@ -9,7 +9,7 @@
 # so the line saying what the right button would snap to is on both screens.
 set -e
 cd "$(dirname "$0")/.."
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 mkdir -p tmp/key
 key=$1; n=$2

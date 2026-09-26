@@ -13,7 +13,7 @@
 # does: it is still held while the second press is being aimed.
 set -e
 cd "$(dirname "$0")/.."
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 mkdir -p tmp/mod
 mod=$1; x=$2; y=$3

@@ -20,7 +20,7 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/branch
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 [ -s tmp/branch/list.txt ] || { echo "run tools/branchlist.mjs first" >&2; exit 2; }
 [ $# -gt 0 ] || { echo "usage: sh tools/branchstr.sh <line> [<line> ...]" >&2; exit 2; }

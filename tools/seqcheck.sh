@@ -35,7 +35,7 @@ else
     cp -rp orig $D/root
 fi
 rm -f $D/root/QPICK.JWC $D/root/QBYTES.JWC $D/root/ONE2.JWC
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ -x "$EMU" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 NODE="${NODE:-}"
 [ -n "$NODE" ] || { command -v node > /dev/null 2>&1 && NODE=node; }

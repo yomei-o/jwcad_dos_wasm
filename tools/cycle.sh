@@ -11,7 +11,7 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/cycle
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 [ $# -ge 5 ] || { echo "usage: sh tools/cycle.sh <x> <y> <bx> <left|right> <n>" >&2; exit 2; }
 
 X="$1"; Y="$2"; BX="$3"; BTN="$4"; N="$5"

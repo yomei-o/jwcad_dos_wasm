@@ -17,7 +17,7 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/erase
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 DRAWING="${DRAWING:-SAMPLE0}"
 WAIT="${WAIT:-40000000}"
 {

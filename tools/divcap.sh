@@ -4,7 +4,7 @@
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p tmp/div
-EMU=../dosv_emu_cpp/dosemu.exe
+EMU=tools/emu.sh
 {
     printf 'wait 40000000\nmouse 30 152\nwait 2000000\nclick left\nwait 40000000\n'
     printf 'mouse 600 450\nwait 3000000\ndown left\nwait 3000000\nup left\nwait 20000000\n'
