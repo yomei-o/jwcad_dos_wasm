@@ -413,6 +413,15 @@ typedef struct {
      * band **full of drawing** down to y=17, where a plain press on 入出力
      * leaves it black.  Set after jw_ui_from, which zeroes the struct. */
     int band_kept;
+    /* 範囲記憶 を押した直後、行 2 に出る帯。1 が `記憶`、
+     * 2 が `解除` です。 */
+    int keep_msg;
+    /* ｵﾌｾｯﾄ: 0 が切、1 が 1 回だけ、2 が常駐。押すたびに
+     * 0→1→2→0 と回ります（測定）。 */
+    int offset_mode;
+    /* 押した直後だけ行 3 に出る帯。1 が `オフセットモード` だけ、
+     * 2 は `常駐`（黄）つき、3 は `解除`（緑）つきです。 */
+    int offset_msg;
     int ask;
     char ask_typed[8];
     int ask_n;

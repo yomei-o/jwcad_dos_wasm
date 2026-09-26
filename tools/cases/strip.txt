@@ -1,0 +1,18 @@
+記憶1回	90 470 left
+記憶2回	90 470 left|90 470 left
+記憶3回	90 470 left|90 470 left|90 470 left
+記憶→ESC	90 470 left|key esc
+記憶→移動	90 470 left|move 300 250
+記憶→命令	90 470 left|30 184 left
+記憶→電卓	90 470 left|25 470 left
+ｵﾌｾｯﾄ1回	570 470 left
+ｵﾌｾｯﾄ2回	570 470 left|570 470 left
+ｵﾌｾｯﾄ3回	570 470 left|570 470 left|570 470 left
+ｵﾌｾｯﾄ4回	570 470 left|570 470 left|570 470 left|570 470 left
+ｵﾌｾｯﾄ→ESC	570 470 left|key esc
+ｵﾌｾｯﾄ→命令	570 470 left|30 184 left
+ｵﾌｾｯﾄ→電卓	570 470 left|25 470 left
+記憶→ｵﾌｾｯﾄ	90 470 left|570 470 left
+ｵﾌｾｯﾄ→記憶	570 470 left|90 470 left
+電卓	25 470 left
+命令→電卓	30 184 left|25 470 left

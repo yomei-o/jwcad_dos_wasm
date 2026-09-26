@@ -1845,6 +1845,12 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     const int pick = jw_ui_menu_hit(x, y);
     const int bar = jw_ui_bar_item(x, y);
 
+    /* 行 2 の `表示範囲 記憶` は**次の押しか鍵で消えます**（矢を動かす
+     * だけなら残ります——測定）。押した釦がまた 範囲記憶 なら、下で
+     * 出し直します。 */
+    ui.keep_msg = 0;
+    ui.offset_msg = 0;
+
     /* [f2] の拾い場。押した文字の数が欄に入ります。**読めるのは
      * 届くレイヤの文字だけ**で、SAMPLE0 のレイヤ 01 の `250` は
      * 拾えませんでした（測定）。数でない文字は 0 になります。 */
@@ -2012,11 +2018,21 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             have_before = 0;
             ui.view_scale = view.scale;
         } else if (bar == JW_BAR_CALC && drawing) {
+            /* **選んでいる命令はそのまま**です（測定：入出力 を
+             * 選んでから 電卓 を押しても、左の 入出力 の行は
+             * 白抜きのままでした）。jw_ui_from が memset するので
+             * 取っておいて戻します。 */
             const int was_kept = ui.kept;
+            const int was_cmd = ui.command;
+            const int was_band = ui.band_kept;
+            const int was_off = ui.offset_mode;
 
             jw_ui_from(&ui, drawing);
             ui.calc = 1;        /* after jw_ui_from, which memsets */
             ui.kept = was_kept;
+            ui.command = was_cmd;
+            ui.band_kept = was_band;
+            ui.offset_mode = was_off;
             strcpy(calc_entry, "0");
             calc_acc = 0.0;
             calc_op = 0;
@@ -2031,12 +2047,27 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
              * same way 紙, the scale and サブ画面表示 do -- the item's row
              * goes yellow and its bar goes along the top.  Measured with
              * tools/clickcheck.sh at (90,470) and (570,470). */
-            const int was_kept = ui.kept || bar == JW_BAR_KEEP;
+            /* 範囲記憶 は **押すたびに入り切りします**（測定：2 回目で
+             * 釦が緑の `範囲記憶` に戻り、行 2 の帯も消えました）。 */
+            const int was_kept = bar == JW_BAR_KEEP ? !ui.kept : ui.kept;
+            /* ｵﾌｾｯﾄ は 0→1回だけ→常駐→切 と回ります（測定：
+             * 2 回目で `常駐` がつき、3 回目で釦が緑に戻りました）。 */
+            const int was_off = bar == JW_BAR_OFFSET
+                              ? (ui.offset_mode + 1) % 3 : ui.offset_mode;
 
             jw_ui_from(&ui, drawing);
             ui.command = 30;
             ui.band_kept = 1;
             ui.kept = was_kept;
+            ui.offset_mode = was_off;
+            if (bar == JW_BAR_OFFSET) {
+                ui.offset_msg = was_off ? was_off : 3;
+            }
+            /* 押した直後だけ行 2 に帯が出ます——記憶したときは
+             * `記憶`（黄）、解いたときは `解除`（緑）。 */
+            if (bar == JW_BAR_KEEP) {
+                ui.keep_msg = was_kept ? 1 : 2;
+            }
             jw_cmd_pick(&cmd, 30);
         }
         mouse_x = x;
@@ -3261,6 +3292,14 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
  * original does with them here; anything else is ignored for now. */
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
+    /* 行 2 の `表示範囲 記憶` は**次の鍵で消えます**（測定：[ESC] を
+     * 押すと帯だけが消えて、ほかは何も変わりませんでした）。鍵が何も
+     * しないときでも画面は書き直します。 */
+    if (ui.keep_msg || ui.offset_msg) {
+        ui.keep_msg = 0;
+        ui.offset_msg = 0;
+        present();
+    }
 
     /* [f1]/[f2] の道は **[ESC] で電卓の画面へそのまま戻ります**
      * （測定：外したあとの画面は 電卓 を開いた直後と 0 画素差）。 */

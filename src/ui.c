@@ -2132,15 +2132,20 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     jw_ui_blit(v, 2, 463, 0x4545, 7);      /* JIS 4545 and 426e: 電卓 */
     jw_ui_blit(v, 18, 463, 0x426E, 7);
     box(v, 51, 463, 121, 479, 7);
-    fill(v, 52, 464, 120, 478, 4);
-    jw_ui_text(v, 8, 30, s->kept ? 5 : 4, 0xffff, "\x94\xcd\x88\xcd\x8b\x4c\x89\xaf");
+    /* 範囲記憶 を押すと、**釦ごと黄色になって札が `記憶解除` に
+     * 変わります**（測定：x52〜120 が丸ごと ffff00、字は黒）。 */
+    fill(v, 52, 464, 120, 478, s->kept ? 5 : 4);
+    jw_ui_text(v, 8, 30, s->kept ? 5 : 4, 0xffff,
+               s->kept ? "\x8b\x4c\x89\xaf\x89\xf0\x8f\x9c"
+                       : "\x94\xcd\x88\xcd\x8b\x4c\x89\xaf");
     jw_ui_text(v, 17, 30, 7, 0, "\x91\x4f\x94\x7b\x97\xa6[NFER]");
     fill(v, 224, 463, 438, 479, 6);
     sprintf(buf, "Zoom[\xbd\xcd\xdf\xb0\xbd] \x95\x5c\x8e\xa6\x94\x7b\x97\xa6 %4.2f ",
             magnification(s->paper) * s->view_scale);
     jw_ui_text(v, 30, 30, 0, 0, buf);
     jw_ui_text(v, 56, 30, 7, 0, "\x94\x7b\x97\xa6\x8e\x77\x92\xe8[XFER]");
-    fill(v, 550, 464, 606, 478, 4);
+    /* ｵﾌｾｯﾄ も押すと釦が黄色になります（測定：x551〜605 が ffff00）。 */
+    fill(v, 550, 464, 606, 478, s->offset_mode ? 5 : 4);
     jw_ui_text(v, 70, 30, 0, 0, "\xb5\xcc\xbe\xaf\xc4");
     jw_ui_text(v, 77, 30, 7, 0, "HELP");
     jw_ui_blit(v, 590, 464, 0x100 | 'H', 0);
@@ -5040,6 +5045,25 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     }
     if (s->guide) {
         jw_ui_text(v, 17, 3, 7, 0, s->guide);
+    }
+    /* 範囲記憶 が効いているあいだ、行 2 に `表示範囲`（桁 18、白）と
+     * `記憶`（桁 26、黄）が出ます（測定）。字は y=16 の罫を消すので
+     * 引き直します。 */
+    /* ｵﾌｾｯﾄ の帯。行 3 の桁 17 に `オフセットモード`（白地に黒）、
+     * 常駐なら桁 33 に `常駐`（黄地に黒）——測定。 */
+    if (s->offset_msg) {
+        jw_ui_text(v, 17, 3, 7, 0xffff, "\x83\x49\x83\x74\x83\x5a\x83\x62\x83\x67\x83\x82\x81\x5b\x83\x68");
+        if (s->offset_msg == 2) {
+            jw_ui_text(v, 33, 3, 5, 0xffff, "\x8f\xed\x92\x93");
+        } else if (s->offset_msg == 3) {
+            jw_ui_text(v, 33, 3, 4, 0xffff, "\x89\xf0\x8f\x9c");
+        }
+    }
+    if (s->keep_msg) {
+        jw_ui_text(v, 18, 2, 7, 0xffff, "\x95\x5c\x8e\xa6\x94\xcd\x88\xcd");
+        jw_ui_text(v, 26, 2, s->keep_msg == 1 ? 5 : 4, 0xffff,
+                   s->keep_msg == 1 ? "\x8b\x4c\x89\xaf" : "\x89\xf0\x8f\x9c");
+        fill(v, 122, 16, 639, 16, 7);
     }
 }
 

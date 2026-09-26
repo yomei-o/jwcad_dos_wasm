@@ -1,0 +1,64 @@
+開く	25 470 left
+数字	25 470 left|12 344 left
+小数点	25 470 left|12 344 left|60 392 left|36 360 left
+四則	25 470 left|12 344 left|87 376 left|60 344 left
+＝	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left
+連続の＝	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left|87 392 left
+AC	25 470 left|12 344 left|87 376 left|60 344 left|111 360 left
+Ｃ	25 470 left|12 344 left|87 376 left|60 344 left|111 376 left
+±打ち中	25 470 left|12 344 left|111 344 left
+±開直後	25 470 left|111 344 left
+±答えの後	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left|111 344 left
+ﾟ	25 470 left|12 344 left|95 360 left|60 376 left|12 392 left|95 360 left
+F6べき乗	25 470 left|36 376 left|key f6|60 376 left|87 392 left
+F7ﾙｰﾄ	25 470 left|60 344 left|key f7
+F8COS	25 470 left|12 392 left|key f8
+F9SIN	25 470 left|60 376 left|12 392 left|key f9
+ATAN3	25 470 left|60 376 left|key f10
+ATAN5	25 470 left|36 360 left|key f10
+2÷3	25 470 left|36 376 left|95 344 left|60 376 left|87 392 left
+1÷7	25 470 left|12 376 left|95 344 left|12 344 left|87 392 left
+八桁	25 470 left|12 344 left|36 344 left|60 344 left|12 360 left|36 360 left|60 360 left|12 376 left|36 376 left
+枡y336	25 470 left|12 336 left
+枡y337	25 470 left|12 337 left
+枡y352	25 470 left|12 352 left
+枡y353	25 470 left|12 353 left
+枡y368	25 470 left|36 368 left
+枡y369	25 470 left|36 369 left
+枡y384	25 470 left|12 384 left
+枡y385	25 470 left|12 385 left
+枡y400	25 470 left|12 400 left
+枡x23	25 470 left|23 344 left
+枡x24	25 470 left|24 344 left
+枡x47	25 470 left|47 344 left
+枡x48	25 470 left|48 344 left
+枡x71	25 470 left|71 344 left
+枡x72	25 470 left|72 344 left
+枡x87	25 470 left|87 344 left
+枡x88	25 470 left|88 344 left
+枡x102	25 470 left|102 344 left
+枡x103	25 470 left|103 344 left
+枡x102下	25 470 left|102 376 left
+枡x103下	25 470 left|103 376 left
+f1の行	25 470 left|key f1
+f1外し	25 470 left|key f1|key esc
+f1置く	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left|key f1|300 250 left
+f1右読取	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left|key f1|300 250 right
+f1置後数字	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left|key f1|300 250 left|12 344 left
+f1打ち中	25 470 left|12 344 left|key f1|300 250 left
+f1演算中	25 470 left|12 344 left|87 376 left|key f1|300 250 left
+f1演算続	25 470 left|12 344 left|87 376 left|key f1|300 250 left|36 376 left|87 392 left
+f1度の後	25 470 left|12 344 left|95 360 left|key f1|300 250 left
+f2の行	25 470 left|key f2
+f2外し	25 470 left|key f2|key esc
+f2外れ	25 470 left|key f2|500 430 left
+f2外れ後	25 470 left|key f2|500 430 left|300 250 left
+f2レイヤ	25 470 left|key f2|377 248 left
+f2文字	25 470 left|key f2|175 410 left
+f2英字	25 470 left|key f2|470 410 left
+f2再取得	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left|key f1|300 250 left|key f2|300 250 left
+f2後イコ	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left|key f1|300 250 left|key f2|300 250 left|87 392 left
+f2で計算	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left|key f1|300 250 left|key f2|300 250 left|87 376 left|36 376 left|87 392 left
+f2後置く	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left|key f1|300 250 left|key f2|300 250 left|key f1|200 200 left
+~ATAN2	25 470 left|36 376 left|key f10
+~ATAN7	25 470 left|12 344 left|key f10
