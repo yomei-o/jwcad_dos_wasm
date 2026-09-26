@@ -2257,14 +2257,20 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         const int n = layer_at(x, y);
 
         if (n >= 0) {
+            /* **押す前の**書込グループを控えます。右のときは
+             * すぐ下で書き換えるので、書き換えたあとに比べると
+             * **必ず一致**してしまい、どの升でも データ表示 が
+             * 開いていました（12,227 画素）。 */
+            const int was_write = drawing->write_layer >> 4;
+
             if (right) {
                 drawing->write_layer =
                     (unsigned char)((n << 4) | (drawing->write_layer & 15));
                 drawing->group_on[n] = 1;
-            } else if (n != (drawing->write_layer >> 4)) {
+            } else if (n != was_write) {
                 drawing->group_on[n] = !drawing->group_on[n];
             }
-            if (right && n == (drawing->write_layer >> 4)) {
+            if (right && n == was_write) {
                 /* The right button on the group already being written to
                  * opens グループ データ表示 instead. */
                 mouse_x = x;
