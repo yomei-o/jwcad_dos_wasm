@@ -137,6 +137,34 @@ EMSCRIPTEN_KEEPALIVE void jw_init(void)
 /* Everything the chrome shows that belongs to the command in hand.  Three
  * places need it -- moving the pointer, pressing, and typing -- so it is in
  * one place. */
+/* 拾った指示線に記号を置いて、その線を消します。原点は**押したところを
+ * 指示線に落とした点**です（「幅 [1mm]」の実測）。 */
+static void place_kigou(const JwKigouSym *sym, double px, double py)
+{
+    JwcLine base;
+    double ax, ay, dx, dy, len, t, ox, oy;
+
+    if (!drawing || cmd.kigou_line < 0
+        || cmd.kigou_line >= drawing->n_lines) {
+        cmd.kigou_line = -1;
+        return;
+    }
+    base = drawing->lines[cmd.kigou_line];
+    ax = base.x0;
+    ay = base.y0;
+    dx = base.x1 - ax;
+    dy = base.y1 - ay;
+    len = dx * dx + dy * dy;
+    t = len > 0.0 ? ((px - ax) * dx + (py - ay) * dy) / len : 0.0;
+    ox = ax + t * dx;
+    oy = ay + t * dy;
+    jw_kigou_put(drawing, sym, &base, ox, oy);
+    jwc_remove_line(drawing, cmd.kigou_line);
+    cmd.kigou_line = -1;
+    ui.n_lines = drawing->n_lines;
+    ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+}
+
 static void sync_ui(void)
 {
     /* The chrome draws the menu row the pointer rests on inverted, so it has
@@ -293,6 +321,7 @@ static void sync_ui(void)
     ui.kigou = cmd.hen_kigou;
     ui.kigou_pick = cmd.kigou_pick;
     ui.kigou_sym = cmd.kigou_sym;
+    ui.kigou_wait = cmd.kigou_line >= 0;
     ui.kigou_group = cmd.kigou_group;
     ui.hen_env_all = cmd.hen_env_all;
     ui.hen_env_did = cmd.hen_env_did;
@@ -2547,42 +2576,31 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
      *
      * **まだ測っていないもの**: 実際に線を描く記号、指示線 2、
      * 指示回数 2 以上、倍率、文字入力。 */
+    /* **記号を選んだあと、指示線を押して置きます。**
+     *
+     * 指示回数 0 は線を 1 回押すだけ（「直線消」）、1 は線のあと
+     * `○位置(L)free (R)Read` で位置をもう 1 回（どちらも実測）。 */
     if (ui.kigou && cmd.kigou_sym && !cmd.kigou_pick && !dxf_mode
         && drawing && x >= 122 && x <= 638 && y >= 16 && y <= 462) {
-        const long k = jw_cmd_line_at(drawing, &view, x, y);
+        const JwKigou *g = jw_kigou_lib(cmd.kigou_group);
+        const JwKigouSym *sym = g && cmd.kigou_sym <= g->n
+                              ? &g->sym[cmd.kigou_sym - 1] : 0;
+        double px, py;
 
-        if (k >= 0) {
-            const JwKigou *g = jw_kigou_lib(cmd.kigou_group);
+        jw_cmd_at(&view, x, y, &px, &py);
+        if (sym && cmd.kigou_line < 0) {
+            const long k = jw_cmd_line_at(drawing, &view, x, y);
 
-            if (g && cmd.kigou_sym <= g->n) {
-                const JwKigouSym *sym = &g->sym[cmd.kigou_sym - 1];
-                int q;
-                int draws = 0;
-
-                for (q = 0; q < sym->n; q++) {
-                    const JwKigouPart *p = &sym->part[q];
-                    const long c1 = p->c1 % 100, c2 = p->c2 % 100;
-
-                    if (p->kind != JW_KIGOU_LINE
-                        && p->kind != JW_KIGOU_ARC) {
-                        continue;
-                    }
-                    if (c1 == 8 || c2 == 8 || c1 == 9 || c2 == 9) {
-                        continue;   /* 表のみ・ダミーは作図しません */
-                    }
-                    draws++;
-                }
-                if (!draws) {
-                    jwc_remove_line(drawing, k);
-                    /* **数え札だけ取り直します。** 左の盤の
-                     * `線 数` は消したあとに入れ直さないと 30 の
-                     * ままです（本物は 29）。`jw_ui_from` を呼ぶと
-                     * 画面の状態を丸ごと作り直してしまい、選んで
-                     * いる命令も記号も消えます（3,894 画素）。 */
-                    ui.n_lines = drawing->n_lines;
-                    ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+            if (k >= 0) {
+                cmd.kigou_line = k;
+                cmd.kigou_px = px;
+                cmd.kigou_py = py;
+                if (!sym->picks) {
+                    place_kigou(sym, px, py);
                 }
             }
+        } else if (sym) {
+            place_kigou(sym, px, py);
         }
         mouse_x = x;
         mouse_y = y;
@@ -2601,6 +2619,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
         if (g && k < g->n) {
             cmd.kigou_sym = k + 1;
+            cmd.kigou_line = -1;
         }
         mouse_x = x;
         mouse_y = y;
@@ -2614,6 +2633,8 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         && y >= 0 && y <= 15 && x / 8 + 1 >= 60 && x / 8 + 1 <= 71) {
         cmd.hen_kigou = 1;
         cmd.kigou_pick = 0;
+        cmd.kigou_sym = 0;
+        cmd.kigou_line = -1;
         cmd.hen_env = 0;
         cmd.hen_dbl = 0;
         mouse_x = x;

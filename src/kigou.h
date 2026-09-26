@@ -45,6 +45,8 @@
 #ifndef JW_KIGOU_H
 #define JW_KIGOU_H
 
+#include "jwc.h"
+
 #define JW_KIGOU_PARTS 60       /* 1 データの部材数の上限（DAT §１-４） */
 #define JW_KIGOU_MAX   16       /* 1 グループの記号数（実際は 12〜16） */
 #define JW_KIGOU_NAME  40       /* データ名の桁数 */
@@ -99,6 +101,11 @@ int jw_kigou_read(const char *path, JwKigou *out);
 /* A〜J の 10 グループ。`which` は 0 が `JW_OPT4.DAT`、1 が `JW_OPT4B.DAT`、
  * …、9 が `JW_OPT4J.DAT`。一度読んだら持ち続けます。範囲外は NULL。 */
 const JwKigou *jw_kigou_lib(int which);
+
+/* 記号を図面に置きます。`base` は指示線 1、`(ox,oy)` は記号の原点
+ * （押した位置を指示線に落とした点）。置いた線の数を返します。 */
+int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
+                 double ox, double oy);
 
 /* そのグループの名札（`A`〜`J`）。範囲外は 0。 */
 char jw_kigou_letter(int which);

@@ -1,6 +1,7 @@
 /* 変形 ④線記号変形 の記号データを読むところ。書式は src/kigou.h に。 */
 #include "kigou.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -259,6 +260,93 @@ int jw_kigou_read(const char *path, JwKigou *out)
     }
     fclose(f);
     return out->n;
+}
+
+/* 記号を図面に置きます —— **指示線 1 と、記号の位置**まで。
+ *
+ * 「幅 [1mm]」を SAMPLE0 の y=157 の線（x 161..231）に、位置 (300,200) で
+ * 置いた本物の絵から読みました:
+ *
+ *   記号の原点は**押した位置を指示線に落とした点**（x=300）
+ *   `110 01 -12 0 -1.5 0` は制御(1)=10 なので**左端が指示線の始点**（161）、
+ *   右端は原点の 1.5 手前（298）
+ *   `101 10 1.5 0 12 0` は制御(2)=10 なので**右端が指示線の終点**
+ *   山形は原点まわり ±1.5・±1 単位
+ *
+ * **記号の 1 単位は紙の 1mm** なので、図面の単位にするには `unit_mm` を
+ * 掛けます。
+ *
+ * 制御コードは下 2 桁で読みます。10／20 は端を指示線に合わせる指定、
+ * それ以外は 1 の位が意味を持ちます（01 追従、08 表のみ、09 ダミー…）。
+ * 100 の位の 1／2 は線色を指示線 1／2 と同じにする指定です。
+ *
+ * **まだ入っていないもの**: 指示線 2、指示回数 2 以上、倍率（700／800 と
+ * ①倍率 横,縦）、円・文字・実点の部材、文字入力、他コマンドへの移行。
+ */
+int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
+                 double ox, double oy)
+{
+    const double dx = base->x1 - base->x0, dy = base->y1 - base->y0;
+    const double len = sqrt(dx * dx + dy * dy);
+    const double mm = d->unit_mm > 0.0f ? (double)d->unit_mm : 1.0;
+    double ux, uy, nx, ny;
+    int k, put = 0;
+
+    if (len <= 0.0) {
+        return 0;
+    }
+    ux = dx / len;
+    uy = dy / len;
+    nx = -uy;
+    ny = ux;
+    for (k = 0; k < sym->n; k++) {
+        const JwKigouPart *p = &sym->part[k];
+        const long c1 = p->c1 % 100, c2 = p->c2 % 100;
+        JwcLine l;
+
+        if (p->kind != JW_KIGOU_LINE) {
+            continue;           /* 円・文字・実点はまだ */
+        }
+        if (c1 % 10 == 8 || c2 % 10 == 8 || c1 % 10 == 9 || c2 % 10 == 9) {
+            continue;           /* 表のみ・ダミーは作図しません */
+        }
+        if (c1 == 20 || c2 == 20) {
+            continue;           /* 指示線 2 はまだ */
+        }
+        memset(&l, 0, sizeof l);
+        if (c1 == 10) {
+            l.x0 = base->x0;
+            l.y0 = base->y0;
+        } else {
+            l.x0 = (float)(ox + (p->x1 * ux + p->y1 * nx) * mm);
+            l.y0 = (float)(oy + (p->x1 * uy + p->y1 * ny) * mm);
+        }
+        if (c2 == 10) {
+            l.x1 = base->x1;
+            l.y1 = base->y1;
+        } else {
+            l.x1 = (float)(ox + (p->x2 * ux + p->y2 * nx) * mm);
+            l.y1 = (float)(oy + (p->x2 * uy + p->y2 * ny) * mm);
+        }
+        /* 100 の位が 1 なら線色・線種・レイヤは指示線 1 と同じ。 */
+        if (p->c1 >= 100 && p->c1 < 300) {
+            l.type = base->type;
+            l.pen = base->pen;
+            l.layer = base->layer;
+            memcpy(l.rest, base->rest, sizeof l.rest);
+        } else {
+            l.type = (unsigned char)(p->has_attr && p->type > 0
+                                     ? p->type % 10 : base->type);
+            l.pen = (unsigned char)(p->has_attr && p->pen > 0
+                                    ? p->pen : base->pen);
+            l.layer = base->layer;
+            memcpy(l.rest, base->rest, sizeof l.rest);
+        }
+        if (jwc_put_line(d, &l)) {
+            put++;
+        }
+    }
+    return put;
 }
 
 static const char *const KIGOU_FILES[JW_KIGOU_FILES] = {

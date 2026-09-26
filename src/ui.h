@@ -315,6 +315,7 @@ typedef struct {
     int kigou;
     int kigou_pick;   /* ①種類【A】変更 の一覧 */
     int kigou_sym;    /* 選んだ記号、1 から。0 なら一覧のまま */
+    int kigou_wait;   /* 位置を待っているか */
     int kigou_group;
     int meas_unit;
     int meas_dec;

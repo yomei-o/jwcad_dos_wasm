@@ -325,6 +325,8 @@ typedef struct {
     int hen_kigou;
     int kigou_pick;
     int kigou_sym;
+    long kigou_line;  /* 拾った指示線 1、無ければ -1 */
+    double kigou_px, kigou_py;   /* そのとき押したところ */
     int kigou_group;
     int dim_dec;
     int dim_comma_on;
