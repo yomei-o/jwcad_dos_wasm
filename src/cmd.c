@@ -3623,6 +3623,15 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
             c->ch_line = !c->ch_line;   /* ④直線 */
             return 1;
         }
+        if (c->chain && c->stage == 50 && item == 1) {
+            /* ①接する弧･線 指定。すでに引いてある線か弧を押すと、その
+             * **近いほうの端から、その向きに接して**連続弧が始まります
+             * （測定：SAMPLE0 の枠の上辺を x=300 で押すと端点
+             * (40.973,323.057) に接する弧、x=550 で押すと反対の端点
+             * (477,323.057) に接する弧）。 */
+            c->stage = 55;
+            return 1;
+        }
         if (c->chain && c->stage == 53 && item == 1) {
             c->stage = 50;      /* ①終了 */
             return 1;
@@ -9058,6 +9067,91 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typing = 0;
         c->typed[0] = 0;
         c->typed_n = 0;
+        c->stage = 53;
+        return 1;
+    }
+    if (c->command == 23 && c->chain && c->stage == 55) {
+        /* 【接する弧･線 指定】——押したところの線か弧を探します。 */
+        double px, py, ux, uy, nn;
+
+        if (!search(c, d, w, sx, sy)) {
+            c->missed = 1;
+            return 1;
+        }
+        c->missed = 0;
+        jw_cmd_at(w, sx, sy, &x, &y);
+        if (c->snap_kind == JW_ON_LINE) {
+            const JwcLine *l = &d->lines[c->snap_at];
+            const double d0 = (x - l->x0) * (x - l->x0)
+                            + (y - l->y0) * (y - l->y0);
+            const double d1 = (x - l->x1) * (x - l->x1)
+                            + (y - l->y1) * (y - l->y1);
+
+            /* **進む向きは線の外へ**です（測定：端点 (40.973,…) を
+             * 選ぶと記録が 90..40.37、反対の端点だと 148.13..90 で、
+             * どちらも線の外を向いたときの向きでした）。 */
+            if (d0 <= d1) {
+                px = l->x0;
+                py = l->y0;
+                ux = l->x0 - l->x1;
+                uy = l->y0 - l->y1;
+            } else {
+                px = l->x1;
+                py = l->y1;
+                ux = l->x1 - l->x0;
+                uy = l->y1 - l->y0;
+            }
+            nn = sqrt(ux * ux + uy * uy);
+            if (nn <= 0.0) {
+                return 1;
+            }
+            ux /= nn;
+            uy /= nn;
+            c->ch_px = px;
+            c->ch_py = py;
+            c->ch_tx = ux;
+            c->ch_ty = uy;
+            /* まっすぐなので中心は遠くに置きます（④直線 と同じ）。 */
+            c->ch_cx = px - uy * 1e6;
+            c->ch_cy = py + ux * 1e6;
+        } else {
+            const JwcArc *a = &d->arcs[c->snap_at];
+            const double d2r = 3.14159265358979323846 / 180.0;
+            const double sa = a->start / 65536.0 * d2r;
+            const double ea = a->end / 65536.0 * d2r;
+            const double ax = a->cx + a->r * cos(sa);
+            const double ay = a->cy + a->r * sin(sa);
+            const double bx = a->cx + a->r * cos(ea);
+            const double by = a->cy + a->r * sin(ea);
+            const double d0 = (x - ax) * (x - ax) + (y - ay) * (y - ay);
+            const double d1 = (x - bx) * (x - bx) + (y - by) * (y - by);
+            double vx, vy;
+
+            if (d0 <= d1) {
+                px = ax;
+                py = ay;
+            } else {
+                px = bx;
+                py = by;
+            }
+            c->ch_px = px;
+            c->ch_py = py;
+            c->ch_cx = a->cx;
+            c->ch_cy = a->cy;
+            /* 端での進む向きは、弧の内側へ（反時計回りは z x (P-C)）。 */
+            vx = -(py - a->cy);
+            vy = px - a->cx;
+            if (d0 <= d1) {
+                vx = -vx;      /* 弧の外へ */
+                vy = -vy;
+            }
+            nn = sqrt(vx * vx + vy * vy);
+            if (nn <= 0.0) {
+                return 1;
+            }
+            c->ch_tx = vx / nn;
+            c->ch_ty = vy / nn;
+        }
         c->stage = 53;
         return 1;
     }

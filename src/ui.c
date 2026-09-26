@@ -3902,6 +3902,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             }
             /* 曲線 ⑥連続弧 の道。 */
             if (s->command == 23 && s->chain && i == s->stage
+                && i == 55) {
+                /* ①接する弧･線 指定 を押したところ。 */
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                jw_ui_text(v, 8, 1, 7, 0, "\x81y\x90\xda\x82\xb7\x82\xe9\x8c\xca\xa5\x90\xfc \x8ew\x92\xe8\x81z  \x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
+            }
+            if (s->command == 23 && s->chain && i == s->stage
                 && i >= 50 && i <= 54) {
                 if (i == 50) {
                     if (s->sine_did) {
