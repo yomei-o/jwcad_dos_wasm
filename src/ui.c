@@ -2101,7 +2101,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     fill(v, 0, 0, 639, 15, 0);
     fill(v, 0, 463, 639, 479, 0);
     fill(v, 0, 0, 121, 303, 0);
-    jw_line(v, 0, 16, 639, 16, 7, ROP_REPLACE, JW_STYLE_SOLID);
+    /* **文字入力の盤のあいだは引きません**（実測：本物は上の行の
+     * 下の罫も、下の帯も、数え札の箱も真っ黒です）。 */
+    if (!s->kigou_input) {
+        jw_line(v, 0, 16, 639, 16, 7, ROP_REPLACE, JW_STYLE_SOLID);
+    }
     jw_line(v, 639, 16, 639, 479, 7, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, 0, 479, 639, 479, 7, ROP_REPLACE, JW_STYLE_SOLID);
     jw_line(v, 0, 479, 0, 16, 7, ROP_REPLACE, JW_STYLE_SOLID);
@@ -3364,7 +3368,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             }
             jw_ui_text(v, p->col, p->row, (unsigned)p->fg, (unsigned)p->bg,
                        text);
-        }
+        
+}
         /* **入出力 の行の `④自動保存(無)` は保存間隔がついていると
          * `(有)` になります**（測定：①保存間隔 に 30 を入れてから行に
          * 戻ると 有）。行は src/prompt.h の録画なので、その一字だけ
@@ -5285,17 +5290,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 1, 4, 7, 0xffffu, BASE[b]);
         sprintf(one, "|\x8e\xed %d|Paste", s->kigou_in_kind);
         jw_ui_text(v, 5, 4, 7, 0xffffu, one);
+        fill(v, 0, 464, 639, 479, 0);
+        fill(v, 0, 17, 121, 47, 0);
         if (s->kigou_in_text) {
-            /* **空白で埋めて**書きます—— の残りが出ます。 */
+            /* **空白で埋めて**書きます —— `文字列入力` の残りが出ます。 */
             char pad[32];
 
             sprintf(pad, "%-10s", s->kigou_in_text);
             jw_ui_text(v, 1, 1, 7, 0, pad);
         }
-        /* **下の帯と、数え札の箱も消えます**（実測）。行 2・行 3 は
-         * 本物では真っ黒で、 も  も出ません。 */
-        fill(v, 0, 464, 639, 479, 0);
-        fill(v, 0, 16, 121, 47, 0);
     }
     /* ①種類【A】変更 の一覧が出ているあいだの行（実測）。 */
     if (s->kigou_pick) {
@@ -5364,7 +5367,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                    "|| JW_CADV version 2.22H  Copyright (c) jw_software club "
                    "1991-1999 ||");
     }
-    jw_line(v, 0, 16, 639, 16, 7, ROP_REPLACE, JW_STYLE_SOLID);
+    /* **文字入力の盤のあいだは引きません**（実測：本物は上の行の
+     * 下の罫も、下の帯も、数え札の箱も真っ黒です）。 */
+    if (!s->kigou_input) {
+        jw_line(v, 0, 16, 639, 16, 7, ROP_REPLACE, JW_STYLE_SOLID);
+    }
     /* 文字's field takes that line away from where the string it is taking
      * has got to -- see the stage loop, where the rest of the band goes. */
     if ((s->command == 13 || s->command == 28) && s->typing_text) {
