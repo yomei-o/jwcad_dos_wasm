@@ -1655,9 +1655,13 @@ static void kigou_cells(VGA *v, const JwUi *s)
             }
             /* 3 桁の制御コードは「指示線と同じ線色」——一覧では赤です
              * （JW_OPT4.DAT の §４-２、§４-３）。 */
+            /* **線色 0 は「指定なし」**で、書き込み用の線色になります
+             * （§４-１）。0 をペン 0 として引くと水色になり、本物が
+             * 白で描く升（方位・Ｒ面取）が全部ずれました。 */
             ink = p->c1 >= 100 ? 2u
-                : p->has_attr ? jw_view_pen_colour((unsigned)p->pen)
-                : jw_view_pen_colour(2u);
+                : p->has_attr && p->pen > 0
+                    ? jw_view_pen_colour((unsigned)p->pen)
+                    : jw_view_pen_colour(2u);
             ax = ox + p->x1 * scale;
             ay = oy - p->y1 * scale;
             if (p->kind == JW_KIGOU_ARC) {
