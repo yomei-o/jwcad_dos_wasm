@@ -285,7 +285,10 @@ static void sync_ui(void)
     ui.hen_dbl = cmd.hen_dbl;
     ui.hen_dbl_cap = cmd.hen_dbl_cap;
     ui.hen_dbl_edit = cmd.hen_dbl && cmd.typing;
-    ui.hen_dbl_gap = cmd.hen_dbl_gap;    ui.hen_env = cmd.hen_env;
+    ui.hen_dbl_gap = cmd.hen_dbl_gap;    ui.hand = cmd.hand;
+    ui.hand_step = cmd.hand_step;
+    ui.hand_did = cmd.hand_did;
+    ui.hen_env = cmd.hen_env;
     ui.hen_env_all = cmd.hen_env_all;
     ui.hen_env_did = cmd.hen_env_did;
     ui.hen_env_msg = cmd.hen_env_msg;
@@ -1553,7 +1556,17 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
     }
     /* a command with a point in hand keeps its reading up to date as the
      * pointer moves, the way the original does */
-    jw_cmd_track(&cmd, drawing, &view, x, y);
+    {
+        const long n0 = drawing ? drawing->n_lines : 0;
+
+        jw_cmd_track(&cmd, drawing, &view, x, y);
+        if (drawing && drawing->n_lines != n0) {
+            /* 手書線 は矢が動くだけで線が増えます。 */
+            jw_ui_from(&ui, drawing);
+            ui.command = cmd.command;
+            ui.guide = 0;
+        }
+    }
     sync_ui();
     present();
 }

@@ -3900,6 +3900,26 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     fill(v, x, 7, x + 7, 15, 4);
                 }
             }
+            /* 曲線 ⑤手書線 の道。押し二つで一本、[F1]〜[F10] で
+             * 作図ｽﾃｯﾌﾟ が 1〜10 ﾄﾞｯﾄ。 */
+            if (s->command == 23 && s->hand && i == s->stage
+                && (i == 60 || i == 61)) {
+                if (i == 60) {
+                    if (s->hand_did) {
+                        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                    }
+                    jw_ui_text(v, 8, 1, 7, 0, "\x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
+                    jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+                } else {
+                    char one[80];
+
+                    jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+                    jw_ui_text(v, 8, 1, 7, 0, "\x8fI\x93_\x8ew\x8e\xa6 ");
+                    jw_ui_text(v, 17, 1, 7, 0, "(L)free (R)Read ");
+                    sprintf(one, " \x8d\xec\x90}\xbd\xc3\xaf\xcc\xdf(%d\xc4\xde\xaf\xc4) [F1]\x81`[F10]", s->hand_step);
+                    jw_ui_text(v, 33, 1, 7, 0, one);
+                }
+            }
             /* 曲線 ⑥連続弧 の道。 */
             if (s->command == 23 && s->chain && i == s->stage
                 && i == 55) {

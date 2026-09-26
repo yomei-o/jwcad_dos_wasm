@@ -447,6 +447,9 @@ typedef struct {
     int hen_dbl;
     int hen_dbl_cap;
     int hen_dbl_edit;
+    int hand;
+    int hand_step;
+    int hand_did;
     int hen_env;
     int hen_env_all;
     int hen_env_did;

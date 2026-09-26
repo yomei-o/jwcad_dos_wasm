@@ -121,7 +121,14 @@ typedef struct {
     int hen_dbl;                /* 1 = ③複線化 の道 */
     int hen_dbl_cap;            /* ④留線【有】 */
     double hen_dbl_gap;         /* ③間隔（紙のミリ） */
-    long hen_dbl_from;          /* 入れた線の先頭 */    int hen_env;                /* 1 = ②包絡処理変形 の道 */
+    long hen_dbl_from;          /* 入れた線の先頭 */    /* 曲線 ⑤手書線。押し二つで一本、[F1]〜[F10] で作図ｽﾃｯﾌﾟ。 */
+    int hand;                   /* 道が走っている */
+    int hand_step;              /* 作図ｽﾃｯﾌﾟ（ﾄﾞｯﾄ、既定 4） */
+    double hand_x, hand_y;      /* いま引いているところ */
+    int hand_sx, hand_sy;       /* 同じところ、画面の画素で */
+    long hand_from;             /* この一筆で足した線の先頭 */
+    int hand_did;               /* 一度でも引いた（行に [ESC]） */
+    int hen_env;                /* 1 = ②包絡処理変形 の道 */
     int hen_env_all;            /* ①【全 線 種】（既定は【実線のみ】） */
     int hen_env_did;            /* 一度でも包絡・消去した（行に [ESC]） */
     int hen_env_msg;            /* `.線数は５０までです` を出している */

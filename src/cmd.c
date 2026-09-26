@@ -41,6 +41,7 @@ void jw_cmd_pick(JwCmd *c, int command)
     /* 寸法 ④円･角 ③書込角度 の `[  90.000\xdf]`、その欄の前回と同じ。 */
     c->dim_ck_prev = 90.0;
     /* 変形 ③複線化 の `③間隔  100.00(mm)` と `④留線【有】`。 */
+    c->hand_step = 4;           /* 作図ｽﾃｯﾌﾟ の既定（測定） */
     c->hen_dbl_gap = 100.0;
     c->hen_dbl_cap = 1;
     /* ハッチ's `[  45.00]` and `[  10.0]`, likewise. */
@@ -166,6 +167,33 @@ static void hatch_free(const JwcLine *l, double cx, double cy, int have,
 void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
 {
     double x, y;
+
+    /* **曲線 ⑤手書線 は矢が動くたびに引きます。** 始点を取ったあと、
+     * 最後に置いた点から **作図ｽﾃｯﾌﾟ（ﾄﾞｯﾄ）以上離れたら**そこまで
+     * 一本。離れ方は縦横の大きいほう（測定：ｽﾃｯﾌﾟ 4 で斜めに 3 ずつ
+     * 動かすと引かれず、6 ずつなら引かれました）。 */
+    if (c->command == 23 && c->hand && c->stage == 61 && d) {
+        const int dx = sx > c->hand_sx ? sx - c->hand_sx : c->hand_sx - sx;
+        const int dy = sy > c->hand_sy ? sy - c->hand_sy : c->hand_sy - sy;
+        const int far = dx > dy ? dx : dy;
+
+        if (far >= c->hand_step) {
+            double nx, ny;
+
+            jw_cmd_at(w, sx, sy, &nx, &ny);
+            if (jwc_add_line(d, (float)c->hand_x, (float)c->hand_y,
+                             (float)nx, (float)ny,
+                             (unsigned char)d->line_type,
+                             (unsigned char)d->pen,
+                             (unsigned char)d->write_layer)) {
+                c->hand_did = 1;
+            }
+            c->hand_x = nx;
+            c->hand_y = ny;
+            c->hand_sx = sx;
+            c->hand_sy = sy;
+        }
+    }
 
     if (sx != c->press_x || sy != c->press_y) {
         c->moved = 1;           /* one pixel is enough -- see JwCmd.moved */
@@ -3559,6 +3587,14 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     if (c->command == 23) {
         /* 曲線's own line, `|①ｻｲﾝ曲線|②２次曲線|③ｽﾌﾟﾗｲﾝ|④ﾍﾞｼﾞｪ|⑤手書線|
          * ⑥連続弧|⑦連線|⑧解除|`.  Only ⑦連線 is done. */
+        if (!c->poly && !c->sine && !c->spl && !c->chain && !c->hand
+            && item == 5) {
+            /* ⑤手書線。押し二つで一本引きます（押しっぱなしで引く
+             * ほうはまだ）。 */
+            c->hand = 1;
+            c->stage = 60;
+            return 1;
+        }
         if (!c->poly && !c->sine && !c->spl && !c->chain && item == 4) {
             /* ④ﾍﾞｼﾞｪ。③ｽﾌﾟﾗｲﾝ と同じ道で、曲線だけ違います。 */
             c->spl = 2;
@@ -4354,6 +4390,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     if (key == JW_KEY_F2 && JW_RANGE_CMD(c->command) && c->stage == 3) {
         c->cleared = 1;
         c->n_flip = 0;
+        return 1;
+    }
+    if (c->command == 23 && c->hand && c->stage == 61
+        && key >= JW_KEY_F1 && key <= JW_KEY_F10) {
+        /* [F1]〜[F10] で 作図ｽﾃｯﾌﾟ が 1〜10 ﾄﾞｯﾄ（測定）。 */
+        c->hand_step = key - JW_KEY_F1 + 1;
         return 1;
     }
     if (!c->typing) {
@@ -9068,6 +9110,56 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->typed[0] = 0;
         c->typed_n = 0;
         c->stage = 53;
+        return 1;
+    }
+    if (c->command == 23 && c->hand
+        && (c->stage == 60 || c->stage == 61)) {
+        /* ⑤手書線。始点のあとは矢が動くたびに引かれ、左の押しで
+         * 一筆が終わります。
+         *
+         * **右の読取は、その一筆で引いた線を見ません。** 測定：始点を
+         * (200,200) に取って (300,260) へ動かすと一本引かれますが、
+         * そこを右で押すと原作は `読取可能データ無` と出し、行は
+         * 終点指示 のままでした——引いたばかりの端点が足元にあるのに
+         * 読めていません。 */
+        {
+            const long all = d ? d->n_lines : 0;
+            int got;
+
+            if (d && right && c->stage == 61) {
+                d->n_lines = c->hand_from;
+            }
+            got = take_point(c, d, w, sx, sy, right, &x, &y);
+            if (d) {
+                d->n_lines = all;
+            }
+            if (!got) {
+                c->missed = 1;
+                return 0;
+            }
+        }
+        c->missed = 0;
+        if (c->stage == 60) {
+            c->hand_x = x;
+            c->hand_y = y;
+            c->hand_sx = sx;
+            c->hand_sy = sy;
+            c->hand_from = d ? d->n_lines : 0;
+            c->stage = 61;
+            return 1;
+        }
+        if (x == c->hand_x && y == c->hand_y) {
+            c->stage = 60;      /* 矢が動いたときに引き終えています */
+            return 1;
+        }
+        if (jwc_add_line(d, (float)c->hand_x, (float)c->hand_y,
+                         (float)x, (float)y,
+                         (unsigned char)d->line_type,
+                         (unsigned char)d->pen,
+                         (unsigned char)d->write_layer)) {
+            c->hand_did = 1;
+        }
+        c->stage = 60;
         return 1;
     }
     if (c->command == 23 && c->chain && c->stage == 55) {
