@@ -314,6 +314,7 @@ typedef struct {
     /* 変形 ④線記号変形 の一覧が出ているか、と どのグループ（A〜J）。 */
     int kigou;
     int kigou_pick;   /* ①種類【A】変更 の一覧 */
+    int kigou_sym;    /* 選んだ記号、1 から。0 なら一覧のまま */
     int kigou_group;
     int meas_unit;
     int meas_dec;

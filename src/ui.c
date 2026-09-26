@@ -3413,7 +3413,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         }
         /* 変形 ④線記号変形 の一覧も作図範囲いっぱいです。帯は
          * `電卓[Z 範囲記憶` だけ残ります（建具平面と同じ）。 */
-        if (s->kigou) {
+        if (s->kigou && !s->kigou_sym) {
             fill(v, 122, 17, 638, 462, 0);
             fill(v, 122, 463, 638, 478, 0);
         }
@@ -3952,7 +3952,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * 名前は 桁 18/34/50/66・行 2/8/14/20、罫は 横 y=16,112,208,304,400、
          * 縦 x=251,381,511（y 16..400）。**ｵﾌﾟｼｮﾝ ③立面 と同じ並び**です。
          * 名前は JW_OPT4.DAT の並び順そのまま。 */
-        if (s->kigou && !s->kigou_pick) {
+        if (s->kigou && !s->kigou_pick && !s->kigou_sym) {
             const JwKigou *g = jw_kigou_lib(s->kigou_group);
             int k;
 
@@ -5230,6 +5230,23 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
         }
+    /* 記号を 1 つ選んだあと（実測）。図面が戻り、桁 18 行 2 に
+     * 名前が白地で出ます。 */
+    if (s->kigou && s->kigou_sym) {
+        const JwKigou *g = jw_kigou_lib(s->kigou_group);
+
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 6, 1, 7, 0, "\x81" "E");
+        jw_ui_text(v, 8, 1, 7, 0,
+                   "\x8ew\x8e\xa6\x90\xfc(1)\x83}\x83" "E\x83X\x8ew\x8e\xa6  |\x87@\x94{\x97\xa6 \x89\xa1,\x8f" "c(  1.00,  1.00)|\x87" "A\x91\xbc\x8bL\x8d\x86\x91I\x91\xf0|");
+        jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+        if (g && s->kigou_sym <= g->n) {
+            jw_ui_text(v, 18, 2, 7, 0xffffu,
+                       g->sym[s->kigou_sym - 1].name);
+        }
+    }
     /* ①種類【A】変更 の一覧が出ているあいだの行（実測）。 */
     if (s->kigou_pick) {
         fill(v, 0, 0, 639, 15, 0);
@@ -5239,7 +5256,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                    "\x8e\xed\x97\xde \x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
     }
     /* 変形 ④線記号変形 の一覧が出ているあいだの行（実測）。 */
-    if (s->kigou && !s->kigou_pick) {
+    if (s->kigou && !s->kigou_pick && !s->kigou_sym) {
         fill(v, 0, 0, 639, 15, 0);
         top_clear();
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");

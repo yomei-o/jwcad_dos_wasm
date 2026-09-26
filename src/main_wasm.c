@@ -292,6 +292,7 @@ static void sync_ui(void)
     ui.hen_env = cmd.hen_env;
     ui.kigou = cmd.hen_kigou;
     ui.kigou_pick = cmd.kigou_pick;
+    ui.kigou_sym = cmd.kigou_sym;
     ui.kigou_group = cmd.kigou_group;
     ui.hen_env_all = cmd.hen_env_all;
     ui.hen_env_did = cmd.hen_env_did;
@@ -2530,6 +2531,76 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             && jw_kigou_lib(cell - 1)) {
             cmd.kigou_group = cell - 1;
             cmd.kigou_pick = 0;
+        }
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* **記号を選んだあと、図面の線を押すと変形します。**
+     *
+     * いまできるのは「指示線 1 を押して、その線を記号に置き換える」
+     * ところまでです。「直線消」は部材が 1 つだけで、それも制御コード
+     * 08（表のみ＝作図しない）なので、押した線が消えて終わります
+     * ——本物も線の数が 30 から 29 になります（実測）。
+     *
+     * **まだ測っていないもの**: 実際に線を描く記号、指示線 2、
+     * 指示回数 2 以上、倍率、文字入力。 */
+    if (ui.kigou && cmd.kigou_sym && !cmd.kigou_pick && !dxf_mode
+        && drawing && x >= 122 && x <= 638 && y >= 16 && y <= 462) {
+        const long k = jw_cmd_line_at(drawing, &view, x, y);
+
+        if (k >= 0) {
+            const JwKigou *g = jw_kigou_lib(cmd.kigou_group);
+
+            if (g && cmd.kigou_sym <= g->n) {
+                const JwKigouSym *sym = &g->sym[cmd.kigou_sym - 1];
+                int q;
+                int draws = 0;
+
+                for (q = 0; q < sym->n; q++) {
+                    const JwKigouPart *p = &sym->part[q];
+                    const long c1 = p->c1 % 100, c2 = p->c2 % 100;
+
+                    if (p->kind != JW_KIGOU_LINE
+                        && p->kind != JW_KIGOU_ARC) {
+                        continue;
+                    }
+                    if (c1 == 8 || c2 == 8 || c1 == 9 || c2 == 9) {
+                        continue;   /* 表のみ・ダミーは作図しません */
+                    }
+                    draws++;
+                }
+                if (!draws) {
+                    jwc_remove_line(drawing, k);
+                    /* **数え札だけ取り直します。** 左の盤の
+                     * `線 数` は消したあとに入れ直さないと 30 の
+                     * ままです（本物は 29）。`jw_ui_from` を呼ぶと
+                     * 画面の状態を丸ごと作り直してしまい、選んで
+                     * いる命令も記号も消えます（3,894 画素）。 */
+                    ui.n_lines = drawing->n_lines;
+                    ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+                }
+            }
+        }
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* 一覧の升を押すとその記号を選びます。升は 4 列 x 4 行で、
+     * 列の境は x 121/251/381/511/639、行は y 16 から 96 ごと（実測）。 */
+    if (ui.kigou && !cmd.kigou_pick && !cmd.kigou_sym && !dxf_mode
+        && x >= 122 && x <= 638 && y >= 17 && y < 400) {
+        const int col = x >= 511 ? 3 : x >= 381 ? 2 : x >= 251 ? 1 : 0;
+        const int row = (y - 16) / 96;
+        const int k = row * 4 + col;
+        const JwKigou *g = jw_kigou_lib(cmd.kigou_group);
+
+        if (g && k < g->n) {
+            cmd.kigou_sym = k + 1;
         }
         mouse_x = x;
         mouse_y = y;
