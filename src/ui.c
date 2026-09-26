@@ -1494,8 +1494,28 @@ static void kigou_cells(VGA *v, const JwUi *s)
     const JwKigou *g = jw_kigou_lib(s->kigou_group);
     int i;
 
+    /* 字の大きさの表を持った**一時の図面**。jw_view_text は図面から
+     * 字の幅・高さ・ペンを引くので、画面が持っている表を写します。 */
+    static Jwc *tmp;
+
     if (!g) {
         return;
+    }
+    if (!tmp) {
+        tmp = jwc_new();
+    }
+    if (tmp) {
+        int q;
+
+        for (q = 0; q < 11; q++) {
+            tmp->text_w[q] = s->char_tab_w[q];
+            tmp->text_h[q] = s->char_tab_h[q];
+            tmp->text_gap[q] = s->char_tab_gap[q];
+            tmp->text_pen[q] = s->char_tab_pen[q];
+        }
+        /* 記号の 1 単位は紙の 1mm です（種 2 の 2.5mm 幅が 12.4 画素
+         * ＝ 1 単位 5 画素 と合います）。 */
+        tmp->unit_mm = 1.0f;
     }
     for (i = 0; i < g->n && i < 16; i++) {
         const JwKigouSym *sym = &g->sym[i];
@@ -1525,8 +1545,57 @@ static void kigou_cells(VGA *v, const JwUi *s)
                  * 升の下のほうに小さく出ています——測り直すまで素通り。 */
                 continue;
             }
+            if (p->kind == JW_KIGOU_TEXT_PART) {
+                /* **図面の文字として**描きます。画面の 8x16 の枠で書くと
+                 * 太すぎました —— 「Ｒ面取」の `実寸 R=30mm` は本物では
+                 * 68 画素幅で、枠の字だと 88 になります（当てたら
+                 * 3,757 → 5,578 画素に増えました）。 */
+                JwcText t;
+                JwView w;
+                int kind = p->type > 0 ? p->type % 100 : 1;
+
+                if (c1 == 9 || c2 == 9 || !p->text[0] || !tmp) {
+                    continue;
+                }
+                if (kind < 1 || kind > 10) {
+                    kind = 1;
+                }
+                memset(&t, 0, sizeof t);
+                t.x0 = (float)p->x1;
+                t.y0 = (float)p->y1;
+                t.x1 = (float)p->x2;
+                t.y1 = (float)p->y2;
+                t.size = (unsigned char)kind;
+                t.text = p->text;
+                memset(&w, 0, sizeof w);
+                w.ax = (float)ox;
+                w.ay = (float)oy;
+                w.scale = (float)scale;
+                /* **窓を升にします。** 0 のままだと (0,0)-(0,0) の
+                 * 窓になって、字が丸ごと切り落とされます。 */
+                w.x0 = x0;
+                w.y0 = y0;
+                w.x1 = x1;
+                w.y1 = y1;
+                {
+                    const int cx0 = v->clip_x0, cy0 = v->clip_y0;
+                    const int cx1 = v->clip_x1, cy1 = v->clip_y1;
+
+                    v->clip_x0 = x0;
+                    v->clip_y0 = y0;
+                    v->clip_x1 = x1;
+                    v->clip_y1 = y1;
+                    jw_view_text(v, tmp, &t, &w,
+                                 jw_view_text_colour(tmp, t.size));
+                    v->clip_x0 = cx0;
+                    v->clip_y0 = cy0;
+                    v->clip_x1 = cx1;
+                    v->clip_y1 = cy1;
+                }
+                continue;
+            }
             if (p->kind != JW_KIGOU_LINE && p->kind != JW_KIGOU_ARC) {
-                continue;       /* 文字・実点・連鎖・命令は次の段で */
+                continue;       /* 実点・連鎖・命令は次の段で */
             }
             if (c1 == 9 || c2 == 9) {
                 continue;       /* ダミー */
@@ -1551,7 +1620,9 @@ static void kigou_cells(VGA *v, const JwUi *s)
                 v->clip_y0 = y0;
                 v->clip_x1 = x1;
                 v->clip_y1 = y1;
-                jw_arc_poly(v, ax, ay, r, 10000,
+                /* 半径が負なら楕円で、続く数が偏平率です（§３-１１）。 */
+                jw_arc_poly(v, ax, ay, r,
+                            p->flat > 0.0 ? (long)(p->flat * 10000.0) : 10000,
                             (long)(a0 * 65536.0), (long)(a1 * 65536.0), 0,
                             ink, ROP_REPLACE, JW_STYLE_SOLID);
                 v->clip_x0 = cx0;
