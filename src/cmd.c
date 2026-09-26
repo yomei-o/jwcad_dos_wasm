@@ -3322,7 +3322,8 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     }
     if (c->command == 14 && c->dim_arc && c->stage == 11) {
         /* ②円周 の線の `|①端部|`: 【点】 と 【矢印】 が入れ替わります。
-         * `|②連続始点指示 (R) |` は入れていません。 */
+         * `|②連続始点指示 (R) |` は右押しで、jw_cmd_top が先に
+         * 受けます（画面を描き直すだけ）。 */
         if (item == 1) {
             c->dim_arc_end = !c->dim_arc_end;
             return 1;
@@ -4100,8 +4101,26 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     /* ④円･角 の桁は別で、押しても [ESC] も帯の値も残ります（測定：①矢印
      * を押したあとも桁 1 の [ESC]、桁 18 の値、桁 62 の 書込角度 がそのまま
      * 書き直されます）。②円周 の ①端部 も同じ扱いにしてあります。 */
+    /* ②円周 の `|②連続始点指示 (R) |`。**原作は画面を描き直すだけ**
+     * です——`＊お待ち下さい＊` を出して全部描き直し、数え箱が
+     * 引出し線の 2 本を数えた本当の数に追いつきます。行はそのまま、
+     * 記録も増えず、そのあとの押しの答えも（円を選ぶ→始点→終点→
+     * 引出し線→寸法線）押した順のまま変わりませんでした（測定：
+     * 押した場合と押さない場合で画面 0 画素差、保存した .JWC も同じ
+     * バイト数・同じ記録）。 */
+    if (c->command == 14 && c->dim_arc == 1 && c->stage == 11
+        && item == 2 && right) {
+        c->dim_lines0 = d ? d->n_lines : 0;
+        return 1;
+    }
     if (c->command == 14 && ((c->dim_ck && c->stage == 9)
                              || (c->dim_arc && c->stage == 11))) {
+        /* **数え箱は次の押しで追いつきます**——①端部 を押しただけ
+         * でも、原作の 線数 は引出し線の 2 本を数えた数になります
+         * （測定）。 */
+        if (c->dim_arc && c->stage == 11) {
+            c->dim_lines0 = d ? d->n_lines : 0;
+        }
         changed = cmd_top(c, d, item);
         if (!changed && jw_ui_item_has(c->command, item, right)) {
             c->top_item = item;
@@ -8832,15 +8851,26 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 return 1;
             }
             if (c->stage == 11) {
-                const long k = jw_cmd_arc_at(d, w, sx, sy);
+                /* **線が先です。** 円の上でも、そこに線があれば
+                 * 線を拾って撥ねます（測定：一本入れたあと、引出し線
+                 * が乗っている 0 度 (400,200) と 90 度 (300,100) では
+                 * 原作は動かず、引出し線のない 180 度 (200,200) と
+                 * 270 度 (300,300) では円を選びました）。これは線消
+                 * などと同じ拾い方です。 */
+                const long kl = jw_cmd_line_at(d, w, sx, sy);
+                const long k = kl >= 0 ? -1
+                             : jw_cmd_arc_at(d, w, sx, sy);
 
                 if (k < 0) {
                     /* **円でないものを拾うと言葉が変わります。** 原作は
                      * SAMPLE0 の枠の上 (560,420) で `線データです` を桁 20
                      * に書きました——①円径 が同じ押しで `読取可能データ無`
                      * と言うのとは別です（どちらも測定）。 */
-                    c->dim_arc_miss =
-                        jw_cmd_line_at(d, w, sx, sy) >= 0;
+                    c->dim_arc_miss = kl >= 0;
+                    /* 外した押しでも**数え箱は追いつきます**（測定：
+                     * 一本入れたあと引出し線の上を押すと、原作の
+                     * 線数 が引出し線の 2 本を数えた数に）。 */
+                    c->dim_lines0 = d ? d->n_lines : 0;
                     c->missed = 1;
                     return 0;
                 }

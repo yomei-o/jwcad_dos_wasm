@@ -1,0 +1,12 @@
+円周まで	90 232 left|300 200 left|400 200 left|90 280 left|320 8 left|180 8 left
+一本	90 232 left|300 200 left|400 200 left|90 280 left|320 8 left|180 8 left|400 200 left|400 200 left|300 100 left|370 200 left|450 200 left
+あと0度	90 232 left|300 200 left|400 200 left|90 280 left|320 8 left|180 8 left|400 200 left|400 200 left|300 100 left|370 200 left|450 200 left|400 200 left
+あと90度	90 232 left|300 200 left|400 200 left|90 280 left|320 8 left|180 8 left|400 200 left|400 200 left|300 100 left|370 200 left|450 200 left|300 100 left
+あと180度	90 232 left|300 200 left|400 200 left|90 280 left|320 8 left|180 8 left|400 200 left|400 200 left|300 100 left|370 200 left|450 200 left|200 200 left
+あと270度	90 232 left|300 200 left|400 200 left|90 280 left|320 8 left|180 8 left|400 200 left|400 200 left|300 100 left|370 200 left|450 200 left|300 300 left
+端部	90 232 left|300 200 left|400 200 left|90 280 left|320 8 left|180 8 left|400 200 left|400 200 left|300 100 left|370 200 left|450 200 left|420 8 left
+連続始点R	90 232 left|300 200 left|400 200 left|90 280 left|320 8 left|180 8 left|400 200 left|400 200 left|300 100 left|370 200 left|450 200 left|470 8 right
+連続始点R二回	90 232 left|300 200 left|400 200 left|90 280 left|320 8 left|180 8 left|400 200 left|400 200 left|300 100 left|370 200 left|450 200 left|470 8 right|470 8 right
+連続始点R→円	90 232 left|300 200 left|400 200 left|90 280 left|320 8 left|180 8 left|400 200 left|400 200 left|300 100 left|370 200 left|450 200 left|470 8 right|200 200 left
+連続始点R→端部	90 232 left|300 200 left|400 200 left|90 280 left|320 8 left|180 8 left|400 200 left|400 200 left|300 100 left|370 200 left|450 200 left|470 8 right|420 8 left
+二本目	90 232 left|300 200 left|400 200 left|90 280 left|320 8 left|180 8 left|400 200 left|400 200 left|300 100 left|370 200 left|450 200 left|200 200 left|200 200 left|300 300 left|370 200 left|450 200 left
