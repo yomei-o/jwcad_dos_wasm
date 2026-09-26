@@ -1553,6 +1553,17 @@ static void counts(VGA *v, const JwUi *s)
 {
     char buf[64];
 
+    /* 電卓の [f1]計算結果表示 のあいだ、数え箱は **文字の帯**になります
+     * （測定：` ﾍﾟﾝ2 残文 3626 ` と ` 横 3.0 縦 3.0 `）。 */
+    if (s->calc_place) {
+        fill(v, 1, 17, 120, 47, 4);
+        sprintf(buf, " \xcd\xdf\xdd%d \x8e" "c\x95\xb6 3626 ", s->char_pen);
+        jw_ui_text(v, 1, 2, 0, 0, buf);
+        sprintf(buf, " \x89\xa1 %.1f \x8f" "c %.1f ", s->char_w / 10.0, s->char_h / 10.0);
+        jw_ui_text(v, 1, 3, 0, 0, buf);
+        return;
+    }
+
     /* Paint the box again first.  Both of these are written transparently --
      * black letters on the green the box is filled with -- so writing over what
      * a command left there would leave both readable on top of each other.  The
@@ -4971,7 +4982,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         sprintf(one, "%10.3f ,%10.3f", s->grid_x, s->grid_y);
         jw_ui_text(v, 17, 2, 7, 0xffffu, one);
     }
-    if (s->calc) {
+    if (s->calc && !s->calc_place) {
         fill(v, 0, 0, 639, 15, 0);
         top_clear();
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
@@ -4981,6 +4992,23 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         /* And the rule under the top line back on: the strip of function
          * keys paints black behind its letters and cuts it. */
         fill(v, 122, 16, 639, 16, 7);
+    }
+    /* 電卓の [f1]計算結果表示。行は 文字 のもので、押したところが
+     * **小数点の位置**になります（測定）。 */
+    if (s->calc_place) {
+        char one[120];
+
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        sprintf(one, "\x95\xb6\x8e\x9a\x8e\xed\x97\xde[F%d]  \x81\x9e\x8c\x8b\x89\xca\x95\x5c\x8e\xa6   \x8f\xac\x90\x94\x93_\x88\xca\x92u\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ", s->char_type);
+        jw_ui_text(v, 8, 1, 7, 0, one);
+        if (s->calc_miss) {
+            /* 右押しが読めなかったとき（測定：桁 32 に BEL つき）。 */
+            jw_ui_text(v, 32, 2, 7, 0, "\x07\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83" "f\x81[\x83^\x96\xb3");
+            /* 行 2 に字を置くと y=16 の罫が消えるので引き直します。 */
+            fill(v, 122, 16, 639, 16, 7);
+        }
     }
     if (s->pen_board) {
         fill(v, 0, 0, 639, 15, 0);

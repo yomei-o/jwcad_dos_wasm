@@ -133,7 +133,10 @@ typedef struct {
     char calc_mark;
     char calc_pend[24];         /* 行 20 の、片付いたぶん */
     int calc_op;                /* 行 20 桁 14 の演算子 */
-    char calc_unit;             /* 行 23 の ' や " */
+    char calc_unit;
+    int calc_place;             /* [f1] で答えを置くところ */
+    int calc_miss;              /* その右押しが読めなかった */
+            /* 行 23 の ' や " */
     int kept;
     /* ｵﾌﾟｼｮﾝ (29) is a menu of menus too.  0 is the one the item itself
      * puts up; JW_OPT_* say which of its own is showing. */

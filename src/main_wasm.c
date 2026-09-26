@@ -1718,6 +1718,12 @@ static int calc_press(int x, int y)
     }
     if (k >= '0' && k <= '9') {
         if (calc_fresh) {
+            if (!calc_op) {
+                /* 答えのあとに打ち始めると、行 20 は空になります
+                 * （測定：＝ のあと数字を押すと行 20 が消えました）。 */
+                ui.calc_pend[0] = 0;
+                ui.calc_op = 0;
+            }
             calc_entry[0] = (char)k;
             calc_entry[1] = 0;
             calc_fresh = 0;
@@ -1798,6 +1804,11 @@ static int calc_press(int x, int y)
         calc_fresh = 1;
     }
     calc_show();
+    if (drawing) {
+        /* 数え箱は次の押しで追いつきます（置いた瞬間は古いまま）。 */
+        ui.n_lines = drawing->n_lines;
+        ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+    }
     return 1;
 }
 
@@ -1806,6 +1817,70 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     const int pick = jw_ui_menu_hit(x, y);
     const int bar = jw_ui_bar_item(x, y);
 
+    /* [f1] の置き場。**押したところが小数点の位置**です——文字は
+     * 一枡 (w+gap)/20 ミリずつ進み、押しは小数点の枡に w/2 ミリ入った
+     * ところ（測定：SAMPLE0 で `16` が (171.588,213)、`7.5` が
+     * (174.640,213)、`1234.5` が (165.483,213)。どれも押しは
+     * (300,250)＝記録 (179,213)）。 */
+    if (ui.calc_place && drawing && x >= AREA_X0 && x <= AREA_X1
+        && y >= AREA_Y0 && y <= AREA_Y1) {
+        const int k = drawing->char_type >= 0 && drawing->char_type <= 10
+                    ? drawing->char_type : 0;
+        const double step = (drawing->text_w[k] + drawing->text_gap[k])
+                          / 20.0 * drawing->unit_mm;
+        const double half = drawing->text_w[k] / 40.0 * drawing->unit_mm;
+        char one[40];
+        double dx, dy;
+        int lead = 0, i;
+
+        /* **右は読取**です。読めなければ桁 32 に `読取可能データ無` を
+         * 出して、道はそのまま（測定）。 */
+        if (right) {
+            if (!jw_read(drawing, &view, x, y, &dx, &dy)) {
+                ui.calc_miss = 1;
+                mouse_x = x;
+                mouse_y = y;
+                present();
+                return -1;
+            }
+        } else {
+            jw_cmd_at(&view, x, y, &dx, &dy);
+        }
+        ui.calc_miss = 0;
+        sprintf(one, "%.10g", calc_acc);
+        for (i = 0; one[i] && one[i] != '.'; i++) {
+            lead++;
+        }
+        {
+            const double x0 = dx - lead * step - half;
+            const double len = jwc_text_length(drawing, one,
+                                               (unsigned char)k);
+
+            jwc_add_text(drawing, (float)x0, (float)dy,
+                         (float)(x0 + len), (float)dy, one,
+                         (unsigned char)k,
+                         (unsigned char)drawing->write_layer);
+        }
+        {
+            /* **数え箱は置く前の数のまま**です（測定：文字を入れても
+             * 円･文数 は 13 のままでした）。 */
+            const long was_l = ui.n_lines, was_a = ui.n_arcs;
+
+            ui.calc_place = 0;
+            mouse_x = x;
+            mouse_y = y;
+            jw_ui_from(&ui, drawing);   /* memset するので戻します */
+            ui.n_lines = was_l;
+            ui.n_arcs = was_a;
+        }
+        ui.calc = 1;
+        calc_pend_set(calc_acc);
+        ui.calc_op = 0;
+        calc_show();
+        sync_ui();
+        present();
+        return -1;
+    }
     /* 電卓の升目。盤と同じで、menu より先に答えます。 */
     if (ui.calc && x >= 0 && x <= 120 && y >= 336 && y <= 399
         && calc_press(x, y)) {
@@ -3106,6 +3181,12 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 
     /* 電卓の [F6]〜[F10]。**度**で計算します（測定：30[F9] が 0.5、
      * 9[F7] が 3、2[F6]3＝ が 8）。 */
+    if (ui.calc && key == JW_KEY_F1 && !ui.calc_place) {
+        /* [f1]計算結果表示。押したところに答えを文字として入れます。 */
+        ui.calc_place = 1;
+        present();
+        return -1;
+    }
     if (ui.calc && key >= JW_KEY_F1 && key <= JW_KEY_F10) {
         const double d2r = 3.14159265358979323846 / 180.0;
         const double v = atof(calc_entry);

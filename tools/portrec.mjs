@@ -15,6 +15,9 @@ M.stringToUTF8(path, buf, n);
 M._jw_open(buf);
 M._free(buf);
 const KEY = { enter: 13, esc: 27, bs: 8, space: 32 };
+/* ﾌｧﾝｸｼｮﾝｷｰ。tools/seqshot.mjs と同じ番号です——これが無いと
+ * `key f1` が 'f' の一文字として届き、黙って別のことを測ります。 */
+for (let i = 1; i <= 10; i++) KEY['f' + i] = 0x100 + i;
 for (const step of steps) {
     const w = step.trim().split(/\s+/);
     if (w[0] === 'type') {
