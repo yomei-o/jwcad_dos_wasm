@@ -136,6 +136,7 @@ typedef struct {
     char calc_unit;
     int calc_place;             /* [f1] で答えを置くところ */
     int calc_miss;              /* その右押しが読めなかった */
+    int calc_get;               /* [f2] で数値を拾うところ */
             /* 行 23 の ' や " */
     int kept;
     /* ｵﾌﾟｼｮﾝ (29) is a menu of menus too.  0 is the one the item itself

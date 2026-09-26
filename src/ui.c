@@ -4982,7 +4982,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         sprintf(one, "%10.3f ,%10.3f", s->grid_x, s->grid_y);
         jw_ui_text(v, 17, 2, 7, 0xffffu, one);
     }
-    if (s->calc && !s->calc_place) {
+    if (s->calc && !s->calc_place && !s->calc_get) {
         fill(v, 0, 0, 639, 15, 0);
         top_clear();
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
@@ -5007,6 +5007,17 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             /* 右押しが読めなかったとき（測定：桁 32 に BEL つき）。 */
             jw_ui_text(v, 32, 2, 7, 0, "\x07\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83" "f\x81[\x83^\x96\xb3");
             /* 行 2 に字を置くと y=16 の罫が消えるので引き直します。 */
+            fill(v, 122, 16, 639, 16, 7);
+        }
+    }
+    /* 電卓の [f2]数値取得。図面の文字を押すと、その数が欄に入ります。 */
+    if (s->calc_get) {
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "\x8e\xe6\x93\xbe\x82\xb7\x82\xe9\x90\x94\x92l\x82\xf0\x91I\x82\xf1\x82\xc5\x89\xba\x82\xb3\x82\xa2");
+        if (s->calc_miss) {
+            jw_ui_text(v, 32, 2, 7, 0, "\x07\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83" "f\x81[\x83^\x96\xb3");
             fill(v, 122, 16, 639, 16, 7);
         }
     }

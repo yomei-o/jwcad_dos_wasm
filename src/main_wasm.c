@@ -1646,7 +1646,24 @@ static int calc_fresh = 1;          /* 次の数字で打ち直す */
 /* 行 20 に「片付いたぶん」を置きます。 */
 static void calc_pend_set(double v)
 {
-    sprintf(ui.calc_pend, "%.10g", v);
+    /* **11 桁で切り捨て**です（測定：2[F10] が `63.434948823` ではなく
+     * `63.434948822`——ATAN(2) は 63.43494882292… なので、丸めではなく
+     * 落としています）。 */
+    const double a = v < 0.0 ? -v : v;
+    const int lead = a >= 1.0 ? (int)floor(log10(a)) + 1 : 1;
+    int i;
+
+    sprintf(ui.calc_pend, "%.*f", 11 - lead, v);
+    i = (int)strlen(ui.calc_pend);
+    if (strchr(ui.calc_pend, '.')) {
+        while (i > 0 && ui.calc_pend[i - 1] == '0') {
+            i--;
+        }
+        if (i > 0 && ui.calc_pend[i - 1] == '.') {
+            i--;
+        }
+        ui.calc_pend[i] = 0;
+    }
 }
 
 static void calc_show(void)
@@ -1685,7 +1702,10 @@ static double calc_apply(double a, int op, double b)
 static int calc_key(int x, int y)
 {
     static const char *row[4] = { "789-/~", "456*dA", "123+C", "0,.=E" };
-    const int r = (y - 336) / 16;
+    /* **升目は y=337 から**です（測定：y=368 は上の行・
+     * y=369 から下の行。y=336 と y=400 はどの行でも
+     * ありません）。 */
+    const int r = y < 337 || y > 399 ? -1 : (y - 337) / 16;
     int c;
 
     if (r < 0 || r > 3) {
@@ -1697,9 +1717,11 @@ static int calc_key(int x, int y)
         c = 1;
     } else if (x < 72) {
         c = 2;
-    } else if (x < 87 && r < 2) {
+    } else if (x < 88 && r < 2) {
+        /* 上二行の切れ目は x=88 です（測定：87 は −、88 から ÷）。 */
         c = 3;
-    } else if (x < 102) {
+    } else if (x < 103) {
+        /* 切れ目は x=103 です（測定：x=102 は÷、103 から ±）。 */
         c = r < 2 ? 4 : 3;
     } else {
         c = r < 2 ? 5 : 4;
@@ -1744,8 +1766,14 @@ static int calc_press(int x, int y)
             calc_entry[n + 1] = 0;
         }
     } else if (k == '~') {
-        /* ± は打っている数の符号を返します（測定：7 のあと `-7`）。 */
-        if (calc_entry[0] == '-') {
+        /* ± は打っている数の符号を返します（測定：7 のあと `-7`）。
+         * **何も打っていなければ、返るのは片付いたほう（行 20）**です
+         * （測定：7＋9＝ のあと ± で行 20 が `-16`。開けた直後に
+         * 押すと、空だった行 20 が `0` になりました）。 */
+        if (calc_fresh) {
+            calc_acc = calc_acc == 0.0 ? 0.0 : -calc_acc;
+            calc_pend_set(calc_acc);
+        } else if (calc_entry[0] == '-') {
             memmove(calc_entry, calc_entry + 1, strlen(calc_entry));
         } else if (strcmp(calc_entry, "0") != 0) {
             memmove(calc_entry + 1, calc_entry, strlen(calc_entry) + 1);
@@ -1817,6 +1845,40 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     const int pick = jw_ui_menu_hit(x, y);
     const int bar = jw_ui_bar_item(x, y);
 
+    /* [f2] の拾い場。押した文字の数が欄に入ります。**読めるのは
+     * 届くレイヤの文字だけ**で、SAMPLE0 のレイヤ 01 の `250` は
+     * 拾えませんでした（測定）。数でない文字は 0 になります。 */
+    if (ui.calc_get && drawing && x >= AREA_X0 && x <= AREA_X1
+        && y >= AREA_Y0 && y <= AREA_Y1) {
+        const long k = jw_cmd_text_at(drawing, &view, x, y);
+
+        if (k < 0) {
+            ui.calc_miss = 1;
+            mouse_x = x;
+            mouse_y = y;
+            present();
+            return -1;
+        }
+        calc_put(atof(drawing->texts[k].text ? drawing->texts[k].text : "0"));
+        calc_fresh = 0;
+        /* **拾うと行 20 は消えます**（測定：16 を置いたあと同じ字を
+         * 拾うと、行 21 は 16、行 20 は空でした）。 */
+        calc_acc = 0.0;
+        calc_op = 0;
+        ui.calc_pend[0] = 0;
+        ui.calc_op = 0;
+        ui.calc_get = 0;
+        ui.calc_miss = 0;
+        mouse_x = x;
+        mouse_y = y;
+        /* 数え箱はこの押しで追いつきます（置いた瞬間は古いまま）。 */
+        ui.n_lines = drawing->n_lines;
+        ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+        calc_show();
+        sync_ui();
+        present();
+        return -1;
+    }
     /* [f1] の置き場。**押したところが小数点の位置**です——文字は
      * 一枡 (w+gap)/20 ミリずつ進み、押しは小数点の枡に w/2 ミリ入った
      * ところ（測定：SAMPLE0 で `16` が (171.588,213)、`7.5` が
@@ -1847,35 +1909,56 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             jw_cmd_at(&view, x, y, &dx, &dy);
         }
         ui.calc_miss = 0;
-        sprintf(one, "%.10g", calc_acc);
-        for (i = 0; one[i] && one[i] != '.'; i++) {
-            lead++;
-        }
-        {
-            const double x0 = dx - lead * step - half;
-            const double len = jwc_text_length(drawing, one,
-                                               (unsigned char)k);
+        /* 置くのは **行 20 に出ている答え**だけです。行 20 が空
+         * ——7 を打っただけ、[f2] で拾っただけ——なら**何も置かず**、
+         * 打ち欄だけ 0 に戻ります（測定：原作の記録に文字が増えず、
+         * 行 21 が `0`、行 20 は空のままでした）。 */
+        if (ui.calc_pend[0]) {
+            /* 置く字は **行 20 に出ているそのもの**です。 */
+            strcpy(one, ui.calc_pend);
+            for (i = 0; one[i] && one[i] != '.'; i++) {
+                lead++;
+            }
+            {
+                const double x0 = dx - lead * step - half;
+                const double len = jwc_text_length(drawing, one,
+                                                   (unsigned char)k);
 
-            jwc_add_text(drawing, (float)x0, (float)dy,
-                         (float)(x0 + len), (float)dy, one,
-                         (unsigned char)k,
-                         (unsigned char)drawing->write_layer);
+                jwc_add_text(drawing, (float)x0, (float)dy,
+                             (float)(x0 + len), (float)dy, one,
+                             (unsigned char)k,
+                             (unsigned char)drawing->write_layer);
+            }
         }
+        strcpy(calc_entry, "0");
+        calc_fresh = 1;
+        /* **待っていた演算も消えます**（測定：7＋ のあと置いてから
+         * 2＝ を押すと、原作の行 20 は 9 ではなく 2 でした）。 */
+        calc_op = 0;
         {
             /* **数え箱は置く前の数のまま**です（測定：文字を入れても
-             * 円･文数 は 13 のままでした）。 */
+             * 円･文数 は 13 のままでした）。行 20 も**置く前のまま**で、
+             * 空なら空のままです（測定：7 を打っただけで置くと、原作の
+             * 行 20 は空のままでした）。 */
             const long was_l = ui.n_lines, was_a = ui.n_arcs;
+            char was_pend[24];
 
+            strcpy(was_pend, ui.calc_pend);
             ui.calc_place = 0;
             mouse_x = x;
             mouse_y = y;
-            jw_ui_from(&ui, drawing);   /* memset するので戻します */
+            /* memset するので戻します。**度分秒の印（桁 15）は
+             * 戻しません**——原作も消えていました（測定：7ﾟ のあと
+             * 置くと印がありません）。 */
+            jw_ui_from(&ui, drawing);
             ui.n_lines = was_l;
             ui.n_arcs = was_a;
+            strcpy(ui.calc_pend, was_pend);
+            /* **待っている演算子の字は消えます**（測定：7＋ のあと
+             * 置くと、行 20 は 7 だけで ＋ が出ませんでした）。 */
+            ui.calc_op = 0;
         }
         ui.calc = 1;
-        calc_pend_set(calc_acc);
-        ui.calc_op = 0;
         calc_show();
         sync_ui();
         present();
@@ -3179,14 +3262,30 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
 
-    /* 電卓の [F6]〜[F10]。**度**で計算します（測定：30[F9] が 0.5、
-     * 9[F7] が 3、2[F6]3＝ が 8）。 */
+    /* [f1]/[f2] の道は **[ESC] で電卓の画面へそのまま戻ります**
+     * （測定：外したあとの画面は 電卓 を開いた直後と 0 画素差）。 */
+    if ((ui.calc_place || ui.calc_get) && key == 27) {
+        ui.calc_place = 0;
+        ui.calc_get = 0;
+        ui.calc_miss = 0;
+        present();
+        return -1;
+    }
+    if (ui.calc && key == JW_KEY_F2 && !ui.calc_place && !ui.calc_get) {
+        /* [f2]数値取得。図面の文字を選ぶと、その数が欄に入ります。 */
+        ui.calc_get = 1;
+        ui.calc_miss = 0;
+        present();
+        return -1;
+    }
     if (ui.calc && key == JW_KEY_F1 && !ui.calc_place) {
         /* [f1]計算結果表示。押したところに答えを文字として入れます。 */
         ui.calc_place = 1;
         present();
         return -1;
     }
+    /* 電卓の [F6]〜[F10]。**度**で計算します（測定：30[F9] が 0.5、
+     * 9[F7] が 3、2[F6]3＝ が 8）。 */
     if (ui.calc && key >= JW_KEY_F1 && key <= JW_KEY_F10) {
         const double d2r = 3.14159265358979323846 / 180.0;
         const double v = atof(calc_entry);
