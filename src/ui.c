@@ -5291,7 +5291,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         sprintf(one, "|\x8e\xed %d|Paste", s->kigou_in_kind);
         jw_ui_text(v, 5, 4, 7, 0xffffu, one);
         fill(v, 0, 464, 639, 479, 0);
-        fill(v, 0, 17, 121, 47, 0);
+        /* 左端の緑の升（x 0..7、y 24..31）は本物も残します。 */
+        fill(v, 0, 16, 121, 23, 0);
+        fill(v, 8, 24, 121, 31, 0);
+        fill(v, 0, 32, 121, 47, 0);
         if (s->kigou_in_text) {
             /* **空白で埋めて**書きます —— `文字列入力` の残りが出ます。 */
             char pad[32];
