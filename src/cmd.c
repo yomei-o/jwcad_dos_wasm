@@ -6686,6 +6686,7 @@ static int env_wrap(JwCmd *c, Jwc *d)
         double at[JW_ENV_MAX];
         int end[JW_ENV_MAX], who[JW_ENV_MAX];
         int onm[JW_ENV_MAX], onl[JW_ENV_MAX];
+        int perp[JW_ENV_MAX];
         int m = 0, ncut = 0, p;
         double from;
 
@@ -6719,6 +6720,21 @@ static int env_wrap(JwCmd *c, Jwc *d)
             onm[m] = tm > -1e-6 && tm < 1.0 + 1e-6;
             onl[m] = tl > 1e-9 && tl < 1.0 - 1e-9;
             who[m] = (int)pick[j];
+            /* **直角の向きかどうか**。外形線が伸びる先は、DOC も
+             * notes も「直角の向きの仲間との交わり」と書いています。
+             * 総当たりの図は軸に沿っているので、どちらで読んでも
+             * 同じでした——SAMPLE3 のような斜めのある図で分かれます。 */
+            {
+                const double ax2 = keep.x1 - keep.x0, ay2 = keep.y1 - keep.y0;
+                const double bx2 = o->x1 - o->x0, by2 = o->y1 - o->y0;
+                const double al2 = sqrt(ax2 * ax2 + ay2 * ay2);
+                const double bl2 = sqrt(bx2 * bx2 + by2 * by2);
+                const double dot = ax2 * bx2 + ay2 * by2;
+
+                perp[m] = al2 > 0.0 && bl2 > 0.0
+                        && dot < 1e-3 * al2 * bl2
+                        && dot > -1e-3 * al2 * bl2;
+            }
             m++;
         }
         if (full[i]) {
@@ -6735,6 +6751,9 @@ static int env_wrap(JwCmd *c, Jwc *d)
             int nper = 0;
 
             for (j = 0; j < m; j++) {
+                if (!perp[j]) {
+                    continue;
+                }
                 nper++;
                 if (at[j] < lo) {
                     lo = at[j];
