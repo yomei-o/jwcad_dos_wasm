@@ -158,6 +158,8 @@ static void bres_y(VGA *v, long off, unsigned char bit, int count,
     }
 }
 
+int jw_line_trace = -1;         /* -1 はまだ環境変数を見ていない印 */
+
 void jw_line(VGA *v, int x0, int y0, int x1, int y1,
              unsigned colour, unsigned rop, int style)
 {
@@ -165,6 +167,19 @@ void jw_line(VGA *v, int x0, int y0, int x1, int y1,
     long off;
     unsigned char bit;
 
+    /* **本物と同じ形で線を並べます**（旗が立っているときだけ）。
+     * 本物の側は `tools/frametrace.sh`（`10a9:07dc` の引数）。
+     * 同じ場面の 2 つを突き合わせるための窓です。
+     *
+     * emscripten の `getenv` は node の環境変数を見ないので、ページ側は
+     * `jw_lines_trace()` で立てます（`tools/seqshot.mjs`）。 */
+    if (jw_line_trace < 0) {
+        jw_line_trace = getenv("JW_LINES") ? 1 : 0;
+    }
+    if (jw_line_trace) {
+        printf("line (%d,%d)-(%d,%d) col=%u rop=%u style=%04X%c",
+               x0, y0, x1, y1, colour, rop, (unsigned)style & 0xffffu, 10);
+    }
     jw_set_colour(v, colour, rop);
 
     if (x1 < x0) {                           /* draw left to right */

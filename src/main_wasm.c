@@ -89,6 +89,13 @@ static void dim_from_drawing(void);
  * further down, beside the rest of the disk. */
 static void zukei_list_read(void);
 
+/* 引いた線を並べる窓を開けます（`tools/seqshot.mjs` が環境変数を見て
+ * 呼びます）。本物の側は `tools/frametrace.sh`。 */
+EMSCRIPTEN_KEEPALIVE void jw_lines_trace(int on)
+{
+    jw_line_trace = on ? 1 : 0;
+}
+
 EMSCRIPTEN_KEEPALIVE void jw_init(void)
 {
     vga_reset(&vga, 0x12);

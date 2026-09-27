@@ -13,6 +13,8 @@ const createJwcad = require('../jwcad.js');
 
 const [path, out, ...steps] = process.argv.slice(2);
 const M = await createJwcad();
+/* 引いた線を並べる窓（本物の tools/frametrace.sh と突き合わせるため）。 */
+if (process.env.JW_LINES) M._jw_lines_trace(1);
 M._jw_init();
 const n = M.lengthBytesUTF8(path) + 1, buf = M._malloc(n);
 M.stringToUTF8(path, buf, n);

@@ -14,6 +14,9 @@
  * JW_STYLE_SOLID takes the fast paths: whole bytes at a time when the line is
  * horizontal, and pixels accumulated within a byte when it is shallow.
  */
+/* 引いた線を 1 行ずつ出す旗（`tools/frametrace.sh` と突き合わせる窓）。 */
+extern int jw_line_trace;
+
 void jw_line(VGA *v, int x0, int y0, int x1, int y1,
              unsigned colour, unsigned rop, int style);
 
