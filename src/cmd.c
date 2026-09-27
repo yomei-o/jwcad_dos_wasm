@@ -41,6 +41,10 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->dim_arrow_mm = 3.0;
     c->dim_angle_deg = 15.0;
     c->dim_dec = 1;
+    /* 線記号変形の倍率は 1 倍から始まります（本物の表示が
+     * `①倍率 横,縦(  1.00,  1.00)`）。 */
+    c->kigou_mag_x = 1.0;
+    c->kigou_mag_y = 1.0;
     c->dim_comma_on = 1;
     c->divisions = 2;
     /* 正多角形's `[5]`, likewise. */

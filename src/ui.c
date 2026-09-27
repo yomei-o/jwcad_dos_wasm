@@ -5307,20 +5307,50 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         top_clear();
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
         jw_ui_text(v, 6, 1, 7, 0, "\x81" "E");
-        jw_ui_text(v, 8, 1, 7, 0,
-                   "\x8ew\x8e\xa6\x90\xfc(1)\x83}\x83" "E\x83X\x8ew\x8e\xa6  |\x87@\x94{\x97\xa6 \x89\xa1,\x8f" "c(  1.00,  1.00)|\x87" "A\x91\xbc\x8bL\x8d\x86\x91I\x91\xf0|");
-        if (s->kigou_wait && s->kigou_two) {
-            /* データに 20 があるときは**指示線 2** を待ちます（実測）。 */
-            jw_ui_text(v, 8, 1, 7, 0,
-                       "\x8ew\x8e\xa6\x90\xfc(2)\x81\x9f\x83}\x83" "E\x83X\x8ew\x8e\xa6  |\x87@\x94{\x97\xa6 \x89\xa1,\x8f" "c(  1.00,  1.00)|\x87" "A\x91\xbc\x8bL\x8d\x86\x91I\x91\xf0|");
-        } else if (s->kigou_wait || s->kigou_free) {
-            /* 指示線を拾ったあとは位置を待ちます（実測）。
-             * **制御コード 10 が無い記号は最初から位置**です。 */
-            jw_ui_text(v, 8, 1, 7, 0,
-                       "\x81\x9b\x88\xca\x92u(L)free (R)Read  |\x87@\x94{\x97\xa6 \x89\xa1,\x8f" "c(  1.00,  1.00)|\x87" "A\x91\xbc\x8bL\x8d\x86\x91I\x91\xf0|");
+        {
+            /* **どの問いかけでも、うしろは同じ**です。倍率は行のなかに
+             * 数で入るので、まとめて 1 本の文字列にします——`|` の位置が
+             * `jw_ui_top_item` の升の境になるので、分けて書けません。 */
+            const char *ask =
+                s->kigou_wait && s->kigou_two
+                ? "\x8ew\x8e\xa6\x90\xfc(2)\x81\x9f\x83}\x83" "E\x83X\x8ew\x8e\xa6  "
+                : (s->kigou_wait || s->kigou_free
+                   ? "\x81\x9b\x88\xca\x92u(L)free (R)Read  "
+                   : "\x8ew\x8e\xa6\x90\xfc(1)\x83}\x83" "E\x83X\x8ew\x8e\xa6  ");
+            char line[160];
+
+            sprintf(line, "%s|\x87@\x94{\x97\xa6 \x89\xa1,\x8f" "c(%6.2f,%6.2f)|\x87" "A\x91\xbc\x8bL\x8d\x86\x91I\x91\xf0|",
+                    ask, s->kigou_mag_x, s->kigou_mag_y);
+            jw_ui_text(v, 8, 1, 7, 0, line);
         }
-        jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
-        if (g && s->kigou_sym <= g->n && !s->kigou_input) {
+        /* **①倍率 横,縦 の行**（桁は STR=1 で拾った実測）。 */
+        if (s->kigou_mag_ask) {
+            char one[64];
+
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
+            jw_ui_text(v, 1, 1, 7, 0,
+                       "[ESC]." "\x94{\x97\xa6 \x89\xa1,\x8f" "c =");
+            jw_ui_text(v, 38, 1, 7, 0,
+                       "\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) ");
+            sprintf(one, "[%10.3f", s->kigou_mag_x);
+            jw_ui_text(v, 56, 1, 7, 0, one);
+            sprintf(one, ",%10.3f", s->kigou_mag_y);
+            jw_ui_text(v, 67, 1, 7, 0, one);
+            jw_ui_text(v, 78, 1, 7, 0, "]");
+            if (s->kigou_mag_n) {
+                jw_ui_text(v, 20, 1, 7, 0, s->kigou_mag_typed);
+            }
+            fill(v, (19 + s->kigou_mag_n) * 8, 7,
+                 (19 + s->kigou_mag_n) * 8 + 7, 15, 4);
+        }
+        /* **倍率を聞いているあいだは [BS]前項 も記号名も出ません**
+         * （本物の行は `]` で終わります）。 */
+        if (!s->kigou_mag_ask) {
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+        }
+        if (g && s->kigou_sym <= g->n && !s->kigou_input
+            && !s->kigou_mag_ask) {
             jw_ui_text(v, 18, 2, 7, 0xffffu,
                        g->sym[s->kigou_sym - 1].name);
         }

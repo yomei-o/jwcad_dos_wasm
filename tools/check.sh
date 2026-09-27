@@ -545,6 +545,9 @@ sh tools/seqcheck.sh "30 88 left" "500 8 left" "570 160 left" "197 157 left" "ty
 sh tools/seqcheck.sh "30 88 left" "500 8 left" "440 354 left" "197 157 left" "type AA" "key enter" "type BB" "key enter" "move 420 300" || true
 full sh tools/seqcheck.sh "30 88 left" "500 8 left" "570 354 left" "197 157 left" "type A" "key enter" "type B" "key enter" "type C" "key enter" "move 420 300" || true
 sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "464 8 left" || true
+sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "270 8 left" || true
+sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "270 8 left" "type 2,3" "key enter" || true
+sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "270 8 left" "type 2,3" "key enter" "197 157 left" "300 200 left" "move 420 300" || true
 sect "=== プロッタ出力: the PDF and the PNG the page's two buttons hand over"
 sh tools/plotcheck.sh
 sect "=== プロッタ出力を本物の道筋で: 入出力 → ②ﾌﾟﾛｯﾀ → ③ﾌｧｲﾙ出力 → ① 実行"

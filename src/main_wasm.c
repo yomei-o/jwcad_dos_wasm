@@ -200,7 +200,7 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
         ln.pen = (unsigned char)drawing->pen;
         ln.layer = (unsigned char)drawing->write_layer;
         jw_kigou_put(drawing, sym, &ln, 0, px, py,
-                     cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0);
+                     cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
         ui.n_lines = drawing->n_lines;
         ui.n_arcs = drawing->n_arcs + drawing->n_texts;
         return;
@@ -226,7 +226,7 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
             ox = ax + s2 * dx;
             oy = ay + s2 * dy;
             jw_kigou_put(drawing, sym, &base, two, ox, oy,
-                         cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0);
+                         cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
             /* **あとのほうから消します。** 先に小さい番号を消すと、
              * もう一方の番号がひとつ前にずれます。 */
             if (cmd.kigou_line2 > cmd.kigou_line) {
@@ -249,7 +249,7 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
     ox = ax + t * dx;
     oy = ay + t * dy;
     jw_kigou_put(drawing, sym, &base, two, ox, oy,
-                 cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0);
+                 cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
     jwc_remove_line(drawing, cmd.kigou_line);
     cmd.kigou_line = -1;
     cmd.kigou_line2 = -1;
@@ -431,6 +431,11 @@ static void sync_ui(void)
         ui.kigou_in_buf = cmd.kigou_in_n ? cmd.kigou_in_buf : 0;
         ui.kigou_in_old = ip && ip->c1 >= 21000 ? ip->text : 0;
     }
+    ui.kigou_mag_ask = cmd.kigou_mag_ask;
+    ui.kigou_mag_typed = cmd.kigou_mag_typed;
+    ui.kigou_mag_n = cmd.kigou_mag_n;
+    ui.kigou_mag_x = cmd.kigou_mag_x;
+    ui.kigou_mag_y = cmd.kigou_mag_y;
     {
         const JwKigou *kg = jw_kigou_lib(cmd.kigou_group);
 
@@ -618,7 +623,8 @@ static void kigou_ghost(void)
     memset(&gh, 0, sizeof gh);
     if (jw_kigou_put(drawing, sym, &ln, 0, cmd.kigou_px, cmd.kigou_py,
                      cmd.kigou_in_n ? cmd.kigou_in_buf : 0,
-                     20 + cmd.kigou_in_at, &gh)) {
+                     20 + cmd.kigou_in_at, &gh,
+                     cmd.kigou_mag_x, cmd.kigou_mag_y)) {
         if (gh.t.text && gh.t.text[0]) {
             jw_view_text_ghost(&vga, drawing, &gh.t, &view, 2, 0x18);
             jw_view_text_caret(&vga, drawing, &gh.t, &view, gh.cx, 4, 0x18);
@@ -2703,8 +2709,10 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     /* 線記号変形の一覧が出ているあいだ。上の行の `①種類【A】変更`
      * （桁 19〜35、x 144〜279）でグループの一覧、その升でグループを
      * 選びます。升は x 144..576 を 3 列、y 40..328 を 9 行（実測）。 */
-    if (ui.kigou && !cmd.kigou_pick && !dxf_mode
+    if (ui.kigou && !cmd.kigou_pick && !cmd.kigou_sym && !dxf_mode
         && y >= 0 && y <= 15 && x >= 144 && x <= 279) {
+        /* **記号を選んだあとは別の行**です。この桁は ①倍率 横,縦 に
+         * なっていて、一覧の `①種類【A】変更` ではありません。 */
         cmd.kigou_pick = 1;
         mouse_x = x;
         mouse_y = y;
@@ -2747,6 +2755,20 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         cmd.kigou_in_at = 0;
         cmd.kigou_in_n = 0;
         cmd.kigou_in_buf[0] = 0;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+
+    /* **上の行の 1 つめの升は ①倍率 横,縦**（`jw_ui_top_item` の 1）。 */
+    if (ui.kigou && cmd.kigou_sym && !cmd.kigou_pick && !cmd.kigou_input
+        && !dxf_mode && y >= 0 && y <= 15
+        && jw_ui_top_item(x, y) == 1) {
+        cmd.kigou_mag_ask = 1;
+        cmd.kigou_mag_n = 0;
+        cmd.kigou_mag_typed[0] = 0;
         mouse_x = x;
         mouse_y = y;
         sync_ui();
@@ -3664,6 +3686,35 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         ui.keep_msg = 0;
         ui.offset_msg = 0;
         present();
+    }
+
+    /* **①倍率 横,縦 の打鍵。** 図形 (27) の ◆倍率 とまったく同じで、
+     * 数が 1 つだけなら縦も同じにします（そちらから持ってきた作法で、
+     * 線記号変形で測ったものではありません）。 */
+    if (cmd.kigou_mag_ask) {
+        if (key == 27) {
+            cmd.kigou_mag_ask = 0;
+        } else if (key == 13 || key == 10) {
+            if (cmd.kigou_mag_n) {
+                const char *comma = strchr(cmd.kigou_mag_typed, ',');
+
+                cmd.kigou_mag_x = atof(cmd.kigou_mag_typed);
+                cmd.kigou_mag_y = comma ? atof(comma + 1) : cmd.kigou_mag_x;
+            }
+            cmd.kigou_mag_ask = 0;
+        } else if (key == 8) {
+            if (cmd.kigou_mag_n > 0) {
+                cmd.kigou_mag_typed[--cmd.kigou_mag_n] = 0;
+            }
+        } else if (((key >= '0' && key <= '9') || key == '.' || key == ','
+                    || key == '-')
+                   && cmd.kigou_mag_n < (int)sizeof cmd.kigou_mag_typed - 1) {
+            cmd.kigou_mag_typed[cmd.kigou_mag_n++] = (char)key;
+            cmd.kigou_mag_typed[cmd.kigou_mag_n] = 0;
+        }
+        sync_ui();
+        present();
+        return -1;
     }
 
     /* **文字入力の盤の打鍵。** 打った字が欄に入り、[Enter] でその字を

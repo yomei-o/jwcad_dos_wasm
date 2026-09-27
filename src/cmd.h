@@ -331,6 +331,11 @@ typedef struct {
     int kigou_in_at;  /* 何番目の文字の部材を聞いているか */
     char kigou_in_buf[64];       /* 打った文字 */
     int kigou_in_n;
+    /* ①倍率 横,縦。上の行の 1 つめの升で開きます。 */
+    int kigou_mag_ask;
+    char kigou_mag_typed[32];
+    int kigou_mag_n;
+    double kigou_mag_x, kigou_mag_y;
     double kigou_px, kigou_py;   /* そのとき押したところ */
     int kigou_group;
     int dim_dec;

@@ -139,9 +139,11 @@ typedef struct {
 } JwKigouGhost;
 
 /* phase 2 のときだけ `ghost` を使います。 */
+/* `mx`,`my` は ①倍率 横,縦。記号の枠の x と y に掛けます。 */
 int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                  const JwcLine *base2, double ox, double oy,
-                 const char *typed, int phase, JwKigouGhost *ghost);
+                 const char *typed, int phase, JwKigouGhost *ghost,
+                 double mx, double my);
 
 /* そのグループの名札（`A`〜`J`）。範囲外は 0。 */
 char jw_kigou_letter(int which);

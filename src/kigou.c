@@ -327,7 +327,8 @@ int jw_kigou_takes1(const JwKigouSym *sym)
 
 int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                  const JwcLine *base2, double ox, double oy,
-                 const char *typed, int phase, JwKigouGhost *ghost)
+                 const char *typed, int phase, JwKigouGhost *ghost,
+                 double mx, double my)
 {
     const double mm = d->unit_mm > 0.0f ? (double)d->unit_mm : 1.0;
     /* **端に合わせるときは原点から遠いほうの端**です（「コーナー」と
@@ -378,6 +379,11 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
     for (k = 0; k < sym->n; k++) {
         const JwKigouPart *p = &sym->part[k];
         const long c1 = p->c1 % 100, c2 = p->c2 % 100;
+        /* **①倍率 横,縦**。記号の枠の x と y に掛けます。円データの
+         * 2 点目は角度なので掛けません。 */
+        const double qx1 = p->x1 * mx, qy1 = p->y1 * my;
+        const double qx2 = p->kind == JW_KIGOU_ARC ? p->x2 : p->x2 * mx;
+        const double qy2 = p->kind == JW_KIGOU_ARC ? p->y2 : p->y2 * my;
         JwcLine l;
 
         if (p->kind == JW_KIGOU_SCALE) {
@@ -433,8 +439,8 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             JwcPoint pt;
 
             memset(&pt, 0, sizeof pt);
-            pt.x = (float)(ox + (p->x1 * ux + p->y1 * nx) * mm * sc * (flip ? -1.0 : 1.0));
-            pt.y = (float)(oy + (p->x1 * uy + p->y1 * ny) * mm * sc * (flip ? -1.0 : 1.0));
+            pt.x = (float)(ox + (qx1 * ux + qy1 * nx) * mm * sc * (flip ? -1.0 : 1.0));
+            pt.y = (float)(oy + (qx1 * uy + qy1 * ny) * mm * sc * (flip ? -1.0 : 1.0));
             pt.layer = base->layer;
             memcpy(pt.rest, base->rest, sizeof pt.rest);
             if (jwc_put_point(d, &pt)) {
@@ -526,8 +532,8 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
              * まだ分けられていません。 */
             wide -= last;
             /* 記号の枠の向きを図面の向きに。倍率の負は 180 度回します。 */
-            tx = (ux * (p->x2 - p->x1) + nx * (p->y2 - p->y1));
-            ty = (uy * (p->x2 - p->x1) + ny * (p->y2 - p->y1));
+            tx = (ux * (qx2 - qx1) + nx * (qy2 - qy1));
+            ty = (uy * (qx2 - qx1) + ny * (qy2 - qy1));
             tn = sqrt(tx * tx + ty * ty);
             if (tn > 0.0) {
                 tx /= tn;
@@ -540,8 +546,8 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                 tx = -tx;
                 ty = -ty;
             }
-            bx = ox + (p->x1 * ux + p->y1 * nx) * mm * sc * (flip ? -1.0 : 1.0);
-            by = oy + (p->x1 * uy + p->y1 * ny) * mm * sc * (flip ? -1.0 : 1.0);
+            bx = ox + (qx1 * ux + qy1 * nx) * mm * sc * (flip ? -1.0 : 1.0);
+            by = oy + (qx1 * uy + qy1 * ny) * mm * sc * (flip ? -1.0 : 1.0);
             bx -= wide * (bp % 3) / 2.0 * tx;
             by -= wide * (bp % 3) / 2.0 * ty;
             bx -= high * (bp / 3) / 2.0 * (-ty);
@@ -563,9 +569,9 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                     ghost->t.text = ghost->text;
                     ghost->cx = bx + wtyped * tx;
                     ghost->cy = by + wtyped * ty;
-                    ghost->px = ox + (p->x1 * ux + p->y1 * nx) * mm * sc
+                    ghost->px = ox + (qx1 * ux + qy1 * nx) * mm * sc
                                 * (flip ? -1.0 : 1.0);
-                    ghost->py = oy + (p->x1 * uy + p->y1 * ny) * mm * sc
+                    ghost->py = oy + (qx1 * uy + qy1 * ny) * mm * sc
                                 * (flip ? -1.0 : 1.0);
                 }
                 put++;
@@ -590,9 +596,9 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             JwcArc a;
 
             memset(&a, 0, sizeof a);
-            a.cx = (float)(ox + (p->x1 * ux + p->y1 * nx) * mm * sc * (flip ? -1.0 : 1.0));
-            a.cy = (float)(oy + (p->x1 * uy + p->y1 * ny) * mm * sc * (flip ? -1.0 : 1.0));
-            a.r = (float)(p->radius * mm * sc * (flip ? -1.0 : 1.0));
+            a.cx = (float)(ox + (qx1 * ux + qy1 * nx) * mm * sc * (flip ? -1.0 : 1.0));
+            a.cy = (float)(oy + (qx1 * uy + qy1 * ny) * mm * sc * (flip ? -1.0 : 1.0));
+            a.r = (float)(p->radius * mx * mm * sc * (flip ? -1.0 : 1.0));
             a.flatten = p->flat > 0.0
                       ? (short)(p->flat * 10000.0 + 0.5) : 10000;
             a.start = (long)((p->x2 + ts) * 65536.0);
@@ -623,8 +629,8 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             l.x0 = (float)hx;
             l.y0 = (float)hy;
         } else {
-            l.x0 = (float)(ox + (p->x1 * ux + p->y1 * nx) * mm * sc * (flip ? -1.0 : 1.0));
-            l.y0 = (float)(oy + (p->x1 * uy + p->y1 * ny) * mm * sc * (flip ? -1.0 : 1.0));
+            l.x0 = (float)(ox + (qx1 * ux + qy1 * nx) * mm * sc * (flip ? -1.0 : 1.0));
+            l.y0 = (float)(oy + (qx1 * uy + qy1 * ny) * mm * sc * (flip ? -1.0 : 1.0));
         }
         if (c2 == 10) {
             /* 制御(2) の 10 は指示線 1 の**近い**端です。 */
@@ -634,8 +640,8 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             l.x1 = (float)gx;
             l.y1 = (float)gy;
         } else {
-            l.x1 = (float)(ox + (p->x2 * ux + p->y2 * nx) * mm * sc * (flip ? -1.0 : 1.0));
-            l.y1 = (float)(oy + (p->x2 * uy + p->y2 * ny) * mm * sc * (flip ? -1.0 : 1.0));
+            l.x1 = (float)(ox + (qx2 * ux + qy2 * nx) * mm * sc * (flip ? -1.0 : 1.0));
+            l.y1 = (float)(oy + (qx2 * uy + qy2 * ny) * mm * sc * (flip ? -1.0 : 1.0));
         }
         /* 100 の位が 1 なら線色・線種・レイヤは指示線 1 と同じ。 */
         if (p->c1 >= 100 && p->c1 < 300) {
