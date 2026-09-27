@@ -177,8 +177,9 @@ void jw_line(VGA *v, int x0, int y0, int x1, int y1,
         jw_line_trace = getenv("JW_LINES") ? 1 : 0;
     }
     if (jw_line_trace) {
-        printf("line (%d,%d)-(%d,%d) col=%u rop=%u style=%04X%c",
-               x0, y0, x1, y1, colour, rop, (unsigned)style & 0xffffu, 10);
+        printf("line (%d,%d)-(%d,%d) col=%u rop=%u style=%04X clip=%d,%d,%d,%d%c",
+               x0, y0, x1, y1, colour, rop, (unsigned)style & 0xffffu,
+               v->clip_x0, v->clip_y0, v->clip_x1, v->clip_y1, 10);
     }
     jw_set_colour(v, colour, rop);
 

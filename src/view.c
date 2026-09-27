@@ -96,6 +96,18 @@ static int clip_both(const JwView *w, double *x0, double *y0,
     *y1 = *y0 + t1 * dy;
     *x0 = *x0 + t0 * dx;
     *y0 = *y0 + t0 * dy;
+    /* **刻んだあと窓に丸め直します**（`clip_far` と同じ理由）。
+     * 割り算の端数で境目がわずかに外へ落ち、切り捨てると 1 画素
+     * はみ出します——「ため桝 (450)」を置くと、窓の上端で切れる 2 本が
+     * y=17 ではなく 16 から始まっていました（178 画素）。 */
+    if (*x0 < w->x0) *x0 = w->x0;
+    if (*x0 > w->x1) *x0 = w->x1;
+    if (*y0 < w->y0) *y0 = w->y0;
+    if (*y0 > w->y1) *y0 = w->y1;
+    if (*x1 < w->x0) *x1 = w->x0;
+    if (*x1 > w->x1) *x1 = w->x1;
+    if (*y1 < w->y0) *y1 = w->y0;
+    if (*y1 > w->y1) *y1 = w->y1;
     return 1;
 }
 
