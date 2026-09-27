@@ -548,6 +548,8 @@ sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "464 8 left" || tr
 sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "270 8 left" || true
 sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "270 8 left" "type 2,3" "key enter" || true
 sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "270 8 left" "type 2,3" "key enter" "197 157 left" "300 200 left" "move 420 300" || true
+# グループ B の「指示事項」——盤が出ているあいだの押しは [Enter] と同じ。
+sh tools/seqcheck.sh "30 88 left" "500 8 left" "200 8 left" "360 56 left" "572 64 left" "197 157 left" "161 180 left" "move 420 300" || true
 sect "=== プロッタ出力: the PDF and the PNG the page's two buttons hand over"
 sh tools/plotcheck.sh
 sect "=== プロッタ出力を本物の道筋で: 入出力 → ②ﾌﾟﾛｯﾀ → ③ﾌｧｲﾙ出力 → ① 実行"
@@ -574,6 +576,9 @@ sect "=== ⑥ＤＸＦ: 書いて、一覧に出て、読み戻せるか"
 # 本物が書いた DXF とバイトで比べます（本物のほうは毎回作り直します）。
 sh tools/dxfsame.sh
 full sh tools/dxfsame.sh SAMPLE1
+# SAMPLE6 は楕円が小さい（半径 6〜9 画素）ので、刻みが半径で変わって
+# いないことの証しになります。書き出しが長いので WAIT を増やします。
+full env WAIT=200000000 sh tools/dxfsame.sh SAMPLE6
 
 sect "=== ひととおり: 図面を開く → 線を引く → 保存 → 開き直す → プロッタ出力 → PDF/PNG"
 "$NODE" tools/flowcheck.mjs orig/SAMPLE1.JWC

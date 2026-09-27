@@ -28,6 +28,12 @@ NOCACHE=1 WAIT="${WAIT:-60000000}" DRAWING="$D" SEQID=dxfsame sh tools/seqcheck.
     echo "  FAIL 本物が $D.dxf を書きませんでした" >&2
     exit 1
 }
+# **途中で切れていないか見ます。** WAIT が足りないと書き出しの途中で
+# 止まり、そこまでは合っているので「1 行違い」に見えてしまいます。
+[ "$(tail -1 "tmp/seq/dxfsame/root/$D.dxf" | tr -d '')" = "EOF" ] || {
+    echo "  FAIL 本物の $D.dxf が途中で切れています（WAIT を増やしてください）" >&2
+    exit 1
+}
 
 NODE="${NODE:-}"
 [ -n "$NODE" ] || { command -v node > /dev/null 2>&1 && NODE=node; }
