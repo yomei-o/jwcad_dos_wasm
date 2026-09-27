@@ -1578,6 +1578,13 @@ void jw_view_factor(JwView *w, const Jwc *d, int sx, int sy, double factor)
         return;
     }
     w->scale = (float)(factor * 518.0 / (170.0 * d->unit_mm));
+    /* **小さいほうには止まりがあります**——1 画素 2 単位より縮みません
+     * （紙が窓のちょうど半分）。SAMPLE0 で 0.28・0.25・0.2・0.1 の
+     * どれを打っても枠が x290..549・y123..346 になり、518 単位が 259 画素、
+     * 447 単位が 223 画素でした（`sh tools/frametrace.sh`）。 */
+    if (w->scale < 0.5f) {
+        w->scale = 0.5f;
+    }
     w->ox = (float)(cx - 259.0 / w->scale);
     w->oy = (float)(cy - 223.0 / w->scale);
     w->ax = 121.0f;
