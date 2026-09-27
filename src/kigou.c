@@ -643,8 +643,17 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             a.r = (float)(p->radius * mx * mm * sc * (flip ? -1.0 : 1.0));
             a.flatten = p->flat > 0.0
                       ? (short)(p->flat * 10000.0 + 0.5) : 10000;
-            a.start = (long)((p->x2 + ts) * 65536.0);
-            a.end = (long)((p->y2 + te) * 65536.0);
+            /* **指示線の角度は始角・終角ではなく傾き（`tilt`）に入ります。**
+             * 弧の折れ線は 16.16 の角度表から作るので、同じ形でも
+             * どちらに入れるかで頂点の丸めが変わります——本物の弧の
+             * 折れ線を 1 頂点ずつ読むと（`tools/frametrace.sh`、
+             * notes/edit.md 4.45h）、J 群の円は傾き 180 度・始角 0 度で
+             * しか出ない並びでした。始角に足していたときは 29 頂点の
+             * うち 28 個が 1 画素ずれます。 */
+            a.start = (long)(p->x2 * 65536.0);
+            a.end = (long)(p->y2 * 65536.0);
+            a.tilt = (long)(ts * 65536.0);
+            (void)te;
             a.type = base->type;
             a.pen = base->pen;
             a.layer = base->layer;

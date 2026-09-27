@@ -713,6 +713,17 @@ void jw_view_arc(VGA *v, const Jwc *d, const JwcArc *a, const JwView *w,
     const int rx = (int)r;
 
     (void)d;
+    /* JW_LINES=1 prints the record the chain is made from as well as the
+     * chain itself: this is the drawing's own centre and radius, which is
+     * what the original's DXF gets set beside (notes/edit.md 4.45h).
+     * Every field is a float, so every one of them goes through %f. */
+    if (jw_line_trace > 0) {
+        printf("arcrec cx=%.8f cy=%.8f r=%.8f  ox=%.8f oy=%.8f"
+               " scale=%.8f ax=%.4f ay=%.4f\n",
+               (double)a->cx, (double)a->cy, (double)a->r,
+               (double)w->ox, (double)w->oy, (double)w->scale,
+               (double)w->ax, (double)w->ay);
+    }
     /* Which of the two the original picks (1def:0228, the tests at 0def:03e0):
      * the pixel routine only for a true circle under ten pixels across whose
      * box lies wholly inside the drawing area -- it does no clipping -- and the

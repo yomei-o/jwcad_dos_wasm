@@ -118,8 +118,18 @@ if [ -n "$STR" ]; then
 elif [ -n "$hit" ] && [ -f "$hit" ]; then
     cp "$hit" $D/orig.raw
 else
+    # **先に捨てます。** エミュレータが絵を撮らずに終わると（落ちた・
+    # 待ちが足りなかった）、ここに**前の 1 件の絵**が残ったままになり、
+    # それを新しい手順の名前で取っておいてしまいます。tools/runcases.sh の
+    # ように同じ場所で何件も走らせると、そこから先はぜんぶ別の絵と
+    # 比べることになります（2026-09-27 に踏みました）。
+    rm -f $D/orig.raw
     "$EMU" --root $D/root --font-ank font/JWANK16.FNT --font-kanji font/JWKAN16.FNT \
         --script $D/s.txt $D/root/JW_CADV.EXE "$DRAWING.JWC" > /dev/null 2>&1
+    [ -f $D/orig.raw ] || {
+        echo "$DRAWING: 本物が絵を撮りませんでした（WAIT を増やしてください）" >&2
+        exit 2
+    }
     [ -z "$hit" ] || cp $D/orig.raw "$hit"
 fi
 

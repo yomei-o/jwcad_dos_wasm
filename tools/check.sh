@@ -576,6 +576,11 @@ sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "270 8 left" "type
 full sh -c 'DRAWING=SAMPLE3 BOOT=90000000 sh tools/seqcheck.sh "30 88 left" "500 8 left" "442 64 left" "380 315 left" "325 330 left" "move 200 400"' || true
 # グループ B の「指示事項」——盤が出ているあいだの押しは [Enter] と同じ。
 sh tools/seqcheck.sh "30 88 left" "500 8 left" "200 8 left" "360 56 left" "572 64 left" "197 157 left" "161 180 left" "move 420 300" || true
+# **弧のある記号**。指示線の角度は始角ではなく傾きに入ります
+# （notes/edit.md 4.45h）。J の 2 番「ｲﾝﾊﾞｰﾄ桝 (450)」と
+# B の 11 番「円作図例 (1)」は、それを直して 822・504 → 0 になりました。
+sh tools/seqcheck.sh "30 88 left" "500 8 left" "200 8 left" "360 152 left" "312 64 left" "197 157 left" "161 180 left" "move 420 300" || true
+sh tools/seqcheck.sh "30 88 left" "500 8 left" "200 8 left" "504 56 left" "442 256 left" "197 157 left" "161 180 left" "move 420 300" || true
 sect "=== プロッタ出力: the PDF and the PNG the page's two buttons hand over"
 sh tools/plotcheck.sh
 sect "=== プロッタ出力を本物の道筋で: 入出力 → ②ﾌﾟﾛｯﾀ → ③ﾌｧｲﾙ出力 → ① 実行"

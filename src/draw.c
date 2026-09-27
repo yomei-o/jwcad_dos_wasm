@@ -592,6 +592,16 @@ void jw_arc_poly(VGA *v, double cx, double cy, double r, int flatten,
     if (st == 65536L) {
         st = 65535L;
     }
+    /* The arguments the chain is made from, printed beside the chain
+     * itself so that the two can be read together (JW_LINES=1 through
+     * tools/seqshot.mjs, or JW_ARCS=1 for a native run).  The turn and
+     * the two angles are the part that had to be read off the original
+     * one vertex at a time -- notes/edit.md 4.45h. */
+    if (jw_line_trace > 0 || getenv("JW_ARCS")) {
+        printf("arc c=(%.6f,%.6f) r=%.6f rx=%d ry=%d flat=%d start=%ld end=%ld"
+               " tilt=%ld ct=%ld st=%ld\n",
+               cx, cy, r, rx, ry, flatten, start, end, tilt, ct, st);
+    }
     arc_vertex(cx, cy, rx, ry, start, ct, st, &px, &py);
     /* `<` and not `<=`: a sweep that ends exactly on one of the whole degrees
      * the loop walks would otherwise get that vertex twice, once here and once
