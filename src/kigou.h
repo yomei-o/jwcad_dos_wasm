@@ -62,7 +62,8 @@ typedef enum {
     JW_KIGOU_NEXT,              /* 10000 の記号連鎖 */
     JW_KIGOU_CMD,               /* 10100 などの他命令へ移る指定 */
     JW_KIGOU_SHOW,              /* 500 の一覧での置き場所 */
-    JW_KIGOU_PTSCALE            /* 750／751 の「指示点までが倍率」 */
+    JW_KIGOU_PTSCALE,           /* 750／751 の「指示点までが倍率」 */
+    JW_KIGOU_DIM                /* 14*** の寸法値記入 */
 } JwKigouKind;
 
 typedef struct {
@@ -143,6 +144,12 @@ typedef struct {
 } JwKigouGhost;
 
 /* phase 2 のときだけ `ghost` を使います。 */
+/* 寸法値記入コード（`14***`）が使う寸法設定。盤の値をそのまま渡します。 */
+typedef struct {
+    double gap_mm;              /* 寸法線と文字の間隔（紙 mm。既定 0.5） */
+    int unit, dec, comma, zero; /* 単位・小数桁・カンマ・0 の出し方 */
+} JwKigouDim;
+
 /* `mx`,`my` は ①倍率 横,縦。記号の枠の x と y に掛けます。
  * `ptx`,`pty` は**押した点そのもの**（`ox`,`oy` はそれを指示線に
  * 落とした所）。制御コード 750／751 の記号は、そこまでの距離で倍率を
@@ -151,7 +158,7 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                  const JwcLine *base2, double ox, double oy,
                  double ptx, double pty,
                  const char *typed, int phase, JwKigouGhost *ghost,
-                 double mx, double my);
+                 double mx, double my, const JwKigouDim *dim);
 
 /* そのグループの名札（`A`〜`J`）。範囲外は 0。 */
 char jw_kigou_letter(int which);

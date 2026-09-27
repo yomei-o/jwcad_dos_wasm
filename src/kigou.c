@@ -146,6 +146,33 @@ static int one_part(const char *line, JwKigouPart *p)
         p->kind = JW_KIGOU_CMD;
         return 1;
     }
+    /* **寸法値記入コード `14***`**（§寸法値記入。DAT の注記は「文字作図・
+     * 文字入力・変更より後に記載する」）。部材と同じ 6 つの数を取って、
+     * その 2 点のあいだを測ります。 */
+    if (n >= 6 && p->c1 >= 14000 && p->c1 < 15000) {
+        const char *q = rest;
+
+        p->kind = JW_KIGOU_DIM;
+        p->x1 = v[2];
+        p->y1 = v[3];
+        p->x2 = v[4];
+        p->y2 = v[5];
+        /* **数のあとの 1 文字は 16 進のレイヤ**です。三斜寸法記入の
+         * 2 行はどちらも `f` で、本物が置いた文字のレイヤも `0f`
+         * でした（置かせて保存させ `tools/textdump.py` で読みました）。 */
+        p->layer = -1;
+        while (*q == ' ' || *q == '	') {
+            q++;
+        }
+        if (*q >= '0' && *q <= '9') {
+            p->layer = *q - '0';
+        } else if (*q >= 'a' && *q <= 'f') {
+            p->layer = *q - 'a' + 10;
+        } else if (*q >= 'A' && *q <= 'F') {
+            p->layer = *q - 'A' + 10;
+        }
+        return 1;
+    }
     if (n < 6) {
         return 0;
     }
@@ -358,7 +385,7 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                  const JwcLine *base2, double ox, double oy,
                  double ptx, double pty,
                  const char *typed, int phase, JwKigouGhost *ghost,
-                 double mx, double my)
+                 double mx, double my, const JwKigouDim *dim)
 {
     const double mm = d->unit_mm > 0.0f ? (double)d->unit_mm : 1.0;
     /* **端に合わせるときは原点から遠いほうの端**です（「コーナー」と
@@ -471,7 +498,8 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
         }
         if (p->kind != JW_KIGOU_LINE && p->kind != JW_KIGOU_ARC
             && p->kind != JW_KIGOU_TEXT_PART
-            && p->kind != JW_KIGOU_POINT) {
+            && p->kind != JW_KIGOU_POINT
+            && p->kind != JW_KIGOU_DIM) {
             continue;           /* 連鎖・命令はまだ */
         }
         if (p->kind == JW_KIGOU_TEXT_PART && p->c1 >= 22000) {
@@ -513,6 +541,78 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
         }
         if ((c1 == 20 || c2 == 20) && !base2) {
             continue;           /* 指示線 2 が無ければ置けません */
+        }
+        if (p->kind == JW_KIGOU_DIM) {
+            /* **測った長さを文字にして置きます。** 本物に「三斜寸法記入」を
+             * 置かせて保存させ、3 通りの指示点で読みました
+             * （notes/edit.md 4.45h）:
+             *
+             *   * 2 点は部材と同じ規則（`10` は指示線の端、`01` は追従）。
+             *   * 値はその距離を実寸に直したもの。69.7643 単位 →「40」、
+             *     22.616 →「13」、42.616 →「24.4」、27.384 →「15.7」。
+             *   * 置き場所は**測った線の中点**、走る向きは p1 → p2、
+             *     基線はその文字の上側へ**紙 0.5mm**。指示点が線の反対側に
+             *     来ると、向きも寄せる側も裏返ります。
+             *   * 文字種は寸法のもの、レイヤは書込レイヤ、`rest` は
+             *     `.. .. 10 40`（寸法の文字と同じ。保存したバイトを読みました）。 */
+            const double fl = flip ? -1.0 : 1.0;
+            double ax, ay, bx, by, ex, ey, el;
+
+            if (c1 == 10) {
+                ax = fx;
+                ay = fy;
+            } else if (c1 == 20 && base2) {
+                ax = hx;
+                ay = hy;
+            } else {
+                ax = ox + (qx1 * ax1 + qy1 * bx1) * mm * sc * fl;
+                ay = oy + (qx1 * ay1 + qy1 * by1) * mm * sc * fl;
+            }
+            if (c2 == 10) {
+                bx = sx;
+                by = sy;
+            } else if (c2 == 20 && base2) {
+                bx = gx;
+                by = gy;
+            } else {
+                bx = ox + (qx2 * ax2 + qy2 * bx2) * mm * sc * fl;
+                by = oy + (qx2 * ay2 + qy2 * by2) * mm * sc * fl;
+            }
+            ex = bx - ax;
+            ey = by - ay;
+            el = sqrt(ex * ex + ey * ey);
+            if (el > 0.0) {
+                const double gp = (dim && dim->gap_mm > 0.0
+                                   ? dim->gap_mm : 0.5) * mm;
+                const double vx = ex / el, vy = ey / el;
+                const double cmx = (ax + bx) / 2.0 - vy * gp;
+                const double cmy = (ay + by) / 2.0 + vx * gp;
+                char buf[40];
+                double tw;
+                JwcText t;
+
+                jwc_dim_text(buf, sizeof buf,
+                             el * (double)jwc_zukei_scale(d),
+                             dim ? dim->unit : 0, dim ? dim->dec : 1,
+                             dim ? dim->comma : 1, dim ? dim->zero : 1);
+                tw = jwc_text_length(d, buf, d->dim_size);
+                memset(&t, 0, sizeof t);
+                t.x0 = (float)(cmx - vx * tw / 2.0);
+                t.y0 = (float)(cmy - vy * tw / 2.0);
+                t.x1 = (float)(cmx + vx * tw / 2.0);
+                t.y1 = (float)(cmy + vy * tw / 2.0);
+                t.size = (unsigned char)d->dim_size;
+                t.layer = (unsigned char)(p->layer >= 0
+                                          ? p->layer
+                                          : (d->write_layer & 15));
+                t.text = buf;
+                if (jwc_put_text(d, &t)) {
+                    d->texts[d->n_texts - 1].rest[2] = 0x10;
+                    d->texts[d->n_texts - 1].rest[3] = 0x40;
+                    put++;
+                }
+            }
+            continue;
         }
         if (p->kind == JW_KIGOU_POINT) {
             JwcPoint pt;

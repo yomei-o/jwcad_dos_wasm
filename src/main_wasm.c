@@ -155,6 +155,19 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
 
 /* **位置を押した時点で置いた記号の枠**。文字入力の盤が出ているあいだ、
  * 指示線はもう消えているので、あとから字を足すときに使い直します。 */
+/* 寸法値記入コード（`14***`）に渡す寸法設定。盤の値そのものです。 */
+static const JwKigouDim *kigou_dim(void)
+{
+    static JwKigouDim k;
+
+    k.gap_mm = cmd.dim_gap_mm;
+    k.unit = cmd.dim_unit;
+    k.dec = cmd.dim_dec;
+    k.comma = cmd.dim_comma_on;
+    k.zero = cmd.dim_zero_on;
+    return &k;
+}
+
 static JwcLine held_base, held_base2;
 static int held_two, held_on;
 static double held_ox, held_oy;
@@ -232,7 +245,7 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
         jw_kigou_put(drawing, sym, &held_base, held_two ? &held_base2 : 0,
                      held_ox, held_oy, px, py,
                      cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0,
-                     cmd.kigou_mag_x, cmd.kigou_mag_y);
+                     cmd.kigou_mag_x, cmd.kigou_mag_y, kigou_dim());
         ui.n_lines = drawing->n_lines;
         ui.n_arcs = drawing->n_arcs + drawing->n_texts;
         return;
@@ -258,7 +271,8 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
         cmd.n0_arcs = drawing->n_arcs;
         cmd.n0_texts = drawing->n_texts;
         jw_kigou_put(drawing, sym, &ln, 0, px, py, px, py,
-                     cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
+                     cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0,
+                     cmd.kigou_mag_x, cmd.kigou_mag_y, kigou_dim());
         ui.n_lines = drawing->n_lines;
         ui.n_arcs = drawing->n_arcs + drawing->n_texts;
         return;
@@ -299,7 +313,8 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
             cmd.n0_arcs = drawing->n_arcs;
             cmd.n0_texts = drawing->n_texts;
             jw_kigou_put(drawing, sym, &base, two, ox, oy, px, py,
-                         cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
+                         cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0,
+                         cmd.kigou_mag_x, cmd.kigou_mag_y, kigou_dim());
             cmd.kigou_line = -1;
             cmd.kigou_line2 = -1;
             cmd.kigou_line2 = -1;
@@ -329,7 +344,8 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
         held_on = 1;
     }
     jw_kigou_put(drawing, sym, &base, two, ox, oy, px, py,
-                 cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
+                 cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0,
+                 cmd.kigou_mag_x, cmd.kigou_mag_y, kigou_dim());
     cmd.kigou_line = -1;
     cmd.kigou_line2 = -1;
     ui.n_lines = drawing->n_lines;
@@ -724,7 +740,7 @@ static void kigou_ghost(void)
                      cmd.kigou_px, cmd.kigou_py,
                      cmd.kigou_in_n ? cmd.kigou_in_buf : 0,
                      20 + cmd.kigou_in_at, &gh,
-                     cmd.kigou_mag_x, cmd.kigou_mag_y)) {
+                     cmd.kigou_mag_x, cmd.kigou_mag_y, kigou_dim())) {
         if (gh.t.text && gh.t.text[0]) {
             jw_view_text_ghost(&vga, drawing, &gh.t, &view, 2, 0x18);
             jw_view_text_caret(&vga, drawing, &gh.t, &view, gh.cx, gh.cw,
