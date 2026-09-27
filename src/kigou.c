@@ -201,6 +201,14 @@ int jw_kigou_read(const char *path, JwKigou *out)
     while (fgets(line, (int)sizeof line, f)) {
         double v[4];
 
+        /* **DOS の終わり印（0x1A）でおしまい**です。C・D・E・F の 4 本は
+         * 最後の `999` のあとにこれが入っていて、読み続けると
+         * **空の 13 番目の記号**ができます。F は 12 個しか無いので、
+         * 13 番目の升が押せてしまい、名前が空白のまま出ていました
+         * （1094 画素）。 */
+        if (line[0] == 0x1a) {
+            break;
+        }
         if (line[0] == '#') {
             if (!out->group[0]) {
                 trim_to(out->group, sizeof out->group, line + 1);
