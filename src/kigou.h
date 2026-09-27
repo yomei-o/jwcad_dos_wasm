@@ -123,11 +123,19 @@ const JwKigouPart *jw_kigou_input(const JwKigouSym *sym, int nth);
  *      1  文字入力の字**だけ** */
 /* phase 2 の受け皿。文字入力の部材を図面には入れず、その文字記録と
  * DAT の点（基点で寄せる前の位置）だけを返します。
- * phase は 2 が 1 つめの文字入力、3 が 2 つめ……です
- * （「楕円記号 (2)」は `INPUT(1)` `INPUT(2)` の 2 つを続けて聞きます）。 */
+ * phase の数え方:
+ *
+ *     -1      全部（文字入力の字は typed があるときだけ）
+ *      0      文字入力の字**以外**を全部
+ *     10+n    n 番目の文字入力だけを、打った字で作図
+ *     20+n    n 番目の文字入力だけを、作図せず ghost に組み立てる
+ *
+ * 「楕円記号 (2)」は `INPUT(1)` `INPUT(2)` の 2 つを続けて聞きます。 */
 typedef struct {
     JwcText t;
     double px, py;
+    char text[160];             /* t.text はここを指します */
+    double cx, cy;              /* 打ち終えた所（`><` の印の位置） */
 } JwKigouGhost;
 
 /* phase 2 のときだけ `ghost` を使います。 */

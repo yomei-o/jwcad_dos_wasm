@@ -5376,7 +5376,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         {
             const int wtyped = ui_text_width(s->kigou_in_buf);
             const int wold = ui_text_width(s->kigou_in_old);
-            const int wide = wtyped > wold ? wtyped : wold;
+            const int wide = wtyped + wold;
 
             if (s->kigou_in_buf) {
                 jw_ui_text(v, 1, 2, 7, 0, s->kigou_in_buf);
@@ -5388,8 +5388,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         JW_STYLE_SOLID);
             }
             fill(v, wtyped, 23, wtyped + 7, 31, 4);
+            /* **変える前の字は打った字のうしろ**です（カーソルが
+             * 先頭にあって、打った字がその前に入るため）。 */
             if (s->kigou_in_old) {
-                ui_text_xor(v, 1, 2, 7, s->kigou_in_old);
+                ui_text_xor(v, wtyped / 8 + 1, 2, 7, s->kigou_in_old);
             }
         }
     }

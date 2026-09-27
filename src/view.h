@@ -109,7 +109,7 @@ void jw_view_text_point(VGA *v, const Jwc *d, const JwcText *t,
  * 枠の高さの半分を h として、(x0,top)-(x0+h,mid)-(x0,base) と
  * その対になる `<` を引きます（「高さ記号(3mm)」で実測）。 */
 void jw_view_text_caret(VGA *v, const Jwc *d, const JwcText *t,
-                        const JwView *w, int at_end, unsigned colour,
+                        const JwView *w, double cx, unsigned colour,
                         unsigned rop);
 
 void jw_view_text_ghost(VGA *v, const Jwc *d, const JwcText *t,

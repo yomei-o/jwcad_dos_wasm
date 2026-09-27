@@ -150,7 +150,7 @@ static void place_kigou_typed(const JwKigouSym *sym)
         return;
     }
     if (!jw_kigou_takes1(sym)) {
-        place_kigou(sym, px, py, 1);   /* 打った字だけ足します */
+        place_kigou(sym, px, py, 10 + cmd.kigou_in_at);
         return;
     }
     if (cmd.kigou_line < 0 || cmd.kigou_line >= drawing->n_lines) {
@@ -618,11 +618,10 @@ static void kigou_ghost(void)
     memset(&gh, 0, sizeof gh);
     if (jw_kigou_put(drawing, sym, &ln, 0, cmd.kigou_px, cmd.kigou_py,
                      cmd.kigou_in_n ? cmd.kigou_in_buf : 0,
-                     2 + cmd.kigou_in_at, &gh)) {
+                     20 + cmd.kigou_in_at, &gh)) {
         if (gh.t.text && gh.t.text[0]) {
             jw_view_text_ghost(&vga, drawing, &gh.t, &view, 2, 0x18);
-            jw_view_text_caret(&vga, drawing, &gh.t, &view,
-                               cmd.kigou_in_n > 0, 4, 0x18);
+            jw_view_text_caret(&vga, drawing, &gh.t, &view, gh.cx, 4, 0x18);
         } else {
             jw_view_text_point(&vga, drawing, &gh.t, &view, gh.px, gh.py,
                                4, 0x18);
@@ -2737,6 +2736,24 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
      *
      * **まだ測っていないもの**: 実際に線を描く記号、指示線 2、
      * 指示回数 2 以上、倍率、文字入力。 */
+    /* **上の行の 2 つめの升は ②他記号選択**（`jw_ui_top_item` の 2）。
+     * 一覧に戻ります。 */
+    if (ui.kigou && cmd.kigou_sym && !cmd.kigou_pick && !cmd.kigou_input
+        && !dxf_mode && y >= 0 && y <= 15
+        && jw_ui_top_item(x, y) == 2) {
+        cmd.kigou_sym = 0;
+        cmd.kigou_line = -1;
+        cmd.kigou_line2 = -1;
+        cmd.kigou_in_at = 0;
+        cmd.kigou_in_n = 0;
+        cmd.kigou_in_buf[0] = 0;
+        mouse_x = x;
+        mouse_y = y;
+        sync_ui();
+        present();
+        return -1;
+    }
+
     /* **記号を選んだあと、指示線を押して置きます。**
      *
      * 指示回数 0 は線を 1 回押すだけ（「直線消」）、1 は線のあと
@@ -3677,12 +3694,20 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
                                     && cmd.kigou_sym <= g->n
                                   ? &g->sym[cmd.kigou_sym - 1] : 0;
 
-            cmd.kigou_input = 0;
             if (sym) {
                 place_kigou_typed(sym);
             }
             cmd.kigou_in_n = 0;
             cmd.kigou_in_buf[0] = 0;
+            /* **次の文字入力があれば続けて聞きます**（「楕円記号 (2)」は
+             * `INPUT(1)` のあと `INPUT(2)`。実測）。 */
+            cmd.kigou_in_at++;
+            if (!sym || !jw_kigou_input(sym, cmd.kigou_in_at)) {
+                cmd.kigou_input = 0;
+                cmd.kigou_in_at = 0;
+                cmd.kigou_line = -1;
+                cmd.kigou_line2 = -1;
+            }
             sync_ui();
             present();
             return -1;

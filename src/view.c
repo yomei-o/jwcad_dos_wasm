@@ -1312,7 +1312,7 @@ void jw_view_text_point(VGA *v, const Jwc *d, const JwcText *t,
 }
 
 void jw_view_text_caret(VGA *v, const Jwc *d, const JwcText *t,
-                        const JwView *w, int at_end, unsigned colour,
+                        const JwView *w, double cx, unsigned colour,
                         unsigned rop)
 {
     const double unit = (double)d->unit_mm * w->scale;
@@ -1321,7 +1321,7 @@ void jw_view_text_caret(VGA *v, const Jwc *d, const JwcText *t,
     const int top = (int)(sy - text_height(d, t, unit));
     /* **印は「いま打ち終えた所」に出ます**——まだ打っていなければ
      * 字の頭、打ってあればそのうしろ（実測）。 */
-    const int x0 = to_x(w, at_end ? t->x1 : t->x0);
+    const int x0 = to_x(w, (float)cx);
     const int h = (base - top) / 2;
     const int mid = top + h;
 

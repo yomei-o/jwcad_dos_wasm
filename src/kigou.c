@@ -404,20 +404,23 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             const int is_in = p->kind == JW_KIGOU_TEXT_PART
                             && p->c1 >= 20000;
 
-            if (phase >= 2 && !is_in) {
-                continue;       /* 仮置きするのは文字入力の字だけ */
-            }
-            if (phase >= 2 && in_n++ != phase - 2) {
-                continue;       /* 聞いている番のものだけ */
-            }
-            if (phase == 1 && !is_in) {
-                continue;       /* [Enter] のあとは打った字だけ */
-            }
-            if (phase == 0 && is_in) {
-                continue;       /* 押した時点ではまだ字が無い */
-            }
-            if (phase != 2 && is_in && (!typed || !typed[0])) {
-                continue;       /* 何も打たなければ置きません */
+            if (phase >= 10) {
+                /* **いま聞いている 1 つだけ**を相手にします。 */
+                if (!is_in) {
+                    continue;
+                }
+                if (in_n++ != phase % 10) {
+                    continue;
+                }
+                if (phase < 20 && (!typed || !typed[0])) {
+                    continue;   /* 何も打たなければ置きません */
+                }
+            } else if (phase == 0) {
+                if (is_in) {
+                    continue;   /* 押した時点ではまだ字が無い */
+                }
+            } else if (is_in && (!typed || !typed[0])) {
+                continue;
             }
         }
         if (c1 % 10 == 8 || c2 % 10 == 8 || c1 % 10 == 9 || c2 % 10 == 9) {
@@ -449,30 +452,79 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             JwcText t;
             const int sz = p->type > 0 ? p->type % 100 : 1;
             const int bp = p->type > 0 ? (p->type / 100) % 10 : 0;
-            const double half = (d->text_w[sz <= 10 ? sz : 0]
-                                 + d->text_gap[sz <= 10 ? sz : 0])
-                                / 10.0 / 2.0 * mm;
+            /* **すき間は 1 字につき 1 つ**で、半角でも減りません。
+             * 全角だけの字では半角換算と同じ答えになるので長く
+             * 気づきませんでした——`FL2ＦＬ`（半角 3・全角 2、種 3 は
+             * 幅 3.0mm すき間 0.5mm）でだけ 1 画素ずれます。 */
+            const double cw = d->text_w[sz <= 10 ? sz : 0] / 10.0 * mm;
+            const double gp = d->text_gap[sz <= 10 ? sz : 0] / 10.0 * mm;
             const double high = d->text_h[sz <= 10 ? sz : 0] / 10.0 * mm;
             /* 文字入力（20000）は**打った字**、まだなら空。
-             * 文字変更（21000）は打つまで**変える前の字**です。 */
-            const char *str = p->c1 >= 20000 && typed && typed[0]
-                            ? typed
-                            : (phase >= 2 && p->c1 >= 20000 && p->c1 < 21000
-                               ? "" : p->text);
-            const unsigned char *q = (const unsigned char *)str;
-            double wide = 0.0, bx, by, tx, ty, tn;
+             *
+             * 文字変更（21000）は**打った字を変える前の字の前に**
+             * 差し込みます（実測：既定 `ＦＬ` に `FL2` と打つと
+             * `FL2ＦＬ`）。欄が変える前の字を持っていて、カーソルが
+             * 先頭にあるからだと読めます。 */
+            char joined[160];
+            const char *str;
+            const unsigned char *q;
+            double wide = 0.0, last = 0.0, wtyped = 0.0, lastt = 0.0;
+            double bx, by, tx, ty, tn;
             int i = 0;
 
+            if (p->c1 >= 21000 && p->c1 < 22000) {
+                joined[0] = 0;
+                if (typed && typed[0]) {
+                    strncpy(joined, typed, sizeof joined - 1);
+                    joined[sizeof joined - 1] = 0;
+                }
+                strncat(joined, p->text, sizeof joined - strlen(joined) - 1);
+                str = joined;
+            } else if (p->c1 >= 20000) {
+                str = typed && typed[0] ? typed : "";
+            } else {
+                str = p->text;
+            }
+            /* **打った分だけの幅**も出します。文字変更は打った字が
+             * 前に入るので、`><` の印はそのうしろ——字全体の端ではあり
+             * ません。 */
+            q = (const unsigned char *)(typed ? typed : "");
             while (q[i]) {
                 if (((q[i] >= 0x81 && q[i] <= 0x9f)
                      || (q[i] >= 0xe0 && q[i] <= 0xfc)) && q[i + 1]) {
-                    wide += 2.0 * half;
+                    wtyped += cw + gp;
+                    lastt = gp;
                     i += 2;
                 } else {
-                    wide += half;
+                    wtyped += (cw + gp) / 2.0;
+                    lastt = gp / 2.0;
                     i += 1;
                 }
             }
+            /* **打った分はすき間を引きません**——次の字が入る所が
+             * 印の位置なので（「高さ記号」に `X` を打って実測）。 */
+            (void)lastt;
+            i = 0;
+            q = (const unsigned char *)str;
+            while (q[i]) {
+                if (((q[i] >= 0x81 && q[i] <= 0x9f)
+                     || (q[i] >= 0xe0 && q[i] <= 0xfc)) && q[i + 1]) {
+                    wide += cw + gp;
+                    last = gp;
+                    i += 2;
+                } else {
+                    wide += (cw + gp) / 2.0;
+                    last = gp / 2.0;
+                    i += 1;
+                }
+            }
+            /* **最後の字のすき間は数えません。** `FL2ＦＬ`（種 3、幅
+             * 3.0mm すき間 0.5mm）で本物の箱は x205..226、引かないと
+             * x205..227 になります。すき間が 0 の記号（建具・楕円は
+             * 種 2）では差が出ないので、ここでしか測れていません
+             * ——最後が半角のときに半分を引くのか丸ごとなのかは、
+             * まだ分けられていません。 */
+            wide -= last;
             /* 記号の枠の向きを図面の向きに。倍率の負は 180 度回します。 */
             tx = (ux * (p->x2 - p->x1) + nx * (p->y2 - p->y1));
             ty = (uy * (p->x2 - p->x1) + ny * (p->y2 - p->y1));
@@ -503,9 +555,14 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             t.layer = base->layer;
             memcpy(t.rest, base->rest, sizeof t.rest);
             t.text = str;
-            if (phase >= 2) {
+            if (phase >= 20) {
                 if (ghost) {
                     ghost->t = t;
+                    strncpy(ghost->text, str, sizeof ghost->text - 1);
+                    ghost->text[sizeof ghost->text - 1] = 0;
+                    ghost->t.text = ghost->text;
+                    ghost->cx = bx + wtyped * tx;
+                    ghost->cy = by + wtyped * ty;
                     ghost->px = ox + (p->x1 * ux + p->y1 * nx) * mm * sc
                                 * (flip ? -1.0 : 1.0);
                     ghost->py = oy + (p->x1 * uy + p->y1 * ny) * mm * sc
