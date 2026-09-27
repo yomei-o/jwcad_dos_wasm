@@ -528,6 +528,13 @@ full sh -c 'DRAWING=SAMPLE6 BOOT=120000000 sh tools/seqcheck.sh "80 344 left" "1
 full "$NODE" tests/upload_check.js orig/TEST7.JWC
 
 # The plotter's PDF and PNG (RESUME 4.45).
+sect "=== 変形 ④線記号変形: 一覧・グループ・記号を置くところ (notes/edit.md 4.45f)"
+sh tools/seqcheck.sh "30 88 left" "500 8 left" || true
+sh tools/seqcheck.sh "30 88 left" "500 8 left" "200 8 left" || true
+sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "197 157 left" "300 200 left" || true
+sh tools/seqcheck.sh "30 88 left" "500 8 left" "570 64 left" "197 157 left" "161 180 left" || true
+full sh tools/seqcheck.sh "30 88 left" "500 8 left" "182 66 left" "197 157 left" || true
+full sh tools/seqcheck.sh "30 88 left" "500 8 left" "182 354 left" "197 157 left" || true
 sect "=== プロッタ出力: the PDF and the PNG the page's two buttons hand over"
 sh tools/plotcheck.sh
 sect "=== プロッタ出力を本物の道筋で: 入出力 → ②ﾌﾟﾛｯﾀ → ③ﾌｧｲﾙ出力 → ① 実行"
