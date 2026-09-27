@@ -669,6 +669,7 @@ static void kigou_ghost(void)
 
 static void present(void)
 {
+    ui.view_scale = view.scale;
     memcpy(ui.dxf_set, dxf_set, sizeof dxf_set);
     ui.dxf_done = dxf_done;
     memcpy(ui.dxf_n, dxf_n, sizeof ui.dxf_n);

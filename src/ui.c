@@ -953,6 +953,7 @@ void jw_ui_from(JwUi *s, const Jwc *d)
     /* 目盛's two numbers, in millimetres of paper.  **Five when the drawing
      * has none**: SAMPLE0 stores 0 and the original still offers 5.000,
      * while SAMPLE1, which stores 15.697 units, shows its own 9.000. */
+    s->grid_on = d->grid_on;
     s->grid_x = d->grid_x > 0.0 && d->unit_mm > 0.0f
                     ? d->grid_x / d->unit_mm : 5.0;
     s->grid_y = d->grid_y > 0.0 && d->unit_mm > 0.0f
@@ -2184,6 +2185,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     box(v, 0, 16, 121, 48, 7);
     counts(v, s);
     gauge(v, s);
+
+    /* **目盛を消したときの知らせ**。縮めて描画倍率が 1 を切ると本物は
+     * 目盛を出さず、代わりに桁 17 行 2 へ白地で `目盛非表示倍率` と
+     * 書きます（SAMPLE1 で倍率 0.5 のときの文字列の記録）。
+     * 作図領域の上端に重なるので、図面を描いたあとのここで書きます。 */
+    if (s->grid_on && s->view_scale < 1.0) {
+        jw_ui_text(v, 17, 2, 7, 0xffffu,
+                   "\x96\xda\x90\xb7\x94\xf1\x95\x5c"
+                   "\x8e\xa6\x94\x7b\x97\xa6");
+    }
 
     /* -- the menu ------------------------------------------------------- */
     menu(v);

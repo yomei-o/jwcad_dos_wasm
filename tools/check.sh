@@ -395,6 +395,11 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     # **縮小の止まり**（1 画素 2 単位）。0.25 も 0.1 も同じ絵になります。
     full sh tools/seqcheck.sh "490 471 left" "300 250 left" "type 0.25" "key enter" || true
     full sh tools/seqcheck.sh "490 471 left" "300 250 left" "type 0.1" "key enter" || true
+    # **目盛を持つ図面を縮める**（notes/ui.md 4.27c）。描画倍率が 1 を切ると
+    # 本物は目盛を消して、桁 17 行 2 に白地で `目盛非表示倍率` と書きます。
+    env DRAWING=SAMPLE1 BOOT=90000000 sh tools/seqcheck.sh "490 471 left" "300 250 left" "type 0.5" "key enter" || true
+    full env DRAWING=SAMPLE1 BOOT=90000000 sh tools/seqcheck.sh "490 471 left" "300 250 left" "type 0.58" "key enter" || true
+    full env DRAWING=SAMPLE1 BOOT=90000000 sh tools/seqcheck.sh "490 471 left" "300 250 left" "type 0.3" "key enter" || true
     sect "=== 寸法 ①横方向: the dimension line, its extensions and the value (4.26)"
     sh tools/dimcheck.sh 162 140 300 110 162 140 598 140
     sh tools/dimcheck.sh 162 140 300 110 162 140 214 152

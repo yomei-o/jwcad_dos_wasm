@@ -952,6 +952,17 @@ static void draw_grid(VGA *v, const Jwc *d, const JwView *w)
         w->scale <= 0.0f) {
         return;
     }
+    /* **縮めると目盛は消えます。** SAMPLE1（目盛 9mm＝15.697 単位）で
+     * 倍率指定に打った数と、本物が打った点（`10a9:075c` を拾いました）:
+     *
+     *     0.55 → 1 つも打たない   0.58 → 打つ
+     *
+     * 境目は**描画倍率 1.0**（A-4 では表示倍率 0.5724、notes/ui.md 4.29）
+     * で、そこでは目盛の 1 目が単位の数とちょうど同じ画素数になります。
+     * つまり**紙が窓いっぱいより小さくなったら出しません**。 */
+    if (w->scale < 1.0f) {
+        return;
+    }
     lo = (((double)w->x0 - w->ax) / w->scale + w->ox) / d->grid_x;
     hi = (((double)w->x1 - w->ax) / w->scale + w->ox) / d->grid_x;
     i0 = (long)lo - 1;
