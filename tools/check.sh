@@ -552,6 +552,8 @@ sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "464 8 left" || tr
 sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "270 8 left" || true
 sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "270 8 left" "type 2,3" "key enter" || true
 sh tools/seqcheck.sh "30 88 left" "500 8 left" "310 160 left" "270 8 left" "type 2,3" "key enter" "197 157 left" "300 200 left" "move 420 300" || true
+# **斜めの指示線でも**（SAMPLE3 の 51.7 度の線を指示線 2 に）。
+full sh -c 'DRAWING=SAMPLE3 BOOT=90000000 sh tools/seqcheck.sh "30 88 left" "500 8 left" "442 64 left" "380 315 left" "325 330 left" "move 200 400"' || true
 # グループ B の「指示事項」——盤が出ているあいだの押しは [Enter] と同じ。
 sh tools/seqcheck.sh "30 88 left" "500 8 left" "200 8 left" "360 56 left" "572 64 left" "197 157 left" "161 180 left" "move 420 300" || true
 sect "=== プロッタ出力: the PDF and the PNG the page's two buttons hand over"
