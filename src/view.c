@@ -1296,6 +1296,44 @@ void jw_view_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
  * The four corners come out **black**, because each is drawn twice and this
  * is exclusive-or: the horizontal sides show from x0+1 to x1-1.
  */
+void jw_view_text_point(VGA *v, const Jwc *d, const JwcText *t,
+                        const JwView *w, double px, double py,
+                        unsigned colour, unsigned rop)
+{
+    const double unit = (double)d->unit_mm * w->scale;
+    const double sy = w->ay - (t->y0 - w->oy) * w->scale;
+    const int base = (int)sy;
+    const int top = (int)(sy - text_height(d, t, unit));
+    const int bx = to_x(w, (float)px);
+    const int by = (int)(w->ay - (py - w->oy) * w->scale);
+
+    box_line(v, w, bx - 2, by, bx + 1, by, colour, rop);
+    box_line(v, w, bx, top, bx, base, colour, rop);
+}
+
+void jw_view_text_caret(VGA *v, const Jwc *d, const JwcText *t,
+                        const JwView *w, int at_end, unsigned colour,
+                        unsigned rop)
+{
+    const double unit = (double)d->unit_mm * w->scale;
+    const double sy = w->ay - (t->y0 - w->oy) * w->scale;
+    const int base = (int)sy;
+    const int top = (int)(sy - text_height(d, t, unit));
+    /* **印は「いま打ち終えた所」に出ます**——まだ打っていなければ
+     * 字の頭、打ってあればそのうしろ（実測）。 */
+    const int x0 = to_x(w, at_end ? t->x1 : t->x0);
+    const int h = (base - top) / 2;
+    const int mid = top + h;
+
+    if (h <= 0) {
+        return;
+    }
+    box_line(v, w, x0, top, x0 + h, mid, colour, rop);
+    box_line(v, w, x0 + h, mid, x0, base, colour, rop);
+    box_line(v, w, x0 + 2 * h - 1, top, x0 + h - 1, mid, colour, rop);
+    box_line(v, w, x0 + h - 1, mid, x0 + 2 * h - 1, base, colour, rop);
+}
+
 void jw_view_text_ghost(VGA *v, const Jwc *d, const JwcText *t,
                         const JwView *w, unsigned colour, unsigned rop)
 {

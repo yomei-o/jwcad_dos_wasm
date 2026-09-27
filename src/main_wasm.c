@@ -139,14 +139,21 @@ EMSCRIPTEN_KEEPALIVE void jw_init(void)
  * one place. */
 /* 文字を打ち終えたあとの置き方。指示回数 0 なら線端、そうでなければ
  * 押したところを原点にします。 */
-static void place_kigou(const JwKigouSym *sym, double px, double py);
+static void place_kigou(const JwKigouSym *sym, double px, double py,
+                        int phase);
 
 static void place_kigou_typed(const JwKigouSym *sym)
 {
     double px = cmd.kigou_px, py = cmd.kigou_py;
 
-    if (!drawing || cmd.kigou_line < 0
-        || cmd.kigou_line >= drawing->n_lines) {
+    if (!drawing) {
+        return;
+    }
+    if (!jw_kigou_takes1(sym)) {
+        place_kigou(sym, px, py, 1);   /* 打った字だけ足します */
+        return;
+    }
+    if (cmd.kigou_line < 0 || cmd.kigou_line >= drawing->n_lines) {
         cmd.kigou_line = -1;
         return;
     }
@@ -160,24 +167,42 @@ static void place_kigou_typed(const JwKigouSym *sym)
         px = q0 <= q1 ? l->x0 : l->x1;
         py = q0 <= q1 ? l->y0 : l->y1;
     }
-    place_kigou(sym, px, py);
+    place_kigou(sym, px, py, 1);
 }
 
 /* 拾った指示線に記号を置いて、その線を消します。
  *
  * 原点は、指示線 1 だけのときは**押したところを指示線に落とした点**
  * （「幅 [1mm]」の実測）、指示線 2 もあるときは**2 本の交点**です。 */
-static void place_kigou(const JwKigouSym *sym, double px, double py)
+static void place_kigou(const JwKigouSym *sym, double px, double py,
+                        int phase)
 {
     JwcLine base, base2;
     const JwcLine *two = 0;
     double ax, ay, dx, dy, len, t, ox, oy;
 
-    if (!drawing || cmd.kigou_line < 0
-        || cmd.kigou_line >= drawing->n_lines) {
-        cmd.kigou_line = -1;
-        cmd.kigou_line2 = -1;
-        cmd.kigou_line2 = -1;
+    if (!drawing) {
+        return;
+    }
+    if (cmd.kigou_line < 0 || cmd.kigou_line >= drawing->n_lines) {
+        /* **指示線を取らない記号**（制御コード 10 が無いもの）。
+         * 横を +x、縦を +y にした仮の線を原点に置いて描きます。
+         * 指示線は拾っていないので、消す線もありません。 */
+        JwcLine ln;
+
+        memset(&ln, 0, sizeof ln);
+        ln.x0 = (float)(px - 1.0);
+        ln.y0 = (float)py;
+        ln.x1 = (float)px;
+        ln.y1 = (float)py;
+        /* 線色・線種・レイヤは**書き込みのもの**です（指示線がないので）。 */
+        ln.type = (unsigned char)drawing->line_type;
+        ln.pen = (unsigned char)drawing->pen;
+        ln.layer = (unsigned char)drawing->write_layer;
+        jw_kigou_put(drawing, sym, &ln, 0, px, py,
+                     cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0);
+        ui.n_lines = drawing->n_lines;
+        ui.n_arcs = drawing->n_arcs + drawing->n_texts;
         return;
     }
     base = drawing->lines[cmd.kigou_line];
@@ -201,7 +226,7 @@ static void place_kigou(const JwKigouSym *sym, double px, double py)
             ox = ax + s2 * dx;
             oy = ay + s2 * dy;
             jw_kigou_put(drawing, sym, &base, two, ox, oy,
-                         cmd.kigou_in_n ? cmd.kigou_in_buf : 0);
+                         cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0);
             /* **あとのほうから消します。** 先に小さい番号を消すと、
              * もう一方の番号がひとつ前にずれます。 */
             if (cmd.kigou_line2 > cmd.kigou_line) {
@@ -224,7 +249,7 @@ static void place_kigou(const JwKigouSym *sym, double px, double py)
     ox = ax + t * dx;
     oy = ay + t * dy;
     jw_kigou_put(drawing, sym, &base, two, ox, oy,
-                 cmd.kigou_in_n ? cmd.kigou_in_buf : 0);
+                 cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0);
     jwc_remove_line(drawing, cmd.kigou_line);
     cmd.kigou_line = -1;
     cmd.kigou_line2 = -1;
@@ -399,14 +424,20 @@ static void sync_ui(void)
 
         ui.kigou_in_kind = ip ? ip->type % 100 : 1;
         ui.kigou_in_base = ip && ip->type > 0 ? (ip->type / 100) % 10 : 0;
-        ui.kigou_in_text = ip ? ip->text : 0;
+        /* **文字変更の指定（21000）は欄が空**です（`文字列入力` が
+         * 出ます）。変える前の字は、その場に仮に描かれます
+         * ——DAT §５-６「その文字位置に設定した文字を変更して作図」。 */
+        ui.kigou_in_text = ip && ip->c1 < 21000 ? ip->text : 0;
         ui.kigou_in_buf = cmd.kigou_in_n ? cmd.kigou_in_buf : 0;
+        ui.kigou_in_old = ip && ip->c1 >= 21000 ? ip->text : 0;
     }
     {
         const JwKigou *kg = jw_kigou_lib(cmd.kigou_group);
 
         ui.kigou_two = kg && cmd.kigou_sym > 0 && cmd.kigou_sym <= kg->n
                      && jw_kigou_wants2(&kg->sym[cmd.kigou_sym - 1]);
+        ui.kigou_free = kg && cmd.kigou_sym > 0 && cmd.kigou_sym <= kg->n
+                      && !jw_kigou_takes1(&kg->sym[cmd.kigou_sym - 1]);
     }
     ui.kigou_group = cmd.kigou_group;
     ui.hen_env_all = cmd.hen_env_all;
@@ -556,6 +587,49 @@ static char auto_typed[16];
 static char dim_typed[16];
 static int dim_typed_n;
 
+/* 文字変更（21000）を聞いている間、**変える前の字をその場に枠で**
+ * 出します（色 1 の XOR。図形の仮置きと同じ描き方です）。 */
+static void kigou_ghost(void)
+{
+    const JwKigou *g;
+    const JwKigouSym *sym;
+    JwcLine ln;
+    JwKigouGhost gh;
+
+    if (!cmd.kigou_input || !drawing) {
+        return;
+    }
+    g = jw_kigou_lib(cmd.kigou_group);
+    if (!g || cmd.kigou_sym <= 0 || cmd.kigou_sym > g->n) {
+        return;
+    }
+    sym = &g->sym[cmd.kigou_sym - 1];
+    if (jw_kigou_takes1(sym)) {
+        return;                 /* 指示線を取る記号はまだ測れていません */
+    }
+    memset(&ln, 0, sizeof ln);
+    ln.x0 = (float)(cmd.kigou_px - 1.0);
+    ln.y0 = (float)cmd.kigou_py;
+    ln.x1 = (float)cmd.kigou_px;
+    ln.y1 = (float)cmd.kigou_py;
+    ln.type = (unsigned char)drawing->line_type;
+    ln.pen = (unsigned char)drawing->pen;
+    ln.layer = (unsigned char)drawing->write_layer;
+    memset(&gh, 0, sizeof gh);
+    if (jw_kigou_put(drawing, sym, &ln, 0, cmd.kigou_px, cmd.kigou_py,
+                     cmd.kigou_in_n ? cmd.kigou_in_buf : 0,
+                     2 + cmd.kigou_in_at, &gh)) {
+        if (gh.t.text && gh.t.text[0]) {
+            jw_view_text_ghost(&vga, drawing, &gh.t, &view, 2, 0x18);
+            jw_view_text_caret(&vga, drawing, &gh.t, &view,
+                               cmd.kigou_in_n > 0, 4, 0x18);
+        } else {
+            jw_view_text_point(&vga, drawing, &gh.t, &view, gh.px, gh.py,
+                               4, 0x18);
+        }
+    }
+}
+
 static void present(void)
 {
     memcpy(ui.dxf_set, dxf_set, sizeof dxf_set);
@@ -601,6 +675,7 @@ static void present(void)
     } else {
         jw_view_draw(&vga, drawing, &view);
         jw_cmd_before(&cmd, &vga, drawing, &view);
+        kigou_ghost();
     }
     ui.snap = mouse_x >= AREA_X0 && mouse_x <= AREA_X1
         && mouse_y >= AREA_Y0 && mouse_y <= AREA_Y1;
@@ -2674,7 +2749,23 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         double px, py;
 
         jw_cmd_at(&view, x, y, &px, &py);
-        if (sym && cmd.kigou_line < 0) {
+        if (sym && !jw_kigou_takes1(sym)) {
+            /* **制御コード 10 が無い記号は指示線を取りません。**
+             * 押したところがそのまま原点です（「建具記号 (AW)」の実測：
+             * 線の数が 30 → 31 に増え、指示線は消えません）。 */
+            cmd.kigou_line = -1;
+            cmd.kigou_line2 = -1;
+            cmd.kigou_px = px;
+            cmd.kigou_py = py;
+            if (jw_kigou_input(sym, 0)) {
+                /* **押した時点でもう置きます**（打った字だけあと）。 */
+                place_kigou(sym, px, py, 0);
+                cmd.kigou_input = 1;
+                cmd.kigou_in_at = 0;
+            } else {
+                place_kigou(sym, px, py, -1);
+            }
+        } else if (sym && cmd.kigou_line < 0) {
             const long k = jw_cmd_line_at(drawing, &view, x, y);
 
             if (k >= 0) {
@@ -2697,7 +2788,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
                                     + (l->y1 - py) * (l->y1 - py);
 
                     place_kigou(sym, q0 <= q1 ? l->x0 : l->x1,
-                                q0 <= q1 ? l->y0 : l->y1);
+                                q0 <= q1 ? l->y0 : l->y1, -1);
                 }
             }
         } else if (sym && jw_kigou_wants2(sym) && cmd.kigou_line2 < 0) {
@@ -2708,10 +2799,10 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
             if (k >= 0 && k != cmd.kigou_line) {
                 cmd.kigou_line2 = k;
-                place_kigou(sym, px, py);
+                place_kigou(sym, px, py, -1);
             }
         } else if (sym) {
-            place_kigou(sym, px, py);
+            place_kigou(sym, px, py, -1);
         }
         mouse_x = x;
         mouse_y = y;

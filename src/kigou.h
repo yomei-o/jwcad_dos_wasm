@@ -106,14 +106,34 @@ const JwKigou *jw_kigou_lib(int which);
  * あるかどうかで決まります（指示回数ではありません）。 */
 int jw_kigou_wants2(const JwKigouSym *sym);
 
+/* その記号が**指示線 1 を置き換えるか**（制御コード 10 があるか）。
+ * 無ければ指示線は拾わず、押した位置に置くだけです。 */
+int jw_kigou_takes1(const JwKigouSym *sym);
+
 /* 文字入力の指定（制御コード 20000 以上）の部材。無ければ NULL。 */
 const JwKigouPart *jw_kigou_input(const JwKigouSym *sym, int nth);
 
 /* 記号を図面に置きます。`base` は指示線 1、`(ox,oy)` は記号の原点
  * （押した位置を指示線に落とした点）。置いた線の数を返します。 */
+/* `phase` は**いつ描くか**です。本物は位置を押した時点で記号を描き、
+ * 文字入力の字だけを [Enter] のあとで足します。
+ *
+ *     -1  全部（文字入力の字は typed があるときだけ）
+ *      0  文字入力の字**以外**を全部
+ *      1  文字入力の字**だけ** */
+/* phase 2 の受け皿。文字入力の部材を図面には入れず、その文字記録と
+ * DAT の点（基点で寄せる前の位置）だけを返します。
+ * phase は 2 が 1 つめの文字入力、3 が 2 つめ……です
+ * （「楕円記号 (2)」は `INPUT(1)` `INPUT(2)` の 2 つを続けて聞きます）。 */
+typedef struct {
+    JwcText t;
+    double px, py;
+} JwKigouGhost;
+
+/* phase 2 のときだけ `ghost` を使います。 */
 int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                  const JwcLine *base2, double ox, double oy,
-                 const char *typed);
+                 const char *typed, int phase, JwKigouGhost *ghost);
 
 /* そのグループの名札（`A`〜`J`）。範囲外は 0。 */
 char jw_kigou_letter(int which);

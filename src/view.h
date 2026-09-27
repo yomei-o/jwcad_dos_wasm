@@ -98,6 +98,20 @@ void jw_view_text_box(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
 
 /* And the box 図形 ②読込's preview draws, which is not the same one -- see
  * src/view.c for the three ways it differs. */
+/* まだ 1 字も打っていないときに、字の入る所に出る十字の印。
+ * 横はその点の行に 4 画素（左へ 2、右へ 1）、縦は枠の上端から下端まで
+ * （「建具記号 (AW)」と「楕円記号 (2)」で実測）。 */
+void jw_view_text_point(VGA *v, const Jwc *d, const JwcText *t,
+                        const JwView *w, double px, double py,
+                        unsigned colour, unsigned rop);
+
+/* 文字入力を待っている間、枠の左端に出る `><` の印。
+ * 枠の高さの半分を h として、(x0,top)-(x0+h,mid)-(x0,base) と
+ * その対になる `<` を引きます（「高さ記号(3mm)」で実測）。 */
+void jw_view_text_caret(VGA *v, const Jwc *d, const JwcText *t,
+                        const JwView *w, int at_end, unsigned colour,
+                        unsigned rop);
+
 void jw_view_text_ghost(VGA *v, const Jwc *d, const JwcText *t,
                         const JwView *w, unsigned colour, unsigned rop);
 

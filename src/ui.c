@@ -591,6 +591,69 @@ int jw_ui_top_item(int x, int y)
     return bars;                /* 0 = before the first bar, so not an item */
 }
 
+/* 盤の字の幅（画素）。全角は 16、半角は 8。 */
+static int ui_text_width(const char *s)
+{
+    const unsigned char *q = (const unsigned char *)s;
+    int wide = 0, i = 0;
+
+    if (!q) {
+        return 0;
+    }
+    while (q[i]) {
+        if (((q[i] >= 0x81 && q[i] <= 0x9f)
+             || (q[i] >= 0xe0 && q[i] <= 0xfc)) && q[i + 1]) {
+            wide += 16;
+            i += 2;
+        } else {
+            wide += 8;
+            i += 1;
+        }
+    }
+    return wide;
+}
+
+/* 反転で書く字。背景は塗らず、点を一つずつ入れ替えます。
+ * 文字変更の「変える前の字」がこれです——緑の升の上で紫になります。 */
+static void ui_text_xor(VGA *v, int col, int row, unsigned fg, const char *s)
+{
+    const unsigned char *p = (const unsigned char *)s;
+    const Fontx *ank = jw_view_ank(), *kanji = jw_view_kanji();
+    int x = (col - 1) * 8, y = (row - 1) * 16;
+    int i = 0;
+
+    if (!p || !ank->data) {
+        return;
+    }
+    while (p[i]) {
+        const unsigned char *g;
+        int w, r, c;
+
+        if (is_lead(p[i]) && p[i + 1]) {
+            g = fontx_glyph(kanji, (unsigned)(p[i] << 8) | p[i + 1]);
+            w = 16;
+            i += 2;
+        } else {
+            g = fontx_glyph(ank, p[i]);
+            w = 8;
+            i += 1;
+        }
+        if (g) {
+            const int stride = (w + 7) / 8;
+
+            for (r = 0; r < 16; r++) {
+                for (c = 0; c < w; c++) {
+                    if (g[r * stride + (c >> 3)] & (0x80 >> (c & 7))) {
+                        jw_line(v, x + c, y + r, x + c, y + r, fg, 0x18,
+                                JW_STYLE_SOLID);
+                    }
+                }
+            }
+        }
+        x += w;
+    }
+}
+
 void jw_ui_text(VGA *v, int col, int row, unsigned fg, unsigned bg,
                 const char *s)
 {
@@ -5250,8 +5313,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             /* データに 20 があるときは**指示線 2** を待ちます（実測）。 */
             jw_ui_text(v, 8, 1, 7, 0,
                        "\x8ew\x8e\xa6\x90\xfc(2)\x81\x9f\x83}\x83" "E\x83X\x8ew\x8e\xa6  |\x87@\x94{\x97\xa6 \x89\xa1,\x8f" "c(  1.00,  1.00)|\x87" "A\x91\xbc\x8bL\x8d\x86\x91I\x91\xf0|");
-        } else if (s->kigou_wait) {
-            /* 指示線を拾ったあとは位置を待ちます（実測）。 */
+        } else if (s->kigou_wait || s->kigou_free) {
+            /* 指示線を拾ったあとは位置を待ちます（実測）。
+             * **制御コード 10 が無い記号は最初から位置**です。 */
             jw_ui_text(v, 8, 1, 7, 0,
                        "\x81\x9b\x88\xca\x92u(L)free (R)Read  |\x87@\x94{\x97\xa6 \x89\xa1,\x8f" "c(  1.00,  1.00)|\x87" "A\x91\xbc\x8bL\x8d\x86\x91I\x91\xf0|");
         }
@@ -5291,21 +5355,42 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         sprintf(one, "|\x8e\xed %d|Paste", s->kigou_in_kind);
         jw_ui_text(v, 5, 4, 7, 0xffffu, one);
         fill(v, 0, 464, 639, 479, 0);
-        /* 左端の緑の升（x 0..7、y 24..31）は本物も残します。 */
-        fill(v, 0, 16, 121, 23, 0);
-        fill(v, 8, 24, 121, 31, 0);
-        fill(v, 0, 32, 121, 47, 0);
-        if (s->kigou_in_buf) {
-            char pad[80];
-
-            sprintf(pad, "%-10s", s->kigou_in_buf);
-            jw_ui_text(v, 1, 1, 7, 0, pad);
-        } else if (s->kigou_in_text) {
+        fill(v, 0, 16, 121, 16, 0);
+        /* 消えるのは **y 17..47 の帯（全幅）** です。右端の枠が
+         * その間だけ黒く、y=16 の 1 点は白のまま残ります（実測）。
+         * x 122..638 に絵がある図面をまだ作れていないので、そこまで
+         * 消すかどうかは x=639 の 1 列でしか測れていません。 */
+        fill(v, 0, 17, 639, 47, 0);
+        /* **1 行目は DAT の既定の字**（文字入力）か `文字列入力`
+         * （文字変更）。どちらもただの見出しで、打った字は 2 行目です。 */
+        if (s->kigou_in_text) {
             /* **空白で埋めて**書きます —— `文字列入力` の残りが出ます。 */
             char pad[32];
 
             sprintf(pad, "%-10s", s->kigou_in_text);
             jw_ui_text(v, 1, 1, 7, 0, pad);
+        }
+        /* **2 行目は打った字**。上に幅ぶんの白い罫を引き、うしろに
+         * 緑の升（カーソル）を置きます。文字変更のときは、変える前の
+         * 字をその上に反転で重ねます（「高さ記号(3mm)」で実測）。 */
+        {
+            const int wtyped = ui_text_width(s->kigou_in_buf);
+            const int wold = ui_text_width(s->kigou_in_old);
+            const int wide = wtyped > wold ? wtyped : wold;
+
+            if (s->kigou_in_buf) {
+                jw_ui_text(v, 1, 2, 7, 0, s->kigou_in_buf);
+            }
+            /* **字を書いたあとで罫を引きます。** 字の背景塗りは升の
+             * 上端（y=16）まで届くので、先に引くと消えます。 */
+            if (wide > 0) {
+                jw_line(v, 0, 16, wide - 1, 16, 7, ROP_REPLACE,
+                        JW_STYLE_SOLID);
+            }
+            fill(v, wtyped, 23, wtyped + 7, 31, 4);
+            if (s->kigou_in_old) {
+                ui_text_xor(v, 1, 2, 7, s->kigou_in_old);
+            }
         }
     }
     /* ①種類【A】変更 の一覧が出ているあいだの行（実測）。 */
