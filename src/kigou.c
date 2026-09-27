@@ -598,6 +598,9 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             memset(&a, 0, sizeof a);
             a.cx = (float)(ox + (qx1 * ux + qy1 * nx) * mm * sc * (flip ? -1.0 : 1.0));
             a.cy = (float)(oy + (qx1 * uy + qy1 * ny) * mm * sc * (flip ? -1.0 : 1.0));
+            /* **半径は横倍率**。横と縦が違うときに本物が楕円にするのか
+             * どうかは、まだ測っていません（グループ A に倍率を掛けて
+             * 円を置く記号が無いため）。 */
             a.r = (float)(p->radius * mx * mm * sc * (flip ? -1.0 : 1.0));
             a.flatten = p->flat > 0.0
                       ? (short)(p->flat * 10000.0 + 0.5) : 10000;
