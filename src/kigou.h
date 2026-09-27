@@ -60,7 +60,8 @@ typedef enum {
     JW_KIGOU_POINT,             /* 実点 */
     JW_KIGOU_SCALE,             /* 700／800 の倍率指定 */
     JW_KIGOU_NEXT,              /* 10000 の記号連鎖 */
-    JW_KIGOU_CMD                /* 10100 などの他命令へ移る指定 */
+    JW_KIGOU_CMD,               /* 10100 などの他命令へ移る指定 */
+    JW_KIGOU_SHOW               /* 500 の一覧での置き場所 */
 } JwKigouKind;
 
 typedef struct {
@@ -83,6 +84,7 @@ typedef struct {
     char name[JW_KIGOU_NAME];   /* データ名（行の残り、前後の空白は落とす） */
     int picks;                  /* 指示回数。0 は 1 回、10 は指示なし */
     int sep;                    /* 直前の区切り（990〜999）。一覧の表示倍率 */
+    double show_x, show_y;      /* `500 x y`。一覧での置き場所（升の原点から画素） */
     double sep_mul;             /* `99*` のあとの数。無ければ 0 */
     int n;
     JwKigouPart part[JW_KIGOU_PARTS];

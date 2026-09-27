@@ -1590,8 +1590,10 @@ static void kigou_cells(VGA *v, const JwUi *s)
         const JwKigouSym *sym = &g->sym[i];
         const int col = i % 4;
         const int row = i / 4;
-        const double ox = 185.0 + col * 130.0;
-        const double oy = 70.0 + row * 96.0;
+        /* **`500 x y` は升の中の置き場所**（画素。実測：建具表例 (1) の
+         * `500 -50 30` で、本物の表は升の原点から左 50・上 30 の所から）。 */
+        const double ox = 185.0 + col * 130.0 + sym->show_x;
+        const double oy = 70.0 + row * 96.0 - sym->show_y;
         const double mul = sym->sep >= 990 && sym->sep <= 999
                          ? (sym->sep - 989) / 10.0 : 1.0;
         const int x0 = col ? 122 + col * 130 : 122;

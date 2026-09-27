@@ -114,6 +114,13 @@ static int one_part(const char *line, JwKigouPart *p)
     p->c1 = (long)v[0];
     p->c2 = (long)v[1];
 
+    /* 一覧での置き場所: `500 x y`。部材ではありません（§一覧）。 */
+    if (n == 3 && p->c1 == 500) {
+        p->kind = JW_KIGOU_SHOW;
+        p->x1 = v[1];
+        p->y1 = v[2];
+        return 1;
+    }
     /* 倍率指定: `700 倍率` と `800 倍率`（それだけの行）。 */
     if (n == 2 && (p->c1 == 700 || p->c1 == 800)) {
         p->kind = JW_KIGOU_SCALE;
@@ -255,6 +262,12 @@ int jw_kigou_read(const char *path, JwKigou *out)
             continue;
         }
         if (one_part(line, &sym->part[sym->n])) {
+            /* `500 x y` は部材ではなく**一覧での置き場所**です。 */
+            if (sym->part[sym->n].kind == JW_KIGOU_SHOW) {
+                sym->show_x = sym->part[sym->n].x1;
+                sym->show_y = sym->part[sym->n].y1;
+                continue;
+            }
             sym->n++;
         }
     }
