@@ -237,7 +237,7 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
         cmd.n0_lines = drawing->n_lines;
         cmd.n0_arcs = drawing->n_arcs;
         cmd.n0_texts = drawing->n_texts;
-        jw_kigou_put(drawing, sym, &ln, 0, px, py,
+        jw_kigou_put(drawing, sym, &ln, 0, px, py, px, py,
                      cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
         ui.n_lines = drawing->n_lines;
         ui.n_arcs = drawing->n_arcs + drawing->n_texts;
@@ -278,7 +278,7 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
             cmd.n0_lines = drawing->n_lines;
             cmd.n0_arcs = drawing->n_arcs;
             cmd.n0_texts = drawing->n_texts;
-            jw_kigou_put(drawing, sym, &base, two, ox, oy,
+            jw_kigou_put(drawing, sym, &base, two, ox, oy, px, py,
                          cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
             cmd.kigou_line = -1;
             cmd.kigou_line2 = -1;
@@ -298,7 +298,7 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
     cmd.n0_lines = drawing->n_lines;
     cmd.n0_arcs = drawing->n_arcs;
     cmd.n0_texts = drawing->n_texts;
-    jw_kigou_put(drawing, sym, &base, two, ox, oy,
+    jw_kigou_put(drawing, sym, &base, two, ox, oy, px, py,
                  cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
     cmd.kigou_line = -1;
     cmd.kigou_line2 = -1;
@@ -671,6 +671,7 @@ static void kigou_ghost(void)
     ln.layer = (unsigned char)drawing->write_layer;
     memset(&gh, 0, sizeof gh);
     if (jw_kigou_put(drawing, sym, &ln, 0, cmd.kigou_px, cmd.kigou_py,
+                     cmd.kigou_px, cmd.kigou_py,
                      cmd.kigou_in_n ? cmd.kigou_in_buf : 0,
                      20 + cmd.kigou_in_at, &gh,
                      cmd.kigou_mag_x, cmd.kigou_mag_y)) {

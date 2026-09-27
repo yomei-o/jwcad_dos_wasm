@@ -108,6 +108,14 @@ static int one_part(const char *line, JwKigouPart *p)
     memset(p, 0, sizeof(*p));
     p->pen = p->type = p->layer = -1;
     n = numbers(line, v, 16, &saw_e, &rest);
+    /* 指示点までの距離が倍率になる指定: `750` と `751` だけの行
+     * （DAT の注記「線を指示した位置から指示点方向を＋として倍率計算を
+     * するコード」「指示線を基準にして指示点側を＋として」）。 */
+    if (n == 1 && ((long)v[0] == 750 || (long)v[0] == 751)) {
+        p->c1 = (long)v[0];
+        p->kind = JW_KIGOU_PTSCALE;
+        return 1;
+    }
     if (n < 2) {
         return 0;
     }
@@ -348,6 +356,7 @@ int jw_kigou_takes1(const JwKigouSym *sym)
 
 int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                  const JwcLine *base2, double ox, double oy,
+                 double ptx, double pty,
                  const char *typed, int phase, JwKigouGhost *ghost,
                  double mx, double my)
 {
@@ -407,6 +416,38 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
         const double qy2 = p->kind == JW_KIGOU_ARC ? p->y2 : p->y2 * my;
         JwcLine l;
 
+        if (p->kind == JW_KIGOU_PTSCALE) {
+            /* **指示点までの距離がそのまま倍率になります。**
+             * どこまでが「1 倍」かは、その記号が持っている
+             * `08 00`（作図しないダミー）の原点からの距離です——
+             * 「円筒破断線」は (0,4)、「三斜寸法記入」は (0,5) に
+             * 置いてあり、DAT の注記も「指示点位置ﾀﾞﾐｰ」です。
+             * 押した点が落とした点と同じ（＝一覧の升のように指示点が
+             * 無い）ときは、700／800 の倍率のままにします。 */
+            const double ex = ptx - ox, ey = pty - oy;
+            const double dist = sqrt(ex * ex + ey * ey);
+            double nominal = 0.0;
+            int j;
+
+            for (j = 0; j < sym->n; j++) {
+                const JwKigouPart *q = &sym->part[j];
+
+                if (q->kind != JW_KIGOU_ARC && q->kind != JW_KIGOU_LINE) {
+                    continue;
+                }
+                if (q->c1 % 10 != 8 || q->c2 % 10 != 0) {
+                    continue;
+                }
+                if (q->x1 != 0.0 || q->y1 != 0.0) {
+                    nominal = sqrt(q->x1 * q->x1 + q->y1 * q->y1);
+                    break;
+                }
+            }
+            if (dist > 0.0 && nominal > 0.0 && mm > 0.0) {
+                sc = dist / (nominal * mm);
+            }
+            continue;
+        }
         if (p->kind == JW_KIGOU_SCALE) {
             /* **次の行からの倍率**です（§７）。実寸のときは縮尺の分母で
              * 割って紙のミリにします。倍率が負なら 180 度回します。 */
