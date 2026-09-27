@@ -6495,6 +6495,14 @@ static int env_wrap(JwCmd *c, Jwc *d)
      * 入っておらず、切られません（実測：縦線は y 120..380 のまま）。
      * `base` は入ってきたときの形、`work` は一段目のあとの形です。 */
     JwcLine base[JW_ENV_MAX + 2], work[JW_ENV_MAX + 2];
+    /* **「あとで外す線」は記録のビットではなく、ここに控えます。**
+     * 前は `rest[2]` の 0x80 を印に使っていましたが、**あのビットは
+     * 図面が使っています**——SAMPLE3 は 880 本のうち 839 本が 0x80 を
+     * 持っていて、包絡を一度かけると全部消えました（線 880 → 41）。
+     * SAMPLE0・SAMPLE1 は 0x80 を持っていないので、ずっと気づかずに
+     * いました。 */
+    long dead[2 * JW_ENV_MAX + 4];
+    int ndead = 0;
     int pass;
     int n = 0, i, j, k, changed = 0, any_wall = 0;
 
@@ -6569,7 +6577,9 @@ static int env_wrap(JwCmd *c, Jwc *d)
             a->y0 = (float)(a->y0 + uy * lo);
             a->x1 = (float)(a->x0 + ux * (hi - lo));
             a->y1 = (float)(a->y0 + uy * (hi - lo));
-            d->lines[pick[j]].rest[2] |= 0x80u;
+            if (ndead < 2 * JW_ENV_MAX + 4) {
+                dead[ndead++] = pick[j];
+            }
             for (k = j; k + 1 < n; k++) {
                 pick[k] = pick[k + 1];
                 full[k] = full[k + 1];
@@ -6779,7 +6789,9 @@ static int env_wrap(JwCmd *c, Jwc *d)
                     work[i].y1 = (float)(keep.y0 + ey * hi);
                 }
             }
-            d->lines[pick[i]].rest[2] |= 0x80u;
+            if (ndead < 2 * JW_ENV_MAX + 4) {
+                dead[ndead++] = pick[i];
+            }
             changed = 1;
             continue;
         }
@@ -6921,7 +6933,9 @@ static int env_wrap(JwCmd *c, Jwc *d)
                 }
             }
         }
-        d->lines[pick[i]].rest[2] |= 0x80u;     /* あとで外す印 */
+        if (ndead < 2 * JW_ENV_MAX + 4) {
+            dead[ndead++] = pick[i];    /* あとで外します */
+        }
         changed = 1;            /* 形が変わらなくても記録は書き直され、
                                  * 行に [ESC] が付きます（測定） */
     }
@@ -6945,10 +6959,22 @@ static int env_wrap(JwCmd *c, Jwc *d)
             }
         }
     }
-    for (i = (int)n0 - 1; i >= 0; i--) {
-        if (d->lines[i].rest[2] & 0x80u) {
-            jwc_remove_line(d, i);
+    /* 大きい番号から外します（小さいほうから消すと番号がずれます）。 */
+    for (i = 0; i < ndead; i++) {
+        for (j = i + 1; j < ndead; j++) {
+            if (dead[j] > dead[i]) {
+                const long sw = dead[i];
+
+                dead[i] = dead[j];
+                dead[j] = sw;
+            }
         }
+    }
+    for (i = 0; i < ndead; i++) {
+        if (i > 0 && dead[i] == dead[i - 1]) {
+            continue;
+        }
+        jwc_remove_line(d, dead[i]);
     }
     return changed;
 }
