@@ -1167,9 +1167,78 @@ void jw_view_mark(VGA *v, const JwView *w, double ax, double ay,
  * agree with 0, 518 and 447 to the pixel.
  *
  * The dashes are every fourth pixel -- line type 9, 0x2222 -- and their phase
- * is the screen's, not the line's: the column at 187 lights rows 19, 23, 27 …
- * and so does the one at 603.
+ * counts from **the point the original hands the line routine**, which is
+ * where it starts drawing: `[bp] 10a9:07dc` (`sh tools/frametrace.sh`) shows
+ *
+ *     倍率 0.3（紙が全部映る）  (286,351)-(286,117)  左辺は下の角から上へ
+ *                              (557,117)-(286,117)  上辺は右の角から左へ
+ *                              (557,117)-(557,351)  右辺は上の角から下へ
+ *                              (286,351)-(557,351)  下辺は左の角から右へ
+ *
+ * ——**向かい合った 2 つの角から L 字に 2 本ずつ**です。はみ出すときだけ
+ * 端を窓で切り、そのとき**長いほうの軸が増える向きに直してから**切ります:
+ *
+ *     倍率 0.5      (223,426)-(223,35)   左辺は切らずにそのまま（下から上）
+ *                   (223,35)-(638,35)    上辺は右がはみ出す → 左から右へ
+ *     拡大 200,100-300,400
+ *                   (187,17)-(187,462)   左辺は両端はみ出す → 上から下へ
+ *     拡大 300,17-400,60
+ *                   (122,122)-(638,122)  上辺は両端はみ出す → 左から右へ
+ *
+ * 「画面に固定した位相」に見えていたのは、拡大では端が必ず窓の縁（17 や
+ * 122）に落ちるからでした。切らないで済む倍率 0.3 では角から数えます。
  */
+
+/* 枠の 1 辺。窓の中に収まっていればそのまま、はみ出していれば
+ * **向きを直してから**切ります（上の実測）。座標は倍率が大きいと
+ * 画面のはるか外へ行くので、`(int)` にする前に切ります。 */
+static void frame_edge(VGA *v, double x0, double y0, double x1, double y1,
+                       int style)
+{
+    const double cx0 = v->clip_x0, cx1 = v->clip_x1;
+    const double cy0 = v->clip_y0, cy1 = v->clip_y1;
+    double t;
+
+    if (x0 >= cx0 && x0 <= cx1 && y0 >= cy0 && y0 <= cy1
+        && x1 >= cx0 && x1 <= cx1 && y1 >= cy0 && y1 <= cy1) {
+        jw_line(v, (int)x0, (int)y0, (int)x1, (int)y1, 2, ROP_REPLACE, style);
+        return;
+    }
+    if (x0 == x1) {
+        if (x0 < cx0 || x0 > cx1) {
+            return;
+        }
+        if (y0 > y1) {
+            t = y0; y0 = y1; y1 = t;
+        }
+        if (y1 < cy0 || y0 > cy1) {
+            return;
+        }
+        if (y0 < cy0) {
+            y0 = cy0;
+        }
+        if (y1 > cy1) {
+            y1 = cy1;
+        }
+    } else {
+        if (y0 < cy0 || y0 > cy1) {
+            return;
+        }
+        if (x0 > x1) {
+            t = x0; x0 = x1; x1 = t;
+        }
+        if (x1 < cx0 || x0 > cx1) {
+            return;
+        }
+        if (x0 < cx0) {
+            x0 = cx0;
+        }
+        if (x1 > cx1) {
+            x1 = cx1;
+        }
+    }
+    jw_line(v, (int)x0, (int)y0, (int)x1, (int)y1, 2, ROP_REPLACE, style);
+}
 
 static void paper_frame(VGA *v, const JwView *w)
 {
@@ -1181,14 +1250,6 @@ static void paper_frame(VGA *v, const JwView *w)
     const double fx1 = (518.0 - w->ox) * w->scale + w->ax;
     const double fy0 = w->ay - (0.0 - w->oy) * w->scale;
     const double fy1 = w->ay - (447.0 - w->oy) * w->scale;
-    /* The dashes go by the **screen**, not by where the line starts: the
-     * column at x=0 lights rows 19, 23, 27 … whether the view is
-     * (200,100)-(300,400) or (620,200)-(638,220), and the row at y=447 lights
-     * columns 124, 128, 132 …  So each edge is drawn right across the window
-     * from a start that keeps that phase. */
-    const int vs = v->clip_y0 + (((1 - v->clip_y0) % 4) + 4) % 4;
-    const int hs = v->clip_x0 - (((v->clip_x0 - 2) % 4) + 4) % 4;
-
     /* Corner to corner, and each edge's dashes count from its own start --
      * which is how the little panels come out: the top edge lights 130, 134
      * … from a left corner at 128, the same "start plus two" the main
@@ -1207,18 +1268,12 @@ static void paper_frame(VGA *v, const JwView *w)
                 style);
         return;
     }
-    if (fx0 >= v->clip_x0 && fx0 <= v->clip_x1) {
-        jw_line(v, (int)fx0, vs, (int)fx0, v->clip_y1, 2, ROP_REPLACE, style);
-    }
-    if (fx1 >= v->clip_x0 && fx1 <= v->clip_x1) {
-        jw_line(v, (int)fx1, vs, (int)fx1, v->clip_y1, 2, ROP_REPLACE, style);
-    }
-    if (fy0 >= v->clip_y0 && fy0 <= v->clip_y1) {
-        jw_line(v, hs, (int)fy0, v->clip_x1, (int)fy0, 2, ROP_REPLACE, style);
-    }
-    if (fy1 >= v->clip_y0 && fy1 <= v->clip_y1) {
-        jw_line(v, hs, (int)fy1, v->clip_x1, (int)fy1, 2, ROP_REPLACE, style);
-    }
+    /* **向かい合った 2 つの角から L 字に 2 本ずつ**（上の実測）。
+     * `fy0` は紙の y=0（画面では下）、`fy1` は y=447（上）です。 */
+    frame_edge(v, fx0, fy0, fx0, fy1, style);   /* 左辺: 下の角から上へ */
+    frame_edge(v, fx1, fy1, fx0, fy1, style);   /* 上辺: 右の角から左へ */
+    frame_edge(v, fx1, fy1, fx1, fy0, style);   /* 右辺: 上の角から下へ */
+    frame_edge(v, fx0, fy0, fx1, fy0, style);   /* 下辺: 左の角から右へ */
 }
 
 void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)

@@ -386,9 +386,13 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full sh tools/zoomcheck.sh 150 200 600 260
     full sh tools/zoomcheck.sh 300 17 400 60
     full sh tools/zoomcheck.sh 620 200 638 220
-    echo "    ...and 倍率指定[XFER] に数を打ったとき（0.5 は 675 画素、notes/ui.md 4.27b）"
+    echo "    ...and 倍率指定[XFER] に数を打ったとき（0.25 は 2705 画素、notes/ui.md 4.27b）"
     sh tools/seqcheck.sh "490 471 left" "300 250 left" "type 2" "key enter" || true
     sh tools/seqcheck.sh "490 471 left" "300 250 left" "type 0.5" "key enter" || true
+    # **紙が全部映る倍率**——枠の 4 辺とも切らずに引くので、角から数える
+    # ことの証しになります（notes/ui.md 4.27b）。
+    full sh tools/seqcheck.sh "490 471 left" "300 250 left" "type 0.3" "key enter" || true
+    full sh tools/seqcheck.sh "490 471 left" "300 250 left" "type 0.25" "key enter" || true
     sect "=== 寸法 ①横方向: the dimension line, its extensions and the value (4.26)"
     sh tools/dimcheck.sh 162 140 300 110 162 140 598 140
     sh tools/dimcheck.sh 162 140 300 110 162 140 214 152
