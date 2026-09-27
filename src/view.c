@@ -1019,8 +1019,20 @@ static int visible_in(const Jwc *d, const JwView *w, unsigned char layer)
 
 /* One line, clipped and styled the way jw_view_draw does it.  複写 puts
  * its copies back with this after the chrome has been drawn. */
+static void view_line_in(VGA *v, const Jwc *d, const JwcLine *l,
+                         const JwView *w, unsigned colour);
+
 void jw_view_line(VGA *v, const Jwc *d, const JwcLine *l, const JwView *w,
                   unsigned colour)
+{
+    (void)colour;
+    view_line_in(v, d, l, w, jw_view_pen_colour(l->pen));
+}
+
+/* **色だけ呼び手のものを使う道**。jw_view_line はここへ記録のペンの色を
+ * 渡します。消し跡（黒で塗り直す）はここを色 0 で通ります。 */
+static void view_line_in(VGA *v, const Jwc *d, const JwcLine *l,
+                         const JwView *w, unsigned colour)
 {
 
         /* Cut to the window in floats and turn into pixels afterwards.  The
@@ -1051,7 +1063,7 @@ void jw_view_line(VGA *v, const Jwc *d, const JwcLine *l, const JwView *w,
         const int px = (int)fx0, py = (int)fy0;
 
         if (inside(w, px, py)) {
-        jw_point(v, px, py, jw_view_pen_colour(l->pen), ROP_REPLACE);
+        jw_point(v, px, py, colour, ROP_REPLACE);
         }
         return;
     }
@@ -1067,8 +1079,40 @@ void jw_view_line(VGA *v, const Jwc *d, const JwcLine *l, const JwView *w,
         clip_far(w, fx0, fy0, &fx1, &fy1);
     }
     jw_line(v, (int)fx0, (int)fy0, (int)fx1, (int)fy1,
-        jw_view_pen_colour(l->pen), ROP_REPLACE, jw_view_line_style(l->type));
+        colour, ROP_REPLACE, jw_view_line_style(l->type));
     }
+
+void jw_view_ink(VGA *v, const Jwc *d, const JwcInk *e, const JwView *w)
+{
+    switch (e->kind) {
+    case JW_INK_LINE:
+        view_line_in(v, d, &e->u.l, w,
+                     e->erase ? 0u : jw_view_pen_colour(e->u.l.pen));
+        break;
+    case JW_INK_ARC:
+        jw_view_arc(v, d, &e->u.a, w,
+                    e->erase ? 0u : jw_view_pen_colour(e->u.a.pen));
+        break;
+    case JW_INK_TEXT: {
+        JwcText t = e->u.t;
+
+        t.text = e->at >= 0 && d->text ? d->text + e->at : "";
+        jw_view_text(v, d, &t, w,
+                     e->erase ? 0u : jw_view_text_colour(d, t.size));
+        break;
+    }
+    default: {
+        const int x = to_x(w, e->u.p.x);
+        const int y = (int)(w->ay - (e->u.p.y - w->oy) * w->scale);
+
+        if (inside(w, x, y)) {
+            jw_point(v, x, y, e->erase ? 0u
+                     : jw_view_pen_colour(e->u.p.rest[1]), ROP_REPLACE);
+        }
+        break;
+    }
+    }
+}
 
 /* A line in drawing coordinates, cut to the window, in whatever colour and
  * style the caller wants.
@@ -1170,8 +1214,34 @@ static void paper_frame(VGA *v, const JwView *w)
 
 void jw_view_draw(VGA *v, const Jwc *d, const JwView *w)
 {
+    /* **消し跡**。本物は消すとき黒で塗り、描き直しません——交わっていた
+     * 別の線の点まで黒くなって残ります。図面を描いたあと、最後の描き直し
+     * からの墨の記録を順に再生して、その順を真似ます（消した形は黒、
+     * 足した形はふつうの色）。
+     *
+     * 記録は**見え方が変わると捨てます**——帯の `前倍率` を押すと本物も
+     * 0 画素に戻ることで測りました（notes/edit.md 4.45h）。
+     *
+     * ここに置いてあるのは、**画面を作る道すじがここ 1 本だから**です。
+     * 枠の中の小さい図（ｸﾞﾙｰﾌﾟ データ表示・サブ画面）は
+     * `jw_view_draw_into` を直に呼ぶので、跡は出ません。 */
+    static JwView seen;
+    static int been;            /* 1 度目は「変わった」に数えません */
+    long k;
+
     memset(v->plane, 0, sizeof v->plane);
     jw_view_draw_into(v, d, w);
+    jwc_ink_settle((Jwc *)d);
+    if (been && memcmp(&seen, w, sizeof seen) != 0) {
+        jwc_ink_clear((Jwc *)d);
+        seen = *w;
+        return;
+    }
+    seen = *w;
+    been = 1;
+    for (k = 0; k < d->n_ink; k++) {
+        jw_view_ink(v, d, &d->ink[k], w);
+    }
 }
 
 void jw_view_draw_into(VGA *v, const Jwc *d, const JwView *w)

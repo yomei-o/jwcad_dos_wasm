@@ -690,6 +690,7 @@ void jwc_free(Jwc *d)
         free(d->texts);
         free(d->points);
         free(d->text);
+        free(d->ink);
         free(d);
     }
 }
@@ -1481,6 +1482,82 @@ float jwc_zukei_scale(const Jwc *d)
                    / 518.0f) * d->denom;
 }
 
+void jwc_ink_note(Jwc *d, int erase, int kind, const void *rec)
+{
+    JwcInk *e;
+
+    if (!d || d->ink_over || d->ink_hold) {
+        return;
+    }
+    if (d->n_ink >= JWC_INK_MAX) {
+        /* **越えたら記録ごと捨てます。** 中途半端に再生するより、
+         * 跡を出さない（前からの移植のまま）ほうが安全です。 */
+        d->ink_over = 1;
+        d->n_ink = 0;
+        return;
+    }
+    if (!d->ink) {
+        d->ink = (JwcInk *)malloc((size_t)JWC_INK_MAX * sizeof *d->ink);
+        if (!d->ink) {
+            d->ink_over = 1;
+            return;
+        }
+    }
+    e = &d->ink[d->n_ink++];
+    memset(e, 0, sizeof *e);
+    e->kind = (unsigned char)kind;
+    e->erase = (unsigned char)(erase ? 1 : 0);
+    switch (kind) {
+    case JW_INK_LINE:  e->u.l = *(const JwcLine *)rec;  break;
+    case JW_INK_ARC:   e->u.a = *(const JwcArc *)rec;   break;
+    case JW_INK_TEXT:
+        e->u.t = *(const JwcText *)rec;
+        e->at = e->u.t.text && d->text ? (long)(e->u.t.text - d->text) : -1;
+        e->u.t.text = 0;
+        break;
+    default:           e->u.p = *(const JwcPoint *)rec; break;
+    }
+}
+
+void jwc_ink_hold(Jwc *d, int on)
+{
+    if (d) {
+        d->ink_hold = on ? 1 : 0;
+    }
+}
+
+void jwc_ink_clear(Jwc *d)
+{
+    if (d) {
+        d->n_ink = 0;
+        d->ink_done = 0;
+        d->ink_over = 0;
+    }
+}
+
+void jwc_ink_settle(Jwc *d)
+{
+    long i, at;
+
+    if (!d || d->ink_over || d->n_ink <= d->ink_done) {
+        return;
+    }
+    /* 消しを前へ（安定）。足しは残った順のまま後ろに続きます。 */
+    at = d->ink_done;
+    for (i = d->ink_done; i < d->n_ink; i++) {
+        if (d->ink[i].erase) {
+            JwcInk tmp = d->ink[i];
+            long j;
+
+            for (j = i; j > at; j--) {
+                d->ink[j] = d->ink[j - 1];
+            }
+            d->ink[at++] = tmp;
+        }
+    }
+    d->ink_done = d->n_ink;
+}
+
 int jwc_put_line(Jwc *d, const JwcLine *l)
 {
     static const long BLOCK = 256;
@@ -1497,6 +1574,7 @@ int jwc_put_line(Jwc *d, const JwcLine *l)
         d->cap_lines = want;
     }
     d->lines[d->n_lines++] = *l;
+    jwc_ink_note(d, 0, JW_INK_LINE, l);
     return 1;
 }
 
@@ -1516,6 +1594,7 @@ int jwc_put_arc(Jwc *d, const JwcArc *a)
         d->cap_arcs = want;
     }
     d->arcs[d->n_arcs++] = *a;
+    jwc_ink_note(d, 0, JW_INK_ARC, a);
     return 1;
 }
 
@@ -1537,6 +1616,7 @@ int jwc_put_point(Jwc *d, const JwcPoint *p)
         d->cap_points = want;
     }
     d->points[d->n_points++] = *p;
+    jwc_ink_note(d, 0, JW_INK_POINT, p);
     return 1;
 }
 
@@ -1618,6 +1698,7 @@ int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
      * of 0, 2 or 3 behind it -- so it is written back and not invented. */
     l->rest[1] = 3;
     d->n_lines++;
+    jwc_ink_note(d, 0, JW_INK_LINE, l);
     return 1;
 }
 
@@ -1631,15 +1712,19 @@ int jwc_dup_line(Jwc *d, long k, float dx, float dy)
     if (k < 0 || k >= d->n_lines) {
         return 0;
     }
+    jwc_ink_hold(d, 1);
     if (!jwc_add_line(d, 0, 0, 0, 0, 0, 0, 0)) {
+        jwc_ink_hold(d, 0);
         return 0;
     }
+    jwc_ink_hold(d, 0);
     l = &d->lines[d->n_lines - 1];
     *l = d->lines[k];
     l->x0 += dx;
     l->y0 += dy;
     l->x1 += dx;
     l->y1 += dy;
+    jwc_ink_note(d, 0, JW_INK_LINE, l);
     return 1;
 }
 
@@ -1651,18 +1736,24 @@ int jwc_split_line(Jwc *d, long k, float x, float y)
         return 0;
     }
     was = d->lines[k];
+    jwc_ink_hold(d, 1);
     if (!jwc_add_line(d, 0, 0, 0, 0, 0, 0, 0)) {
+        jwc_ink_hold(d, 0);
         return 0;
     }
     d->lines[d->n_lines - 1] = was;
     d->lines[d->n_lines - 1].x1 = x;
     d->lines[d->n_lines - 1].y1 = y;
     if (!jwc_add_line(d, 0, 0, 0, 0, 0, 0, 0)) {
+        jwc_ink_hold(d, 0);
         return 0;
     }
     d->lines[d->n_lines - 1] = was;
     d->lines[d->n_lines - 1].x0 = x;
     d->lines[d->n_lines - 1].y0 = y;
+    jwc_ink_hold(d, 0);
+    jwc_ink_note(d, 0, JW_INK_LINE, &d->lines[d->n_lines - 2]);
+    jwc_ink_note(d, 0, JW_INK_LINE, &d->lines[d->n_lines - 1]);
     jwc_remove_line(d, k);
     return 1;
 }
@@ -1674,15 +1765,19 @@ int jwc_relink_line(Jwc *d, long k, float x0, float y0, float x1, float y1)
     if (k < 0 || k >= d->n_lines) {
         return 0;
     }
+    jwc_ink_hold(d, 1);
     if (!jwc_add_line(d, 0, 0, 0, 0, 0, 0, 0)) {
+        jwc_ink_hold(d, 0);
         return 0;
     }
+    jwc_ink_hold(d, 0);
     l = &d->lines[d->n_lines - 1];
     *l = d->lines[k];
     l->x0 = x0;
     l->y0 = y0;
     l->x1 = x1;
     l->y1 = y1;
+    jwc_ink_note(d, 0, JW_INK_LINE, l);
     jwc_remove_line(d, k);
     return 1;
 }
@@ -1694,13 +1789,17 @@ int jwc_dup_arc(Jwc *d, long k, float dx, float dy)
     if (k < 0 || k >= d->n_arcs) {
         return 0;
     }
+    jwc_ink_hold(d, 1);
     if (!jwc_add_arc(d, 0, 0, 1, 0, 0, 0)) {
+        jwc_ink_hold(d, 0);
         return 0;
     }
+    jwc_ink_hold(d, 0);
     a = &d->arcs[d->n_arcs - 1];
     *a = d->arcs[k];
     a->cx += dx;
     a->cy += dy;
+    jwc_ink_note(d, 0, JW_INK_ARC, a);
     return 1;
 }
 
@@ -1742,6 +1841,7 @@ void jwc_remove_line(Jwc *d, long k)
     if (k < 0 || k >= d->n_lines) {
         return;
     }
+    jwc_ink_note(d, 1, JW_INK_LINE, &d->lines[k]);
     memmove(d->lines + k, d->lines + k + 1,
             (size_t)(d->n_lines - k - 1) * sizeof *d->lines);
     d->n_lines--;
@@ -1752,6 +1852,7 @@ void jwc_remove_arc(Jwc *d, long k)
     if (k < 0 || k >= d->n_arcs) {
         return;
     }
+    jwc_ink_note(d, 1, JW_INK_ARC, &d->arcs[k]);
     memmove(d->arcs + k, d->arcs + k + 1,
             (size_t)(d->n_arcs - k - 1) * sizeof *d->arcs);
     d->n_arcs--;
@@ -1762,6 +1863,7 @@ void jwc_remove_text(Jwc *d, long k)
     if (k < 0 || k >= d->n_texts) {
         return;
     }
+    jwc_ink_note(d, 1, JW_INK_TEXT, &d->texts[k]);
     memmove(d->texts + k, d->texts + k + 1,
             (size_t)(d->n_texts - k - 1) * sizeof *d->texts);
     d->n_texts--;
@@ -1834,6 +1936,7 @@ int jwc_add_text(Jwc *d, float x0, float y0, float x1, float y1,
     t->rest[1] = layer;
     d->text_len += len + 1;
     d->n_texts++;
+    jwc_ink_note(d, 0, JW_INK_TEXT, t);
     return 1;
 }
 
@@ -2052,6 +2155,7 @@ int jwc_add_arc_at(Jwc *d, float cx, float cy, float r, long start, long end,
      * distinguishes; it is written back, not invented. */
     a->rest[3] = mark;
     d->n_arcs++;
+    jwc_ink_note(d, 0, JW_INK_ARC, a);
     return 1;
 }
 

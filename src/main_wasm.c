@@ -251,8 +251,9 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
 
             ox = ax + s2 * dx;
             oy = ay + s2 * dy;
-            jw_kigou_put(drawing, sym, &base, two, ox, oy,
-                         cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
+            /* **先に消してから描きます。** 本物と同じ順にしないと、
+             * 消し跡（黒で塗ったところ）が記号の上に乗ります。
+             * base/base2 は写しなので、消しても使えます。 */
             /* **あとのほうから消します。** 先に小さい番号を消すと、
              * もう一方の番号がひとつ前にずれます。 */
             if (cmd.kigou_line2 > cmd.kigou_line) {
@@ -262,6 +263,8 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
                 jwc_remove_line(drawing, cmd.kigou_line);
                 jwc_remove_line(drawing, cmd.kigou_line2);
             }
+            jw_kigou_put(drawing, sym, &base, two, ox, oy,
+                         cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
             cmd.kigou_line = -1;
             cmd.kigou_line2 = -1;
             cmd.kigou_line2 = -1;
@@ -274,9 +277,11 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
     t = len > 0.0 ? ((px - ax) * dx + (py - ay) * dy) / len : 0.0;
     ox = ax + t * dx;
     oy = ay + t * dy;
+    /* **消すのは描く前**です——本物と同じ順にしないと、消し跡が
+     * 記号の上に乗ります。`base` は写しなので消しても使えます。 */
+    jwc_remove_line(drawing, cmd.kigou_line);
     jw_kigou_put(drawing, sym, &base, two, ox, oy,
                  cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
-    jwc_remove_line(drawing, cmd.kigou_line);
     cmd.kigou_line = -1;
     cmd.kigou_line2 = -1;
     ui.n_lines = drawing->n_lines;

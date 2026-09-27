@@ -125,6 +125,11 @@ void jw_view_mark(VGA *v, const JwView *w, double ax, double ay,
 void jw_view_line(VGA *v, const Jwc *d, const JwcLine *l, const JwView *w,
                   unsigned colour);
 
+/* **墨の記録をひとつ再生します。** 消した形は色 0（黒）で、足した形は
+ * ふつうの色で、図面を描いたのと同じ道すじを通します。本物が消すときに
+ * 黒で塗っているのを、そのまま真似るためのものです。 */
+void jw_view_ink(VGA *v, const Jwc *d, const JwcInk *e, const JwView *w);
+
 /* And one arc, the same way. */
 void jw_view_arc(VGA *v, const Jwc *d, const JwcArc *a, const JwView *w,
                  unsigned colour);

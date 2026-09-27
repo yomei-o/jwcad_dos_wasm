@@ -194,7 +194,6 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sect "=== 消去 picking a range"
     sh tools/pressfull.sh 25 150 130 r 245 170
     sect "=== 消去 with the left button: 追加･除外, then 範囲確定 and 実行"
-    echo "    (the 2 left over are the original's own erase clipping)"
     sh tools/erase2.sh 150 130 245 170 197 157
     sect "=== and [F2], which throws the whole selection away (4.9b)"
     full FKEY=2 STOP=1 sh tools/erase2.sh 150 130 245 170 197 157
@@ -364,7 +363,6 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full LABEL=回転→③連続 sh tools/recsave.sh -c 1 -r 150 130 -p 245 170 -t 580 -t 520 -p 200 300 -k 30 -p 400 300 -t 540
     full LABEL=倍率→③連続 sh tools/recsave.sh -c 1 -r 150 130 -p 245 170 -t 580 -t 300 -p 200 300 -k 2 -p 400 300 -t 540
     sect "=== 移動 (16) の ⑥回転・③数値倍率・④ﾏｳｽ倍率 -- in place (4.33)"
-    echo "    the 2 left over are the original's own erase taking a neighbour"
     LABEL=移動⑥回転 sh tools/reccheck.sh -c 16 -r 150 130 -p 245 170 -t 580 -t 520 -p 200 300 -k 30 -p 400 300
     full LABEL=移動③倍率 sh tools/reccheck.sh -c 16 -r 150 130 -p 245 170 -t 580 -t 300 -p 200 300 -k 2 -p 400 300
     full LABEL=移動⑥回転の記録 sh tools/recsave.sh -c 16 -r 150 130 -p 245 170 -t 580 -t 520 -p 200 300 -k 30 -p 400 300
@@ -528,6 +526,12 @@ full sh -c 'DRAWING=SAMPLE6 BOOT=120000000 sh tools/seqcheck.sh "80 344 left" "1
 full "$NODE" tests/upload_check.js orig/TEST7.JWC
 
 # The plotter's PDF and PNG (RESUME 4.45).
+sect "=== 変形 ②包絡処理変形: 包絡と範囲内消去 (notes/edit.md 4.45c・4.45d)"
+sh tools/seqcheck.sh "30 88 left" "320 8 left" "200 150 left" "450 350 right" || true
+sh tools/seqcheck.sh "30 88 left" "320 8 left" "200 150 left" "450 350 left" || true
+full sh -c 'DRAWING=SAMPLE1 sh tools/seqcheck.sh "30 88 left" "320 8 left" "200 150 left" "450 350 right"' || true
+full sh -c 'DRAWING=SAMPLE2 sh tools/seqcheck.sh "30 88 left" "320 8 left" "200 150 left" "450 350 right"' || true
+full sh -c 'DRAWING=TEST7 BOOT=90000000 sh tools/seqcheck.sh "30 88 left" "320 8 left" "200 150 left" "450 350 right"' || true
 sect "=== 変形 ④線記号変形: 一覧・グループ・記号を置くところ (notes/edit.md 4.45f)"
 sh tools/seqcheck.sh "30 88 left" "500 8 left" || true
 sh tools/seqcheck.sh "30 88 left" "500 8 left" "200 8 left" || true

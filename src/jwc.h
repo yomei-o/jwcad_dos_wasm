@@ -55,6 +55,37 @@ typedef struct {
     unsigned char rest[4];
 } JwcPoint;
 
+/* **墨の記録。** 本物は消すとき黒で塗り、描き直しません——交わっていた
+ * 別の線の点まで黒くなって残ります。移植は毎回記録から描き直すので、
+ * そのままでは跡が出ません。そこで最後の描き直しからの「消した形・
+ * 足した形」を順に覚えておき、描くたびに再生します。
+ *
+ * 消えるのは画面を丸ごと描き直すとき（見え方が変わったとき）。
+ * 帯の `前倍率` を押すと本物も 0 画素に戻ることで測りました。 */
+enum { JW_INK_LINE, JW_INK_ARC, JW_INK_TEXT, JW_INK_POINT };
+
+typedef struct {
+    unsigned char kind;         /* JW_INK_* */
+    unsigned char erase;        /* 1 なら黒で塗る、0 なら描く */
+    /* 文字はプールの中の位置で覚えます。`jwc_add_text` はプールを
+     * realloc するので、ポインタでは次の文字で宙を指します。 */
+    long at;
+    union {
+        JwcLine l;
+        JwcArc a;
+        JwcText t;
+        JwcPoint p;
+    } u;
+} JwcInk;
+
+/* 覚えておく数の上限。越えたら**記録ごと捨てます**——中途半端に再生する
+ * より、跡を出さない（いまの移植のまま）ほうが安全です。
+ *
+ * **大きくしすぎないこと。** `present()` はマウスを動かすたびに呼ばれ、
+ * そのたびに記録を全部再生します。図面の線が 800 本ほどなので、その
+ * 2〜3 倍を上限にしてあります。 */
+#define JWC_INK_MAX 2048
+
 /* How many 仮点 the original keeps: a hundred.  Measured -- 点 picked and a
  * hundred and thirty presses on a grid over SAMPLE0 leave a hundred rings, the
  * first hundred, and the thirty after them draw nothing at all.  It is not a
@@ -208,7 +239,28 @@ typedef struct {
      * take.  TEST6 has them (`　布地・建物`, ` サッシ`, …); SAMPLE0 has
      * none.  グループ データ表示 puts each one beside its panel. */
     char group_name[16][17];
+    /* 墨の記録（上の JwcInk）。`ink_over` が立ったら諦めて出しません。 */
+    JwcInk *ink;
+    long n_ink;
+    long ink_done;              /* ここまでは並べ替え済み */
+    int ink_over;
+    int ink_hold;               /* 立っているあいだは積みません */
 } Jwc;
+
+/* 墨の記録をひとつ積みます。`rec` は kind に合った記録を指します。 */
+void jwc_ink_note(Jwc *d, int erase, int kind, const void *rec);
+
+/* 墨の記録を捨てます（画面を丸ごと描き直すとき）。 */
+void jwc_ink_clear(Jwc *d);
+
+/* **積むのを止めます。** まっさらな記録を足してから中身を入れる所
+ * （`jwc_dup_line` など）で、途中の姿を覚えないようにするためのもの。 */
+void jwc_ink_hold(Jwc *d, int on);
+
+/* **1 回の押しぶんを「消し → 足し」の順に揃えます。** 本物は先に消して
+ * あとから描きます。移植は命令ごとに順がばらばらなので、描く直前に
+ * ここで揃えます（同じ組のなかの順は変えません）。 */
+void jwc_ink_settle(Jwc *d);
 
 /* Returns NULL and leaves `why` pointing at a reason on failure. */
 Jwc *jwc_load(const char *path, const char **why);
