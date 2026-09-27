@@ -568,6 +568,9 @@ sect "=== 入出力 → ①ﾌｧｲﾙ の残り: ③合成 ④削除 ⑤ﾄﾞ
 
 sect "=== ⑥ＤＸＦ: 書いて、一覧に出て、読み戻せるか"
 "$NODE" tools/dxfcheck.mjs
+# 本物が書いた DXF とバイトで比べます（本物のほうは毎回作り直します）。
+sh tools/dxfsame.sh
+full sh tools/dxfsame.sh SAMPLE1
 
 sect "=== ひととおり: 図面を開く → 線を引く → 保存 → 開き直す → プロッタ出力 → PDF/PNG"
 "$NODE" tools/flowcheck.mjs orig/SAMPLE1.JWC

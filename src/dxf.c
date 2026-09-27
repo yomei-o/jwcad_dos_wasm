@@ -118,17 +118,26 @@ static void put_num(FILE *f, int code, double v)
     fprintf(f, "%s\r\n", out);
 }
 
-/* A drawing unit in real millimetres.  **The order matters**: multiplied by
- * the paper first and divided by the 518 units of the drawing area after.
- * `u * (paper / 518)` puts the last digit out on about a third of SAMPLE0's
- * numbers, and `u / unit_mm` -- unit_mm being a float -- on nearly all. */
+/* A drawing unit in real millimetres.
+ *
+ * **倍率は float に丸めてから掛けます。** 本物が書いた SAMPLE0 の DXF と
+ * 線 30 本の座標 120 個を突き合わせると、これだけが全部合います:
+ *
+ *     u * pw / 518.0                    12 違い（175.22781 など）
+ *     (float)(u * pw) / 518.0           39 違い
+ *     u * (float)(pw / 518.0 * denom)   **0 違い**   ← これ
+ *     (float)(u * (float)(pw / 518.0))  71 違い
+ *     (float)(u / 518.0) * pw           45 違い
+ *
+ * ここに書いてあった「Times the paper in float, over 518 in double」は
+ * 中身と食い違っていました——中身は全部 double で、測った 3 種
+ * （175.22781／223.49228／178.29014）がそのまま残っていました。
+ *
+ * **縮尺も float に入れてから**です。SAMPLE1（S=1/100）で `(float)(pw/518)`
+ * を先に丸めて denom を掛けると 388 個、全部 double で 613 個ずれます。 */
 static double to_mm(double u, double pw, double denom)
 {
-    /* **Times the paper in float, over 518 in double.**  Every other order
-     * puts the eighth digit out somewhere: all in double gives 185.22781
-     * where the original writes 185.2278, all in float gives 25.227798
-     * where it writes 25.227799, and this one gives both. */
-    return u * pw / 518.0 * denom;
+    return u * (double)(float)(pw / 518.0 * denom);
 }
 
 /* orig/DXF_HDR.DAT, code and value a line each, with the codes re-aligned.
@@ -180,6 +189,23 @@ static int used_layers(const Jwc *d, unsigned char *out)
         }
     }
     return n;
+}
+
+/* **補助線（線種 9）は `ADD_LINE` という名のレイヤに入ります。**
+ * 表のほうには前から書いてありました（`put_str(f, 2, "ADD_LINE")`）が、
+ * 実体のほうが `0-0` のままでした。SAMPLE1 の 33 本がそれです——本物の
+ * DXF で `ADD_LINE` になっている実体は、ちょうど線種 9 の 33 本でした。
+ * `ADD_LINE` は EXE の中の文字列で、`%1x-%1x` や `DXFOUT` の隣にあります。
+ *
+ * 円弧にも同じようにしていますが、**測れたのは線だけ**です（線種 9 の
+ * 円弧を持つ図面がまだ見つかっていません）。 */
+static void layer_name_of(unsigned char b, unsigned char type, char *out)
+{
+    if (type == 9) {
+        strcpy(out, "ADD_LINE");
+        return;
+    }
+    sprintf(out, "%d-%d", b >> 4, b & 15);
 }
 
 static void layer_name(unsigned char b, char *out)
@@ -253,7 +279,7 @@ int jwc_dxf_write(const Jwc *d, const char *path, const char *hdr)
     for (k = 0; k < d->n_lines; k++) {
         const JwcLine *l = &d->lines[k];
 
-        layer_name(l->layer, name);
+        layer_name_of(l->layer, l->type, name);
         put_str(f, 0, "LINE");
         put_str(f, 8, name);
         put_str(f, 6, LTYPE[l->type < 10 ? l->type : 0]);
@@ -267,22 +293,86 @@ int jwc_dxf_write(const Jwc *d, const char *path, const char *hdr)
         const JwcArc *a = &d->arcs[k];
         double s, e;
 
-        layer_name(a->layer, name);
+        layer_name_of(a->layer, a->type, name);
         s = a->start / 65536.0;
         e = a->end / 65536.0;
-        if (a->end == a->start) {       /* the whole circle */
-            s = 0.0;
-            e = 360.0;
+        /* **楕円は線に割ります**（DXF に楕円が無いので）。本物が書いた
+         * SAMPLE1 の DXF では、偏平な弧 3 つが 18・30・22 本の線に
+         * なっていました:
+         *
+         *     180 度 → 18   291.706 度 → 30   215.438 度 → 22
+         *
+         * どれも **10 度ずつ**で、端数は最後の 1 本（`ceil(span/10)`）。
+         * 頂点は始角から 10 度ずつで、**まるい 10 度に揃えません**
+         * ——始角 34.1471 の次の頂点は 44.1471 でした（40 ではなく）。 */
+        if (a->flatten != 10000) {
+            const double D2R = 3.14159265358979323846 / 180.0;
+            const double rr = a->r;
+            const double fy = (double)a->flatten / 10000.0;
+            const double tl = (double)a->tilt / 65536.0 * D2R;
+            const double ct = cos(tl), stl = sin(tl);
+            double span = e - s;
+            int n, j;
+
+            while (span <= 0.0) {
+                span += 360.0;
+            }
+            n = (int)ceil(span / 10.0 - 1e-9);
+            for (j = 0; j < n; j++) {
+                double th[2], px[2], py[2];
+                int q;
+
+                th[0] = s + 10.0 * j;
+                th[1] = j + 1 < n ? s + 10.0 * (j + 1) : s + span;
+                for (q = 0; q < 2; q++) {
+                    const double ex = rr * cos(th[q] * D2R);
+                    const double ey = fy * rr * sin(th[q] * D2R);
+
+                    px[q] = a->cx + ex * ct - ey * stl;
+                    py[q] = a->cy + ex * stl + ey * ct;
+                }
+                put_str(f, 0, "LINE");
+                put_str(f, 8, name);
+                put_str(f, 6, LTYPE[a->type < 10 ? a->type : 0]);
+                put_int(f, 62, dxf_colour(a->pen));
+                put_num(f, 10, to_mm(px[0], mm, d->denom));
+                put_num(f, 20, to_mm(py[0], mm, d->denom));
+                put_num(f, 11, to_mm(px[1], mm, d->denom));
+                put_num(f, 21, to_mm(py[1], mm, d->denom));
+            }
+            continue;
         }
-        put_str(f, 0, "ARC");
+        /* **まるごとの円は CIRCLE**——始角と終角は書きません（本物が
+         * 書いた SAMPLE1 の DXF に CIRCLE が 3 つ入っています）。 */
+        put_str(f, 0, a->end == a->start ? "CIRCLE" : "ARC");
         put_str(f, 8, name);
         put_str(f, 6, LTYPE[a->type < 10 ? a->type : 0]);
         put_int(f, 62, dxf_colour(a->pen));
         put_num(f, 10, to_mm(a->cx, mm, d->denom));
         put_num(f, 20, to_mm(a->cy, mm, d->denom));
         put_num(f, 40, to_mm(a->r, mm, d->denom));
-        put_num(f, 50, s);
-        put_num(f, 51, e);
+        if (a->end != a->start) {
+            /* **傾きを足した角度を書きます。** DXF に傾いた円は無いので、
+             * 本物は始角・終角に傾きを足して出します。360 を**超えた**
+             * ときだけ 360 を引き、ちょうど 360 はそのまま:
+             *
+             *     記録 180..270 傾き 270 → `90,180`
+             *     記録   0.. 90 傾き 270 → `270,360`
+             *     記録 270..  0 傾き   0 → `270,0`
+             *
+             * （本物が書いた SAMPLE1 の DXF の 14 本ぜんぶで確かめました。） */
+            double ss = s + (double)a->tilt / 65536.0;
+            double ee = e + (double)a->tilt / 65536.0;
+
+            while (ss > 360.0) {
+                ss -= 360.0;
+            }
+            while (ee > 360.0) {
+                ee -= 360.0;
+            }
+            put_num(f, 50, ss);
+            put_num(f, 51, ee);
+        }
     }
     for (k = 0; k < d->n_texts; k++) {
         const JwcText *t = &d->texts[k];
