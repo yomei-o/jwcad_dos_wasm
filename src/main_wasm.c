@@ -232,6 +232,11 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
         ln.type = (unsigned char)drawing->line_type;
         ln.pen = (unsigned char)drawing->pen;
         ln.layer = (unsigned char)drawing->write_layer;
+        /* **記号が足した分だけを帯の下に戻します**（jw_cmd_after）。
+         * 全部を戻すと、消し跡の順が変わって別の所が狂います。 */
+        cmd.n0_lines = drawing->n_lines;
+        cmd.n0_arcs = drawing->n_arcs;
+        cmd.n0_texts = drawing->n_texts;
         jw_kigou_put(drawing, sym, &ln, 0, px, py,
                      cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
         ui.n_lines = drawing->n_lines;
@@ -270,6 +275,9 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
                 jwc_remove_line(drawing, cmd.kigou_line);
                 jwc_remove_line(drawing, cmd.kigou_line2);
             }
+            cmd.n0_lines = drawing->n_lines;
+            cmd.n0_arcs = drawing->n_arcs;
+            cmd.n0_texts = drawing->n_texts;
             jw_kigou_put(drawing, sym, &base, two, ox, oy,
                          cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
             cmd.kigou_line = -1;
@@ -287,6 +295,9 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
     /* **消すのは描く前**です——本物と同じ順にしないと、消し跡が
      * 記号の上に乗ります。`base` は写しなので消しても使えます。 */
     jwc_remove_line(drawing, cmd.kigou_line);
+    cmd.n0_lines = drawing->n_lines;
+    cmd.n0_arcs = drawing->n_arcs;
+    cmd.n0_texts = drawing->n_texts;
     jw_kigou_put(drawing, sym, &base, two, ox, oy,
                  cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
     cmd.kigou_line = -1;

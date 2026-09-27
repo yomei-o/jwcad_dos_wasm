@@ -3109,7 +3109,14 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         || (JW_RANGE_CMD(c->command) && c->pressed != 2
             && !(c->command == 27 && c->zukei == JW_ZUKEI_PUT2)
             && !(c->command == 17 && c->hen_dbl
-                 && c->hen_dbl_from > 0))) {
+                 && c->hen_dbl_from > 0)
+            /* **④線記号変形 も範囲を取りません。** 置いた記号の線が
+             * 帯の下の 2 行に届くと、黒く塗られたまま残っていました
+             * （「ため桝 (450)」で 62 画素）。
+             *
+             * **記号を選んだあとだけ**です——一覧が出ているあいだに
+             * 戻すと、図面が一覧の上に描かれます（2416 画素）。 */
+            && !(c->command == 17 && c->hen_kigou && c->kigou_sym > 0))) {
         return;
     }
     /* **③複線化 が入れた線は範囲を放したあとも枠の上です。** 測定：
@@ -3176,6 +3183,10 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
             v->clip_y1 = cy1;
         }
         return;
+    }
+    if (jw_line_trace > 0) {
+        printf("after: cmd=%d n0=%ld now=%ld%c", c->command,
+               (long)c->n0_lines, (long)d->n_lines, 10);
     }
     /* Anything made since the range was fixed -- 複写's copies -- goes back on
      * top.  The original draws a new entity over the finished screen rather
