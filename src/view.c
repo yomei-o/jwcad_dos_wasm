@@ -1084,6 +1084,15 @@ static void view_line_in(VGA *v, const Jwc *d, const JwcLine *l,
 
 void jw_view_ink(VGA *v, const Jwc *d, const JwcInk *e, const JwView *w)
 {
+    /* **見えないレイヤのものは塗りません。** 線は `view_line_in` が
+     * 自分で見ますが、円・文字・実点は `jw_view_draw_into` の側で
+     * 見ているので、ここで同じことをします。 */
+    if ((e->kind == JW_INK_ARC && !visible_in(d, w, e->u.a.layer))
+        || (e->kind == JW_INK_TEXT && !visible_in(d, w, e->u.t.layer))
+        || (e->kind == JW_INK_POINT
+            && !visible_in(d, w, e->u.p.layer))) {
+        return;
+    }
     switch (e->kind) {
     case JW_INK_LINE:
         view_line_in(v, d, &e->u.l, w,
