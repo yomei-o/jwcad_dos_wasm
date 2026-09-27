@@ -640,7 +640,13 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             /* **半径は横倍率**。横と縦が違うときに本物が楕円にするのか
              * どうかは、まだ測っていません（グループ A に倍率を掛けて
              * 円を置く記号が無いため）。 */
-            a.r = (float)(p->radius * mx * mm * sc * (flip ? -1.0 : 1.0));
+            /* **倍率が負のときは半径ではなく傾きを回します。** DAT の
+             * 注記そのままに「180 度回転するデータにする」ので、弧は
+             * 中心を原点まわりに回したうえで自分も 180 度回ります。
+             * 半径を負にしても形は同じですが、16.16 の角度表の丸めが
+             * 「0 から遠いほうへ半単位」なので、積の符号を変えると
+             * 頂点が 1 画素動きます（notes/edit.md 4.45h）。 */
+            a.r = (float)(p->radius * mx * mm * sc);
             a.flatten = p->flat > 0.0
                       ? (short)(p->flat * 10000.0 + 0.5) : 10000;
             /* **指示線の角度は始角・終角ではなく傾き（`tilt`）に入ります。**
@@ -652,7 +658,7 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
              * うち 28 個が 1 画素ずれます。 */
             a.start = (long)(p->x2 * 65536.0);
             a.end = (long)(p->y2 * 65536.0);
-            a.tilt = (long)(ts * 65536.0);
+            a.tilt = (long)((ts + (flip ? 180.0 : 0.0)) * 65536.0);
             (void)te;
             a.type = base->type;
             a.pen = base->pen;
