@@ -2871,9 +2871,16 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
                 cmd.kigou_line2 = -1;
                 cmd.kigou_px = px;
                 cmd.kigou_py = py;
-                if (jw_kigou_input(sym, 0)) {
+                if (jw_kigou_input(sym, 0)
+                    && !jw_kigou_wants2(sym) && !sym->picks) {
                     /* **文字入力の指定があれば、置く前に盤を出します。**
-                     * まだ打鍵は受けません（絵を先に合わせます）。 */
+                     * まだ打鍵は受けません（絵を先に合わせます）。
+                     *
+                     * ただし**指示がまだ残っているうちは出しません**——
+                     * 「仕切弁(GV)」（H の 2 番、指示回数 1）で本物は
+                     * 位置を押してから盤を出します。指示線を押した時点で
+                     * 出していたので、位置の押しが [Enter] に食われて
+                     * いました（14065 画素）。 */
                     cmd.kigou_input = 1;
                     cmd.kigou_in_at = 0;
                 } else if (!sym->picks) {
@@ -2897,10 +2904,26 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
             if (k >= 0 && k != cmd.kigou_line) {
                 cmd.kigou_line2 = k;
-                place_kigou(sym, px, py, -1);
+                if (jw_kigou_input(sym, 0) && !sym->picks) {
+                    cmd.kigou_px = px;
+                    cmd.kigou_py = py;
+                    cmd.kigou_input = 1;
+                    cmd.kigou_in_at = 0;
+                } else {
+                    place_kigou(sym, px, py, -1);
+                }
             }
         } else if (sym) {
-            place_kigou(sym, px, py, -1);
+            /* 位置の押し。ここで指示は済みなので、文字入力があれば
+             * **ここで**盤を出します（上の実測）。 */
+            if (jw_kigou_input(sym, 0)) {
+                cmd.kigou_px = px;
+                cmd.kigou_py = py;
+                cmd.kigou_input = 1;
+                cmd.kigou_in_at = 0;
+            } else {
+                place_kigou(sym, px, py, -1);
+            }
         }
         mouse_x = x;
         mouse_y = y;
