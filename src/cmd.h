@@ -329,6 +329,8 @@ typedef struct {
     long kigou_line2; /* 指示線 2、無ければ -1 */
     int kigou_input;  /* 文字入力の盤が出ているか */
     int kigou_in_at;  /* 何番目の文字の部材を聞いているか */
+    char kigou_in_buf[64];       /* 打った文字 */
+    int kigou_in_n;
     double kigou_px, kigou_py;   /* そのとき押したところ */
     int kigou_group;
     int dim_dec;

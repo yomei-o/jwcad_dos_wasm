@@ -137,6 +137,32 @@ EMSCRIPTEN_KEEPALIVE void jw_init(void)
 /* Everything the chrome shows that belongs to the command in hand.  Three
  * places need it -- moving the pointer, pressing, and typing -- so it is in
  * one place. */
+/* 文字を打ち終えたあとの置き方。指示回数 0 なら線端、そうでなければ
+ * 押したところを原点にします。 */
+static void place_kigou(const JwKigouSym *sym, double px, double py);
+
+static void place_kigou_typed(const JwKigouSym *sym)
+{
+    double px = cmd.kigou_px, py = cmd.kigou_py;
+
+    if (!drawing || cmd.kigou_line < 0
+        || cmd.kigou_line >= drawing->n_lines) {
+        cmd.kigou_line = -1;
+        return;
+    }
+    if (!sym->picks) {
+        const JwcLine *l = &drawing->lines[cmd.kigou_line];
+        const double q0 = (l->x0 - px) * (l->x0 - px)
+                        + (l->y0 - py) * (l->y0 - py);
+        const double q1 = (l->x1 - px) * (l->x1 - px)
+                        + (l->y1 - py) * (l->y1 - py);
+
+        px = q0 <= q1 ? l->x0 : l->x1;
+        py = q0 <= q1 ? l->y0 : l->y1;
+    }
+    place_kigou(sym, px, py);
+}
+
 /* 拾った指示線に記号を置いて、その線を消します。
  *
  * 原点は、指示線 1 だけのときは**押したところを指示線に落とした点**
@@ -174,7 +200,8 @@ static void place_kigou(const JwKigouSym *sym, double px, double py)
 
             ox = ax + s2 * dx;
             oy = ay + s2 * dy;
-            jw_kigou_put(drawing, sym, &base, two, ox, oy);
+            jw_kigou_put(drawing, sym, &base, two, ox, oy,
+                         cmd.kigou_in_n ? cmd.kigou_in_buf : 0);
             /* **あとのほうから消します。** 先に小さい番号を消すと、
              * もう一方の番号がひとつ前にずれます。 */
             if (cmd.kigou_line2 > cmd.kigou_line) {
@@ -196,7 +223,8 @@ static void place_kigou(const JwKigouSym *sym, double px, double py)
     t = len > 0.0 ? ((px - ax) * dx + (py - ay) * dy) / len : 0.0;
     ox = ax + t * dx;
     oy = ay + t * dy;
-    jw_kigou_put(drawing, sym, &base, two, ox, oy);
+    jw_kigou_put(drawing, sym, &base, two, ox, oy,
+                 cmd.kigou_in_n ? cmd.kigou_in_buf : 0);
     jwc_remove_line(drawing, cmd.kigou_line);
     cmd.kigou_line = -1;
     cmd.kigou_line2 = -1;
@@ -372,6 +400,7 @@ static void sync_ui(void)
         ui.kigou_in_kind = ip ? ip->type % 100 : 1;
         ui.kigou_in_base = ip && ip->type > 0 ? (ip->type / 100) % 10 : 0;
         ui.kigou_in_text = ip ? ip->text : 0;
+        ui.kigou_in_buf = cmd.kigou_in_n ? cmd.kigou_in_buf : 0;
     }
     {
         const JwKigou *kg = jw_kigou_lib(cmd.kigou_group);
@@ -3527,6 +3556,55 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         ui.keep_msg = 0;
         ui.offset_msg = 0;
         present();
+    }
+
+    /* **文字入力の盤の打鍵。** 打った字が欄に入り、[Enter] でその字を
+     * 記号に入れて置きます（実測：`AB` と打って [Enter] で、線が 1 本・
+     * 円が 1 つ・文字が 2 つ増えます）。 */
+    if (cmd.kigou_input) {
+        if (key == 27) {
+            cmd.kigou_input = 0;
+            cmd.kigou_in_n = 0;
+            cmd.kigou_line = -1;
+            cmd.kigou_line2 = -1;
+            sync_ui();
+            present();
+            return -1;
+        }
+        if (key == 8) {
+            if (cmd.kigou_in_n > 0) {
+                cmd.kigou_in_n--;
+                cmd.kigou_in_buf[cmd.kigou_in_n] = 0;
+            }
+            sync_ui();
+            present();
+            return -1;
+        }
+        if (key == 13) {
+            const JwKigou *g = jw_kigou_lib(cmd.kigou_group);
+            const JwKigouSym *sym = g && cmd.kigou_sym > 0
+                                    && cmd.kigou_sym <= g->n
+                                  ? &g->sym[cmd.kigou_sym - 1] : 0;
+
+            cmd.kigou_input = 0;
+            if (sym) {
+                place_kigou_typed(sym);
+            }
+            cmd.kigou_in_n = 0;
+            cmd.kigou_in_buf[0] = 0;
+            sync_ui();
+            present();
+            return -1;
+        }
+        if (key >= 32 && key < 127
+            && cmd.kigou_in_n < (int)sizeof cmd.kigou_in_buf - 1) {
+            cmd.kigou_in_buf[cmd.kigou_in_n++] = (char)key;
+            cmd.kigou_in_buf[cmd.kigou_in_n] = 0;
+            sync_ui();
+            present();
+            return -1;
+        }
+        return -1;
     }
 
     /* [f1]/[f2] の道は **[ESC] で電卓の画面へそのまま戻ります**

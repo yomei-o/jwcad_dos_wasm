@@ -5295,7 +5295,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         fill(v, 0, 16, 121, 23, 0);
         fill(v, 8, 24, 121, 31, 0);
         fill(v, 0, 32, 121, 47, 0);
-        if (s->kigou_in_text) {
+        if (s->kigou_in_buf) {
+            char pad[80];
+
+            sprintf(pad, "%-10s", s->kigou_in_buf);
+            jw_ui_text(v, 1, 1, 7, 0, pad);
+        } else if (s->kigou_in_text) {
             /* **空白で埋めて**書きます —— `文字列入力` の残りが出ます。 */
             char pad[32];
 

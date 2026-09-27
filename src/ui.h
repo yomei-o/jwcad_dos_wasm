@@ -321,6 +321,7 @@ typedef struct {
     int kigou_in_kind;   /* その文字の文字種（下 2 桁） */
     int kigou_in_base;   /* 基点（100 の位）。0 なら左下 */
     const char *kigou_in_text;   /* 既定の文字列 */
+    const char *kigou_in_buf;    /* 打った文字。無ければ既定を出す */
     int kigou_group;
     int meas_unit;
     int meas_dec;

@@ -314,7 +314,8 @@ const JwKigouPart *jw_kigou_input(const JwKigouSym *sym, int nth)
 }
 
 int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
-                 const JwcLine *base2, double ox, double oy)
+                 const JwcLine *base2, double ox, double oy,
+                 const char *typed)
 {
     const double mm = d->unit_mm > 0.0f ? (double)d->unit_mm : 1.0;
     /* **端に合わせるときは原点から遠いほうの端**です（「コーナー」と
@@ -384,8 +385,12 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             && p->kind != JW_KIGOU_POINT) {
             continue;           /* 連鎖・命令はまだ */
         }
-        if (p->kind == JW_KIGOU_TEXT_PART && p->c1 >= 20000) {
-            continue;           /* 文字入力の指定は打鍵が要ります */
+        if (p->kind == JW_KIGOU_TEXT_PART && p->c1 >= 22000) {
+            continue;           /* 打鍵を飛ばしたときの字はまだ */
+        }
+        if (p->kind == JW_KIGOU_TEXT_PART && p->c1 >= 20000
+            && (!typed || !typed[0])) {
+            continue;           /* 何も打たなければ置きません */
         }
         if (c1 % 10 == 8 || c2 % 10 == 8 || c1 % 10 == 9 || c2 % 10 == 9) {
             continue;           /* 表のみ・ダミーは作図しません */
@@ -420,7 +425,8 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             t.size = (unsigned char)(p->type > 0 ? p->type % 100 : 1);
             t.layer = base->layer;
             memcpy(t.rest, base->rest, sizeof t.rest);
-            t.text = p->text;
+            /* **文字入力の指定は打った字**で置きます（20000 台）。 */
+            t.text = p->c1 >= 20000 && typed && typed[0] ? typed : p->text;
             if (jwc_put_text(d, &t)) {
                 put++;
             }
