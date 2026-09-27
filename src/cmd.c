@@ -6402,13 +6402,13 @@ static int env_parallel(const JwcLine *a, const JwcLine *b)
  * 梯子（横棒が縦の桁の上で終わっている）は、桁の右側だけが壁の中で、
  * 左側は外。だから桁は切られません。`twall` は上が横壁の中、下が縦壁の
  * 中なので、はさまれた区間が消えます。 */
-static int env_in_body(const Jwc *d, const long *pick, int n,
+static int env_in_body(const JwcLine *src, int n,
                        const JwcLine *l, double qx, double qy)
 {
     int a, b, got = 0;
 
     for (a = 0; a < n; a++) {
-        const JwcLine *A = &d->lines[pick[a]];
+        const JwcLine *A = &src[a];
         double ux = A->x1 - A->x0, uy = A->y1 - A->y0;
         double len = sqrt(ux * ux + uy * uy), nx, ny, qa, sa;
 
@@ -6425,7 +6425,7 @@ static int env_in_body(const Jwc *d, const long *pick, int n,
         }
         sa = (qx - A->x0) * nx + (qy - A->y0) * ny;
         for (b = 0; b < n; b++) {
-            const JwcLine *B = &d->lines[pick[b]];
+            const JwcLine *B = &src[b];
             double vx = B->x1 - B->x0, vy = B->y1 - B->y0;
             double bl = sqrt(vx * vx + vy * vy), qb, sb;
 
@@ -6488,6 +6488,14 @@ static int env_wrap(JwCmd *c, Jwc *d)
     long pick[JW_ENV_MAX + 2];
     int full[JW_ENV_MAX + 2];
     int drop[JW_ENV_MAX + 2];
+    /* **丸ごと入っている線を先に処理します。** 本物は `wallmix`（枠が
+     * 横線の片方だけを丸ごと覆う図）で、丸ごと入っている横線を
+     * 「壁の端から端まで」に縮めてから、またいでいる縦線を見ます——
+     * 縮んだ横線はもう縦線の所で終わっているので、縦線は壁の中に
+     * 入っておらず、切られません（実測：縦線は y 120..380 のまま）。
+     * `base` は入ってきたときの形、`work` は一段目のあとの形です。 */
+    JwcLine base[JW_ENV_MAX + 2], work[JW_ENV_MAX + 2];
+    int pass;
     int n = 0, i, j, k, changed = 0, any_wall = 0;
 
     for (i = 0; i < n0; i++) {
@@ -6579,6 +6587,10 @@ static int env_wrap(JwCmd *c, Jwc *d)
                   && ax == l->x0 && ay == l->y0
                   && bx == l->x1 && by == l->y1;
     }
+    for (i = 0; i < n; i++) {
+        base[i] = d->lines[pick[i]];
+        work[i] = base[i];
+    }
     /* **壁がどこかに一つでもあるか**。一つも無いまま全部が枠に
      * 丸ごと入っているときだけ、交点で切るだけの道になります。 */
     for (i = 0; i < n && !any_wall; i++) {
@@ -6650,6 +6662,9 @@ static int env_wrap(JwCmd *c, Jwc *d)
             }
         }
     }
+    for (pass = 0; pass < 2; pass++) {
+    const JwcLine *src = pass ? work : base;
+
     for (i = 0; i < n; i++) {
         const JwcLine keep = d->lines[pick[i]];
         double cut0[2 * JW_ENV_MAX], cut1[2 * JW_ENV_MAX];
@@ -6659,11 +6674,14 @@ static int env_wrap(JwCmd *c, Jwc *d)
         int m = 0, ncut = 0, p;
         double from;
 
+        if ((pass == 0) != (full[i] != 0)) {
+            continue;           /* 一段目は丸ごと、二段目はまたぐ線 */
+        }
         if (!c->hen_env_all && keep.type != 1) {
             continue;
         }
         for (j = 0; j < n; j++) {
-            const JwcLine *o = &d->lines[pick[j]];
+            const JwcLine *o = &src[j];
             double tl, tm;
 
             if (j == i || !env_same(&keep, o)) {
@@ -6744,6 +6762,23 @@ static int env_wrap(JwCmd *c, Jwc *d)
             } else {
                 env_piece(d, &keep, 0.0, 1.0);
             }
+            /* 二段目が見る形（上の注釈）。消えた線は長さ 0 にして、
+             * 壁として数えられないようにします。 */
+            {
+                const double ex = keep.x1 - keep.x0;
+                const double ey = keep.y1 - keep.y0;
+
+                work[i] = keep;
+                if (any_wall && drop[i]) {
+                    work[i].x1 = work[i].x0;
+                    work[i].y1 = work[i].y0;
+                } else if (any_wall && nper >= 2 && hi - lo > 1e-9) {
+                    work[i].x0 = (float)(keep.x0 + ex * lo);
+                    work[i].y0 = (float)(keep.y0 + ey * lo);
+                    work[i].x1 = (float)(keep.x0 + ex * hi);
+                    work[i].y1 = (float)(keep.y0 + ey * hi);
+                }
+            }
             d->lines[pick[i]].rest[2] |= 0x80u;
             changed = 1;
             continue;
@@ -6783,10 +6818,10 @@ static int env_wrap(JwCmd *c, Jwc *d)
                     continue;
                 }
                 {
-                const int up = env_in_body(d, pick, n, &keep,
+                const int up = env_in_body(src, n, &keep,
                                            mx + nx * eps,
                                            my + ny * eps);
-                const int dn = env_in_body(d, pick, n, &keep,
+                const int dn = env_in_body(src, n, &keep,
                                            mx - nx * eps,
                                            my - ny * eps);
 
@@ -6889,6 +6924,7 @@ static int env_wrap(JwCmd *c, Jwc *d)
         d->lines[pick[i]].rest[2] |= 0x80u;     /* あとで外す印 */
         changed = 1;            /* 形が変わらなくても記録は書き直され、
                                  * 行に [ESC] が付きます（測定） */
+    }
     }
     /* **線連結**。外形線で伸ばすと、一直線に並んでいた二本が同じ一本に
      * なります。原作は一本しか残しませんでした（測定：並んだ長方形二つ、
