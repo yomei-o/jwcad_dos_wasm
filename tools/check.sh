@@ -341,6 +341,10 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     sect "=== 文編集【変更】: a text picked, retyped and put back (RESUME 4.22)"
     sh tools/editcheck.sh 190 152 ''
     sh tools/editcheck.sh 190 152 ABC
+    # **印は枠の幅で形が変わります**（notes/draw.md 4.22）——半角の字と
+    # 箱の高さが 1 画素低いものを 2 つ足しておきます。
+    full sh tools/editcheck.sh 460 412 ''
+    full sh tools/editcheck.sh 175 412 ''
     ENTER=1 sh tools/editcheck.sh 190 152 ABC
     full ENTER=1 sh tools/editcheck.sh 190 152 ''
     full BS=1 sh tools/editcheck.sh 190 152 AB

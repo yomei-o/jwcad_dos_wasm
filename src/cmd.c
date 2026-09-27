@@ -3038,6 +3038,57 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         jw_line(v, px, qy, qx, qy, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, qx, qy, qx, py, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, qx, py, px, py, 2, 0x18, JW_STYLE_SOLID);
+        /* **カーソルの所にある 1 文字の枠に、対角線を 2 本**（色 4 の
+         * 排他的論理和）。まだ何も打っていなければ基点に丸も出ます。
+         *
+         * 4 枚で画素をそのまま測りました（`tools/editcheck.sh` と
+         * `JW_NOMARK=1` で印の無い絵を作って引き算。notes/draw.md 4.22）。
+         * 見た目は `><` にも砂時計にもなりますが、どれも**枠の対角線
+         * 2 本**で説明が付きます——幅 5 × 高さ 6 なら真ん中で消し合って
+         * `><`、幅 2 × 高さ 5 なら縦 2 本に見えます。
+         *
+         * 枠は、**打った字の分だけ右へ寄った所**から、そこにある字
+         * 1 文字分の幅まで。上下は文字の箱と同じです。打った分の幅は
+         * 欄ぜんたいの幅からもとの字の幅を引いて出します——文字の幅は
+         * 最後のすき間を数えないので、「ABC」だけを測ると、その後ろに
+         * 字が続くときのすき間が 1 画素足りません。 */
+        {
+            const JwcText *et = &d->texts[c->edit_text];
+            const double was = et->text ? jwc_text_length(d, et->text,
+                                                          et->size) : 0.0;
+            const double tw = c->text_wide > was ? c->text_wide - was : 0.0;
+            const unsigned char *t = (const unsigned char *)et->text;
+            char one[3];
+            double cw;
+            int cx, cy, ex, ey;
+
+            one[0] = t ? (char)t[0] : 0;
+            one[1] = 0;
+            one[2] = 0;
+            if (t && ((t[0] >= 0x81 && t[0] <= 0x9f)
+                      || (t[0] >= 0xe0 && t[0] <= 0xfc)) && t[1]) {
+                one[1] = (char)t[1];
+            }
+            cw = one[0] ? jwc_text_length(d, one, et->size) : 0.0;
+            at_screen(w, c->x0 + tw, c->y0, &cx, &cy);
+            at_screen(w, c->x0 + tw + cw, c->y0, &ex, &ey);
+            jw_line(v, cx, qy, ex, py, 4, 0x18, JW_STYLE_SOLID);
+            jw_line(v, cx, py, ex, qy, 4, 0x18, JW_STYLE_SOLID);
+            if (tw <= 0.0) {
+                /* 基点のまわりの半径 2 の丸——測った 8 点をそのまま。 */
+                static const int RING[8][2] = {
+                    { -1, -2 }, { 1, -2 }, { -2, -1 }, { 2, -1 },
+                    { -2, 1 }, { 2, 1 }, { -1, 2 }, { 1, 2 }
+                };
+                int i;
+
+                for (i = 0; i < 8; i++) {
+                    jw_line(v, px + RING[i][0], py + RING[i][1],
+                            px + RING[i][0], py + RING[i][1], 4, 0x18,
+                            JW_STYLE_SOLID);
+                }
+            }
+        }
         return;
     }
 
