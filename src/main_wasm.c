@@ -731,7 +731,6 @@ static void present(void)
     } else {
         jw_view_draw(&vga, drawing, &view);
         jw_cmd_before(&cmd, &vga, drawing, &view);
-        kigou_ghost();
     }
     ui.snap = mouse_x >= AREA_X0 && mouse_x <= AREA_X1
         && mouse_y >= AREA_Y0 && mouse_y <= AREA_Y1;
@@ -748,6 +747,10 @@ static void present(void)
             jw_cmd_zukei_left(&zukei_left, &vga, drawing, &view);
         }
         jw_cmd_after(&cmd, &vga, drawing, &view);
+        /* **記号の仮の印は最後**です。帯の下に描き直した線より先に
+         * 置くと、重なった所の排他的論理和がひっくり返ります
+         * （「建具記号 (AW)」で y=157 の 3 画素）。 */
+        kigou_ghost();
         jw_ui_band_last(&vga, &ui);
         /* ｵﾌﾟｼｮﾝ ①建具平面 reddens the line the fitting is going into while
          * it asks where along it.  Measured: the line goes colour 2 the
