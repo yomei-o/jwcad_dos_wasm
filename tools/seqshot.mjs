@@ -16,6 +16,19 @@ const M = await createJwcad();
 /* 引いた線を並べる窓（本物の tools/frametrace.sh と突き合わせるため）。 */
 if (process.env.JW_LINES) M._jw_lines_trace(1);
 M._jw_init();
+/* **図面は焼き込んだものを使いますが、ディスクにあればそちらを入れ直します。**
+   tools/build_wasm.sh は orig/*.JWC を --embed-file で焼き込むので、
+   そのあとに作った図面（tools/mkhoraku.py の TEST8 など）は、作り直さない
+   かぎり中に入っていません——線が一本も出ない画面と比べることになります。 */
+try {
+    const { readFileSync, existsSync } = await import('node:fs');
+    if (existsSync(path)) {
+        const at = path.startsWith('/') ? path : '/' + path;
+        const dir = at.slice(0, at.lastIndexOf('/'));
+        try { M.FS.mkdirTree(dir); } catch { /* もうある */ }
+        M.FS.writeFile(at, new Uint8Array(readFileSync(path)));
+    }
+} catch { /* ブラウザでは何もしません */ }
 const n = M.lengthBytesUTF8(path) + 1, buf = M._malloc(n);
 M.stringToUTF8(path, buf, n);
 M._jw_open(buf);

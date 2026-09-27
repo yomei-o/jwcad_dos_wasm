@@ -58,6 +58,10 @@ if [ -z "$NOCACHE" ] && [ -z "$STR" ]; then
         rm -f "$CACHE"/*.raw
         printf '%s\n' "$stamp" > "$CACHE/stamp"
     fi
+    # **同じ名前で中身が変わる図面は、キャッシュを分けてください**
+    # （`ORIGCACHE=...`）。名前と手順でしか引かないので、
+    # tools/mkhoraku.py が作り直す TEST8 のようなものは、2 件目から
+    # **1 件目の絵**と比べることになります（2026-09-28 に踏みました）。
     key=$(printf '%s|%s|%s|%s' "$DRAWING" "$BOOT" "$WAIT" "$*" | md5sum \
           | cut -d' ' -f1)
     hit="$CACHE/$key.raw"
