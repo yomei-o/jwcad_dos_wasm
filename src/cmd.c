@@ -6372,7 +6372,12 @@ static int env_cross(const JwcLine *l, const JwcLine *m,
     if (la <= 0.0 || lb <= 0.0) {
         return 0;
     }
-    if (det > -1e-9 * la * lb && det < 1e-9 * la * lb) {
+    /* **平行とみなす幅は単精度の刻みに合わせます。** 記録は float なので、
+     * 向きが 1e-7 ほど違うだけの二本が「平行ではない」と出ます。1e-9 で
+     * 切っていたころ、SAMPLE3 の包絡が交点を 83,040,008 まで飛ばして、
+     * 本物が決して書かない座標の線を作りました（保存したファイルが
+     * 読めなくなります）。 */
+    if (det > -1e-5 * la * lb && det < 1e-5 * la * lb) {
         return 0;               /* 平行 */
     }
     *tl = ((m->x0 - l->x0) * by - (m->y0 - l->y0) * bx) / det;
@@ -6392,7 +6397,7 @@ static int env_parallel(const JwcLine *a, const JwcLine *b)
     if (la <= 0.0 || lb <= 0.0) {
         return 0;
     }
-    return det > -1e-9 * la * lb && det < 1e-9 * la * lb;
+    return det > -1e-5 * la * lb && det < 1e-5 * la * lb;
 }
 
 /* **壁の中身**。平行な二本 A・B にはさまれ、しかも二本とも横に伸びている
