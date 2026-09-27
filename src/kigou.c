@@ -705,13 +705,13 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             a.pen = base->pen;
             a.layer = base->layer;
             memcpy(a.rest, base->rest, sizeof a.rest);
-            if (!(p->c1 >= 100 && p->c1 < 300)) {
-                if (p->has_attr && p->pen > 0) {
-                    a.pen = (unsigned char)p->pen;
-                }
-                if (p->has_attr && p->type > 0) {
-                    a.type = (unsigned char)(p->type % 10);
-                }
+            /* 弧も同じ——100 の位があっても、自分の線色・線種を
+             * 書いていればそちらです（上の線と同じ読み）。 */
+            if (p->has_attr && p->pen > 0) {
+                a.pen = (unsigned char)p->pen;
+            }
+            if (p->has_attr && p->type > 0) {
+                a.type = (unsigned char)(p->type % 10);
             }
             if (jwc_put_arc(d, &a)) {
                 put++;
@@ -741,14 +741,29 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             l.x1 = (float)(ox + (qx2 * ux + qy2 * nx) * mm * sc * (flip ? -1.0 : 1.0));
             l.y1 = (float)(oy + (qx2 * uy + qy2 * ny) * mm * sc * (flip ? -1.0 : 1.0));
         }
-        /* 100 の位が 1 なら線色・線種・レイヤは指示線 1 と同じ。 */
-        if (p->c1 >= 100 && p->c1 < 300) {
+        /* 100 の位が 1 なら線色・線種・レイヤは指示線 1 と同じ。
+         *
+         * **ただし自分で書いてあればそちらが勝ちます。** 「水栓２」
+         * （H の 4 番）の `110 01 -12 0 -1 0 4 1 -1` は線色 4 を
+         * 持っていて、本物はそこを黄色で引きます——指示線の色（白）で
+         * 引いていたので 70 画素ずれていました。線色 0 の部材
+         * （`111 01 … 0 0 -11 e 1.0`）は書いていないのと同じ扱いで、
+         * そこは指示線の色のままです。 */
+        if (p->c1 >= 100 && p->c1 < 300
+            && !(p->has_attr && p->pen > 0)) {
             /* 100 の位が 1 なら指示線 1、2 なら指示線 2 の
              * 線色・線種・レイヤです（§４-２、§４-３）。 */
             const JwcLine *from = p->c1 >= 200 && base2 ? base2 : base;
 
             l.type = from->type;
             l.pen = from->pen;
+            l.layer = from->layer;
+            memcpy(l.rest, from->rest, sizeof l.rest);
+        } else if (p->c1 >= 100 && p->c1 < 300) {
+            const JwcLine *from = p->c1 >= 200 && base2 ? base2 : base;
+
+            l.type = (unsigned char)(p->type > 0 ? p->type % 10 : from->type);
+            l.pen = (unsigned char)p->pen;
             l.layer = from->layer;
             memcpy(l.rest, from->rest, sizeof l.rest);
         } else {
