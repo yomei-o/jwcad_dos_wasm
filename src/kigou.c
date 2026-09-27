@@ -471,6 +471,14 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
         {
             const int is_in = p->kind == JW_KIGOU_TEXT_PART
                             && p->c1 >= 20000;
+            /* **文字変更（21000）は欄が元の字を持っています。** 何も
+             * 打たずに済ませても、本物はその字をそのまま置きます——
+             * 「高さ記号(3mm)」（A の 8 番、`21000 … "ＦＬ`）で、盤が
+             * 出ているあいだにもう一度押すと `ＦＬ` の箱が出ます
+             * （64 画素）。文字入力（20000）のほうは打った字そのものなので、
+             * 何も打たなければ何も置きません。 */
+            const int keeps = p->kind == JW_KIGOU_TEXT_PART
+                            && p->c1 >= 21000 && p->c1 < 22000;
 
             if (phase >= 10) {
                 /* **いま聞いている 1 つだけ**を相手にします。 */
@@ -480,14 +488,14 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                 if (in_n++ != phase % 10) {
                     continue;
                 }
-                if (phase < 20 && (!typed || !typed[0])) {
+                if (phase < 20 && !keeps && (!typed || !typed[0])) {
                     continue;   /* 何も打たなければ置きません */
                 }
             } else if (phase == 0) {
                 if (is_in) {
                     continue;   /* 押した時点ではまだ字が無い */
                 }
-            } else if (is_in && (!typed || !typed[0])) {
+            } else if (is_in && !keeps && (!typed || !typed[0])) {
                 continue;
             }
         }
