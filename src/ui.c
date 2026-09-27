@@ -1681,8 +1681,13 @@ static void kigou_cells(VGA *v, const JwUi *s)
                     memset(&t, 0, sizeof t);
                     t.x0 = (float)(p->x1 + along * dx - up * dy);
                     t.y0 = (float)(p->y1 + along * dy + up * dx);
-                    t.x1 = (float)(p->x2 + along * dx - up * dy);
-                    t.y1 = (float)(p->y2 + along * dy + up * dx);
+                    /* **終点は字の長さぶん**です。部材の `x2,y2` は
+                     * 向き（と文字入力の欄の幅）を決めるだけで、字の
+                     * 端ではありません——「建具表例 (1)」の `場　　　所`
+                     * は `15 → 100` と書いてあっても、本物の箱は
+                     * 17.5 単位ぶんしかありません。 */
+                    t.x1 = (float)(t.x0 + wide * dx);
+                    t.y1 = (float)(t.y0 + wide * dy);
                 }
                 t.size = (unsigned char)kind;
                 t.text = p->text;
