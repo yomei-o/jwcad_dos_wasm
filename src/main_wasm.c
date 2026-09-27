@@ -2438,6 +2438,20 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         present();
         return -1;
     }
+    /* 軸角の札（升の左）——押すと**角度を訊く行**が出ます。盤は消えて
+     * 数え箱が戻るので、目盛 と同じ道です（実測は notes/ui.md 4.38）。 */
+    if (x >= 1 && x <= 55 && y >= 32 && y <= 47 && drawing) {
+        const double was = ui.axis_deg;
+
+        mouse_x = x;
+        mouse_y = y;
+        jw_ui_from(&ui, drawing);
+        ui.axis_mode = 1;       /* jw_ui_from のあと。memset されるので */
+        ui.axis_deg = was > 0.0 ? was : 90.0;
+        sync_ui();
+        present();
+        return -1;
+    }
 
     /* ペン: the box above 紙, y 305..319.  It puts a board over the menu --
      * six pens and nine line types -- and the pointer back in the drawing

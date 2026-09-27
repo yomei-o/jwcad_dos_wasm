@@ -1984,7 +1984,7 @@ static void gauge(VGA *v, const JwUi *s)
 
     /* Pressing one of its cells takes the panel away again: 目盛 puts up
      * its own line and the counts come back green underneath. */
-    if (s->grid_mode || s->mouse_x < 0 || s->mouse_x > 120 ||
+    if (s->grid_mode || s->axis_mode || s->mouse_x < 0 || s->mouse_x > 120 ||
         s->mouse_y < 17 || s->mouse_y > 48) {
         return;
     }
@@ -5603,6 +5603,30 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         fill(v, 122, 17, 638, 47, 0);
         sprintf(one, "%10.3f ,%10.3f", s->grid_x, s->grid_y);
         jw_ui_text(v, 17, 2, 7, 0xffffu, one);
+    }
+    if (s->axis_mode) {
+        char one[32];
+
+        /* 軸角の升は**角度を訊きます**（`sh tools/pressstr.sh 30 40 left`）。
+         * ＋（2 番）の ③角 度 とまったく同じ行で、盤は消えて数え箱が
+         * 戻ります。 */
+        fill(v, 0, 0, 639, 15, 0);
+        top_clear();
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, "\x8a" "p" "\x93" "x =");
+        jw_ui_text(v, 32, 1, 7, 0,
+                   "\x81" "b0 " "\x93" "x " "\xcf\xb3\xbd" "(L)" "\x81" "b" "\x91"
+                   "O" "\x89\xf1\x82\xc6\x93\xaf\x82\xb6" " " "\xcf\xb3\xbd" "(R) "
+                   "\x81" "b[F1] " "\xcf\xb3\xbd\x8a" "p" "\x93" "x" "\x81" "b");
+        sprintf(one, "[%8.3f\xdf]", s->axis_deg);
+        jw_ui_text(v, 50, 2, 7, 0xffffu, one);
+        /* 欄は桁 15 から 8 つ、緑の桝は ＋ の ③角 度 と同じ所
+         * （実測：何も打っていないとき x 112..119、y 7..15）。 */
+        jw_ui_text(v, 15, 1, 7, 0, "        ");
+        fill(v, 112, 7, 119, 15, 4);
+        /* 上の行の下の罫を引き直します——欄は字の後ろを黒で
+         * 塗るので、そのままだと罫が 2 か所切れます（実測 8 画素）。 */
+        fill(v, 122, 16, 639, 16, 7);
     }
     if (s->calc && !s->calc_place && !s->calc_get) {
         fill(v, 0, 0, 639, 15, 0);

@@ -127,6 +127,8 @@ typedef struct {
     int frame_text;
     int gauge_said;             /* that prompt is up */
     int grid_mode;
+    int axis_mode;              /* 軸角の升を押して角度を訊いているところ */
+    double axis_deg;            /* その欄が出している角度 */
     double grid_x, grid_y;      /* its spacing, millimetres of paper */
     int calc;
     /* 電卓の表示。桁 13 で右に揃えて出し、桁 15 は 度分秒 の印。 */
