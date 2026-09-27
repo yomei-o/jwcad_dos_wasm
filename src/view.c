@@ -1391,8 +1391,8 @@ void jw_view_text_point(VGA *v, const Jwc *d, const JwcText *t,
 }
 
 void jw_view_text_caret(VGA *v, const Jwc *d, const JwcText *t,
-                        const JwView *w, double cx, unsigned colour,
-                        unsigned rop)
+                        const JwView *w, double cx, double cw,
+                        unsigned colour, unsigned rop)
 {
     const double unit = (double)d->unit_mm * w->scale;
     const double sy = w->ay - (t->y0 - w->oy) * w->scale;
@@ -1401,16 +1401,15 @@ void jw_view_text_caret(VGA *v, const Jwc *d, const JwcText *t,
     /* **印は「いま打ち終えた所」に出ます**——まだ打っていなければ
      * 字の頭、打ってあればそのうしろ（実測）。 */
     const int x0 = to_x(w, (float)cx);
-    const int h = (base - top) / 2;
-    const int mid = top + h;
+    const int x1 = to_x(w, (float)(cx + cw));
 
-    if (h <= 0) {
+    if (base <= top) {
         return;
     }
-    box_line(v, w, x0, top, x0 + h, mid, colour, rop);
-    box_line(v, w, x0 + h, mid, x0, base, colour, rop);
-    box_line(v, w, x0 + 2 * h - 1, top, x0 + h - 1, mid, colour, rop);
-    box_line(v, w, x0 + h - 1, mid, x0 + 2 * h - 1, base, colour, rop);
+    /* **そこにある 1 文字の枠の対角線 2 本**。幅と高さの兼ね合いで
+     * `><` にも縦 2 本にも見えます（notes/draw.md 4.22 に 4 例）。 */
+    box_line(v, w, x0, top, x1, base, colour, rop);
+    box_line(v, w, x0, base, x1, top, colour, rop);
 }
 
 void jw_view_text_ghost(VGA *v, const Jwc *d, const JwcText *t,

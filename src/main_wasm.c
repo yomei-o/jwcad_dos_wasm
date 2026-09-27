@@ -658,7 +658,8 @@ static void kigou_ghost(void)
                      cmd.kigou_mag_x, cmd.kigou_mag_y)) {
         if (gh.t.text && gh.t.text[0]) {
             jw_view_text_ghost(&vga, drawing, &gh.t, &view, 2, 0x18);
-            jw_view_text_caret(&vga, drawing, &gh.t, &view, gh.cx, 4, 0x18);
+            jw_view_text_caret(&vga, drawing, &gh.t, &view, gh.cx, gh.cw,
+                               4, 0x18);
         } else {
             jw_view_text_point(&vga, drawing, &gh.t, &view, gh.px, gh.py,
                                4, 0x18);

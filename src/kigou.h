@@ -135,7 +135,8 @@ typedef struct {
     JwcText t;
     double px, py;
     char text[160];             /* t.text はここを指します */
-    double cx, cy;              /* 打ち終えた所（`><` の印の位置） */
+    double cx, cy;              /* 打ち終えた所（印の枠の左下） */
+    double cw;                  /* そこにある 1 文字の幅（印の枠の幅） */
 } JwKigouGhost;
 
 /* phase 2 のときだけ `ghost` を使います。 */

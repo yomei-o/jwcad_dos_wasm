@@ -569,6 +569,24 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                     ghost->t.text = ghost->text;
                     ghost->cx = bx + wtyped * tx;
                     ghost->cy = by + wtyped * ty;
+                    /* **印の枠は、カーソルの所にある 1 文字ぶん**
+                     * （文編集と同じ。notes/draw.md 4.22）。文字変更なら
+                     * 変える前の字の続きがそこにあります。
+                     *
+                     * **その先が無ければ半角 1 つぶん**——「楕円記号」に
+                     * `AA` と打った所で実測しました（枠 x199..201、全角
+                     * なら 203 まで）。字を読んで全角かどうか見る所に
+                     * 終端の 0 が来るので、半角と同じ扱いになるのだと
+                     * 読めます。 */
+                    {
+                        const unsigned char *r =
+                            (const unsigned char *)str
+                            + (typed ? strlen(typed) : 0);
+
+                        ghost->cw = (((r[0] >= 0x81 && r[0] <= 0x9f)
+                                      || (r[0] >= 0xe0 && r[0] <= 0xfc))
+                                     && r[1]) ? cw : cw / 2.0;
+                    }
                     ghost->px = ox + (qx1 * ux + qy1 * nx) * mm * sc
                                 * (flip ? -1.0 : 1.0);
                     ghost->py = oy + (qx1 * uy + qy1 * ny) * mm * sc
