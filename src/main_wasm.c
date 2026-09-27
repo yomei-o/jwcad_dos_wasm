@@ -153,6 +153,12 @@ static void kigou_input_done(void);
 static void place_kigou(const JwKigouSym *sym, double px, double py,
                         int phase);
 
+/* **位置を押した時点で置いた記号の枠**。文字入力の盤が出ているあいだ、
+ * 指示線はもう消えているので、あとから字を足すときに使い直します。 */
+static JwcLine held_base, held_base2;
+static int held_two, held_on;
+static double held_ox, held_oy;
+
 static void place_kigou_typed(const JwKigouSym *sym)
 {
     double px = cmd.kigou_px, py = cmd.kigou_py;
@@ -200,6 +206,7 @@ static void kigou_input_done(void)
         cmd.kigou_in_at = 0;
         cmd.kigou_line = -1;
         cmd.kigou_line2 = -1;
+        held_on = 0;
     }
 }
 
@@ -215,6 +222,19 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
     double ax, ay, dx, dy, len, t, ox, oy;
 
     if (!drawing) {
+        return;
+    }
+    if (phase >= 10 && held_on) {
+        /* 字だけをあとから足します（枠は押したときのまま）。 */
+        cmd.n0_lines = drawing->n_lines;
+        cmd.n0_arcs = drawing->n_arcs;
+        cmd.n0_texts = drawing->n_texts;
+        jw_kigou_put(drawing, sym, &held_base, held_two ? &held_base2 : 0,
+                     held_ox, held_oy, px, py,
+                     cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0,
+                     cmd.kigou_mag_x, cmd.kigou_mag_y);
+        ui.n_lines = drawing->n_lines;
+        ui.n_arcs = drawing->n_arcs + drawing->n_texts;
         return;
     }
     if (cmd.kigou_line < 0 || cmd.kigou_line >= drawing->n_lines) {
@@ -298,6 +318,16 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
     cmd.n0_lines = drawing->n_lines;
     cmd.n0_arcs = drawing->n_arcs;
     cmd.n0_texts = drawing->n_texts;
+    if (phase == 0) {
+        held_base = base;
+        if (two) {
+            held_base2 = base2;
+        }
+        held_two = two != 0;
+        held_ox = ox;
+        held_oy = oy;
+        held_on = 1;
+    }
     jw_kigou_put(drawing, sym, &base, two, ox, oy, px, py,
                  cmd.kigou_in_n ? cmd.kigou_in_buf : 0, phase, 0, cmd.kigou_mag_x, cmd.kigou_mag_y);
     cmd.kigou_line = -1;
@@ -648,6 +678,8 @@ static void kigou_ghost(void)
     const JwKigou *g;
     const JwKigouSym *sym;
     JwcLine ln;
+    const JwcLine *two = 0;
+    double ox, oy;
     JwKigouGhost gh;
 
     if (!cmd.kigou_input || !drawing) {
@@ -658,19 +690,32 @@ static void kigou_ghost(void)
         return;
     }
     sym = &g->sym[cmd.kigou_sym - 1];
+    /* **指示線を取る記号の印はまだ出しません。** 置いたときの枠
+     * （`held_*`）を使えば出せますが、枠の高さとカーソルの所が本物と
+     * 合わず、D の 12 番が 22 → 29 画素に増えました（notes/edit.md
+     * 4.45h）。合わせてから外します。 */
     if (jw_kigou_takes1(sym)) {
-        return;                 /* 指示線を取る記号はまだ測れていません */
+        return;
     }
-    memset(&ln, 0, sizeof ln);
-    ln.x0 = (float)(cmd.kigou_px - 1.0);
-    ln.y0 = (float)cmd.kigou_py;
-    ln.x1 = (float)cmd.kigou_px;
-    ln.y1 = (float)cmd.kigou_py;
-    ln.type = (unsigned char)drawing->line_type;
-    ln.pen = (unsigned char)drawing->pen;
-    ln.layer = (unsigned char)drawing->write_layer;
+    if (held_on) {
+        ln = held_base;
+        ox = held_ox;
+        oy = held_oy;
+        two = held_two ? &held_base2 : 0;
+    } else {
+        memset(&ln, 0, sizeof ln);
+        ln.x0 = (float)(cmd.kigou_px - 1.0);
+        ln.y0 = (float)cmd.kigou_py;
+        ln.x1 = (float)cmd.kigou_px;
+        ln.y1 = (float)cmd.kigou_py;
+        ln.type = (unsigned char)drawing->line_type;
+        ln.pen = (unsigned char)drawing->pen;
+        ln.layer = (unsigned char)drawing->write_layer;
+        ox = cmd.kigou_px;
+        oy = cmd.kigou_py;
+    }
     memset(&gh, 0, sizeof gh);
-    if (jw_kigou_put(drawing, sym, &ln, 0, cmd.kigou_px, cmd.kigou_py,
+    if (jw_kigou_put(drawing, sym, &ln, two, ox, oy,
                      cmd.kigou_px, cmd.kigou_py,
                      cmd.kigou_in_n ? cmd.kigou_in_buf : 0,
                      20 + cmd.kigou_in_at, &gh,
@@ -2937,10 +2982,16 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             }
         } else if (sym) {
             /* 位置の押し。ここで指示は済みなので、文字入力があれば
-             * **ここで**盤を出します（上の実測）。 */
+             * **ここで**盤を出します（上の実測）。
+             *
+             * **盤を出す前に、文字以外の部材はもう置きます。** 「加工
+             * 記号例」（D の 15 番）で、本物は位置を押した時点で三角形を
+             * 引いてから `粗さ` を聞きます（39 画素）。指示線を取らない
+             * 記号では前からそうしていました。 */
             if (jw_kigou_input(sym, 0)) {
                 cmd.kigou_px = px;
                 cmd.kigou_py = py;
+                place_kigou(sym, px, py, 0);
                 cmd.kigou_input = 1;
                 cmd.kigou_in_at = 0;
             } else {
@@ -3830,6 +3881,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
             cmd.kigou_in_n = 0;
             cmd.kigou_line = -1;
             cmd.kigou_line2 = -1;
+            held_on = 0;
             sync_ui();
             present();
             return -1;
