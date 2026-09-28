@@ -649,11 +649,23 @@ static void draw_text_box_turned(VGA *v, const JwView *w, double x0, double y0,
                                  double rdx, double rdy, int h, unsigned colour,
                                  unsigned rop)
 {
-    const double nx = uy, ny = -ux;
     const int ax = (int)floor(x0), ay = (int)ceil(y0);
     const int bx = (int)floor(x1), by = (int)ceil(y1);
-    const int cx = (int)floor(bx + h * nx), cy = (int)floor(by + h * ny);
-    const int dx = (int)floor(ax + h * nx), dy = (int)floor(ay + h * ny);
+    /* **The far side is the baseline's plus the height in 16.16**, the way
+     * the original holds it (28b3:0a63 keeps the direction as
+     * trunc(sin x 65536) and trunc(cos x 65536) and multiplies the whole
+     * height into them): screen x goes by -h*sin, screen y by -h*cos, and
+     * the integer part of each is taken.  寸法 ③任意方向 at 30 degrees puts
+     * `216.5` four rows tall at exactly 30 degrees: sin is 32768 exactly, so
+     * the far corners are 2 columns left -- (349,76) and (339,81) in the
+     * original -- where the unit vector in double, a hair under 0.5, put
+     * them at 348 and 338. */
+    const long fs = (long)((float)-uy * 65536.0);
+    const long fc = (long)((float)ux * 65536.0);
+    const int cx = bx + (int)floor(-(double)h * fs / 65536.0);
+    const int cy = by + (int)floor(-(double)h * fc / 65536.0);
+    const int dx = ax + (int)floor(-(double)h * fs / 65536.0);
+    const int dy = ay + (int)floor(-(double)h * fc / 65536.0);
 
     if (getenv("JW_TRACE")) {
         printf("box (%12.6f,%12.6f)-(%12.6f,%12.6f) u=(%.9f,%.9f) h=%d"

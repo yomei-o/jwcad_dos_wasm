@@ -3003,6 +3003,62 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * 円の上に乗ります（測定：r=100 の円の右端 (400,200) が原作では
      * 寸法線の水色、ここでは円の白でした）。 */
     if (c->command == 14 && !c->dim_ck && !c->dim_arc) {
+        /* **...but the newest dimension does lie over the band.**  The
+         * original wipes rows 17..31 at the press that writes it, then draws
+         * it (its line calls are clipped to the window, from y 17), and only
+         * then puts the next dimension's red guide over the top in
+         * exclusive-or.  ③任意方向 at 30 degrees sends the dimension line up
+         * through (461,17)..(411,46), and there it is cyan -- and white where
+         * the parallel red guide crosses it (5 xor 2).  The chrome here has
+         * already wiped that band black and drawn the guide, so exclusive-or
+         * the new lines into the band's rectangle alone gives the same
+         * pixels: line where there was black, line xor red where the guide
+         * was.  They are drawn whole into a scratch screen and only the
+         * rectangle is taken, so each is the same Bresenham run as the
+         * original's. */
+        static VGA scratch;
+        static int ready;
+
+        if (!d || c->n0_lines >= d->n_lines) {
+            return;
+        }
+        if (!ready) {
+            vga_reset(&scratch, 0x12);
+            ready = 1;
+        }
+        memcpy(scratch.gc, v->gc, sizeof scratch.gc);
+        scratch.stride = v->stride;
+        scratch.width = v->width;
+        scratch.height = v->height;
+        scratch.clip_x0 = w->x0 > 0 ? w->x0 : 0;
+        scratch.clip_y0 = w->y0 > 0 ? w->y0 : 0;
+        scratch.clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+        scratch.clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+        for (k = c->n0_lines; k < d->n_lines; k++) {
+            int p, y, x;
+
+            if (!jwc_visible(d, d->lines[k].layer)) {
+                continue;
+            }
+            for (p = 0; p < VGA_PLANES; p++) {
+                memset(scratch.plane[p] + 17L * scratch.stride, 0,
+                       (size_t)(31 * scratch.stride));
+            }
+            jw_view_line(&scratch, d, &d->lines[k], w,
+                         jw_view_pen_colour(d->lines[k].pen));
+            for (y = 17; y <= 47; y++) {
+                for (x = 122; x <= 638; x++) {
+                    const long off = (long)y * v->stride + (x >> 3);
+                    const unsigned char bit = VGA_PIXEL_BIT(x);
+
+                    for (p = 0; p < VGA_PLANES; p++) {
+                        if (scratch.plane[p][off] & bit) {
+                            v->plane[p][off] ^= bit;
+                        }
+                    }
+                }
+            }
+        }
         return;
     }
 
@@ -8960,6 +9016,14 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             }
         }
         return 1;
+    }
+    /* 寸法's guides are up from the 寸法線's press until the dimension is
+     * written (see jw_read_guides). */
+    if (c->command == 14 && (c->stage == 3 || c->stage == 4 || c->stage == 5)
+        && !c->dim_val) {
+        jw_read_guides(2, c->dim_by, c->dim_y, c->dim_ux, c->dim_uy);
+    } else {
+        jw_read_guides(0, 0.0, 0.0, 1.0, 0.0);
     }
     if (c->command == 14) {
         /* 寸法: the item's own line is the three directions and the first

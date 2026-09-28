@@ -74,6 +74,10 @@
  * which is when the original writes 読取可能データ無 in the band. */
 int jw_read(const Jwc *d, const JwView *w, int sx, int sy, double *x, double *y);
 
+/* 寸法's two guides, which jw_read also crosses with the drawing's lines
+ * while they are up: p . (-uy, ux) == b0 and == b1.  n = 0 takes them away. */
+void jw_read_guides(int n, double b0, double b1, double ux, double uy);
+
 /* Which modifier keys are held.  The original asks the BIOS for them at the
  * press itself (INT 16h AH=12h), so this is the state at that moment rather
  * than a mode the program is in. */

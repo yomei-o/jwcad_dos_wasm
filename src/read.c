@@ -130,6 +130,28 @@ static int segment_near(const JwcLine *l, const JwView *w, int sx, int sy)
     return (px < 0 ? -px : px) + (py < 0 ? -py : py) <= JW_READ_REACH * 2.0;
 }
 
+/* **寸法's guides can be read too.**  While 寸法 asks for 寸法値の始点 and
+ * 終点 it has two lines across the drawing -- one at the 引出し線の始点's
+ * height and one at the 寸法線's, both along the dimension -- and a right
+ * press finds where they cross the drawing's lines like any other crossing.
+ * Measured with ③任意方向 at 30 degrees on SAMPLE0: the press at the corner
+ * (162,140) reads (40.973,322.984) -- where the 30-degree guide through the
+ * 引出し線の始点 (41,323) crosses the vertical line x = 40.973, 0.043 away
+ * by the reach's sum -- and not the corner (40.973,323.057), 0.084 away.  At
+ * 0 degrees the same thing happens and only x counts, so it never showed.
+ * The guides are p . v == b with v = (-uy, ux). */
+static int guide_n;
+static double guide_b[2], guide_ux, guide_uy;
+
+void jw_read_guides(int n, double b0, double b1, double ux, double uy)
+{
+    guide_n = n < 0 ? 0 : n > 2 ? 2 : n;
+    guide_b[0] = b0;
+    guide_b[1] = b1;
+    guide_ux = ux;
+    guide_uy = uy;
+}
+
 int jw_read(const Jwc *d, const JwView *w, int sx, int sy, double *x, double *y)
 {
     Best b;
@@ -193,6 +215,25 @@ int jw_read(const Jwc *d, const JwView *w, int sx, int sy, double *x, double *y)
             }
             if (cross(l, m, &cx, &cy)) {
                 offer(&b, w, 3, cx, cy, sx, sy);
+            }
+        }
+    }
+    for (k = 0; k < d->n_lines && guide_n; k++) {
+        const JwcLine *l = &d->lines[k];
+        const double vx = -guide_uy, vy = guide_ux;
+        const double ddx = (double)l->x1 - l->x0, ddy = (double)l->y1 - l->y0;
+        const double dv = ddx * vx + ddy * vy;
+        int g;
+
+        if (!readable(d, l->layer) || !segment_near(l, w, sx, sy)
+            || fabs(dv) < 1e-12) {
+            continue;
+        }
+        for (g = 0; g < guide_n; g++) {
+            const double t = (guide_b[g] - (l->x0 * vx + l->y0 * vy)) / dv;
+
+            if (t >= 0.0 && t <= 1.0) {
+                offer(&b, w, 3, l->x0 + t * ddx, l->y0 + t * ddy, sx, sy);
             }
         }
     }

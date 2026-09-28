@@ -415,7 +415,7 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     # ④円･角 ①円径: 円を左で押すと半径、右で直径（notes/dim.md）
     full sh tools/seqcheck.sh "90 232 left" "300 200 left" "400 200 left" "90 280 left" "320 8 left" "80 8 left" "400 200 left" "move 420 300" || true
     full sh tools/seqcheck.sh "90 232 left" "300 200 left" "400 200 left" "90 280 left" "320 8 left" "80 8 left" "400 200 right" "move 420 300" || true
-    # ③任意方向 30 度（寸法線の始まりが 0.036 単位ずれる。notes/dim.md）
+    # ③任意方向 30 度（読取は寸法の案内線との交点も拾う。notes/dim.md）
     full sh tools/seqcheck.sh "90 280 left" "215 8 left" "type 30" "key enter" "162 140 left" "300 110 left" "162 140 right" "598 140 right" "move 420 300" || true
     sect "=== 円線接 ①接線 ③指定点: the tangent from a point (RESUME 4.25)"
     DRAWING=TEST1 sh tools/tancheck.sh 500 350 255 239
