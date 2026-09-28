@@ -564,6 +564,11 @@ sh tools/seqcheck.sh "30 88 left" "320 8 left" "200 150 left" "450 350 left" || 
 full sh -c 'DRAWING=SAMPLE1 sh tools/seqcheck.sh "30 88 left" "320 8 left" "200 150 left" "450 350 right"' || true
 full sh -c 'DRAWING=SAMPLE2 sh tools/seqcheck.sh "30 88 left" "320 8 left" "200 150 left" "450 350 right"' || true
 full sh -c 'DRAWING=TEST7 BOOT=90000000 sh tools/seqcheck.sh "30 88 left" "320 8 left" "200 150 left" "450 350 right"' || true
+# **包絡は本物の手続きの写し**（src/cmd.c env_wrap、オーバーレイ 11 の
+# 0x3bde〜0x6217）。SAMPLE3 の屋根は規則で組んでいたころ 1,365 → 0。
+full sh -c 'DRAWING=SAMPLE3 BOOT=90000000 sh tools/seqcheck.sh "30 88 left" "320 8 left" "200 150 left" "450 350 left"' || true
+full sh -c 'DRAWING=SAMPLE3 BOOT=90000000 sh tools/seqcheck.sh "30 88 left" "320 8 left" "150 180 left" "500 420 left"' || true
+full sh -c 'DRAWING=SAMPLE6 sh tools/seqcheck.sh "30 88 left" "320 8 left" "200 150 left" "450 350 left"' || true
 sect "=== 変形 ④線記号変形: 一覧・グループ・記号を置くところ (notes/edit.md 4.45f)"
 sh tools/seqcheck.sh "30 88 left" "500 8 left" || true
 sh tools/seqcheck.sh "30 88 left" "500 8 left" "200 8 left" || true
