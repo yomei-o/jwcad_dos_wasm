@@ -291,6 +291,8 @@ if [ -x ../dosv_emu_cpp/dosemu.exe ]; then
     full sh tools/polycheck.sh 300 250 370 180 4
     full sh tools/polycheck.sh 250 300 450 300 3
     full sh tools/polycheck.sh 300 250 400 250 12
+    # 図面の上に置く（SAMPLE6）。新しい辺が既存の線の上（notes/draw.md 4.19g）
+    full env DRAWING=SAMPLE6 BOOT=150000000 sh tools/polycheck.sh 300 250 400 250 6
     sect "=== 分割 (21): 仮点 spread evenly between two points"
     sh tools/divcheck.sh 250 200 450 200 4
     full sh tools/divcheck.sh 250 200 450 350 6

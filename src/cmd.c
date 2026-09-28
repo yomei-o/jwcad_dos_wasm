@@ -11751,6 +11751,8 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->x0 = px;
             c->y0 = py;
             c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
             c->stage = 5;
             return 1;
         }
@@ -11816,6 +11818,8 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             /* What was there before this run: jw_cmd_after puts anything past
              * it back over the chrome. */
             c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
             c->stage = 1;
             return 1;
         }
@@ -11876,6 +11880,8 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
              * past it back over the chrome, and anything *before* it must be
              * left alone or the red mark goes under a fresh white line. */
             c->n0_lines = d->n_lines;
+            c->n0_arcs = d->n_arcs;
+            c->n0_texts = d->n_texts;
             c->pick_a = k;
             c->pick_x = sx;
             c->pick_y = sy;
@@ -11910,6 +11916,8 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->missed = 0;
             if (c->pick_a < 0) {
                 c->n0_lines = d->n_lines;
+                c->n0_arcs = d->n_arcs;
+                c->n0_texts = d->n_texts;
                 c->pick_a = k;
                 c->pick_x = sx;
                 c->pick_y = sy;
