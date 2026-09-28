@@ -208,7 +208,22 @@ static int one_part(const char *line, JwKigouPart *p)
             rest++;
         }
         if (*rest == '"') {
-            trim_to(p->text, sizeof p->text, rest + 1);
+            /* **Spaces inside the quote are the string's own.**  B の
+             * 一覧の `" No "` is four cells wide in the original -- centred
+             * as four, 5 mm at size 2 -- where trimming it made it two.
+             * Only the line's end goes. */
+            {
+                size_t n = strlen(rest + 1);
+
+                while (n > 0 && (rest[n] == 13 || rest[n] == 10)) {
+                    n--;
+                }
+                if (n >= sizeof p->text) {
+                    n = sizeof p->text - 1;
+                }
+                memcpy(p->text, rest + 1, n);
+                p->text[n] = 0;
+            }
         }
         return 1;
     }

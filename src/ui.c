@@ -1702,6 +1702,12 @@ static void kigou_cells(VGA *v, const JwUi *s)
                 if (c1 == 9 || c2 == 9 || !p->text[0] || !tmp) {
                     continue;
                 }
+                /* `22000` is the string to put down when the typing is
+                 * skipped (DAT §５-８) -- not part of the picture.  The
+                 * original leaves 建具表例's `------` out of the list. */
+                if (p->c1 >= 22000 && p->c1 < 23000) {
+                    continue;
+                }
                 if (kind < 1 || kind > 10) {
                     kind = 1;
                 }
@@ -1723,17 +1729,27 @@ static void kigou_cells(VGA *v, const JwUi *s)
                     double len = sqrt(dx * dx + dy * dy);
                     double along = 0.0, up = 0.0;
 
+                    int last = 0;
+
+                    /* The drawing's own rule (jwc_text_length): a cell is
+                     * width plus gap, halved for a half-width character, and
+                     * the last one gives back **its own** gap -- half of it
+                     * after a half-width one.  ７０mm at size 3 is 10.25 mm
+                     * in the original; taking a whole gap off made it 10. */
                     while (*q) {
-                        if (*q >= 0x81 && *q != 0x7f && q[1]) {
+                        if (((*q >= 0x81 && *q <= 0x9f)
+                             || (*q >= 0xe0 && *q <= 0xfc)) && q[1]) {
                             wide += em + gap;
+                            last = 2;
                             q += 2;
                         } else {
                             wide += em / 2.0 + gap / 2.0;
+                            last = 1;
                             q++;
                         }
                     }
-                    if (wide > 0.0) {
-                        wide -= gap;
+                    if (last) {
+                        wide -= gap * last / 2.0;
                     }
                     if (base == 1 || base == 4 || base == 7) {
                         along = -wide / 2.0;
@@ -1796,7 +1812,23 @@ static void kigou_cells(VGA *v, const JwUi *s)
                     w.ax = 121.0f;
                     w.ay = 463.0f;
                     w.scale = sc;
-                    w.text_unit = scale;
+                    /* The size unit is 16.16 per 0.1mm: trunc(518/paper x
+                     * 6554 x scale) -- **6554**, the float at DGROUP 0x932c,
+                     * not 6553.6 -- so 32770 here, and a 3mm string is
+                     * 15.0009 rows, its top 332.999 (the letters' first row
+                     * one higher than 15.0 would put it). */
+                    {
+                        const float um = s->unit_mm > 0.0f ? s->unit_mm
+                                                          : 518.0f / 297.0f;
+                        const long u16 = (long)((float)(um * 6554.0f) * sc);
+
+                        w.text_unit = (double)u16 * 10.0 / 65536.0;
+                    }
+                    if (jw_line_trace > 0) {
+                        printf("kigou text %.7g %.7g %.7g %.7g [%s] %d%c",
+                               (double)t.x0, (double)t.y0, (double)t.x1,
+                               (double)t.y1, p->text, p->type, 10);
+                    }
                 }
                 /* **窓を升にします。** 0 のままだと (0,0)-(0,0) の
                  * 窓になって、字が丸ごと切り落とされます。 */
