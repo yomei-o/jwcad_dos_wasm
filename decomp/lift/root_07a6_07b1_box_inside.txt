@@ -1,0 +1,190 @@
+008212  mov     bp, sp
+008214  mov     ax, 0x2c
+008217    ?call 22b2:2bc  (bx ?)  stack: 
+008227    [bp - 0xc] = [bp + 6]:f64   (f32, keep)
+00822c  mov     bx, 0x7a2a
+00822f    [0x7a2a] = [bp + 6]:f64   (f32)
+00823f    [bp - 0x14] = [bp + 0xe]:f64   (f32, keep)
+008244  mov     bx, 0x7a2a
+008247    [0x7a2a] = [bp + 0xe]:f64   (f32)
+008257    [bp - 0x18] = [bp + 0x16]:f64   (f32, keep)
+00825c  mov     bx, 0x7a2a
+00825f    [0x7a2a] = [bp + 0x16]:f64   (f32)
+00826f    [bp - 0x24] = [bp + 0x1e]:f64   (f32, keep)
+008274  mov     bx, 0x7a2a
+008277    [0x7a2a] = [bp + 0x1e]:f64   (f32)
+00827c  cmp     word ptr [0xcb6], 0
+008281  jne     0x82c1
+00828e    [bp - 0x10] = [bp - 0x18]   (f32)
+00829e    [bp - 0x1c] = [bp - 0x14]   (f32)
+0082ae    [bp - 0x20] = [bp - 0xc]   (f32)
+0082be  jmp     0x83d0
+        ; (stack left: [bp - 0x24])
+0082d4    [bp - 0x20] = ([bp - 0x18] - [bp - 0xc])   (f32, keep)
+0082dc    [bp - 0x10] = ([bp - 0x18] - [bp - 0xc])   (f32)
+0082f4    [bp - 0x2c] = ([bp - 0x24] - [bp - 0x14])   (f32, keep)
+0082fc    [bp - 0x28] = ([bp - 0x24] - [bp - 0x14])   (f32)
+00830c    [bp - 0x1c] = [bp - 0x2c]   (f32)
+008311  lea     ax, [bp - 0x1c]
+008315  lea     cx, [bp - 0x10]
+008319  mov     dx, 1
+00831d  lcall   0x1bb4, 0x26e8
+008322  add     sp, 6
+008325  mov     ax, word ptr [0x90f4]
+008328  mov     dx, word ptr [0x90f6]
+00832c  mov     word ptr [bp - 0x1c], ax
+00832f  mov     word ptr [bp - 0x1a], dx
+008332  lea     ax, [bp - 0x1c]
+008336  lea     cx, [bp - 0x10]
+00833a  sub     dx, dx
+00833d  lcall   0x1bb4, 0x26e8
+008342  add     sp, 6
+008357    [bp - 0x10] = ([bp - 0xc] + [bp - 0x10])   (f32)
+00836e    [bp - 0x1c] = ([bp - 0x14] + [bp - 0x1c])   (f32)
+008373  lea     ax, [bp - 0x28]
+008377  lea     cx, [bp - 0x20]
+00837b  mov     dx, 1
+00837f  lcall   0x1bb4, 0x26e8
+008384  add     sp, 6
+008387  mov     ax, word ptr [0x90f4]
+00838a  mov     dx, word ptr [0x90f6]
+00838e  mov     word ptr [bp - 0x20], ax
+008391  mov     word ptr [bp - 0x1e], dx
+008394  lea     ax, [bp - 0x28]
+008398  lea     cx, [bp - 0x20]
+00839c  sub     dx, dx
+00839f  lcall   0x1bb4, 0x26e8
+0083a4  add     sp, 6
+0083b9    [bp - 0x20] = ([bp - 0xc] + [bp - 0x20])   (f32)
+0083d0    [bp - 0x28] = ([bp - 0x14] + [bp - 0x28])   (f32)
+00842d    compare [0x90f4] : ((([bp - 0x24] - [bp - 0x14]) * ([bp - 0x10] - [bp - 0xc])) - (([bp - 0x18] - [bp - 0xc]) * ([bp - 0x1c] - [bp - 0x14])))
+008432  jae     0x847c
+008434  mov     ax, word ptr [bp - 0x10]
+008437  mov     dx, word ptr [bp - 0xe]
+00843a  mov     word ptr [bp - 4], ax
+00843d  mov     word ptr [bp - 2], dx
+008440  mov     ax, word ptr [bp - 0x20]
+008443  mov     dx, word ptr [bp - 0x1e]
+008446  mov     word ptr [bp - 0x10], ax
+008449  mov     word ptr [bp - 0xe], dx
+00844c  mov     ax, word ptr [bp - 4]
+00844f  mov     dx, word ptr [bp - 2]
+008452  mov     word ptr [bp - 0x20], ax
+008455  mov     word ptr [bp - 0x1e], dx
+008458  mov     ax, word ptr [bp - 0x1c]
+00845b  mov     dx, word ptr [bp - 0x1a]
+00845e  mov     word ptr [bp - 8], ax
+008461  mov     word ptr [bp - 6], dx
+008464  mov     ax, word ptr [bp - 0x28]
+008467  mov     dx, word ptr [bp - 0x26]
+00846a  mov     word ptr [bp - 0x1c], ax
+00846d  mov     word ptr [bp - 0x1a], dx
+008470  mov     ax, word ptr [bp - 8]
+008473  mov     dx, word ptr [bp - 6]
+008476  mov     word ptr [bp - 0x28], ax
+008479  mov     word ptr [bp - 0x26], dx
+00847c  mov     ax, word ptr [bp - 0xc]
+00847f  mov     dx, word ptr [bp - 0xa]
+008482  mov     word ptr [0xbc4], ax
+008485  mov     word ptr [0xbc6], dx
+008489  mov     ax, word ptr [bp - 0x14]
+00848c  mov     dx, word ptr [bp - 0x12]
+00848f  mov     word ptr [0xbd4], ax
+008492  mov     word ptr [0xbd6], dx
+008496  mov     ax, word ptr [bp - 0x10]
+008499  mov     dx, word ptr [bp - 0xe]
+00849c  mov     word ptr [0xbc8], ax
+00849f  mov     word ptr [0xbca], dx
+0084a3  mov     ax, word ptr [bp - 0x1c]
+0084a6  mov     dx, word ptr [bp - 0x1a]
+0084a9  mov     word ptr [0xbd8], ax
+0084ac  mov     word ptr [0xbda], dx
+0084b0  mov     ax, word ptr [bp - 0x18]
+0084b3  mov     dx, word ptr [bp - 0x16]
+0084b6  mov     word ptr [0xbcc], ax
+0084b9  mov     word ptr [0xbce], dx
+0084bd  mov     ax, word ptr [bp - 0x24]
+0084c0  mov     dx, word ptr [bp - 0x22]
+0084c3  mov     word ptr [0xbdc], ax
+0084c6  mov     word ptr [0xbde], dx
+0084ca  mov     ax, word ptr [bp - 0x20]
+0084cd  mov     dx, word ptr [bp - 0x1e]
+0084d0  mov     word ptr [0xbd0], ax
+0084d3  mov     word ptr [0xbd2], dx
+0084d7  mov     ax, word ptr [bp - 0x28]
+0084da  mov     dx, word ptr [bp - 0x26]
+0084dd  mov     word ptr [0xbe0], ax
+0084e0  mov     word ptr [0xbe2], dx
+0084e4  mov     ax, 1
+0084e7  mov     sp, bp
+0084ea  retf
+0084ec  mov     bp, sp
+0084ee  mov     ax, 0x10
+0084f1    ?call 22b2:2bc  (bx [bp - 0x14])  stack: 
+008509    [bp - 0x10] = ([bp + 0x12] - [bp + 0xa])   (f32, keep)
+00850e  mov     bx, 0x7a2a
+008511    [0x7a2a] = ([bp + 0x12] - [bp + 0xa])   (f32)
+008529    [bp - 0xc] = ([bp + 0xe] - [bp + 6])   (f32, keep)
+008563    [bp - 4] = ((([bp + 0xe] - [bp + 6]) * ([bp + 0x20] - [bp + 0xa])) - (([bp + 0x1c] - [bp + 6]) * [bp - 0x10]))   (f32, keep)
+008568  mov     bx, 0x7a2a
+00856b    [0x7a2a] = ((([bp + 0xe] - [bp + 6]) * ([bp + 0x20] - [bp + 0xa])) - (([bp + 0x1c] - [bp + 6]) * [bp - 0x10]))   (f32)
+0085a8    [bp - 8] = ((([bp + 0x28] - [bp + 0xa]) * [bp - 0xc]) - (([bp + 0x24] - [bp + 6]) * [bp - 0x10]))   (f32, keep)
+0085ad  mov     bx, 0x7a2a
+0085b0    [0x7a2a] = ((([bp + 0x28] - [bp + 0xa]) * [bp - 0xc]) - (([bp + 0x24] - [bp + 6]) * [bp - 0x10]))   (f32)
+0085c6    compare [0x90f4] : [bp - 4]
+0085cb  jb      0x85ea
+0085de    compare [0x90f4] : [bp - 8]
+0085e3  jb      0x85ea
+0085e5  sub     ax, ax
+0085e7  jmp     0x8741
+0085fb    compare [0x90f4] : [bp - 4]
+008600  ja      0x861a
+008613    compare [0x90f4] : [bp - 8]
+008618  jbe     0x85e5
+00862d    [bp - 0x10] = ([bp + 0x28] - [bp + 0x20])   (f32, keep)
+008632  mov     bx, 0x7a2a
+008635    [0x7a2a] = ([bp + 0x28] - [bp + 0x20])   (f32)
+00864d    [bp - 0xc] = ([bp + 0x24] - [bp + 0x1c])   (f32, keep)
+008687    [bp - 4] = ((([bp + 0x24] - [bp + 0x1c]) * ([bp + 0xa] - [bp + 0x20])) - (([bp + 6] - [bp + 0x1c]) * [bp - 0x10]))   (f32, keep)
+00868c  mov     bx, 0x7a2a
+00868f    [0x7a2a] = ((([bp + 0x24] - [bp + 0x1c]) * ([bp + 0xa] - [bp + 0x20])) - (([bp + 6] - [bp + 0x1c]) * [bp - 0x10]))   (f32)
+0086cc    [bp - 8] = ((([bp + 0x12] - [bp + 0x20]) * [bp - 0xc]) - (([bp + 0xe] - [bp + 0x1c]) * [bp - 0x10]))   (f32, keep)
+0086d1  mov     bx, 0x7a2a
+0086d4    [0x7a2a] = ((([bp + 0x12] - [bp + 0x20]) * [bp - 0xc]) - (([bp + 0xe] - [bp + 0x1c]) * [bp - 0x10]))   (f32)
+0086ea    compare [0x90f4] : [bp - 4]
+0086ef  jbe     0x870e
+008702    compare [0x90f4] : [bp - 8]
+008707  jbe     0x870e
+008709  mov     ax, 0xffff
+00870c  jmp     0x8741
+00871f    compare [0x90f4] : [bp - 4]
+008724  jae     0x873e
+008737    compare [0x90f4] : [bp - 8]
+00873c  jb      0x8709
+00873e  mov     ax, 1
+008741  mov     sp, bp
+008744  retf
+008746  mov     bp, sp
+008748  mov     ax, 0x14
+00874b    ?call 22b2:2bc  (bx [bp - 8])  stack: 
+008752  mov     word ptr [bp - 0xa], 0
+008757  jmp     0x877a
+00876a    compare [bp - 8]:f64 : [0x90f8]:f64
+00876f  jbe     0x8777
+008771  mov     ax, 0xffff
+008774  jmp     0x884d
+008777  inc     word ptr [bp - 0xa]
+00877a  cmp     word ptr [bp - 0xa], 3
+00877e  jle     0x8783
+008780  jmp     0x884a
+008783  mov     ax, word ptr [bp - 0xa]
+008786  inc     ax
+008787  mov     word ptr [bp - 0xc], ax
+00878a  cmp     ax, 3
+00878d  jle     0x8794
+00878f  mov     word ptr [bp - 0xc], 0
+00879d  mov     bx, word ptr [bp - 0xc]
+0087a0  shl     bx, 1
+0087a2  shl     bx, 1
+0087a4  mov     ax, bx
+0087a6  mov     si, ax

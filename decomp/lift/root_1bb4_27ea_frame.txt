@@ -1,0 +1,86 @@
+01e32b  mov     bp, sp
+01e32d  mov     ax, 0x18
+01e330    ?call 22b2:2bc  (bx ?)  stack: 
+01e341    [0xb30c] = [bp + 6]:f64   (f32)
+01e352    [0xb37e] = [bp + 0xe]:f64   (f32)
+01e36a    [bp - 8] = ([bp + 0x16]:f64 - [bp + 6])   (f64, keep)
+01e36f  mov     bx, 0x7a2a
+01e372    [0x7a2a] = ([bp + 0x16]:f64 - [bp + 6])   (f32)
+01e38a    [bp - 0x10] = ([bp + 0x1e]:f64 - [bp + 0xe])   (f64, keep)
+01e38f  mov     bx, 0x7a2a
+01e392    [0x7a2a] = ([bp + 0x1e]:f64 - [bp + 0xe])   (f32)
+01e3bf    compare [0x93b8]:f64 : (abs([bp - 0x10]:f64) + abs([bp - 8]:f64))
+01e3c4  jae     0x1e439
+01e3c6  mov     ax, 0x1dc
+01e3ca  lcall   0x11f2, 0x356
+01e3d0  mov     ax, 2
+01e3d4  mov     ax, 0x14
+01e3d8  lcall   0xdef, 0x26a9
+01e3df  cmp     byte ptr [0xd74], 0
+01e3e4  je      0x1e3f5
+01e3e6  mov     ax, 1
+01e3ea  mov     ax, 0x14
+01e3ee  lcall   0xdef, 0x26a9
+01e3f5  mov     ax, 0x396
+01e3f9  mov     ax, 0x1de
+01e3fd  lcall   0x11f2, 0x356
+01e404  mov     word ptr [0xc22], 1
+01e40a  mov     ax, word ptr [0x9384]
+01e40d  mov     dx, word ptr [0x9386]
+01e411  mov     word ptr [0xb76a], ax
+01e414  mov     word ptr [0xb76c], dx
+01e418  mov     ax, word ptr [0x9380]
+01e41b  mov     dx, word ptr [0x9382]
+01e41f  mov     word ptr [0xb784], ax
+01e422  mov     word ptr [0xb786], dx
+01e426  mov     ax, word ptr [0x9384]
+01e429  mov     dx, word ptr [0x9386]
+01e42d  mov     word ptr [0xc122], ax
+01e430  mov     word ptr [0xc124], dx
+01e434  sub     ax, ax
+01e436  jmp     0x1e4bd
+01e45e  sub     sp, 8
+01e461  mov     bx, sp
+01e463    <arg> = (([bp - 0x10]:f64 * [bp - 0x10]) + ([bp - 8]:f64 * [bp - 8]))   (f64arg)
+01e46d  add     sp, 8
+01e470  mov     bx, ax
+01e47a    [bp - 0x18] = [*ax]:f64   (f64, keep)
+01e48b    [0xb76a] = ([bp - 8] / [*ax]:f64)   (f32)
+01e4a4    [0xb784] = ([bp - 0x10]:f64 / [bp - 0x18])   (f32)
+01e4b5    [0xc122] = [bp - 0x18]:f64   (f32)
+01e4ba  mov     ax, 1
+01e4bd  mov     sp, bp
+01e4c0  retf
+        ; (stack left: sqrt(?))
+01e4c2  mov     bp, sp
+01e4c4  xor     ax, ax
+01e4c6    ?call 22b2:2bc  (bx [0xc122])  stack: 
+01e4cb  cmp     word ptr [bp + 6], 0
+01e4cf  jne     0x1e519
+01e50f    [0x7a2a] = ((([0xb76a] * [bp + 8]) - ([0xb784] * [bp + 0x10])) + [0xb30c])   (f32)
+01e514  mov     ax, 0x7a2a
+01e517  jmp     0x1e554
+01e552  jmp     0x1e50b
+        ; (stack left: ((([bp + 0x10]:f64 - [0xb37e]) * [0xb784]) + (([bp + 8]:f64 - [0xb30c]) * [0xb76a])))
+01e554  mov     sp, bp
+01e557  retf
+01e559  mov     bp, sp
+01e55b  xor     ax, ax
+01e55d    ?call 22b2:2bc  (bx [0xb76a])  stack: 
+01e562  cmp     word ptr [bp + 6], 0
+01e566  jne     0x1e5b0
+01e5a6    [0x7a2a] = ((([0xb76a] * [bp + 0x10]) + ([0xb784] * [bp + 8])) + [0xb37e])   (f32)
+01e5ab  mov     ax, 0x7a2a
+01e5ae  jmp     0x1e5eb
+01e5e9  jmp     0x1e5a2
+        ; (stack left: ((([bp + 0x10]:f64 - [0xb37e]) * [0xb76a]) - (([bp + 8]:f64 - [0xb30c]) * [0xb784])))
+01e5eb  mov     sp, bp
+01e5ee  retf
+01e5f0  mov     bp, sp
+01e5f2  mov     ax, 0xc
+01e5f5    ?call 22b2:2bc  (bx [0xb784])  stack: 
+01e60d    [bp - 0xc] = ([bp + 0x1e]:f64 - [bp + 0xe])   (f32, keep)
+01e615    [bp - 8] = ([bp + 0x1e]:f64 - [bp + 0xe])   (f32)
+01e627  (bad)
+01e628  dec     bp
+01e629  (bad)

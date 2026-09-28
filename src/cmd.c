@@ -614,7 +614,7 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         a.flatten = 10000;
         a.type = (unsigned char)d->line_type;
         a.pen = (unsigned char)d->pen;
-        a.layer = (unsigned char)((0 << 4) | (d->write_layer & 15));
+        a.layer = (unsigned char)(d->write_layer);
         v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
         v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
         v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
@@ -4595,7 +4595,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             const unsigned char size = (unsigned char)(d ? d->char_type : 1);
             const unsigned char layer =
-                (unsigned char)(d ? ((0 << 4) | (d->write_layer & 15)) : 0);
+                (unsigned char)(d ? (d->write_layer) : 0);
 
             c->typing_text = 0;
             c->pressed = 0;
@@ -5541,7 +5541,7 @@ static void polygon(JwCmd *c, Jwc *d, double px, double py)
                          (float)(c->x0 + r * cos(b)),
                          (float)(c->y0 + r * sin(b)),
                          (unsigned char)d->line_type, (unsigned char)d->pen,
-                         (unsigned char)((0 << 4) | (d->write_layer & 15)))) {
+                         (unsigned char)(d->write_layer))) {
             d->lines[d->n_lines - 1].rest[1] = 6;
         }
     }
@@ -5628,7 +5628,7 @@ static void two_lines(JwCmd *c, Jwc *d)
         }
         if (jwc_add_line(d, (float)e[0], (float)e[1], (float)e[2], (float)e[3],
                          (unsigned char)d->line_type, (unsigned char)d->pen,
-                         (unsigned char)((0 << 4) | (d->write_layer & 15)))) {
+                         (unsigned char)(d->write_layer))) {
             /* 0 in the byte a drawn line carries 3 in, like 面取's. */
             d->lines[d->n_lines - 1].rest[1] = 0;
         }
@@ -5699,7 +5699,7 @@ static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
     d->lines[d->n_lines - 1].rest[3] = 0;
     if (jwc_add_line(d, akx, aky, bkx, bky,
                      (unsigned char)d->line_type, (unsigned char)d->pen,
-                     (unsigned char)((0 << 4) | (d->write_layer & 15)))) {
+                     (unsigned char)(d->write_layer))) {
         /* A chamfer carries **0** in the byte a drawn line carries 3 in.
          * Measured, like 中心線's 2. */
         d->lines[d->n_lines - 1].rest[1] = 0;
@@ -5731,7 +5731,7 @@ static void centre_line(JwCmd *c, Jwc *d, const JwView *w, double px, double py)
     if (!jwc_add_line(d, (float)(ox + t0 * dx), (float)(oy + t0 * dy),
                       (float)(ox + t1 * dx), (float)(oy + t1 * dy),
                       (unsigned char)d->line_type, (unsigned char)d->pen,
-                      (unsigned char)((0 << 4) | (d->write_layer & 15)))) {
+                      (unsigned char)(d->write_layer))) {
         return;
     }
     /* 中心線 writes **2** in the byte behind the layer where ／ and the other
@@ -5838,7 +5838,7 @@ static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
 static void dimension_more(JwCmd *c, Jwc *d, double x1)
 {
     const unsigned char layer =
-        (unsigned char)((0 << 4) | (d->write_layer & 15));
+        (unsigned char)(d->write_layer);
     const unsigned char type = (unsigned char)d->line_type;
     const unsigned char pen =
         (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN);
@@ -5928,7 +5928,7 @@ static void dimension_more(JwCmd *c, Jwc *d, double x1)
 static void dimension_prog(JwCmd *c, Jwc *d, double a)
 {
     const unsigned char layer =
-        (unsigned char)((0 << 4) | (d->write_layer & 15));
+        (unsigned char)(d->write_layer);
     const unsigned char type = (unsigned char)d->line_type;
     const unsigned char pen =
         (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN);
@@ -6071,7 +6071,7 @@ static double line_side(double dx, double dy, double px, double py)
 static void dimension_arc(JwCmd *c, Jwc *d, double r1)
 {
     const unsigned char layer =
-        (unsigned char)((0 << 4) | (d->write_layer & 15));
+        (unsigned char)(d->write_layer);
     const unsigned char type = (unsigned char)d->line_type;
     const unsigned char pen =
         (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN);
@@ -6211,7 +6211,7 @@ static void dimension_arc(JwCmd *c, Jwc *d, double r1)
 static void dimension_circle(JwCmd *c, Jwc *d, long k, int right)
 {
     const unsigned char layer =
-        (unsigned char)((0 << 4) | (d->write_layer & 15));
+        (unsigned char)(d->write_layer);
     const unsigned char type = (unsigned char)d->line_type;
     const unsigned char pen =
         (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN);
@@ -6294,7 +6294,7 @@ static void dimension_circle(JwCmd *c, Jwc *d, long k, int right)
 static void dimension(JwCmd *c, Jwc *d, double x1)
 {
     const unsigned char layer =
-        (unsigned char)((0 << 4) | (d->write_layer & 15));
+        (unsigned char)(d->write_layer);
     const unsigned char type = (unsigned char)d->line_type;
     const unsigned char pen =
         (unsigned char)(c->dim_pen ? c->dim_pen : JW_DIM_PEN);
@@ -7873,7 +7873,7 @@ static void chain_arc(JwCmd *c, Jwc *d, double qx, double qy)
                        (long)(sa * 65536.0 + 0.5),
                        (long)(ea * 65536.0 + 0.5),
                        (unsigned char)d->line_type, (unsigned char)d->pen,
-                       (unsigned char)((0 << 4) | (d->write_layer & 15)),
+                       (unsigned char)(d->write_layer),
                        0x8e)) {
         c->sine_did = 1;
     }
@@ -7940,7 +7940,7 @@ static void chain_first(JwCmd *c, Jwc *d, double bx, double by)
                        (long)(sa * 65536.0 + 0.5),
                        (long)(ea * 65536.0 + 0.5),
                        (unsigned char)d->line_type, (unsigned char)d->pen,
-                       (unsigned char)((0 << 4) | (d->write_layer & 15)),
+                       (unsigned char)(d->write_layer),
                        0x00)) {
         c->sine_did = 1;
     }
@@ -8212,7 +8212,7 @@ static int tangent_to(JwCmd *c, Jwc *d, const JwView *w, long k,
     }
     if (!jwc_add_line(d, (float)c->tan_x, (float)c->tan_y, (float)bx, (float)by,
                       (unsigned char)d->line_type, (unsigned char)d->pen,
-                      (unsigned char)((0 << 4) | (d->write_layer & 15)))) {
+                      (unsigned char)(d->write_layer))) {
         return 0;
     }
     d->lines[d->n_lines - 1].rest[1] = 0x05;
@@ -8276,7 +8276,7 @@ static void tangent_pair(JwCmd *c, Jwc *d, long kb, double px, double py)
     }
     if (jwc_add_line(d, (float)bx0, (float)by0, (float)bx1, (float)by1,
                      (unsigned char)d->line_type, (unsigned char)d->pen,
-                     (unsigned char)((0 << 4) | (d->write_layer & 15)))) {
+                     (unsigned char)(d->write_layer))) {
         d->lines[d->n_lines - 1].rest[1] = 0x05;
     }
 }
@@ -8909,7 +8909,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         memset(&p, 0, sizeof p);
         p.x = (float)x;
         p.y = (float)y;
-        p.layer = (unsigned char)((0 << 4) | (d->write_layer & 15));
+        p.layer = (unsigned char)(d->write_layer);
         p.rest[0] = p.layer;
         p.rest[1] = (unsigned char)(c->dim_pen_point ? c->dim_pen_point
                                                      : JW_DIM_PEN);
@@ -9008,8 +9008,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                              (unsigned char)d->line_type,
                              (unsigned char)(c->dim_pen ? c->dim_pen
                                                         : JW_DIM_PEN),
-                             (unsigned char)((0 << 4)
-                                             | (d->write_layer & 15)))) {
+                             (unsigned char)(d->write_layer))) {
                 d->lines[d->n_lines - 1].rest[1] = 0xf5;
                 d->lines[d->n_lines - 1].rest[3] = 0x20;
                 c->dim_did = 1;
@@ -9420,8 +9419,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                              (float)(mx + ux * len / 2.0),
                              (float)(my + uy * len / 2.0),
                              buf, (unsigned char)d->dim_size,
-                             (unsigned char)((0 << 4)
-                                             | (d->write_layer & 15)))) {
+                             (unsigned char)(d->write_layer))) {
                 d->texts[d->n_texts - 1].rest[2] = 0x10;
                 d->texts[d->n_texts - 1].rest[3] = 0x40;
             }
@@ -9923,8 +9921,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                                        (float)c->tan_cr, 0L, 0L,
                                        (unsigned char)d->line_type,
                                        (unsigned char)d->pen,
-                                       (unsigned char)((0 << 4)
-                                           | (d->write_layer & 15)),
+                                       (unsigned char)(d->write_layer),
                                        (unsigned char)(c->tan_circ == 3
                                                        ? 0x15 : 0x70))) {
                         c->tan_did = 1;
@@ -10177,8 +10174,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                                        0L, 0L,
                                        (unsigned char)d->line_type,
                                        (unsigned char)d->pen,
-                                       (unsigned char)((0 << 4)
-                                           | (d->write_layer & 15)), 0x00)) {
+                                       (unsigned char)(d->write_layer), 0x00)) {
                         c->tan_did = 1;
                     }
                     c->stage = top;
@@ -10332,8 +10328,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                                        0L, 0L,
                                        (unsigned char)d->line_type,
                                        (unsigned char)d->pen,
-                                       (unsigned char)((0 << 4)
-                                           | (d->write_layer & 15)), 0x00)) {
+                                       (unsigned char)(d->write_layer), 0x00)) {
                         c->tan_did = 1;
                     }
                     c->stage = top;
@@ -10477,8 +10472,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 if (jwc_add_arc_at(d, (float)gx, (float)gy, (float)gr, 0L, 0L,
                                    (unsigned char)d->line_type,
                                    (unsigned char)d->pen,
-                                   (unsigned char)((0 << 4)
-                                       | (d->write_layer & 15)), 0x00)) {
+                                   (unsigned char)(d->write_layer), 0x00)) {
                     c->tan_did = 1;
                 }
                 c->stage = 47;
@@ -10673,8 +10667,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                                        0L, 0L,
                                        (unsigned char)d->line_type,
                                        (unsigned char)d->pen,
-                                       (unsigned char)((0 << 4)
-                                           | (d->write_layer & 15)), 0x00)) {
+                                       (unsigned char)(d->write_layer), 0x00)) {
                         JwcArc *w2 = &d->arcs[d->n_arcs - 1];
 
                         w2->flatten = (short)(int)(10000.0 * s2 / s1);
@@ -10873,8 +10866,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                                        (float)s1, 0L, 0L,
                                        (unsigned char)d->line_type,
                                        (unsigned char)d->pen,
-                                       (unsigned char)((0 << 4)
-                                           | (d->write_layer & 15)), 0x07)) {
+                                       (unsigned char)(d->write_layer), 0x07)) {
                         JwcArc *w2 = &d->arcs[d->n_arcs - 1];
 
                         /* 正方形のとき二つの対角線は数学的に同じ
@@ -10990,8 +10982,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                                    (float)(aa >= bb ? aa : bb), 0L, 0L,
                                    (unsigned char)d->line_type,
                                    (unsigned char)d->pen,
-                                   (unsigned char)((0 << 4)
-                                       | (d->write_layer & 15)), 0x02)) {
+                                   (unsigned char)(d->write_layer), 0x02)) {
                     JwcArc *w2 = &d->arcs[d->n_arcs - 1];
 
                     w2->flatten = (short)flat;
@@ -11050,8 +11041,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 if (jwc_add_arc_at(d, (float)cx, (float)cy, (float)rr, 0L, 0L,
                                    (unsigned char)d->line_type,
                                    (unsigned char)d->pen,
-                                   (unsigned char)((0 << 4)
-                                       | (d->write_layer & 15)), 0x00)) {
+                                   (unsigned char)(d->write_layer), 0x00)) {
                     c->tan_did = 1;
                 }
                 c->stage = 44;
@@ -11097,8 +11087,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                                        (float)c->tan_cr, 0L, 0L,
                                        (unsigned char)d->line_type,
                                        (unsigned char)d->pen,
-                                       (unsigned char)((0 << 4)
-                                           | (d->write_layer & 15)),
+                                       (unsigned char)(d->write_layer),
                                        0x00)) {
                         c->tan_did = 1;
                     }
@@ -11220,8 +11209,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                                        (float)c->tan_cr, 0L, 0L,
                                        (unsigned char)d->line_type,
                                        (unsigned char)d->pen,
-                                       (unsigned char)((0 << 4)
-                                           | (d->write_layer & 15)),
+                                       (unsigned char)(d->write_layer),
                                        0x22)) {
                         c->tan_did = 1;
                     }
@@ -11364,8 +11352,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 if (jwc_add_arc_at(d, (float)cx, (float)cy, (float)r, 0L, 0L,
                                    (unsigned char)d->line_type,
                                    (unsigned char)d->pen,
-                                   (unsigned char)((0 << 4)
-                                       | (d->write_layer & 15)), 0x2c)) {
+                                   (unsigned char)(d->write_layer), 0x2c)) {
                     c->tan_did = 1;
                 }
                 c->stage = 24;
@@ -11407,8 +11394,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                                        (float)c->tan_cr, 0L, 0L,
                                        (unsigned char)d->line_type,
                                        (unsigned char)d->pen,
-                                       (unsigned char)((0 << 4)
-                                           | (d->write_layer & 15)),
+                                       (unsigned char)(d->write_layer),
                                        0x24)) {
                         c->tan_did = 1;
                     }
@@ -11579,8 +11565,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                              (float)(c->tan_by + uy * t),
                              (unsigned char)d->line_type,
                              (unsigned char)d->pen,
-                             (unsigned char)((0 << 4)
-                                             | (d->write_layer & 15)))) {
+                             (unsigned char)(d->write_layer))) {
                 d->lines[d->n_lines - 1].rest[1] = 0x05;
             }
             /* 一本入ると、④角度指定 は角度の欄へ、②円周点 は
@@ -12139,7 +12124,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         const long k = jw_cmd_line_at(d, w, sx, sy);
         const long j = k < 0 ? jw_cmd_arc_at(d, w, sx, sy) : -1;
         const unsigned char layer =
-            (unsigned char)((0 << 4) | (d->write_layer & 15));
+            (unsigned char)(d->write_layer);
 
         if (k < 0 && j < 0) {
             /* Nothing there: the original writes `.読取可能データ無` and puts
@@ -12533,7 +12518,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                               fixed16(a0), fixed16(a1),
                               (unsigned char)d->line_type,
                               (unsigned char)d->pen,
-                              (unsigned char)((0 << 4) | (d->write_layer & 15)),
+                              (unsigned char)(d->write_layer),
                               0x12);
     }
     if (c->command != 2 && c->command != 3 && c->command != 4
@@ -12566,12 +12551,26 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
          * goes from 30 to 34 when the original draws one. */
         const unsigned char t = (unsigned char)d->line_type;
         const unsigned char p = (unsigned char)d->pen;
-        const unsigned char g = (unsigned char)((0 << 4) | (d->write_layer & 15));
+        const unsigned char g = (unsigned char)(d->write_layer);
 
-        return jwc_add_line(d, (float)c->x0, (float)c->y0, (float)x, (float)c->y0, t, p, g)
-            && jwc_add_line(d, (float)x, (float)c->y0, (float)x, (float)y, t, p, g)
-            && jwc_add_line(d, (float)x, (float)y, (float)c->x0, (float)y, t, p, g)
-            && jwc_add_line(d, (float)c->x0, (float)y, (float)c->x0, (float)c->y0, t, p, g);
+        /* **縦の辺が先**です。どちら向きに押しても、始点 → 始点の真上か
+         * 真下 → 対角 → 残りの角 → 始点、の順に 4 本（働きの検査で 3 通り
+         * 測った。tools/functest.sh）。前は横が先で、画面は同じでも記録の
+         * 順と向きが違っていました。そして □ の線は **rest[1] が 0x41**
+         * （／ の線は 0x03）。 */
+        const float ax = (float)c->x0, ay = (float)c->y0;
+        const float bx = (float)x, by = (float)y;
+        const float cx[5] = { ax, ax, bx, bx, ax };
+        const float cy[5] = { ay, by, by, ay, ay };
+        int k;
+
+        for (k = 0; k < 4; k++) {
+            if (!jwc_add_line(d, cx[k], cy[k], cx[k + 1], cy[k + 1], t, p, g)) {
+                return 0;
+            }
+            d->lines[d->n_lines - 1].rest[1] = 0x41;
+        }
+        return 1;
     }
     if (c->command == 11) {
         /* ○: the first press is the centre, the second a point on it. */
@@ -12580,9 +12579,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         return jwc_add_arc(d, (float)c->x0, (float)c->y0,
                            (float)sqrt(dx * dx + dy * dy),
                            (unsigned char)d->line_type, (unsigned char)d->pen,
-                           (unsigned char)((0 << 4) | (d->write_layer & 15)));
+                           (unsigned char)(d->write_layer));
     }
     return jwc_add_line(d, (float)c->x0, (float)c->y0, (float)x, (float)y,
                         (unsigned char)d->line_type, (unsigned char)d->pen,
-                        (unsigned char)((0 << 4) | (d->write_layer & 15)));
+                        (unsigned char)(d->write_layer));
 }
