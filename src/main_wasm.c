@@ -710,18 +710,9 @@ static void kigou_ghost(void)
         return;
     }
     sym = &g->sym[cmd.kigou_sym - 1];
-    /* **指示線を取る記号の印はまだ出しません。** 置いたときの枠
-     * （`held_*`）を使えば出せますが、枠の高さとカーソルの所が本物と
-     * 合わず、D の 12 番が 22 → 29 画素に増えました（notes/edit.md
-     * 4.45h）。合わせてから外します。 */
-    /* **指示線を取る記号の印はまだ出しません。** 置いたときの枠
-     * （`held_*`）を使えば出せますが、本物の印は「枠 6x5 ＋その対角線」で、
-     * 移植の枠は 6x7（文字の高さ 3.0mm ＝ 6 画素そのまま）、しかも
-     * カーソルの印が回っていない向きに出ます。D の 12 番が 22 → 29
-     * 画素に増えるので、合わせてから外します（notes/edit.md 4.45h）。 */
-    if (jw_kigou_takes1(sym)) {
-        return;
-    }
+    /* 指示線を取る記号の印も出します。置いたときの枠（`held_*`）を使い、
+     * 逆向きの字は jw_view_text_ghost／_caret が本物どおり基線から下へ
+     * 描きます（notes/edit.md 4.45h）。 */
     if (held_on) {
         ln = held_base;
         ox = held_ox;
@@ -751,7 +742,7 @@ static void kigou_ghost(void)
                                4, 0x18);
         } else {
             jw_view_text_point(&vga, drawing, &gh.t, &view, gh.px, gh.py,
-                               4, 0x18);
+                               4, 0x18, gh.tx, gh.ty);
         }
     }
 }

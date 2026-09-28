@@ -433,6 +433,40 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             ny = -ey / el;
         }
     }
+    /* **制御 02 は指示線 2 の角度に追従します**（DAT の注記「指示線２の
+     * 角度に追従するデータ」）——01 のように指示線 1 と 2 で張った枠では
+     * なく、回すだけです。回す角は「指示線 2 の向き − 記号の中の指示線 2
+     * （制御 20 の線）の向き」で、どちらも遠い端から原点へ。記号の中の
+     * 線が原点から等しく離れているときは**2 点目**を遠い端にとります。
+     * C の 15 番「[45°] 排水」の `20 20 -8 -8 8 8` と `02 02` の部材で
+     * 測りました: 本物の記録は 225 度回した位置で、1 点目をとると
+     * 45 度になって斜めの線が 2 本できていました（8 画素）。 */
+    double r2c = 0.0, r2s = 0.0;
+    int have_r2 = 0;
+
+    if (base2) {
+        for (k = 0; k < sym->n; k++) {
+            const JwKigouPart *q = &sym->part[k];
+
+            if (q->kind == JW_KIGOU_LINE
+                && (q->c1 % 100 == 20 || q->c2 % 100 == 20)) {
+                const double f1 = q->x1 * q->x1 + q->y1 * q->y1;
+                const double f2 = q->x2 * q->x2 + q->y2 * q->y2;
+                const double dfx = f1 > f2 ? -q->x1 : -q->x2;
+                const double dfy = f1 > f2 ? -q->y1 : -q->y2;
+                const double ex = ox - gx, ey = oy - gy;
+
+                if ((dfx != 0.0 || dfy != 0.0) && (ex != 0.0 || ey != 0.0)) {
+                    const double th = atan2(ey, ex) - atan2(dfy, dfx);
+
+                    r2c = cos(th);
+                    r2s = sin(th);
+                    have_r2 = 1;
+                }
+                break;
+            }
+        }
+    }
     for (k = 0; k < sym->n; k++) {
         const JwKigouPart *p = &sym->part[k];
         const long c1 = p->c1 % 100, c2 = p->c2 % 100;
@@ -443,10 +477,16 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
          * `00 00 7.07 7.07 10 10` は、指示線が右向きでも図面の軸のまま
          * 右上へ引かれます——指示線の向きで回していたので、本物と
          * 反対（左下）へ伸びていました（47 画素）。 */
-        const double ax1 = c1 == 0 ? 1.0 : ux, ay1 = c1 == 0 ? 0.0 : uy;
-        const double bx1 = c1 == 0 ? 0.0 : nx, by1 = c1 == 0 ? 1.0 : ny;
-        const double ax2 = c2 == 0 ? 1.0 : ux, ay2 = c2 == 0 ? 0.0 : uy;
-        const double bx2 = c2 == 0 ? 0.0 : nx, by2 = c2 == 0 ? 1.0 : ny;
+        const int turn1 = c1 == 2 && have_r2;
+        const int turn2 = c2 == 2 && have_r2 && p->kind != JW_KIGOU_ARC;
+        const double ax1 = turn1 ? r2c : c1 == 0 ? 1.0 : ux;
+        const double ay1 = turn1 ? r2s : c1 == 0 ? 0.0 : uy;
+        const double bx1 = turn1 ? -r2s : c1 == 0 ? 0.0 : nx;
+        const double by1 = turn1 ? r2c : c1 == 0 ? 1.0 : ny;
+        const double ax2 = turn2 ? r2c : c2 == 0 ? 1.0 : ux;
+        const double ay2 = turn2 ? r2s : c2 == 0 ? 0.0 : uy;
+        const double bx2 = turn2 ? -r2s : c2 == 0 ? 0.0 : nx;
+        const double by2 = turn2 ? r2c : c2 == 0 ? 1.0 : ny;
         const double qx1 = p->x1 * mx, qy1 = p->y1 * my;
         const double qx2 = p->kind == JW_KIGOU_ARC ? p->x2 : p->x2 * mx;
         const double qy2 = p->kind == JW_KIGOU_ARC ? p->y2 : p->y2 * my;
@@ -754,6 +794,8 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
                     strncpy(ghost->text, str, sizeof ghost->text - 1);
                     ghost->text[sizeof ghost->text - 1] = 0;
                     ghost->t.text = ghost->text;
+                    ghost->tx = tx;
+                    ghost->ty = ty;
                     ghost->cx = bx + wtyped * tx;
                     ghost->cy = by + wtyped * ty;
                     /* **印の枠は、カーソルの所にある 1 文字ぶん**
@@ -794,7 +836,7 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
              * 1 の位です（§３-５〜８）。1 なら両方とも指示線 1、
              * 2 なら始点だけ、3 なら終点だけ、4 なら両方が指示線 2。 */
             const double t1 = atan2(uy, ux) * 180.0 / 3.14159265358979323846;
-            const double t2 = atan2(ny, nx) * 180.0 / 3.14159265358979323846;
+            
             const long f = c2 % 10;
             const double ts = f == 2 || f == 4 ? t1 : t1;
             const double te = f == 3 || f == 4 ? t1 : t1;

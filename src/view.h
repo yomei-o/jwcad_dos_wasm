@@ -103,7 +103,7 @@ void jw_view_text_box(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
  * （「建具記号 (AW)」と「楕円記号 (2)」で実測）。 */
 void jw_view_text_point(VGA *v, const Jwc *d, const JwcText *t,
                         const JwView *w, double px, double py,
-                        unsigned colour, unsigned rop);
+                        unsigned colour, unsigned rop, double tx, double ty);
 
 /* 文字入力を待っている間、枠の左端に出る `><` の印。
  * 枠の高さの半分を h として、(x0,top)-(x0+h,mid)-(x0,base) と

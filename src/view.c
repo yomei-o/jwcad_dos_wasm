@@ -1523,17 +1523,36 @@ void jw_view_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
  */
 void jw_view_text_point(VGA *v, const Jwc *d, const JwcText *t,
                         const JwView *w, double px, double py,
-                        unsigned colour, unsigned rop)
+                        unsigned colour, unsigned rop, double tx, double ty)
 {
     const double unit = (double)d->unit_mm * w->scale;
+    const double h = text_height(d, t, unit);
+    const double sx = ((double)t->x0 - w->ox) * w->scale + w->ax;
     const double sy = w->ay - (t->y0 - w->oy) * w->scale;
-    const int base = (int)sy;
-    const int top = (int)(sy - text_height(d, t, unit));
     const int bx = to_x(w, (float)px);
     const int by = (int)(w->ay - (py - w->oy) * w->scale);
 
     box_line(v, w, bx - 2, by, bx + 1, by, colour, rop);
-    box_line(v, w, bx, top, bx, base, colour, rop);
+    /* **The upright stroke goes up the string's own normal**, from the
+     * start of its baseline: straight up for an upright string, straight
+     * down for one laid right to left (線記号変形 D の 15 番: the original's
+     * (161,162)-(161,167)) and leaning with it when it is turned a little
+     * (H の 2 番「仕切弁(GV)」: (161,160)-(160,164)).  The normal in the
+     * drawing is (-ty, tx); on the screen y runs the other way. */
+    {
+        const double nx = -ty, ny = -tx;
+
+        box_line(v, w, (int)sx, (int)sy, (int)(sx + h * nx),
+                 (int)(sy + h * ny), colour, rop);
+    }
+}
+
+/* Does the string run right to left along the x axis -- the 180 degrees a
+ * symbol laid on a leftward instruction line gets?  Within text_dir's
+ * thousandth, as the original decides it. */
+static int runs_left(const JwcText *t)
+{
+    return fabs((double)t->y1 - t->y0) < 0.001 && t->x1 < t->x0;
 }
 
 void jw_view_text_caret(VGA *v, const Jwc *d, const JwcText *t,
@@ -1542,13 +1561,21 @@ void jw_view_text_caret(VGA *v, const Jwc *d, const JwcText *t,
 {
     const double unit = (double)d->unit_mm * w->scale;
     const double sy = w->ay - (t->y0 - w->oy) * w->scale;
-    const int base = (int)sy;
-    const int top = (int)(sy - text_height(d, t, unit));
+    const int left = runs_left(t);
+    int base = (int)sy;
+    int top = (int)(sy - text_height(d, t, unit));
     /* **印は「いま打ち終えた所」に出ます**——まだ打っていなければ
      * 字の頭、打ってあればそのうしろ（実測）。 */
     const int x0 = to_x(w, (float)cx);
-    const int x1 = to_x(w, (float)(cx + cw));
+    const int x1 = to_x(w, (float)(left ? cx - cw : cx + cw));
 
+    /* **逆向き（180 度）の文字は、基線から下へ**同じ規則で
+     * （線記号変形 D の 12 番「公差入力例 1」: 基線 158.256、字の高さ
+     * 4.36 で、本物の対角線は (161,158)-(156,162) と (156,158)-(161,162)）。 */
+    if (left) {
+        top = base;
+        base = (int)(sy + text_height(d, t, unit));
+    }
     if (base <= top) {
         return;
     }
@@ -1568,6 +1595,25 @@ void jw_view_text_ghost(VGA *v, const Jwc *d, const JwcText *t,
     const int h = (int)ceil(text_height(d, t, unit));
 
     if (!t->text || !*t->text) {
+        return;
+    }
+    /* **A string laid right to left gets the upright box turned over**:
+     * both edges truncated as below, but the far one is the baseline *plus*
+     * the height, and no fifth line.  線記号変形 D の 12 番 puts `±` at
+     * (161,158.256)-(156.640,158.256), 180 degrees, 4.36 pixels tall, and
+     * the original's four lines are (156,158)-(161,158), (156,162)-(161,162),
+     * (161,158)-(161,162), (156,158)-(156,162) -- where the turned-box road
+     * gave 159..164 and a fifth line. */
+    if (runs_left(t)) {
+        const double sy = w->ay - (t->y0 - w->oy) * w->scale;
+        const int ya = (int)sy;
+        const int yb = (int)(sy + text_height(d, t, unit));
+        const int xa = to_x(w, t->x1), xb = to_x(w, t->x0);
+
+        box_line(v, w, xa, ya, xb, ya, colour, rop);
+        box_line(v, w, xa, yb, xb, yb, colour, rop);
+        box_line(v, w, xb, ya, xb, yb, colour, rop);
+        box_line(v, w, xa, ya, xa, yb, colour, rop);
         return;
     }
     if (dy != 0.0 || dx < 0.0) {

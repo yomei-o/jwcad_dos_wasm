@@ -141,6 +141,7 @@ typedef struct {
     char text[160];             /* t.text はここを指します */
     double cx, cy;              /* 打ち終えた所（印の枠の左下） */
     double cw;                  /* そこにある 1 文字の幅（印の枠の幅） */
+    double tx, ty;              /* 字の向き（図面の単位ベクトル） */
 } JwKigouGhost;
 
 /* phase 2 のときだけ `ghost` を使います。 */
