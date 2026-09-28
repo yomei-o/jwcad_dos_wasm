@@ -1,0 +1,30 @@
+# 作図の働きの検査。本物と移植に同じ操作をさせ、保存した記録を突き合わせます。
+# sh tools/funccases.sh tools/cases/func_draw.txt
+# 位置: ＋(90,88) ／(90,104) □(90,120) ○(90,232) （(90,248)。ペンの盤は (60,312) で開き、
+# 線色 p は y=72+16(p-1)、線種 t は y=168+16(t-1)。盤は矢を作図範囲に入れると閉じます。
+# レイヤ n の升は x=16+16(n%8)、y=360（0〜7）/376（8〜F）。書込にするのは右ボタン。
+pen1|SAMPLE0|60 312 left|60 72 left|move 300 250|90 104 left|250 200 left|400 280 left
+pen2|SAMPLE0|60 312 left|60 88 left|move 300 250|90 104 left|250 200 left|400 280 left
+pen3|SAMPLE0|60 312 left|60 104 left|move 300 250|90 104 left|250 200 left|400 280 left
+pen4|SAMPLE0|60 312 left|60 120 left|move 300 250|90 104 left|250 200 left|400 280 left
+pen5|SAMPLE0|60 312 left|60 136 left|move 300 250|90 104 left|250 200 left|400 280 left
+pen6|SAMPLE0|60 312 left|60 152 left|move 300 250|90 104 left|250 200 left|400 280 left
+type1|SAMPLE0|60 312 left|60 168 left|move 300 250|90 104 left|250 200 left|400 280 left
+type2|SAMPLE0|60 312 left|60 184 left|move 300 250|90 104 left|250 200 left|400 280 left
+type3|SAMPLE0|60 312 left|60 200 left|move 300 250|90 104 left|250 200 left|400 280 left
+type4|SAMPLE0|60 312 left|60 216 left|move 300 250|90 104 left|250 200 left|400 280 left
+type5|SAMPLE0|60 312 left|60 232 left|move 300 250|90 104 left|250 200 left|400 280 left
+type6|SAMPLE0|60 312 left|60 248 left|move 300 250|90 104 left|250 200 left|400 280 left
+type7|SAMPLE0|60 312 left|60 264 left|move 300 250|90 104 left|250 200 left|400 280 left
+type8|SAMPLE0|60 312 left|60 280 left|move 300 250|90 104 left|250 200 left|400 280 left
+type9|SAMPLE0|60 312 left|60 296 left|move 300 250|90 104 left|250 200 left|400 280 left
+layer3|SAMPLE0|64 360 right|move 300 250|90 104 left|250 200 left|400 280 left
+layerB|SAMPLE0|64 376 right|move 300 250|90 104 left|250 200 left|400 280 left
+group2|SAMPLE0|100 344 left|40 360 right|move 300 250|90 104 left|250 200 left|400 280 left
+group2_layer5|SAMPLE0|100 344 left|40 360 right|move 300 250|96 360 right|move 300 250|90 104 left|250 200 left|400 280 left
+plus_pen5type2|SAMPLE0|60 312 left|60 136 left|60 184 left|move 300 250|90 88 left|250 200 left|400 230 left
+box_pen5type2|SAMPLE0|60 312 left|60 136 left|60 184 left|move 300 250|90 120 left|250 200 left|400 300 left
+circle_pen5type2|SAMPLE0|60 312 left|60 136 left|60 184 left|move 300 250|90 232 left|300 250 left|360 280 left
+arc_pen5type2|SAMPLE0|60 312 left|60 136 left|60 184 left|move 300 250|90 248 left|300 250 left|360 250 left|300 310 left
+box_group2_layer5|SAMPLE0|100 344 left|40 360 right|move 300 250|96 360 right|move 300 250|90 120 left|250 200 left|400 300 left
+circle_group2_layer5|SAMPLE0|100 344 left|40 360 right|move 300 250|96 360 right|move 300 250|90 232 left|300 250 left|360 280 left

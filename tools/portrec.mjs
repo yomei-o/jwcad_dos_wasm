@@ -25,6 +25,8 @@ for (const step of steps) {
         continue;
     }
     if (w[0] === 'key') { M._jw_key(KEY[w[1]] ?? w[1].charCodeAt(0)); continue; }
+    /* 押さずに矢だけ。前はこれが無く、`move` が NaN の押しになっていました。 */
+    if (w[0] === 'move') { M._jw_mouse(Number(w[1]), Number(w[2])); continue; }
     const x = Number(w[0]), y = Number(w[1]);
     M._jw_mouse(x, y);
     M._jw_click(x, y, w[2] === 'right' ? 1 : 0);
