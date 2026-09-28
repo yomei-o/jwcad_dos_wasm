@@ -764,6 +764,38 @@ void jw_view_arc(VGA *v, const Jwc *d, const JwcArc *a, const JwView *w,
  * what 図形 ②読込's preview shows for **every** string, whatever its size:
  * the original's 仮表示 puts boxes where the drawing itself has letters.
  * That is why this is a routine of its own with a colour and a mode. */
+/* The direction a string runs, as the unit vector the turned routines take
+ * (x across, y **down** the screen), and the record's run to go with it.
+ *
+ * **Within a thousandth of an axis it is the axis.**  The text routine
+ * (28b3:0a63, link 18b3:19fc on) takes dx = x1 - x0 and dy = y1 - y0 from the
+ * record and asks, before anything else, whether |dy| < 0.001 (DGROUP 0x9338,
+ * a double): then the direction is exactly (+-1, 0), by the sign of dx.  If
+ * not, whether |dx| < 0.001: then exactly (0, +-1), by the sign of dy.  Only
+ * otherwise is it dx/len, dy/len.  TEST7's `14.0` runs 0.00017 across over
+ * 8.3 up, so the original draws its box as a plain upright rectangle -- the
+ * six pixels that were left of that drawing (notes/ui.md 4.49), and the
+ * reason a box whose offset came out at -0.00006 did not drop a row. */
+static void text_dir(double dx, double dy, double m,
+                     double *ux, double *uy, double *rdx, double *rdy)
+{
+    if (fabs(dy) < 0.001) {
+        *ux = dx < 0.0 ? -1.0 : 1.0;
+        *uy = 0.0;
+    } else if (fabs(dx) < 0.001) {
+        *ux = 0.0;
+        *uy = dy < 0.0 ? 1.0 : -1.0;
+    } else {
+        *ux = dx / m;
+        *uy = -dy / m;
+        *rdx = dx;
+        *rdy = dy;
+        return;
+    }
+    *rdx = *ux;
+    *rdy = -*uy;
+}
+
 static void text_box(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
                      double unit, unsigned colour, unsigned rop)
 {
@@ -782,13 +814,15 @@ static void text_box(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
          * of the box lands on 329 instead of 330.  A float cannot hold the
          * difference and neither could the original. */
         const double m = (float)sqrt(len);
+        double ux, uy, rdx, rdy;
 
+        text_dir(dx, dy, m, &ux, &uy, &rdx, &rdy);
         draw_text_box_turned(v, w,
                              ((double)t->x0 - w->ox) * w->scale + w->ax,
                              w->ay - ((double)t->y0 - w->oy) * w->scale,
                              ((double)t->x1 - w->ox) * w->scale + w->ax,
                              w->ay - ((double)t->y1 - w->oy) * w->scale,
-                             dx / m, -dy / m, dx, dy,
+                             ux, uy, rdx, rdy,
                              (int)height, colour, rop);
     } else {
         draw_text_box(v, w, to_x(w, t->x0), to_x(w, t->x1), y, (int)height,
@@ -847,9 +881,11 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
      * a different one in the original too. */
     if (turned) {
         const double n = (float)sqrt(len);
+        double ux, uy, rdx, rdy;
 
+        text_dir(dx, dy, n, &ux, &uy, &rdx, &rdy);
         draw_text_turned(v, t, w, p, height, text_step(d, t, unit),
-                         dx / n, -dy / n, colour);
+                         ux, uy, colour);
         return;
     }
     /* The original draws text upright on a 16x16 grid; the baseline gives the
@@ -1533,13 +1569,15 @@ void jw_view_text_ghost(VGA *v, const Jwc *d, const JwcText *t,
     }
     if (dy != 0.0 || dx < 0.0) {
         const double m = (float)sqrt(len);
+        double ux, uy, rdx, rdy;
 
+        text_dir(dx, dy, m, &ux, &uy, &rdx, &rdy);
         draw_text_box_turned(v, w,
                              ((double)t->x0 - w->ox) * w->scale + w->ax,
                              w->ay - ((double)t->y0 - w->oy) * w->scale,
                              ((double)t->x1 - w->ox) * w->scale + w->ax,
                              w->ay - ((double)t->y1 - w->oy) * w->scale,
-                             dx / m, -dy / m, dx, dy, h, colour, rop);
+                             ux, uy, rdx, rdy, h, colour, rop);
         return;
     }
     {
