@@ -173,6 +173,7 @@ static void two_lines(JwCmd *c, Jwc *d);
 static void poly_dir(const JwCmd *c, double dx, double dy,
                      double *ux, double *uy);
 static void poly_mark(const JwCmd *c, VGA *v, const JwView *w);
+static long poly_angle(double cx, double cy, double x, double y);
 static void hatch_run(JwCmd *c, Jwc *d);
 static int hatch_meet(const JwcLine *a, const JwcLine *b,
                       double *x, double *y);
@@ -836,6 +837,38 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
             jw_line(v, px, py, vsx, vsy, 2, 0x18, JW_STYLE_SOLID);
             at_screen(w, qx, qy, &vsx, &vsy);
             jw_line(v, ex, ey, vsx, vsy, 2, 0x18, JW_STYLE_SOLID);
+            /* **...and the arc between them is in the preview too**: the
+             * one poly_corner will put down, in colour 2 exclusive-or
+             * through the small-circle routine.  Measured at (520,260): the
+             * original hands 1def:0228 the centre (402.167,374.768), radius
+             * 2.167 and 180..315 degrees. */
+            {
+                const double ux0 = c->poly_dx, uy0 = c->poly_dy;
+                const double crs = ux0 * vy - uy0 * vx;
+                double cosa = -(ux0 * vx + uy0 * vy), r, wx, wy, wl;
+
+                if (cosa > 1.0) cosa = 1.0;
+                if (cosa < -1.0) cosa = -1.0;
+                r = t * tan(acos(cosa) / 2.0);
+                wx = vx - ux0;
+                wy = vy - uy0;
+                wl = sqrt(wx * wx + wy * wy);
+                if (wl > 1e-9) {
+                    const double ccx = vex + wx / wl * sqrt(t * t + r * r);
+                    const double ccy = vey + wy / wl * sqrt(t * t + r * r);
+                    const double ax0 = vex - t * ux0, ay0 = vey - t * uy0;
+                    const double tx0 = vex + t * vx, ty0 = vey + t * vy;
+                    const long a0 = crs > 0.0 ? poly_angle(ccx, ccy, ax0, ay0)
+                                              : poly_angle(ccx, ccy, tx0, ty0);
+                    const long a1 = crs > 0.0 ? poly_angle(ccx, ccy, tx0, ty0)
+                                              : poly_angle(ccx, ccy, ax0, ay0);
+
+                    jw_arc(v, (ccx - w->ox) * w->scale + w->ax,
+                           w->ay - (ccy - w->oy) * w->scale, r * w->scale,
+                           a0 / 65536.0, a1 / 65536.0, 2, 0x18,
+                           JW_STYLE_SOLID);
+                }
+            }
             poly_mark(c, v, w);
             return;
         }
@@ -8500,10 +8533,24 @@ static void poly_mark(const JwCmd *c, VGA *v, const JwView *w)
                                    { 3, 1 } };
     int px, py, i, sx, sy;
 
+    at_screen(w, c->poly_px, c->poly_py, &px, &py);
+    /* **Once the pointer moves the cross goes and a red ring comes.**  The
+     * original rubs the cross out -- its two circles, radius 2 and 3, drawn
+     * again in colour 4 exclusive-or through the small-circle routine -- and
+     * then draws a radius-2 one in colour 2 the same way (DOSEMU_BP=
+     * +10a9:075c after the move to (520,260)).  That routine plots each of
+     * the four points on the axes twice, so they cancel and the ring is the
+     * eight between them. */
     if (c->moved) {
+        static const int RING[8][2] = { { 1, 2 }, { -1, 2 }, { 1, -2 },
+                                        { -1, -2 }, { 2, 1 }, { -2, 1 },
+                                        { 2, -1 }, { -2, -1 } };
+
+        for (i = 0; i < 8; i++) {
+            jw_point(v, px + RING[i][0], py + RING[i][1], 2, 0x18);
+        }
         return;
     }
-    at_screen(w, c->poly_px, c->poly_py, &px, &py);
     for (i = 0; i < 5; i++) {
         for (sx = -1; sx <= 1; sx += 2) {
             for (sy = -1; sy <= 1; sy += 2) {
