@@ -1017,6 +1017,7 @@ void jw_ui_from(JwUi *s, const Jwc *d)
     int i;
 
     jw_ui_default(s);
+    s->unit_mm = d->unit_mm;
     /* The right-hand count is the arcs **and** the texts: the label over it
      * reads 円ｰ文数, and 20 + 4 is the 24 the original shows for SAMPLE1. */
     s->n_lines = d->n_lines;
@@ -1658,6 +1659,14 @@ static void kigou_cells(VGA *v, const JwUi *s)
         /* **`500 x y` は升の中の置き場所**（画素。実測：建具表例 (1) の
          * `500 -50 30` で、本物の表は升の原点から左 50・上 30 の所から）。 */
         const double ox = 185.0 + col * 130.0 + sym->show_x;
+        /* **線と円は、負のずらしが 1 画素少ない**。本物が線に渡す
+         * 浮動小数をそのまま読むと、`500 -50 30` の升は 136.0（185 − 49）、
+         * `500 -30 0` は 546.0（575 − 29）から引いていて、ずらしの無い
+         * 升は 185・315・445・575 ちょうど、正の `6` は 191 です
+         * （DOSEMU_BP=2CC4:67A6 DOSEMU_BPPTR=bx、ｵｰﾊﾞｰﾚｲ 16）。字は
+         * ずらしのとおり——文字しか無い 13 番は 135 のままで合います。
+         * どこでそうなるのかはまだ読めていません。 */
+        const double gox = ox + (sym->show_x < 0 ? 1.0 : 0.0);
         const double oy = 70.0 + row * 96.0 - sym->show_y;
         const double mul = sym->sep >= 990 && sym->sep <= 999
                          ? (sym->sep - 989) / 10.0 : 1.0;
@@ -1826,7 +1835,7 @@ static void kigou_cells(VGA *v, const JwUi *s)
                 c.end = (long)(p->y2 * 65536.0);
                 c.type = (unsigned char)(p->type > 0 ? p->type % 10 : 1);
                 memset(&w, 0, sizeof w);
-                w.ax = (float)ox;
+                w.ax = (float)gox;
                 w.ay = (float)oy;
                 w.scale = (float)scale;
                 w.x0 = x0;
@@ -1870,7 +1879,7 @@ static void kigou_cells(VGA *v, const JwUi *s)
                 l.pen = (unsigned char)(p->c1 >= 100 ? 7
                         : p->has_attr && p->pen > 0 ? p->pen : 2);
                 memset(&w, 0, sizeof w);
-                w.ax = (float)ox;
+                w.ax = (float)gox;
                 w.ay = (float)oy;
                 w.scale = (float)scale;
                 w.x0 = x0;

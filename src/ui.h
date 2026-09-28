@@ -57,6 +57,9 @@ typedef struct {
      * bottom-left, JwView ox/oy): サブ画面表示 marks the main window's extent
      * in its miniature. */
     double view_ox, view_oy;
+    /* The drawing's unit_mm (518 / the paper's width), which the symbol
+     * list's texts are laid out in (kigou_cells). */
+    float unit_mm;
     int grid_on;                /* 図面が目盛を持っているか */
     char zoom_typed[16];        /* 倍率指定 の欄に打った数 */
     int zoom_typed_n;
