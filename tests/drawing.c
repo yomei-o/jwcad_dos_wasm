@@ -459,6 +459,8 @@ int main(int argc, char **argv)
         if (zoom_stage == 2) {
             jw_ui_zoom_band(&v, zoom_at[0], zoom_at[1], mx, my);
         }
+        /* the page does this too (src/main_wasm.c present) */
+        jw_ui_range_notch(&v);
         jw_ui_cursor(&v, mx, my);
     }
     vga_render(&v, pixels);

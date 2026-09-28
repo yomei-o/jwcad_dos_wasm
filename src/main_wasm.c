@@ -755,6 +755,8 @@ static void kigou_ghost(void)
 static void present(void)
 {
     ui.view_scale = view.scale;
+    ui.view_ox = view.ox;
+    ui.view_oy = view.oy;
     memcpy(ui.dxf_set, dxf_set, sizeof dxf_set);
     ui.dxf_done = dxf_done;
     memcpy(ui.dxf_n, dxf_n, sizeof ui.dxf_n);
@@ -1964,26 +1966,35 @@ static double calc_acc;             /* 答えの置き場 */
 static int calc_op;                 /* 待っている演算子 */
 static int calc_fresh = 1;          /* 次の数字で打ち直す */
 
-/* 行 20 に「片付いたぶん」を置きます。 */
+/* 行 20 に「片付いたぶん」を置きます。
+ *
+ * **本物は `%.10lf` で書いて、12 文字目で切ります**（ｵｰﾊﾞｰﾚｲ 22 の
+ * `3ab8:0dcf`。呼び元は 1 つで、`0xbea4` に長さ 12 を渡しています）。
+ * そのあと後ろから、`0` と（元からの）NUL を落とし、`.` に当たったら
+ * それも落として止まります。桁を数えて丸めているのではありません——
+ * ATAN(2) = 63.43494882292… は `63.4349488229` の 12 文字 `63.434948822`
+ * で、丸めると思って読むと「原作の atan が 5e-12 小さい」ように見えて
+ * いました（ATAN(7) の `81.869897645` も同じ）。 */
 static void calc_pend_set(double v)
 {
-    /* **11 桁で切り捨て**です（測定：2[F10] が `63.434948823` ではなく
-     * `63.434948822`——ATAN(2) は 63.43494882292… なので、丸めではなく
-     * 落としています）。 */
-    const double a = v < 0.0 ? -v : v;
-    const int lead = a >= 1.0 ? (int)floor(log10(a)) + 1 : 1;
-    int i;
+    char *p = ui.calc_pend;
+    int i = 12;
 
-    sprintf(ui.calc_pend, "%.*f", 11 - lead, v);
-    i = (int)strlen(ui.calc_pend);
-    if (strchr(ui.calc_pend, '.')) {
-        while (i > 0 && ui.calc_pend[i - 1] == '0') {
-            i--;
+    snprintf(p, sizeof ui.calc_pend, "%.10f", v);
+    p[i] = 0;
+    for (;;) {
+        i--;
+        if (i < 1) {
+            break;
         }
-        if (i > 0 && ui.calc_pend[i - 1] == '.') {
-            i--;
+        if (p[i] == '.') {
+            p[i] = 0;
+            break;
         }
-        ui.calc_pend[i] = 0;
+        if (p[i] != '0' && p[i] != 0) {
+            break;
+        }
+        p[i] = 0;
     }
 }
 
@@ -2475,7 +2486,10 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
          * pixels short. */
         ui.sub_screen = 1;      /* after jw_ui_from, which memsets */
         ui.command = 30;
-        ui.band_kept = 1;
+        /* **The band under the top line goes**, as it does when an item is
+         * picked: SAMPLE1's dots on rows 23 and 39 are black in the
+         * original after this press (66 pixels). */
+        ui.band_kept = 0;
         jw_cmd_pick(&cmd, 30);
         sync_ui();
         present();

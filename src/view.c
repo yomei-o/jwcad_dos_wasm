@@ -724,6 +724,18 @@ void jw_view_arc(VGA *v, const Jwc *d, const JwcArc *a, const JwView *w,
                (double)w->ox, (double)w->oy, (double)w->scale,
                (double)w->ax, (double)w->ay);
     }
+    /* **A radius that truncates to nothing is one dot, whatever the shape.**
+     * 1def:0228 asks `(int)r` before it picks a routine (link 0def:0296):
+     * zero plots the truncated centre through the clipped pixel routine
+     * 1def:1423 and returns.  jw_arc does the same for the circles it
+     * gets, but the flattened and tilted ones went to the chain, whose
+     * vertices at radius 0 all round to (-1,+1) off the centre --
+     * ｸﾞﾙｰﾌﾟ データ表示 of SAMPLE1 has four such arcs at 0.2058 scale, and
+     * the original's pixel calls put each at the centre. */
+    if ((int)r == 0) {
+        jw_point(v, (int)cx, (int)cy, colour, ROP_REPLACE);
+        return;
+    }
     /* Which of the two the original picks (1def:0228, the tests at 0def:03e0):
      * the pixel routine only for a true circle under ten pixels across whose
      * box lies wholly inside the drawing area -- it does no clipping -- and the
@@ -1277,20 +1289,26 @@ static void frame_edge(VGA *v, double x0, double y0, double x1, double y1,
 static void paper_frame(VGA *v, const JwView *w)
 {
     const int style = jw_view_line_style(9);
-    /* In doubles, because a corner can be a long way off at a big zoom and
-     * `(int)` of a float that does not fit is undefined -- TEST7 at 2x drew
-     * two pixels outside the window until this was clamped. */
-    const double fx0 = (0.0 - w->ox) * w->scale + w->ax;
-    const double fx1 = (518.0 - w->ox) * w->scale + w->ax;
-    const double fy0 = w->ay - (0.0 - w->oy) * w->scale;
-    const double fy1 = w->ay - (447.0 - w->oy) * w->scale;
+    /* Held in doubles, because a corner can be a long way off at a big zoom
+     * and `(int)` of a float that does not fit is undefined -- TEST7 at 2x
+     * drew two pixels outside the window until this was clamped.
+     *
+     * **But worked out in float**, the same expression to_x and to_y use:
+     * that is the precision the original has.  ｸﾞﾙｰﾌﾟ データ表示's panels
+     * put the paper's bottom edge at (0 + 1715.1196) x 0.20581655, which is
+     * 353.0000084 in double and 353 exactly in float -- the original draws
+     * the edge on row 126, 479 - 353. */
+    const double fx0 = (double)((0.0f - w->ox) * w->scale + w->ax);
+    const double fx1 = (double)((518.0f - w->ox) * w->scale + w->ax);
+    const double fy0 = (double)(w->ay - (0.0f - w->oy) * w->scale);
+    const double fy1 = (double)(w->ay - (447.0f - w->oy) * w->scale);
     /* Corner to corner, and each edge's dashes count from its own start --
      * which is how the little panels come out: the top edge lights 130, 134
      * … from a left corner at 128, the same "start plus two" the main
      * view's lines have from the window's edge. */
     if (w->frame_box) {
-        const double bx1 = (517.0 - w->ox) * w->scale + w->ax;
-        const double by1 = w->ay - (446.0 - w->oy) * w->scale;
+        const double bx1 = (double)((517.0f - w->ox) * w->scale + w->ax);
+        const double by1 = (double)(w->ay - (446.0f - w->oy) * w->scale);
 
         jw_line(v, (int)fx0, (int)fy1, (int)fx0, (int)fy0, 2, ROP_REPLACE,
                 style);

@@ -180,15 +180,27 @@ static int is_lead(unsigned char c)
 #define GROUP_PICK "  \xb8\xde\xd9\xb0\xcc\xdf \x8e\x77\x8e\xa6  "
 #define GROUP_ALL  "\x91\x53\x83\x8c\x83\x43\x83\x84 \x95\x5c\x8e\xa6"
 
-/* The little views' scale.  The paper is 518 by 447 units and lands on 106
- * by 92 pixels, which pins it between 0.204633 and 0.205817. */
-#define JW_DATA_SCALE 0.2058
+/* The little views' scale: **92/447**, the panel's 92 rows over the paper's
+ * 447 units, as a float.  Read off the original's own arithmetic -- the
+ * multiplier its software floating point is handed while it places the
+ * first text box of ｸﾞﾙｰﾌﾟ データ表示 is the float 0.20581655
+ * (`DOSEMU_BP=+18b3:17f2 DOSEMU_BPPTR=bx`, inside the text routine
+ * 28b3:0a63).  It used to be 0.2058, fitted between the paper's corners
+ * (0.204633..0.205817), which put some small-text boxes a row low. */
+#define JW_DATA_SCALE ((float)(92.0 / 447.0))
 
-/* And サブ画面表示's, in the little box at the bottom of the panel: the
- * paper's corners put it between 0.12934 and 0.12975. */
-#define JW_SUB_SCALE 0.1321
-#define JW_SUB_AX 26.3
-#define JW_SUB_AY 461.0
+/* And サブ画面表示's, in the little box at the bottom of the panel:
+ * **59/447** as a float, the paper's height on the box's 59 rows, with the
+ * paper centred on column 60.5 and its bottom edge on row 461.  Read off the
+ * centres the original hands its arc routine (DOSEMU_BP=+0def:0228, the
+ * doubles at words 2, 6 and 10): for SAMPLE1, SAMPLE3, SAMPLE6 and TEST6
+ * every one of them is, bit for bit,
+ *
+ *     x = 0   + (cx - Xo) * s     Xo = (float)(-(60.5 - 259 s) / s)
+ *     y = 461 - (cy - 0)  * s
+ *
+ * in float.  (It used to be 0.1321 about (26.3, 461), fitted.) */
+#define JW_SUB_SCALE ((float)(59.0 / 447.0))
 
 /* ②読込's ファイル選択 screen, byte for byte off the original
  * (tools/sjisc.py turns a line into the literal; a hex escape in C is
@@ -5747,11 +5759,11 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
 
         memset(&w, 0, sizeof w);
 
-        w.ox = 0.0f;
+        w.scale = JW_SUB_SCALE;
+        w.ox = (float)(-(60.5 - 259.0 * w.scale) / w.scale);
         w.oy = 0.0f;
-        w.scale = (float)JW_SUB_SCALE;
-        w.ax = (float)JW_SUB_AX;
-        w.ay = (float)JW_SUB_AY;
+        w.ax = 0.0f;
+        w.ay = 461.0f;
         w.x0 = 1;
         w.y0 = 401;
         w.x1 = 120;
@@ -5762,20 +5774,54 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
          * whole drawing -- the box came out with its frame and nothing in
          * it, and only the pixels said so. */
         w.layer1 = 0;
-        w.frame_box = 1;
+        /* The paper's edge the main view's way -- two L's from opposite
+         * corners, (26,461)-(26,402), (94,402)-(26,402), (94,402)-(94,461),
+         * (26,461)-(94,461) -- not the panels' closed box.  Read off the
+         * original's line calls (DOSEMU_BP=+0def:0000). */
+        w.frame_box = 0;
         fill(v, 1, 401, 120, 462, 0);
         jw_view_draw_into(v, d, &w);
         v->clip_x0 = 0;
         v->clip_y0 = 0;
         v->clip_x1 = v->width - 1;
         v->clip_y1 = v->height - 1;
-        /* The yellow border is four lines between the corners, not a
-         * closed box: (27,401) and (95,401) are empty. */
-        jw_line(v, 28, 401, 94, 401, 6, ROP_REPLACE, JW_STYLE_SOLID);
-        jw_line(v, 28, 461, 94, 461, 6, ROP_REPLACE, JW_STYLE_SOLID);
-        jw_line(v, 27, 402, 27, 460, 6, ROP_REPLACE, JW_STYLE_SOLID);
-        jw_line(v, 95, 402, 95, 460, 6, ROP_REPLACE, JW_STYLE_SOLID);
-        jw_line(v, 26, 461, 94, 461, 4, ROP_REPLACE, jw_view_line_style(9));
+        /* **Two rectangles in exclusive-or, over everything**: the main
+         * window's extent in colour 2 and then the paper's in colour 4, each
+         * as (x0,y1)-(x1,y1), (x0,y0)-(x1,y0), (x0,y0)-(x0,y1),
+         * (x1,y0)-(x1,y1).  With the whole paper in view the two coincide
+         * and come out yellow (2 xor 4) with their corners drawn twice and
+         * so empty -- what looked like a yellow border with a green dashed
+         * bottom (the red paper edge under it) was this.  Read off the
+         * original's line calls (DOSEMU_BP=+10a9:07dc) for SAMPLE0 and
+         * TEST6, and at 倍率指定 2, where the colour-2 one shrinks to
+         * (41,424)-(60,441) and the colour-4 one stays at (27,401)-(95,461).
+         *
+         * The sides are the edges mapped through the miniature's own
+         * transform: x rounded up and y truncated, in double -- the paper's
+         * top is 461 - 447 x 0.13199106 = 401.999997, row 401. */
+        {
+            const double s0 = w.scale, xo = w.ox;
+            const double mx0 = s->view_ox, my0 = s->view_oy;
+            const double ms = s->view_scale > 0.0 ? s->view_scale : 1.0;
+            const double box[2][4] = {
+                { mx0, my0, mx0 + 518.0 / ms, my0 + 447.0 / ms },
+                { 0.0, 0.0, 518.0, 447.0 },
+            };
+            int i;
+
+            for (i = 0; i < 2; i++) {
+                const int x0 = (int)((box[i][0] - xo) * s0) + 1;
+                const int x1 = (int)((box[i][2] - xo) * s0) + 1;
+                const int yb = (int)(461.0 - box[i][1] * s0);
+                const int yt = (int)(461.0 - box[i][3] * s0);
+                const unsigned c = i == 0 ? 2u : 4u;
+
+                jw_line(v, x0, yb, x1, yb, c, ROP_XOR, JW_STYLE_SOLID);
+                jw_line(v, x0, yt, x1, yt, c, ROP_XOR, JW_STYLE_SOLID);
+                jw_line(v, x0, yt, x0, yb, c, ROP_XOR, JW_STYLE_SOLID);
+                jw_line(v, x1, yt, x1, yb, c, ROP_XOR, JW_STYLE_SOLID);
+            }
+        }
     }
     if (!s->data_screen) {
         return;
@@ -5799,13 +5845,28 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
         JwView w;
 
         memset(&w, 0, sizeof w);
-        const int cx = 128 * (k & 3), cy = 112 * (k >> 2);
+        const int c = k & 3, r = k >> 2;
 
-        w.ox = 0.0f;
-        w.oy = 0.0f;
+        /* **The panels go through the main view's own transform** with
+         * its origin moved, not through a scale about the panel's corner.
+         * Overlay 30's loop (link 2ab8:1589 on) sets, per panel,
+         *
+         *     scale      = 92 / 447                      (DGROUP 0x0c30)
+         *     x origin   = (121 - 128c - 128) / scale    (DGROUP 0x0c48)
+         *     y origin   = ((r+1)*112 - 479 + 14) / scale (DGROUP 0x0c4c)
+         *
+         * each stored as a float, with 0x0a60 -- the screen row the y
+         * origin stands on -- set to 479 (DGROUP 0x1b40) and 0x0a5c left at
+         * 121.  The first box of SAMPLE0's panel reads them back as
+         * 0.20581655, -34.010872 and -1715.1196 exactly.  It is the same
+         * picture as a scale about (128+128c, 126+112r) until something
+         * lands on a pixel's edge: SAMPLE1's slanted lines end a pixel
+         * apart the two ways. */
         w.scale = (float)JW_DATA_SCALE;
-        w.ax = (float)(128 + cx);
-        w.ay = (float)(126 + cy);
+        w.ox = (float)((121.0 - 128.0 * c - 128.0) / w.scale);
+        w.oy = (float)(((r + 1) * 112.0 - 479.0 + 14.0) / w.scale);
+        w.ax = 121.0f;
+        w.ay = 479.0f;
         /* The window is the **whole drawing area**, not the panel: SAMPLE3
          * has lines that reach x=122 out of the first panel and the
          * original draws them. */
@@ -5905,16 +5966,32 @@ static void cursor_line(VGA *v, int x0, int y, int x1)
 /* **The counts box loses its top-left pixel on a range screen.**  Measured
  * over every branch: (0,16) is black in the original on the twelve whose line
  * offers `① 前 範 囲` -- 複写 and 移動 as they come up, 線変更 ①③, 消去
- * ③指定範囲, 図形 ①登録 and 文編集 ⑤整理 -- and white on all the rest.  The
- * rest of the border is whole.
+ * ③指定範囲, 図形 ①登録 and 文編集 ⑤整理 -- and white on all the rest.
  *
- * What the original does to it is not known; a border drawn as four lines
- * that miss the corner would do it.  This is the measurement, and it goes on
- * last because everything else that touches the corner would paint over it. */
+ * **Why, read off the original (2026-09-28).**  That cell is written last, at
+ * column 68 -- `|① 前 範 囲|` is 13 bytes, so it ends on column 80 -- and is
+ * followed by 1def:2636, the routine that blanks the top line from the
+ * cursor (DGROUP 0x46) to the right edge.  It draws one line per scan row,
+ * `((col-1)*8, y)-(DGROUP 0x1b3e, y)` for y 0..15 in colour 0, and 0x1b3e is
+ * 639; with the cursor at 81 each is `(640,y)-(639,y)`.  The line routine
+ * swaps that to 639..640 and writes it as two partial bytes, pixel 639 and
+ * then byte 80 of row y -- **which is the first byte of row y+1**.  So
+ * (0,1)..(0,16) go black, and (0,16) is the corner of the white rule
+ * (DOSEMU_BP=+0def:2636,+0def:23c5 on 複写; notes/ui.md 4.11).  Other lines
+ * that reach column 80 are cleared *before* they are written (＋ and ／:
+ * the clear comes first and nothing follows the text), so they keep it.
+ *
+ * jw_line's hline is the original's routine, so handing it the same sixteen
+ * calls gives the same pixels.  It goes on last because everything else that
+ * touches the corner would paint over it. */
 void jw_ui_range_notch(VGA *v)
 {
     if (asks_range()) {
-        fill(v, 0, 16, 0, 16, 0);
+        int y;
+
+        for (y = 0; y < 16; y++) {
+            jw_line(v, 640, y, 639, y, 0, ROP_REPLACE, JW_STYLE_SOLID);
+        }
     }
 }
 

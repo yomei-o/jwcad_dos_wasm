@@ -538,6 +538,16 @@ sh tools/seqcheck.sh "30 296 left" "110 8 left" || true
 sh tools/seqcheck.sh "30 296 left" "220 8 left" || true
 full sh -c 'DRAWING=SAMPLE3 BOOT=90000000 sh tools/seqcheck.sh "40 392 left"' || true
 full sh -c 'DRAWING=SAMPLE6 BOOT=120000000 sh tools/seqcheck.sh "80 344 left" "16 360 right"' || true
+# グループ データ表示 と サブ画面表示 の見方は本物の式そのもの（scale 92/447・
+# 59/447、原点も本物が float で持つ値。notes/ui.md 4.43）。
+full sh -c 'DRAWING=SAMPLE1 BOOT=90000000 sh tools/seqcheck.sh "80 344 left" "16 360 right"' || true
+full sh -c 'DRAWING=SAMPLE3 BOOT=90000000 sh tools/seqcheck.sh "80 344 left" "16 360 right"' || true
+full sh -c 'DRAWING=SAMPLE5 BOOT=90000000 sh tools/seqcheck.sh "80 344 left" "16 360 right"' || true
+full sh -c 'DRAWING=TEST6 BOOT=90000000 sh tools/seqcheck.sh "80 344 left" "16 360 right"' || true
+full sh -c 'DRAWING=SAMPLE1 BOOT=90000000 sh tools/seqcheck.sh "60 392 left"' || true
+full sh -c 'DRAWING=SAMPLE6 sh tools/seqcheck.sh "60 392 left" "60 392 left"' || true
+full sh -c 'DRAWING=TEST6 BOOT=90000000 sh tools/seqcheck.sh "60 392 left"' || true
+sh tools/seqcheck.sh "490 471 left" "300 250 left" "type 2" "key enter" "60 392 left" || true
 full "$NODE" tests/upload_check.js orig/TEST7.JWC
 
 # The plotter's PDF and PNG (RESUME 4.45).

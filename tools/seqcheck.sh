@@ -29,7 +29,9 @@ if [ -n "$KEEPROOT" ] && [ -d "$D/root" ]; then
         b=${f##*/}
         [ -e "orig/$b" ] || rm -f "$f"
     done
-    cp -p orig/AUTO.JWC "$D/root/AUTO.JWC"
+    # orig/AUTO.JWC is in .gitignore, so a fresh clone has none; the loop
+    # above has already taken the guest's own one away in that case.
+    [ ! -e orig/AUTO.JWC ] || cp -p orig/AUTO.JWC "$D/root/AUTO.JWC"
 else
     rm -rf $D/root
     cp -rp orig $D/root

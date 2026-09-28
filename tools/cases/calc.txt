@@ -60,5 +60,5 @@ f2再取得	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left|key f1|3
 f2後イコ	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left|key f1|300 250 left|key f2|300 250 left|87 392 left
 f2で計算	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left|key f1|300 250 left|key f2|300 250 left|87 376 left|36 376 left|87 392 left
 f2後置く	25 470 left|12 344 left|87 376 left|60 344 left|87 392 left|key f1|300 250 left|key f2|300 250 left|key f1|200 200 left
-~ATAN2	25 470 left|36 376 left|key f10
-~ATAN7	25 470 left|12 344 left|key f10
+ATAN2	25 470 left|36 376 left|key f10
+ATAN7	25 470 left|12 344 left|key f10

@@ -53,6 +53,10 @@ typedef struct {
      * the `表示倍率` the bar prints is the paper's times this), and which step
      * of ■拡大■ is running: 0 none, 1 asking for the 始点, 2 the 終点. */
     double view_scale;
+    /* ...and where it stands (the drawing coordinate at the window's
+     * bottom-left, JwView ox/oy): サブ画面表示 marks the main window's extent
+     * in its miniature. */
+    double view_ox, view_oy;
     int grid_on;                /* 図面が目盛を持っているか */
     char zoom_typed[16];        /* 倍率指定 の欄に打った数 */
     int zoom_typed_n;

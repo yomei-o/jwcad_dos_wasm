@@ -1,0 +1,161 @@
+# 線記号変形 グループ A〜J の 16 記号を、指示線 2 本で置いた画面（notes/edit.md 4.45h）。
+A01	30 88 left|500 8 left|182 64 left|197 157 left|161 180 left|move 420 300
+A02	30 88 left|500 8 left|312 64 left|197 157 left|161 180 left|move 420 300
+A03	30 88 left|500 8 left|442 64 left|197 157 left|161 180 left|move 420 300
+A04	30 88 left|500 8 left|572 64 left|197 157 left|161 180 left|move 420 300
+A05	30 88 left|500 8 left|182 160 left|197 157 left|161 180 left|move 420 300
+A06	30 88 left|500 8 left|312 160 left|197 157 left|161 180 left|move 420 300
+A07	30 88 left|500 8 left|442 160 left|197 157 left|161 180 left|move 420 300
+A08	30 88 left|500 8 left|572 160 left|197 157 left|161 180 left|move 420 300
+A09	30 88 left|500 8 left|182 256 left|197 157 left|161 180 left|move 420 300
+A10	30 88 left|500 8 left|312 256 left|197 157 left|161 180 left|move 420 300
+A11	30 88 left|500 8 left|442 256 left|197 157 left|161 180 left|move 420 300
+A12	30 88 left|500 8 left|572 256 left|197 157 left|161 180 left|move 420 300
+A13	30 88 left|500 8 left|182 352 left|197 157 left|161 180 left|move 420 300
+A14	30 88 left|500 8 left|312 352 left|197 157 left|161 180 left|move 420 300
+A15	30 88 left|500 8 left|442 352 left|197 157 left|161 180 left|move 420 300
+A16	30 88 left|500 8 left|572 352 left|197 157 left|161 180 left|move 420 300
+B01	30 88 left|500 8 left|200 8 left|504 56 left|182 64 left|197 157 left|161 180 left|move 420 300
+B02	30 88 left|500 8 left|200 8 left|504 56 left|312 64 left|197 157 left|161 180 left|move 420 300
+B03	30 88 left|500 8 left|200 8 left|504 56 left|442 64 left|197 157 left|161 180 left|move 420 300
+B04	30 88 left|500 8 left|200 8 left|504 56 left|572 64 left|197 157 left|161 180 left|move 420 300
+B05	30 88 left|500 8 left|200 8 left|504 56 left|182 160 left|197 157 left|161 180 left|move 420 300
+B06	30 88 left|500 8 left|200 8 left|504 56 left|312 160 left|197 157 left|161 180 left|move 420 300
+B07	30 88 left|500 8 left|200 8 left|504 56 left|442 160 left|197 157 left|161 180 left|move 420 300
+B08	30 88 left|500 8 left|200 8 left|504 56 left|572 160 left|197 157 left|161 180 left|move 420 300
+B09	30 88 left|500 8 left|200 8 left|504 56 left|182 256 left|197 157 left|161 180 left|move 420 300
+B10	30 88 left|500 8 left|200 8 left|504 56 left|312 256 left|197 157 left|161 180 left|move 420 300
+B11	30 88 left|500 8 left|200 8 left|504 56 left|442 256 left|197 157 left|161 180 left|move 420 300
+B12	30 88 left|500 8 left|200 8 left|504 56 left|572 256 left|197 157 left|161 180 left|move 420 300
+B13	30 88 left|500 8 left|200 8 left|504 56 left|182 352 left|197 157 left|161 180 left|move 420 300
+B14	30 88 left|500 8 left|200 8 left|504 56 left|312 352 left|197 157 left|161 180 left|move 420 300
+B15	30 88 left|500 8 left|200 8 left|504 56 left|442 352 left|197 157 left|161 180 left|move 420 300
+B16	30 88 left|500 8 left|200 8 left|504 56 left|572 352 left|197 157 left|161 180 left|move 420 300
+C01	30 88 left|500 8 left|200 8 left|216 88 left|182 64 left|197 157 left|161 180 left|move 420 300
+C02	30 88 left|500 8 left|200 8 left|216 88 left|312 64 left|197 157 left|161 180 left|move 420 300
+C03	30 88 left|500 8 left|200 8 left|216 88 left|442 64 left|197 157 left|161 180 left|move 420 300
+C04	30 88 left|500 8 left|200 8 left|216 88 left|572 64 left|197 157 left|161 180 left|move 420 300
+C05	30 88 left|500 8 left|200 8 left|216 88 left|182 160 left|197 157 left|161 180 left|move 420 300
+C06	30 88 left|500 8 left|200 8 left|216 88 left|312 160 left|197 157 left|161 180 left|move 420 300
+C07	30 88 left|500 8 left|200 8 left|216 88 left|442 160 left|197 157 left|161 180 left|move 420 300
+C08	30 88 left|500 8 left|200 8 left|216 88 left|572 160 left|197 157 left|161 180 left|move 420 300
+C09	30 88 left|500 8 left|200 8 left|216 88 left|182 256 left|197 157 left|161 180 left|move 420 300
+C10	30 88 left|500 8 left|200 8 left|216 88 left|312 256 left|197 157 left|161 180 left|move 420 300
+C11	30 88 left|500 8 left|200 8 left|216 88 left|442 256 left|197 157 left|161 180 left|move 420 300
+C12	30 88 left|500 8 left|200 8 left|216 88 left|572 256 left|197 157 left|161 180 left|move 420 300
+C13	30 88 left|500 8 left|200 8 left|216 88 left|182 352 left|197 157 left|161 180 left|move 420 300
+C14	30 88 left|500 8 left|200 8 left|216 88 left|312 352 left|197 157 left|161 180 left|move 420 300
+C15	30 88 left|500 8 left|200 8 left|216 88 left|442 352 left|197 157 left|161 180 left|move 420 300
+C16	30 88 left|500 8 left|200 8 left|216 88 left|572 352 left|197 157 left|161 180 left|move 420 300
+D01	30 88 left|500 8 left|200 8 left|360 88 left|182 64 left|197 157 left|161 180 left|move 420 300
+D02	30 88 left|500 8 left|200 8 left|360 88 left|312 64 left|197 157 left|161 180 left|move 420 300
+D03	30 88 left|500 8 left|200 8 left|360 88 left|442 64 left|197 157 left|161 180 left|move 420 300
+D04	30 88 left|500 8 left|200 8 left|360 88 left|572 64 left|197 157 left|161 180 left|move 420 300
+D05	30 88 left|500 8 left|200 8 left|360 88 left|182 160 left|197 157 left|161 180 left|move 420 300
+D06	30 88 left|500 8 left|200 8 left|360 88 left|312 160 left|197 157 left|161 180 left|move 420 300
+D07	30 88 left|500 8 left|200 8 left|360 88 left|442 160 left|197 157 left|161 180 left|move 420 300
+D08	30 88 left|500 8 left|200 8 left|360 88 left|572 160 left|197 157 left|161 180 left|move 420 300
+D09	30 88 left|500 8 left|200 8 left|360 88 left|182 256 left|197 157 left|161 180 left|move 420 300
+D10	30 88 left|500 8 left|200 8 left|360 88 left|312 256 left|197 157 left|161 180 left|move 420 300
+D11	30 88 left|500 8 left|200 8 left|360 88 left|442 256 left|197 157 left|161 180 left|move 420 300
+D12	30 88 left|500 8 left|200 8 left|360 88 left|572 256 left|197 157 left|161 180 left|move 420 300
+D13	30 88 left|500 8 left|200 8 left|360 88 left|182 352 left|197 157 left|161 180 left|move 420 300
+D14	30 88 left|500 8 left|200 8 left|360 88 left|312 352 left|197 157 left|161 180 left|move 420 300
+D15	30 88 left|500 8 left|200 8 left|360 88 left|442 352 left|197 157 left|161 180 left|move 420 300
+D16	30 88 left|500 8 left|200 8 left|360 88 left|572 352 left|197 157 left|161 180 left|move 420 300
+E01	30 88 left|500 8 left|200 8 left|504 88 left|182 64 left|197 157 left|161 180 left|move 420 300
+E02	30 88 left|500 8 left|200 8 left|504 88 left|312 64 left|197 157 left|161 180 left|move 420 300
+E03	30 88 left|500 8 left|200 8 left|504 88 left|442 64 left|197 157 left|161 180 left|move 420 300
+E04	30 88 left|500 8 left|200 8 left|504 88 left|572 64 left|197 157 left|161 180 left|move 420 300
+E05	30 88 left|500 8 left|200 8 left|504 88 left|182 160 left|197 157 left|161 180 left|move 420 300
+E06	30 88 left|500 8 left|200 8 left|504 88 left|312 160 left|197 157 left|161 180 left|move 420 300
+E07	30 88 left|500 8 left|200 8 left|504 88 left|442 160 left|197 157 left|161 180 left|move 420 300
+E08	30 88 left|500 8 left|200 8 left|504 88 left|572 160 left|197 157 left|161 180 left|move 420 300
+E09	30 88 left|500 8 left|200 8 left|504 88 left|182 256 left|197 157 left|161 180 left|move 420 300
+E10	30 88 left|500 8 left|200 8 left|504 88 left|312 256 left|197 157 left|161 180 left|move 420 300
+E11	30 88 left|500 8 left|200 8 left|504 88 left|442 256 left|197 157 left|161 180 left|move 420 300
+E12	30 88 left|500 8 left|200 8 left|504 88 left|572 256 left|197 157 left|161 180 left|move 420 300
+E13	30 88 left|500 8 left|200 8 left|504 88 left|182 352 left|197 157 left|161 180 left|move 420 300
+E14	30 88 left|500 8 left|200 8 left|504 88 left|312 352 left|197 157 left|161 180 left|move 420 300
+E15	30 88 left|500 8 left|200 8 left|504 88 left|442 352 left|197 157 left|161 180 left|move 420 300
+E16	30 88 left|500 8 left|200 8 left|504 88 left|572 352 left|197 157 left|161 180 left|move 420 300
+F01	30 88 left|500 8 left|200 8 left|216 120 left|182 64 left|197 157 left|161 180 left|move 420 300
+F02	30 88 left|500 8 left|200 8 left|216 120 left|312 64 left|197 157 left|161 180 left|move 420 300
+F03	30 88 left|500 8 left|200 8 left|216 120 left|442 64 left|197 157 left|161 180 left|move 420 300
+F04	30 88 left|500 8 left|200 8 left|216 120 left|572 64 left|197 157 left|161 180 left|move 420 300
+F05	30 88 left|500 8 left|200 8 left|216 120 left|182 160 left|197 157 left|161 180 left|move 420 300
+F06	30 88 left|500 8 left|200 8 left|216 120 left|312 160 left|197 157 left|161 180 left|move 420 300
+F07	30 88 left|500 8 left|200 8 left|216 120 left|442 160 left|197 157 left|161 180 left|move 420 300
+F08	30 88 left|500 8 left|200 8 left|216 120 left|572 160 left|197 157 left|161 180 left|move 420 300
+F09	30 88 left|500 8 left|200 8 left|216 120 left|182 256 left|197 157 left|161 180 left|move 420 300
+F10	30 88 left|500 8 left|200 8 left|216 120 left|312 256 left|197 157 left|161 180 left|move 420 300
+F11	30 88 left|500 8 left|200 8 left|216 120 left|442 256 left|197 157 left|161 180 left|move 420 300
+F12	30 88 left|500 8 left|200 8 left|216 120 left|572 256 left|197 157 left|161 180 left|move 420 300
+F13	30 88 left|500 8 left|200 8 left|216 120 left|182 352 left|197 157 left|161 180 left|move 420 300
+F14	30 88 left|500 8 left|200 8 left|216 120 left|312 352 left|197 157 left|161 180 left|move 420 300
+F15	30 88 left|500 8 left|200 8 left|216 120 left|442 352 left|197 157 left|161 180 left|move 420 300
+F16	30 88 left|500 8 left|200 8 left|216 120 left|572 352 left|197 157 left|161 180 left|move 420 300
+G01	30 88 left|500 8 left|200 8 left|360 120 left|182 64 left|197 157 left|161 180 left|move 420 300
+G02	30 88 left|500 8 left|200 8 left|360 120 left|312 64 left|197 157 left|161 180 left|move 420 300
+G03	30 88 left|500 8 left|200 8 left|360 120 left|442 64 left|197 157 left|161 180 left|move 420 300
+G04	30 88 left|500 8 left|200 8 left|360 120 left|572 64 left|197 157 left|161 180 left|move 420 300
+G05	30 88 left|500 8 left|200 8 left|360 120 left|182 160 left|197 157 left|161 180 left|move 420 300
+G06	30 88 left|500 8 left|200 8 left|360 120 left|312 160 left|197 157 left|161 180 left|move 420 300
+G07	30 88 left|500 8 left|200 8 left|360 120 left|442 160 left|197 157 left|161 180 left|move 420 300
+G08	30 88 left|500 8 left|200 8 left|360 120 left|572 160 left|197 157 left|161 180 left|move 420 300
+G09	30 88 left|500 8 left|200 8 left|360 120 left|182 256 left|197 157 left|161 180 left|move 420 300
+G10	30 88 left|500 8 left|200 8 left|360 120 left|312 256 left|197 157 left|161 180 left|move 420 300
+G11	30 88 left|500 8 left|200 8 left|360 120 left|442 256 left|197 157 left|161 180 left|move 420 300
+G12	30 88 left|500 8 left|200 8 left|360 120 left|572 256 left|197 157 left|161 180 left|move 420 300
+G13	30 88 left|500 8 left|200 8 left|360 120 left|182 352 left|197 157 left|161 180 left|move 420 300
+G14	30 88 left|500 8 left|200 8 left|360 120 left|312 352 left|197 157 left|161 180 left|move 420 300
+G15	30 88 left|500 8 left|200 8 left|360 120 left|442 352 left|197 157 left|161 180 left|move 420 300
+G16	30 88 left|500 8 left|200 8 left|360 120 left|572 352 left|197 157 left|161 180 left|move 420 300
+H01	30 88 left|500 8 left|200 8 left|504 120 left|182 64 left|197 157 left|161 180 left|move 420 300
+H02	30 88 left|500 8 left|200 8 left|504 120 left|312 64 left|197 157 left|161 180 left|move 420 300
+H03	30 88 left|500 8 left|200 8 left|504 120 left|442 64 left|197 157 left|161 180 left|move 420 300
+H04	30 88 left|500 8 left|200 8 left|504 120 left|572 64 left|197 157 left|161 180 left|move 420 300
+H05	30 88 left|500 8 left|200 8 left|504 120 left|182 160 left|197 157 left|161 180 left|move 420 300
+H06	30 88 left|500 8 left|200 8 left|504 120 left|312 160 left|197 157 left|161 180 left|move 420 300
+H07	30 88 left|500 8 left|200 8 left|504 120 left|442 160 left|197 157 left|161 180 left|move 420 300
+H08	30 88 left|500 8 left|200 8 left|504 120 left|572 160 left|197 157 left|161 180 left|move 420 300
+H09	30 88 left|500 8 left|200 8 left|504 120 left|182 256 left|197 157 left|161 180 left|move 420 300
+H10	30 88 left|500 8 left|200 8 left|504 120 left|312 256 left|197 157 left|161 180 left|move 420 300
+H11	30 88 left|500 8 left|200 8 left|504 120 left|442 256 left|197 157 left|161 180 left|move 420 300
+H12	30 88 left|500 8 left|200 8 left|504 120 left|572 256 left|197 157 left|161 180 left|move 420 300
+H13	30 88 left|500 8 left|200 8 left|504 120 left|182 352 left|197 157 left|161 180 left|move 420 300
+H14	30 88 left|500 8 left|200 8 left|504 120 left|312 352 left|197 157 left|161 180 left|move 420 300
+H15	30 88 left|500 8 left|200 8 left|504 120 left|442 352 left|197 157 left|161 180 left|move 420 300
+H16	30 88 left|500 8 left|200 8 left|504 120 left|572 352 left|197 157 left|161 180 left|move 420 300
+I01	30 88 left|500 8 left|200 8 left|216 152 left|182 64 left|197 157 left|161 180 left|move 420 300
+I02	30 88 left|500 8 left|200 8 left|216 152 left|312 64 left|197 157 left|161 180 left|move 420 300
+I03	30 88 left|500 8 left|200 8 left|216 152 left|442 64 left|197 157 left|161 180 left|move 420 300
+I04	30 88 left|500 8 left|200 8 left|216 152 left|572 64 left|197 157 left|161 180 left|move 420 300
+I05	30 88 left|500 8 left|200 8 left|216 152 left|182 160 left|197 157 left|161 180 left|move 420 300
+I06	30 88 left|500 8 left|200 8 left|216 152 left|312 160 left|197 157 left|161 180 left|move 420 300
+I07	30 88 left|500 8 left|200 8 left|216 152 left|442 160 left|197 157 left|161 180 left|move 420 300
+I08	30 88 left|500 8 left|200 8 left|216 152 left|572 160 left|197 157 left|161 180 left|move 420 300
+I09	30 88 left|500 8 left|200 8 left|216 152 left|182 256 left|197 157 left|161 180 left|move 420 300
+I10	30 88 left|500 8 left|200 8 left|216 152 left|312 256 left|197 157 left|161 180 left|move 420 300
+I11	30 88 left|500 8 left|200 8 left|216 152 left|442 256 left|197 157 left|161 180 left|move 420 300
+I12	30 88 left|500 8 left|200 8 left|216 152 left|572 256 left|197 157 left|161 180 left|move 420 300
+I13	30 88 left|500 8 left|200 8 left|216 152 left|182 352 left|197 157 left|161 180 left|move 420 300
+I14	30 88 left|500 8 left|200 8 left|216 152 left|312 352 left|197 157 left|161 180 left|move 420 300
+I15	30 88 left|500 8 left|200 8 left|216 152 left|442 352 left|197 157 left|161 180 left|move 420 300
+I16	30 88 left|500 8 left|200 8 left|216 152 left|572 352 left|197 157 left|161 180 left|move 420 300
+J01	30 88 left|500 8 left|200 8 left|360 152 left|182 64 left|197 157 left|161 180 left|move 420 300
+J02	30 88 left|500 8 left|200 8 left|360 152 left|312 64 left|197 157 left|161 180 left|move 420 300
+J03	30 88 left|500 8 left|200 8 left|360 152 left|442 64 left|197 157 left|161 180 left|move 420 300
+J04	30 88 left|500 8 left|200 8 left|360 152 left|572 64 left|197 157 left|161 180 left|move 420 300
+J05	30 88 left|500 8 left|200 8 left|360 152 left|182 160 left|197 157 left|161 180 left|move 420 300
+J06	30 88 left|500 8 left|200 8 left|360 152 left|312 160 left|197 157 left|161 180 left|move 420 300
+J07	30 88 left|500 8 left|200 8 left|360 152 left|442 160 left|197 157 left|161 180 left|move 420 300
+J08	30 88 left|500 8 left|200 8 left|360 152 left|572 160 left|197 157 left|161 180 left|move 420 300
+J09	30 88 left|500 8 left|200 8 left|360 152 left|182 256 left|197 157 left|161 180 left|move 420 300
+J10	30 88 left|500 8 left|200 8 left|360 152 left|312 256 left|197 157 left|161 180 left|move 420 300
+J11	30 88 left|500 8 left|200 8 left|360 152 left|442 256 left|197 157 left|161 180 left|move 420 300
+J12	30 88 left|500 8 left|200 8 left|360 152 left|572 256 left|197 157 left|161 180 left|move 420 300
+J13	30 88 left|500 8 left|200 8 left|360 152 left|182 352 left|197 157 left|161 180 left|move 420 300
+J14	30 88 left|500 8 left|200 8 left|360 152 left|312 352 left|197 157 left|161 180 left|move 420 300
+J15	30 88 left|500 8 left|200 8 left|360 152 left|442 352 left|197 157 left|161 180 left|move 420 300
+J16	30 88 left|500 8 left|200 8 left|360 152 left|572 352 left|197 157 left|161 180 left|move 420 300

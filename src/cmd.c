@@ -1657,6 +1657,43 @@ static void freeze(JwCmd *c, const Jwc *d);
  * had one inside.  They are turned over the way the geometry says (the centre
  * reflected, the two angles reflected and swapped), which is a guess.
  */
+/* **移動 paints what it takes out before it puts it down again.**  The
+ * original draws each picked entity in colour 0 where it was and then draws
+ * it where it goes, and redraws nothing else -- so a pixel a moved line
+ * shared with one that stayed is left black.  Measured on SAMPLE0's
+ * (150,130)-(245,170) with ⑥回転 30 degrees: lines 5 and 6 go, and (161,157)
+ * and (231,139), where they met lines 0 and 1, are black in the original.
+ * The ink (JwcInk) replays that; `erase` 1 notes the entities as they are
+ * before the move, 0 as they are after it. */
+static void move_ink(const JwCmd *c, Jwc *d, int erase)
+{
+    long k;
+
+    /* Each step is a press of its own.  The page settles the ink between
+     * presses as it draws, but tests/drawing.exe takes them all before it
+     * draws once, and settling two moves as one batch would put both erases
+     * first and leave the entities standing where the first step put them
+     * (移動 ﾏｳｽ位置 再: 224 pixels). */
+    if (erase) {
+        jwc_ink_settle(d);
+    }
+    for (k = 0; k < c->n0_lines; k++) {
+        if (picked_line(c, d, k)) {
+            jwc_ink_note(d, erase, JW_INK_LINE, &d->lines[k]);
+        }
+    }
+    for (k = 0; k < c->n0_arcs; k++) {
+        if (picked_arc(c, d, k)) {
+            jwc_ink_note(d, erase, JW_INK_ARC, &d->arcs[k]);
+        }
+    }
+    for (k = 0; k < c->n0_texts && takes_text(c); k++) {
+        if (picked_text(c, d, k)) {
+            jwc_ink_note(d, erase, JW_INK_TEXT, &d->texts[k]);
+        }
+    }
+}
+
 static void mirror_at(double ax, double ay, double ux, double uy,
                       double x, double y, double *rx, double *ry)
 {
@@ -1691,6 +1728,9 @@ static int mirror_range(JwCmd *c, Jwc *d, long m)
     axis = atan2(uy, ux) * 180.0 / 3.14159265358979323846;
     if (!c->sel_line) {
         freeze(c, d);
+    }
+    if (JW_MOVING(c)) {
+        move_ink(c, d, 1);
     }
     for (k = 0; k < c->n0_lines; k++) {
         double x0, y0, x1, y1;
@@ -1821,6 +1861,9 @@ static int mirror_range(JwCmd *c, Jwc *d, long m)
             n++;
         }
     }
+    if (JW_MOVING(c)) {
+        move_ink(c, d, 0);
+    }
     return n;
 }
 
@@ -1869,6 +1912,9 @@ static int turn_range(JwCmd *c, Jwc *d, double px, double py)
 
     if (!c->sel_line) {
         freeze(c, d);
+    }
+    if (JW_MOVING(c)) {
+        move_ink(c, d, 1);
     }
     for (k = 0; k < c->n0_lines; k++) {
         double x0, y0, x1, y1;
@@ -1980,6 +2026,9 @@ static int turn_range(JwCmd *c, Jwc *d, double px, double py)
             n++;
         }
     }
+    if (JW_MOVING(c)) {
+        move_ink(c, d, 0);
+    }
     return n;
 }
 
@@ -2018,6 +2067,9 @@ static int scale_range(JwCmd *c, Jwc *d, double px, double py)
 
     if (!c->sel_line) {
         freeze(c, d);
+    }
+    if (JW_MOVING(c)) {
+        move_ink(c, d, 1);
     }
     for (k = 0; k < c->n0_lines; k++) {
         if (!picked_line(c, d, k)) {
@@ -2092,6 +2144,9 @@ static int scale_range(JwCmd *c, Jwc *d, double px, double py)
             }
         }
     }
+    if (JW_MOVING(c)) {
+        move_ink(c, d, 0);
+    }
     return n;
 }
 
@@ -2126,6 +2181,8 @@ static void move_range(const JwCmd *c, Jwc *d, double dx, double dy)
 {
     long k;
 
+    move_ink(c, d, 1);
+
     for (k = 0; k < c->n0_lines; k++) {
         JwcLine *l = &d->lines[k];
 
@@ -2154,6 +2211,7 @@ static void move_range(const JwCmd *c, Jwc *d, double dx, double dy)
             t->y1 += (float)dy;
         }
     }
+    move_ink(c, d, 0);
 }
 
 /* 複写's ②数値位置 asks for the distance in millimetres of paper; the drawing
@@ -2703,6 +2761,52 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         }
         at_screen(w, p->x, p->y, &px, &py);
         jw_point(v, px, py, 2, ROP_REPLACE);
+    }
+    /* **A press of 追加･除外 draws that one entity again, over the marks.**
+     * Taking SAMPLE0's line 5 out of (150,130)-(245,170) redraws it white,
+     * and the corner it shares with line 6 -- still red -- comes out white
+     * in the original, (231,157).  The loops above paint every mark in
+     * record order, which is the order of the press that fixed the range;
+     * the presses after it come after that, in the order they were made.
+     * Only the plain range here: ②範囲外消去 and 変形 draw theirs their own
+     * ways and are not measured for this. */
+    if (!c->outside && c->command != 17) {
+        int i;
+
+        for (i = 0; i < c->n_flip; i++) {
+            const long at = c->flip[i].at;
+
+            if (c->flip[i].kind == JW_FLIP_LINE && at < c->n0_lines) {
+                const JwcLine *l = &d->lines[at];
+
+                if (!in_reach_layer(d, l->layer)) {
+                    continue;
+                }
+                if (picked_line(c, d, at)) {
+                    jw_view_mark(v, w, l->x0, l->y0, l->x1, l->y1, mark,
+                                 jw_view_line_style(l->type), ROP_REPLACE);
+                } else {
+                    jw_view_line(v, d, l, w, jw_view_pen_colour(l->pen));
+                }
+            } else if (c->flip[i].kind == JW_FLIP_ARC && at < c->n0_arcs) {
+                const JwcArc *q = &d->arcs[at];
+
+                if (!in_reach_layer(d, q->layer)) {
+                    continue;
+                }
+                jw_view_arc(v, d, q, w, picked_arc(c, d, at)
+                            ? mark : jw_view_pen_colour(q->pen));
+            } else if (c->flip[i].kind == JW_FLIP_TEXT && at < c->n0_texts
+                       && takes_text(c)) {
+                const JwcText *t = &d->texts[at];
+
+                if (!in_reach_layer(d, t->layer)) {
+                    continue;
+                }
+                jw_view_text(v, d, t, w, picked_text(c, d, at)
+                             ? mark : jw_view_text_colour(d, t->size));
+            }
+        }
     }
 }
 
@@ -11949,6 +12053,17 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         /* The word beside the counts is `線` for a line and `円` for an arc
          * (measured: pressing SAMPLE6's arc at (446,189) says 円 変更). */
         c->hit_kind = k >= 0 ? 1 : 2;
+        /* **The original paints the old one out and draws the new one over
+         * it**, without redrawing anything else: on SAMPLE6's (499,271) its
+         * line calls are `(499,302)-(499,240)` in colour 0 and then the same
+         * in colour 6 (DOSEMU_BP=+10a9:07dc).  So the ends, which the lines
+         * meeting there share, are the new colour -- two pixels the port
+         * missed by redrawing from the records.  The ink replays that. */
+        if (k >= 0) {
+            jwc_ink_note(d, 1, JW_INK_LINE, &d->lines[k]);
+        } else {
+            jwc_ink_note(d, 1, JW_INK_ARC, &d->arcs[j]);
+        }
         if (k >= 0) {
             d->lines[k].type = (unsigned char)d->line_type;
             d->lines[k].pen = (unsigned char)d->pen;
@@ -11961,6 +12076,11 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             d->arcs[j].layer = layer;
             d->arcs[j].rest[0] = layer;
             d->arcs[j].rest[2] |= 1;
+        }
+        if (k >= 0) {
+            jwc_ink_note(d, 0, JW_INK_LINE, &d->lines[k]);
+        } else {
+            jwc_ink_note(d, 0, JW_INK_ARC, &d->arcs[j]);
         }
         c->stage = 1;
         return 1;
