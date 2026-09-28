@@ -1766,9 +1766,38 @@ static void kigou_cells(VGA *v, const JwUi *s)
                 t.size = (unsigned char)kind;
                 t.text = p->text;
                 memset(&w, 0, sizeof w);
-                w.ax = (float)ox;
-                w.ay = (float)oy;
-                w.scale = (float)scale;
+                /* **The text goes the drawing's way, in the drawing's
+                 * units** -- the floats the original hands its text routine
+                 * (18b3:0a63) say how.  The point is worked out on the
+                 * screen first, the cell's corner plus the DAT's mm x 5 x the
+                 * list's size, and then turned into drawing units by the
+                 * list's scale: (x - 121) / s and (463 - y) / s, each in
+                 * float.  The scale itself is float x float x float --
+                 * 0.57335907 x 0.1 x 50 = 2.866795539855957 for a plain
+                 * cell, a float step above the true quotient.  Cell 13 of
+                 * group B comes back as 5.23232269 and so starts at
+                 * 121 + 5.23232269 x 2.8667955 = 135.99999989, a column left
+                 * of where the lines' corner (136) is; cell 14's comes back
+                 * whole at 266.  Sizes are the 16.16 unit, exactly 5 a
+                 * millimetre here (JwView.text_unit). */
+                {
+                    const float sc = (float)((float)((float)0.5733590722084045
+                                                     * (float)(mul * 0.1))
+                                             * 50.0f);
+                    const float px0 = (float)(gox + t.x0 * scale);
+                    const float py0 = (float)(oy - t.y0 * scale);
+                    const float px1 = (float)(gox + t.x1 * scale);
+                    const float py1 = (float)(oy - t.y1 * scale);
+
+                    t.x0 = (float)((px0 - 121.0f) / sc);
+                    t.y0 = (float)((463.0f - py0) / sc);
+                    t.x1 = (float)((px1 - 121.0f) / sc);
+                    t.y1 = (float)((463.0f - py1) / sc);
+                    w.ax = 121.0f;
+                    w.ay = 463.0f;
+                    w.scale = sc;
+                    w.text_unit = scale;
+                }
                 /* **窓を升にします。** 0 のままだと (0,0)-(0,0) の
                  * 窓になって、字が丸ごと切り落とされます。 */
                 w.x0 = x0;

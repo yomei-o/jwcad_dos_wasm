@@ -20,6 +20,9 @@
  * does: it works in floats all the way to the line routine and truncates once.
  * Truncating the drawing coordinate first and adding an integer offset after
  * puts a line one pixel out wherever the fraction would have carried. */
+/* Pixels per millimetre of text in this view (JwView.text_unit). */
+#define VIEW_UNIT(d, w) ((w)->text_unit > 0.0 ? (w)->text_unit                          : (double)(d)->unit_mm * (w)->scale)
+
 static int to_x(const JwView *w, float x)
 {
     return (int)((x - w->ox) * w->scale + w->ax);
@@ -156,6 +159,7 @@ void jw_view_fit(JwView *w, const VGA *v, const Jwc *d)
     w->y0 = 0;
     w->x1 = v->width - 1;
     w->y1 = v->height - 1;
+    w->text_unit = 0.0;
 }
 
 void jw_view_fit_in(JwView *w, const Jwc *d, int x0, int y0, int x1, int y1)
@@ -177,6 +181,7 @@ void jw_view_fit_in(JwView *w, const Jwc *d, int x0, int y0, int x1, int y1)
     w->y0 = y0;
     w->x1 = x1;
     w->y1 = y1;
+    w->text_unit = 0.0;
 }
 
 void jw_view_original(JwView *w)
@@ -193,6 +198,7 @@ void jw_view_original(JwView *w)
     w->group1 = 0;              /* every group */
     w->frame_box = 0;
     w->layer1 = 0;
+    w->text_unit = 0.0;
 }
 
 static Fontx ank, kanji;
@@ -808,6 +814,20 @@ static void text_dir(double dx, double dy, double m,
     *rdy = -*uy;
 }
 
+/* A string's baseline row: the corner's row less the **truncated** float
+ * product, the way the text routine has it (ftol, then DGROUP 0xa60).  It
+ * is the ceiling of the difference -- what this used to take -- except when
+ * the product lands a hair under a whole number: the symbol list's cell 13
+ * has 40.1144753 x 2.8667955 = 115.0 in float but 114.99999 as the float
+ * sum 463 - it would round, and the original's row is 348. */
+static int text_base(const JwView *w, float y0)
+{
+    const float q = (y0 - w->oy) * w->scale;
+
+    return (int)ceil((double)w->ay - (double)(q >= 0.0f ? (float)(int)q
+                                                        : (float)floor(q)));
+}
+
 static void text_box(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
                      double unit, unsigned colour, unsigned rop)
 {
@@ -815,7 +835,7 @@ static void text_box(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
     const double len0 = dx * dx + dy * dy;
     const double len = len0 > 0.0 ? len0 : 1.0;
     const int turned = dy != 0.0 || dx < 0.0;
-    const int y = (int)ceil((double)(w->ay - (t->y0 - w->oy) * w->scale));
+    const int y = text_base(w, t->y0);
     const double height = text_height(d, t, unit);
 
     if (turned) {
@@ -882,7 +902,7 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
      * the original's own line calls settle it: five of them sit a row below
      * where rounding puts them and all eleven where the ceiling does.  The
      * other drawings have whole-number baselines and do not care. */
-    y = (int)ceil((double)(w->ay - (t->y0 - w->oy) * w->scale));
+    y = text_base(w, t->y0);
 
     height = text_height(d, t, unit);
     if ((int)height < TEXT_GLYPH_MIN) {
@@ -914,7 +934,13 @@ static void draw_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
          * all 26 cells of TEST6's longest heading, all 12 of its shorter one
          * and all 18 of TEST7's land where the original puts them. */
         const double step = text_step(d, t, unit);
-        const double x0 = floor((t->x0 - w->ox) * w->scale + w->ax) + 1.0;
+        /* The product is truncated before the corner is added, as the
+         * original's text routine does (ftol of the float product, then
+         * DGROUP 0xa5c): the list's cell 13 has 5.23232269 x 2.8667955 =
+         * 14.999999 in float, which is column 135 -- adding 121 in float
+         * first rounds it to 136.0 and puts every letter a column right. */
+        const double x0 = floor((double)((t->x0 - w->ox) * w->scale))
+                          + w->ax + 1.0;
         double walk = 0.0;
         int i = 0;
 
@@ -1435,7 +1461,7 @@ void jw_view_draw_into(VGA *v, const Jwc *d, const JwView *w)
         if (!visible_in(d, w, d->texts[k].layer)) {
             continue;
         }
-        draw_text(v, d, &d->texts[k], w, (double)d->unit_mm * w->scale,
+        draw_text(v, d, &d->texts[k], w, VIEW_UNIT(d, w),
                   jw_view_text_colour(d, d->texts[k].size));
     }
     /* The 指定点 markers: a two-pixel circle at each, in white.  The original
@@ -1514,7 +1540,7 @@ void jw_view_draw_into(VGA *v, const Jwc *d, const JwView *w)
 void jw_view_text(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
                   unsigned colour)
 {
-    draw_text(v, d, t, w, (double)d->unit_mm * w->scale, colour);
+    draw_text(v, d, t, w, VIEW_UNIT(d, w), colour);
 }
 
 /* 図形 ②読込's preview draws every string as a box, and **not the same box**
@@ -1537,7 +1563,7 @@ void jw_view_text_point(VGA *v, const Jwc *d, const JwcText *t,
                         const JwView *w, double px, double py,
                         unsigned colour, unsigned rop, double tx, double ty)
 {
-    const double unit = (double)d->unit_mm * w->scale;
+    const double unit = VIEW_UNIT(d, w);
     const double h = text_height(d, t, unit);
     const double sx = ((double)t->x0 - w->ox) * w->scale + w->ax;
     const double sy = w->ay - (t->y0 - w->oy) * w->scale;
@@ -1571,7 +1597,7 @@ void jw_view_text_caret(VGA *v, const Jwc *d, const JwcText *t,
                         const JwView *w, double cx, double cw,
                         unsigned colour, unsigned rop)
 {
-    const double unit = (double)d->unit_mm * w->scale;
+    const double unit = VIEW_UNIT(d, w);
     const double sy = w->ay - (t->y0 - w->oy) * w->scale;
     const int left = runs_left(t);
     int base = (int)sy;
@@ -1600,7 +1626,7 @@ void jw_view_text_caret(VGA *v, const Jwc *d, const JwcText *t,
 void jw_view_text_ghost(VGA *v, const Jwc *d, const JwcText *t,
                         const JwView *w, unsigned colour, unsigned rop)
 {
-    const double unit = (double)d->unit_mm * w->scale;
+    const double unit = VIEW_UNIT(d, w);
     const double dx = t->x1 - t->x0, dy = t->y1 - t->y0;
     const double len0 = dx * dx + dy * dy;
     const double len = len0 > 0.0 ? len0 : 1.0;
@@ -1665,7 +1691,7 @@ void jw_view_text_box(VGA *v, const Jwc *d, const JwcText *t, const JwView *w,
     if (!t->text || !*t->text) {
         return;
     }
-    text_box(v, d, t, w, (double)d->unit_mm * w->scale, colour, rop);
+    text_box(v, d, t, w, VIEW_UNIT(d, w), colour, rop);
 }
 
 void jw_view_rgba(const VGA *v, const unsigned char *pixels, unsigned char *rgba)

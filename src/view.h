@@ -25,6 +25,11 @@ typedef struct {
      * データ表示 wants one layer per panel; 0 means "whatever group1
      * says". */
     int layer1;
+    /* Pixels per millimetre of text, when it is not unit_mm x scale.  The
+     * original works a string's size out in 16.16 (28b3:0a63), and in the
+     * symbol list that comes to exactly 5 where the float product is
+     * 5.0000004; 0 means the product. */
+    double text_unit;
 } JwView;
 
 /* The view that fits the whole drawing on the screen, with a small margin.
