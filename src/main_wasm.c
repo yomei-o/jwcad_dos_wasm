@@ -227,7 +227,7 @@ static void kigou_input_done(void)
  *
  * 原点は、指示線 1 だけのときは**押したところを指示線に落とした点**
  * （「幅 [1mm]」の実測）、指示線 2 もあるときは**2 本の交点**です。 */
-static void place_kigou(const JwKigouSym *sym, double px, double py,
+static void place_kigou_1(const JwKigouSym *sym, double px, double py,
                         int phase)
 {
     JwcLine base, base2;
@@ -354,6 +354,17 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
     cmd.kigou_line2 = -1;
     ui.n_lines = drawing->n_lines;
     ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+}
+
+/* ...and the marks over the layer boxes follow what it put down
+ * (jw_ui_layers_from). */
+static void place_kigou(const JwKigouSym *sym, double px, double py,
+                        int phase)
+{
+    place_kigou_1(sym, px, py, phase);
+    if (drawing) {
+        jw_ui_layers_from(&ui, drawing);
+    }
 }
 
 static void sync_ui(void)

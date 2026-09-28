@@ -660,7 +660,11 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             memset(&pt, 0, sizeof pt);
             pt.x = (float)(ox + (qx1 * ax1 + qy1 * bx1) * mm * sc * (flip ? -1.0 : 1.0));
             pt.y = (float)(oy + (qx1 * ay1 + qy1 * by1) * mm * sc * (flip ? -1.0 : 1.0));
-            pt.layer = base->layer;
+            /* ...and the one after that, when there is one, its layer:
+             * B の 16 番「三斜寸法記入」's `30000 5 2` is saved as
+             * `02 05 00 1d` -- layer 2 -- and lights ②'s mark. */
+            pt.layer = (unsigned char)(p->layer >= 0 ? p->layer
+                                                     : base->layer);
             /* **The number after 30000 is the point's colour**, and it goes
              * in the point's own pen byte (file byte 9).  E の 15 番
              * 「壁付コンセント」's `30000 4 -11` is saved by the original as
@@ -668,7 +672,7 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
              * trailing bytes put 0x41 there and drew it cyan (2 pixels).
              * The 0x1d in byte 11 is not reproduced -- what decides it is
              * not read yet, and it does not change the picture. */
-            pt.rest[0] = base->layer;
+            pt.rest[0] = pt.layer;
             pt.rest[1] = (unsigned char)(p->type > 0 ? p->type : 0);
             if (jwc_put_point(d, &pt)) {
                 put++;

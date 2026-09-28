@@ -958,6 +958,60 @@ void jw_ui_default(JwUi *s)
     }
 }
 
+/* The two marks over each layer box (and each group box): something drawn
+ * on it, something written on it.  The original sets them as it puts an
+ * entity down -- 線記号変形 B の 16 番「三斜寸法記入」 lights ② and Ⓕ the
+ * moment it has placed its lines on layer 2 and its value on layer f --
+ * so this is its own step, not only part of reading a drawing. */
+void jw_ui_layers_from(JwUi *s, const Jwc *d)
+{
+    int i;
+
+    memset(s->layer_geom, 0, sizeof s->layer_geom);
+    memset(s->layer_text, 0, sizeof s->layer_text);
+    memset(s->group_geom, 0, sizeof s->group_geom);
+    memset(s->group_text, 0, sizeof s->group_text);
+    for (i = 0; i < 16; i++) {
+        const unsigned char layer = (unsigned char)((s->group << 4) | i);
+        long k;
+
+        for (k = 0; k < d->n_lines; k++) {
+            if (d->lines[k].layer == layer) {
+                s->layer_geom[i] = 1;
+                break;
+            }
+        }
+        for (k = 0; k < d->n_arcs && !s->layer_geom[i]; k++) {
+            if (d->arcs[k].layer == layer) {
+                s->layer_geom[i] = 1;
+            }
+        }
+        for (k = 0; k < d->n_points && !s->layer_geom[i]; k++) {
+            if (d->points[k].layer == layer) {
+                s->layer_geom[i] = 1;
+            }
+        }
+        for (k = 0; k < d->n_texts; k++) {
+            if (d->texts[k].layer == layer) {
+                s->layer_text[i] = 1;
+                break;
+            }
+        }
+    }
+    for (i = 0; i < d->n_lines; i++) {
+        s->group_geom[d->lines[i].layer >> 4] = 1;
+    }
+    for (i = 0; i < d->n_arcs; i++) {
+        s->group_geom[d->arcs[i].layer >> 4] = 1;
+    }
+    for (i = 0; i < d->n_points; i++) {
+        s->group_geom[d->points[i].layer >> 4] = 1;
+    }
+    for (i = 0; i < d->n_texts; i++) {
+        s->group_text[d->texts[i].layer >> 4] = 1;
+    }
+}
+
 void jw_ui_from(JwUi *s, const Jwc *d)
 {
     int i;
@@ -1009,51 +1063,17 @@ void jw_ui_from(JwUi *s, const Jwc *d)
     }
     for (i = 0; i < 16; i++) {
         const unsigned char layer = (unsigned char)((s->group << 4) | i);
-        long k;
 
         s->layer_on[i] = (unsigned char)jwc_visible(d, layer);
         s->layer_ring[i] = (unsigned char)(s->layer_on[i]
                                            && d->layer_edit[layer]
                                            && d->group_edit[layer >> 4]);
-        for (k = 0; k < d->n_lines; k++) {
-            if (d->lines[k].layer == layer) {
-                s->layer_geom[i] = 1;
-                break;
-            }
-        }
-        for (k = 0; k < d->n_arcs && !s->layer_geom[i]; k++) {
-            if (d->arcs[k].layer == layer) {
-                s->layer_geom[i] = 1;
-            }
-        }
-        for (k = 0; k < d->n_points && !s->layer_geom[i]; k++) {
-            if (d->points[k].layer == layer) {
-                s->layer_geom[i] = 1;
-            }
-        }
-        for (k = 0; k < d->n_texts; k++) {
-            if (d->texts[k].layer == layer) {
-                s->layer_text[i] = 1;
-                break;
-            }
-        }
     }
+    jw_ui_layers_from(s, d);
     /* And the same two per group, which is what ｸﾞﾙｰﾌﾟ's sixteen boxes
      * show: the high nibble of the layer byte picks the group. */
     for (i = 0; i < 16; i++) {
         s->group_on[i] = d->group_on[i];
-    }
-    for (i = 0; i < d->n_lines; i++) {
-        s->group_geom[d->lines[i].layer >> 4] = 1;
-    }
-    for (i = 0; i < d->n_arcs; i++) {
-        s->group_geom[d->arcs[i].layer >> 4] = 1;
-    }
-    for (i = 0; i < d->n_points; i++) {
-        s->group_geom[d->points[i].layer >> 4] = 1;
-    }
-    for (i = 0; i < d->n_texts; i++) {
-        s->group_text[d->texts[i].layer >> 4] = 1;
     }
 }
 
@@ -2458,8 +2478,6 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             }
         }
     }
-    jw_line(v, 55, 360, 55, 362, 0, ROP_REPLACE, JW_STYLE_SOLID);
-    jw_line(v, 56, 360, 56, 362, 0, ROP_REPLACE, JW_STYLE_SOLID);
     for (i = 0; i < 16; i++) {
         const int bx = 10 + 14 * (i & 7), by = 353 + 16 * (i >> 3);
 

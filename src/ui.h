@@ -625,6 +625,7 @@ void jw_ui_default(JwUi *s);
 
 /* And the way it comes up with this drawing loaded.  Everything but the
  * guidance line comes out of the drawing's own first line; see jwc.c. */
+void jw_ui_layers_from(JwUi *s, const Jwc *d);
 void jw_ui_from(JwUi *s, const Jwc *d);
 
 /* Draw the whole chrome.  The drawing area (122,17)-(638,462) is left alone. */
