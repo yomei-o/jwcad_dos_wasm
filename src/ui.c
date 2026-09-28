@@ -1492,7 +1492,7 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
     stage_text_1(v, q, s, stage);
     if (top_writes != before && q->row == 1 && q->col == 1
         && strlen(q->text) == 80) {
-        top_spill = 1;
+        top_spill = top_writes;
     }
     /* ...unless the counts box is written after it.  A read press puts
      * ／'s `長=` and `角度=` up at once, and the original refills the box
@@ -6108,7 +6108,11 @@ static void cursor_line(VGA *v, int x0, int y, int x1)
  * touches the corner would paint over it. */
 void jw_ui_range_notch(VGA *v)
 {
-    if (asks_range() || top_spill) {
+    /* The stage line spills only if nothing is written to the top line
+     * after it: once ＋ has its second point the original puts `[ESC]` up
+     * and clears from column 6, and the line that follows is in pieces --
+     * (0,16) and the edge column stay white. */
+    if (asks_range() || (top_spill && top_spill == top_writes)) {
         int y;
 
         for (y = 0; y < 16; y++) {
