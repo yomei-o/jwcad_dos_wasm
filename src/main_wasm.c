@@ -240,6 +240,7 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
     if (phase >= 10 && held_on) {
         /* 字だけをあとから足します（枠は押したときのまま）。 */
         cmd.n0_lines = drawing->n_lines;
+        cmd.n0_ink = drawing->n_ink + 1;
         cmd.n0_arcs = drawing->n_arcs;
         cmd.n0_texts = drawing->n_texts;
         jw_kigou_put(drawing, sym, &held_base, held_two ? &held_base2 : 0,
@@ -268,6 +269,7 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
         /* **記号が足した分だけを帯の下に戻します**（jw_cmd_after）。
          * 全部を戻すと、消し跡の順が変わって別の所が狂います。 */
         cmd.n0_lines = drawing->n_lines;
+        cmd.n0_ink = drawing->n_ink + 1;
         cmd.n0_arcs = drawing->n_arcs;
         cmd.n0_texts = drawing->n_texts;
         jw_kigou_put(drawing, sym, &ln, 0, px, py, px, py,
@@ -310,6 +312,7 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
                 jwc_remove_line(drawing, cmd.kigou_line2);
             }
             cmd.n0_lines = drawing->n_lines;
+        cmd.n0_ink = drawing->n_ink + 1;
             cmd.n0_arcs = drawing->n_arcs;
             cmd.n0_texts = drawing->n_texts;
             jw_kigou_put(drawing, sym, &base, two, ox, oy, px, py,
@@ -331,6 +334,7 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
      * 記号の上に乗ります。`base` は写しなので消しても使えます。 */
     jwc_remove_line(drawing, cmd.kigou_line);
     cmd.n0_lines = drawing->n_lines;
+        cmd.n0_ink = drawing->n_ink + 1;
     cmd.n0_arcs = drawing->n_arcs;
     cmd.n0_texts = drawing->n_texts;
     if (phase == 0) {

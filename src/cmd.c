@@ -3292,6 +3292,24 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         printf("after: cmd=%d n0=%ld now=%ld%c", c->command,
                (long)c->n0_lines, (long)d->n_lines, 10);
     }
+    /* **線記号変形 puts its pieces back in the order it made them**, not
+     * lines first and arcs after: the original draws each part as it reads
+     * it from the DAT.  F の 4 番 has an arc listed before two short lines
+     * that cross it, and the original's line calls are the arc's chain and
+     * then the lines (colour 5 on top at (160,162) and (161,162)); the loops
+     * below put the arc last.  The ink holds the pieces in that order, so
+     * this replays what was added since the symbol went down -- when it can:
+     * a view change throws the ink away, and then the loops below are all
+     * there is. */
+    if (c->command == 17 && c->hen_kigou && c->n0_ink > 0
+        && !d->ink_over && c->n0_ink - 1 <= d->n_ink) {
+        for (k = c->n0_ink - 1; k < d->n_ink; k++) {
+            if (!d->ink[k].erase) {
+                jw_view_ink(v, d, &d->ink[k], w);
+            }
+        }
+        return;
+    }
     /* Anything made since the range was fixed -- 複写's copies -- goes back on
      * top.  The original draws a new entity over the finished screen rather
      * than redrawing everything, so where a copy crosses one of the reddened
@@ -4183,10 +4201,19 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
                 if (flipped(c, JW_FLIP_LINE, k)) {
                     continue;                        /* pressed: left alone */
                 }
+                /* **The cut is painted out and drawn again**, in this
+                 * same walk from the last record down: on SAMPLE0 with
+                 * line 5 pressed in, the original's calls are line 5 in
+                 * colour 0, line 0 whole in colour 0, and then line 0's
+                 * kept piece (161,170)-(161,139) white -- so the corner
+                 * the two shared, (161,157), is white.  Cutting in place
+                 * with no ink left it under line 5's erase. */
+                jwc_ink_note(d, 1, JW_INK_LINE, l);
                 l->x0 = (float)ax;
                 l->y0 = (float)ay;
                 l->x1 = (float)bx;
                 l->y1 = (float)by;
+                jwc_ink_note(d, 0, JW_INK_LINE, l);
                 changed = 1;
             } else if ((kind == JW_OUT_OUT) != flipped(c, JW_FLIP_LINE, k)) {
                 jwc_remove_line(d, k);

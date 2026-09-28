@@ -108,6 +108,10 @@ typedef struct {
      * original leaves the copies white while the originals stay red.  Measured
      * with a five-millimetre distance, where the copy overlaps the box. */
     long n0_lines, n0_arcs, n0_texts;
+    /* 線記号変形: how much ink there was when the symbol went down, plus
+     * one (0 = not set).  jw_cmd_after puts the symbol back in the order
+     * it was made, which the ink keeps (see there). */
+    long n0_ink;
     /* And the set itself, once 複写 or 移動 has acted on it.  The box test is
      * no use afterwards -- 移動 takes the entities out of the box and the
      * original still shows them picked -- so what was picked is written down

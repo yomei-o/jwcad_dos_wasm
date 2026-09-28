@@ -1558,6 +1558,25 @@ void jwc_ink_settle(Jwc *d)
     d->ink_done = d->n_ink;
 }
 
+/* **Bit 0x10 of the fifth trailing byte says "shorter than a dot".**  The
+ * original works it out whenever it stores a line (21f2:2750, which its
+ * line adder in overlay 1 and the reader in overlay 36 both call): a pen
+ * of 0x5a or more clears it, and otherwise it is set when both |x1 - x0|
+ * and |y1 - y0| are under 1.0 (the float at DGROUP 0x92a4) and cleared if
+ * not.  jw_view_line draws such a line as one dot.  Measured on 線記号変形
+ * J01: the piece it puts along the second instruction line is 0.00003
+ * long, the original's record has the bit, and it plots one pixel for it
+ * where the port drew two. */
+static void dot_mark(JwcLine *l)
+{
+    if (l->pen < 0x5a && fabs((double)l->x1 - l->x0) < 1.0
+        && fabs((double)l->y1 - l->y0) < 1.0) {
+        l->rest[2] |= 0x10;
+    } else {
+        l->rest[2] &= (unsigned char)~0x10u;
+    }
+}
+
 int jwc_put_line(Jwc *d, const JwcLine *l)
 {
     static const long BLOCK = 256;
@@ -1573,8 +1592,10 @@ int jwc_put_line(Jwc *d, const JwcLine *l)
         d->lines = grown;
         d->cap_lines = want;
     }
-    d->lines[d->n_lines++] = *l;
-    jwc_ink_note(d, 0, JW_INK_LINE, l);
+    d->lines[d->n_lines] = *l;
+    dot_mark(&d->lines[d->n_lines]);
+    jwc_ink_note(d, 0, JW_INK_LINE, &d->lines[d->n_lines]);
+    d->n_lines++;
     return 1;
 }
 
@@ -1697,6 +1718,7 @@ int jwc_add_line(Jwc *d, float x0, float y0, float x1, float y1,
      * the lines that ship carry 0x41, 0x18 and 0x4f there, and a second byte
      * of 0, 2 or 3 behind it -- so it is written back and not invented. */
     l->rest[1] = 3;
+    dot_mark(l);
     d->n_lines++;
     jwc_ink_note(d, 0, JW_INK_LINE, l);
     return 1;
@@ -1724,6 +1746,7 @@ int jwc_dup_line(Jwc *d, long k, float dx, float dy)
     l->y0 += dy;
     l->x1 += dx;
     l->y1 += dy;
+    dot_mark(l);
     jwc_ink_note(d, 0, JW_INK_LINE, l);
     return 1;
 }
@@ -1751,6 +1774,8 @@ int jwc_split_line(Jwc *d, long k, float x, float y)
     d->lines[d->n_lines - 1] = was;
     d->lines[d->n_lines - 1].x0 = x;
     d->lines[d->n_lines - 1].y0 = y;
+    dot_mark(&d->lines[d->n_lines - 2]);
+    dot_mark(&d->lines[d->n_lines - 1]);
     jwc_ink_hold(d, 0);
     jwc_ink_note(d, 0, JW_INK_LINE, &d->lines[d->n_lines - 2]);
     jwc_ink_note(d, 0, JW_INK_LINE, &d->lines[d->n_lines - 1]);
@@ -1777,6 +1802,7 @@ int jwc_relink_line(Jwc *d, long k, float x0, float y0, float x1, float y1)
     l->y0 = y0;
     l->x1 = x1;
     l->y1 = y1;
+    dot_mark(l);
     jwc_ink_note(d, 0, JW_INK_LINE, l);
     jwc_remove_line(d, k);
     return 1;

@@ -472,6 +472,12 @@ void jw_ui_pick_kind(JwUi *s, int kind)
 
 static char top_line[82];
 
+/* How many writes the top line has had, and whether one of them was a
+ * stage line that ran to column 80 (see jw_ui_range_notch). */
+static int top_writes;
+static int top_spill;
+static int box_writes;          /* writes into the counts box, rows 2-3 */
+
 static void top_clear(void)
 {
     memset(top_line, ' ', sizeof top_line - 1);
@@ -677,12 +683,16 @@ void jw_ui_text(VGA *v, int col, int row, unsigned fg, unsigned bg,
     if (!p || !ank->data) {
         return;
     }
+    if ((row == 2 || row == 3) && col <= 15) {
+        box_writes++;
+    }
     if (row == 1) {
         int i;
 
         for (i = 0; p[i] && col - 1 + i < 80; i++) {
             top_line[col - 1 + i] = (char)p[i];
         }
+        top_writes++;
     }
     /* 0def:23c5 reads its last argument as three cases, not as a colour:
      * 0 paints the background black behind the letters, 2 leaves what is
@@ -1204,7 +1214,7 @@ static void put_metres(char *out, size_t cap, const char *text, double m,
     out[o] = 0;
 }
 
-static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
+static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
     char out[160];
 
@@ -1447,6 +1457,29 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
         strcpy(out, q->text);
     }
     jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, out);
+}
+
+/* **A stage line is written in one piece and then cleared to its end**: ＋
+ * and ／ after their first point write `[ESC]・◆終点指示 …|` from column 1
+ * to 80 and the original's next call is 1def:2636 from column 81 -- the
+ * same spill as `|① 前 範 囲|` (jw_ui_range_notch).  Measured with
+ * DOSEMU_BP=+0def:2636,+0def:23c5. */
+static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
+{
+    const int before = top_writes, boxed = box_writes;
+
+    stage_text_1(v, q, s, stage);
+    if (top_writes != before && q->row == 1 && q->col == 1
+        && strlen(q->text) == 80) {
+        top_spill = 1;
+    }
+    /* ...unless the counts box is written after it.  A read press puts
+     * ／'s `長=` and `角度=` up at once, and the original refills the box
+     * in colour 4 and draws its frame and the rule under the top line again
+     * -- (0,16) comes back white (pressfull.sh 3 r 383 401). */
+    if (box_writes != boxed) {
+        top_spill = 0;
+    }
 }
 
 /* The line of guidance the original comes up with, out of its own DGROUP --
@@ -2182,6 +2215,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
     /* -- the frame ------------------------------------------------------ */
     fill(v, 0, 0, 639, 15, 0);
+    top_spill = 0;
     fill(v, 0, 463, 639, 479, 0);
     fill(v, 0, 0, 121, 303, 0);
     /* **文字入力の盤のあいだは引きません**（実測：本物は上の行の
@@ -5986,7 +6020,7 @@ static void cursor_line(VGA *v, int x0, int y, int x1)
  * touches the corner would paint over it. */
 void jw_ui_range_notch(VGA *v)
 {
-    if (asks_range()) {
+    if (asks_range() || top_spill) {
         int y;
 
         for (y = 0; y < 16; y++) {

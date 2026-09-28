@@ -510,12 +510,63 @@ static void arc_vertex(double cx, double cy, int rx, int ry, long ang,
  * into the next scan line; and in the browser's view, which is not clipped to a
  * drawing area, an arc can leave it.  Liang-Barsky, the two ends together --
  * unlike a drawing's lines, an arc's pieces can have *both* ends outside. */
+/* Cut the far end of a piece whose near end is in the window, the way
+ * 1def:17bb does: to the window's own edges, not a pixel past them. */
+static void cut_far(const VGA *v, double x0, double y0, double *x1, double *y1)
+{
+    double t = 1.0;
+    const double dx = *x1 - x0, dy = *y1 - y0;
+
+    if (dx > 0.0 && *x1 > v->clip_x1) t = (v->clip_x1 - x0) / dx;
+    if (dx < 0.0 && *x1 < v->clip_x0) t = (v->clip_x0 - x0) / dx;
+    if (dy > 0.0 && *y1 > v->clip_y1) {
+        const double u = (v->clip_y1 - y0) / dy;
+        if (u < t) t = u;
+    }
+    if (dy < 0.0 && *y1 < v->clip_y0) {
+        const double u = (v->clip_y0 - y0) / dy;
+        if (u < t) t = u;
+    }
+    if (t < 0.0) t = 0.0;
+    *x1 = x0 + dx * t;
+    *y1 = y0 + dy * t;
+}
+
+static int in_clip(const VGA *v, double x, double y)
+{
+    return x >= v->clip_x0 && x <= v->clip_x1
+        && y >= v->clip_y0 && y <= v->clip_y1;
+}
+
 static void clipped_line(VGA *v, double x0, double y0, double x1, double y1,
                          unsigned colour, unsigned rop, int style)
 {
     const double dx = x1 - x0, dy = y1 - y0;
     double t0 = 0.0, t1 = 1.0;
     int i;
+
+    /* **One end in, one out: the end that is in goes first**, and the other
+     * is cut to the window's edge.  線記号変形 J の 4 番's big circle leaves
+     * the window through its bottom, and the original's piece is
+     * (465.97,471.38)-(476.98,460.38) drawn as (476,460)-(475,462): the
+     * inside end first, cut at y 462 -- 0.8527 of the way, x 475.36.  The
+     * general cut below stops at y 463 and clamps, which put it at 474
+     * (and D04 the same). */
+    {
+        const int in0 = in_clip(v, x0, y0), in1 = in_clip(v, x1, y1);
+
+        if (in0 != in1) {
+            double ax = in0 ? x0 : x1, ay = in0 ? y0 : y1;
+            double bx = in0 ? x1 : x0, by = in0 ? y1 : y0;
+
+            cut_far(v, ax, ay, &bx, &by);
+            if (getenv("JW_TRACE")) {
+                printf("(%9.4f,%9.4f)-(%9.4f,%9.4f)\n", x0, y0, x1, y1);
+            }
+            jw_line(v, (int)ax, (int)ay, (int)bx, (int)by, colour, rop, style);
+            return;
+        }
+    }
 
     for (i = 0; i < 4; i++) {
         const double p = i == 0 ? -dx : i == 1 ? dx : i == 2 ? -dy : dy;

@@ -621,7 +621,15 @@ int jw_kigou_put(Jwc *d, const JwKigouSym *sym, const JwcLine *base,
             pt.x = (float)(ox + (qx1 * ax1 + qy1 * bx1) * mm * sc * (flip ? -1.0 : 1.0));
             pt.y = (float)(oy + (qx1 * ay1 + qy1 * by1) * mm * sc * (flip ? -1.0 : 1.0));
             pt.layer = base->layer;
-            memcpy(pt.rest, base->rest, sizeof pt.rest);
+            /* **The number after 30000 is the point's colour**, and it goes
+             * in the point's own pen byte (file byte 9).  E の 15 番
+             * 「壁付コンセント」's `30000 4 -11` is saved by the original as
+             * `00 04 00 1d` and drawn yellow; copying the instruction line's
+             * trailing bytes put 0x41 there and drew it cyan (2 pixels).
+             * The 0x1d in byte 11 is not reproduced -- what decides it is
+             * not read yet, and it does not change the picture. */
+            pt.rest[0] = base->layer;
+            pt.rest[1] = (unsigned char)(p->type > 0 ? p->type : 0);
             if (jwc_put_point(d, &pt)) {
                 put++;
             }

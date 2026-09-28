@@ -1141,7 +1141,10 @@ static void view_line_in(VGA *v, const Jwc *d, const JwcLine *l,
      * 4,083 and 404 of SAMPLE2's -- so it is the drawing saying "this one
      * is shorter than a dot".  Without it the port puts down two pixels
      * wherever the two ends happen to truncate to different ones. */
-    if (l->rest[2] & 0x10) {
+    /* ...and only below a scale of 1.5 (DGROUP 0x1e3c): 21f2:6476 hands
+     * 1def:17bb its "this is a point" flag only when the bit is set and the
+     * view's scale is under that (link 11f2:6476 on). */
+    if ((l->rest[2] & 0x10) && w->scale < 1.5f) {
         const int px = (int)fx0, py = (int)fy0;
 
         if (inside(w, px, py)) {
