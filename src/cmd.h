@@ -461,6 +461,20 @@ typedef struct {
     /* ＋・／ の ②寸法 が決まっている（**長さを固定**して向きだけ矢に
      * 付いてくる）。オーバーレイ 23 の 0x2db8c〜0x2dcc3。 */
     int fix_len;
+    /* 欄を閉じたあとの `・始点指示 (L)free (R)Read … [BS]前項` の状態。
+     * 長さ・角度を固定していなくても（`任意寸法 ﾏｳｽ(L)`）この行になる。
+     * [BS] で元の行（①〜⑤ の升）に戻る。 */
+    int fix_mode;
+    /* **取り消し**（何も持っていないときの [ESC]）。本物はオーバーレイ 23 の
+     * 0x2bdad〜：直前の押しで足した線・円弧・文字の数（[bp-0xf0] など）だけ
+     * 後ろから消して、その押しの前の段に戻る（測定：／ で引いたあと [ESC] →
+     * 線が消えて `◆終点指示`、始点を持ったまま）。ここに、その数と、戻る
+     * 先の状態を控えます。 */
+    long undo_lines, undo_arcs, undo_texts;
+    struct {
+        int pressed, stage, box_done, circ_done, fix_done;
+        double x0, y0, x1, y1;
+    } undo_to;
     /* 固定したあとの 1 本目を引き終えた（上の行が `確定長さ =` になる）。 */
     int fix_done;
     double fix_ang;             /* その線の角度（度）。上の行に出る */
@@ -468,6 +482,10 @@ typedef struct {
     /* ③角度 が決まっている（**向きを固定**して、矢はその向きの上に
      * 映した所）。本物は DGROUP 0x0fdc に角度を float で持つ。 */
     int fix_angle;
+    /* ／ の ④平行・⑤垂直：基準線の向き（cos,sin を float で）に固定。
+     * par_on が立っていると fix_dir のかわりにこの向きへ映す。 */
+    int par_on;
+    float par_cs, par_sn;
     /* □ の ①寸法：`横,縦` の欄が開いている（box_ask）、大きさが決まって
      * 置く場所を待っている（box_fix）。大きさは紙の mm を float で（本物は
      * DGROUP 0x0fe8/0x0fec、初めは 1000,1000）。基点は -1〜1 の 2 つ
@@ -478,6 +496,14 @@ typedef struct {
     double box_w, box_h;
     int box_bi, box_bj;
     int box_base;               /* ④基点変 で 0〜8 を回る（0 が真ん中） */
+    /* □・○ の欄を [ESC] か `任意寸法 ﾏｳｽ(L)` で閉じたあとの、2 点で描く
+     * `始点指示 … [BS]前項` の状態（／ の fix_mode と同じ）。 */
+    int box_mode;
+    int circ_mode;
+    /* □ の ②角度：傾いた四角。角度は度を float で（本物は DGROUP 0x0fe4、
+     * 初めは 45）。box_rot が立っていると 2 点の四角がその角度で傾く。 */
+    int box_rot;
+    double box_ang;
     /* ○ の ①径寸法：`半 径 =` の欄（circ_ask）、半径が決まって置く場所を
      * 待っている（circ_fix）。半径は紙の mm、初めは 1000。 */
     int circ_ask;
@@ -487,9 +513,13 @@ typedef struct {
     int circ_base;              /* ②基点変 で 0〜8 を回る（0 が中心） */
     /* （ の ②角度指定：`角度 =` の欄（arc_ask）、角度が決まって終点の押しは
      * 向きだけを決める（arc_fix）。角度は度、初めは 90（本物の `[  90.000ﾟ]`）。 */
-    int arc_ask;
+    int arc_ask;                /* 1 = ②角度指定 の欄、2 = ①半径指定 の欄 */
     int arc_fix;
     double arc_ang;
+    /* ①半径指定：半径が決まっている（始点の押しでは向きだけ、半径はこの数）。
+     * 紙の mm、初めは 1000（本物の `[1000.000mm]`）。 */
+    int arc_rfix;
+    double arc_r;
     double hatch_angle;         /* ③角 度, degrees -- 45.00 to start with */
     double hatch_pitch;         /* ④ﾋﾟｯﾁ, millimetres of paper -- 10.0 */
     /* How wide and how tall the string being typed comes out, in drawing

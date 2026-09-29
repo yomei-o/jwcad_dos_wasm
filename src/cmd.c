@@ -19,7 +19,9 @@ void jw_cmd_pick(JwCmd *c, int command)
     const double keep_len = c->ask_len, keep_ang = c->ask_ang;
     const double keep_bw = c->box_w, keep_bh = c->box_h;
     const double keep_cr = c->circ_r;
+    const double keep_ba = c->box_ang;
     const double keep_aa = c->arc_ang;
+    const double keep_ar = c->arc_r;
 
     free(c->hen_end);
     free(c->sel_line);
@@ -87,7 +89,9 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->box_w = had ? keep_bw : 1000.0;
     c->box_h = had ? keep_bh : 1000.0;
     c->circ_r = had ? keep_cr : 1000.0;
+    c->box_ang = had ? keep_ba : 45.0;
     c->arc_ang = had ? keep_aa : 90.0;
+    c->arc_r = had ? keep_ar : 1000.0;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -213,6 +217,54 @@ static void box_corners(const JwCmd *c, const Jwc *d, double px, double py,
     }
 }
 
+/* □ の ②角度：傾いた四角の四隅。本物はオーバーレイ 23 の 0x2f7b3〜0x2f861
+ * と 0x2fd05〜0x3008e で、
+ *
+ *   cs/sn = (float)cos/sin((float)角度 * π/180)、原点は始点
+ *   u = 矢を u へ映したもの、v = v へ映したもの（1bb4:2981/2a18 の向き 1）
+ *   u0 = -(基点 * u)、v0 = -(v * 基点)、u1 = (基点+1)*u + u0、v1 = v*(基点+1) + v0
+ *   隅 = (u0,v0) → (u0,v1) → (u1,v1) → (u1,v0) を図面へ戻したもの
+ *
+ * （基点 は始点の角なら 0）。測定：30 度で (250,200) → (400,300) が
+ * (129,263)-(209.80127,123.048096)-(279,163)-(198.19873,302.951904)。 */
+static void tilt_corners(const JwCmd *c, double px, double py,
+                         float X[5], float Y[5])
+{
+    const float a = (float)c->box_ang;
+    const double r = (double)a * 0.017453292519943295;
+    const float cs = (float)cos(r), sn = (float)sin(r);
+    const float ox = (float)c->x0, oy = (float)c->y0;
+    const float mx = (float)px, my = (float)py;
+    const float u = (float)(((double)my - oy) * sn + ((double)mx - ox) * cs);
+    const float v = (float)(((double)my - oy) * cs - ((double)mx - ox) * sn);
+    const int b = 0;
+    const float u0 = -((float)b * u), v0 = -(v * (float)b);
+    const float u1 = (float)(b + 1) * u + u0, v1 = v * (float)(b + 1) + v0;
+    const float U[5] = { u0, u0, u1, u1, u0 };
+    const float V[5] = { v0, v1, v1, v0, v0 };
+    int k;
+
+    for (k = 0; k < 5; k++) {
+        X[k] = (float)((double)cs * U[k] - (double)sn * V[k] + ox);
+        Y[k] = (float)((double)cs * V[k] + (double)sn * U[k] + oy);
+    }
+}
+
+/* ／ の ④平行・⑤垂直：基準線の向きへ映した終点。座標系は基準線から
+ * 1bb4:27ea と同じく cos=(float)(dx/L)、sin=(float)(dy/L)（⑤ は 90 度
+ * 回す）、原点は始点。**斜めの基準線ではまだ測っていない**（SAMPLE0 の
+ * 縦の枠で測定：(250,200) → (400,280) が長さ 45.869、角度 -90）。 */
+static void par_dir(const JwCmd *c, double *x, double *y)
+{
+    const float cs = c->par_cs, sn = c->par_sn;
+    const float ox = (float)c->x0, oy = (float)c->y0;
+    const float px = (float)*x, py = (float)*y;
+    const float u = (float)(((double)py - oy) * sn + ((double)px - ox) * cs);
+
+    *x = (float)((double)cs * u - (double)sn * 0.0 + ox);
+    *y = (float)((double)cs * 0.0 + (double)sn * u + oy);
+}
+
 /* What the panel shows for a command in hand: a length and an angle for a line,
  * the two sides for a box, the radius and the diameter for a circle.  A length
  * is millimetres of the real thing -- drawing units over `unit_mm`, times the
@@ -272,6 +324,45 @@ static double hypot_of(double dx, double dy)
 static long fixed16(double deg)
 {
     return (long)(deg * 65536.0 + 0.5);
+}
+
+/* 本物の角度の道具 0def:2828 をそのまま（ルート 0x10718）。二点の向きを
+ * 16.16 の度で、0 以上 360 未満。dx・dy は double、どちらかが 0 なら軸の
+ * 角度そのもの、ほかは trunc(atan2(dy,dx) * 3754936.206 + 23592960.5) で
+ * 360 以上なら 360 を引く（DGROUP 0x9254・0x925c の定数。3754936.206 は
+ * 180/π×65536 の丸めで、ちょうどの値とは末尾が違う）。 */
+static long ang16(double x1, double y1, double x2, double y2)
+{
+    const double dx = x2 - x1, dy = y2 - y1;
+    long v;
+
+    if (dy == 0.0) {
+        return dx < 0.0 ? 180L << 16 : 0L;
+    }
+    if (dx == 0.0) {
+        return dy < 0.0 ? 270L << 16 : 90L << 16;
+    }
+    v = (long)(atan2(dy, dx) * 3754936.206 + 23592960.5);
+    if ((unsigned long)v >> 16 >= 360UL) {
+        v -= 360L << 16;
+    }
+    return v;
+}
+
+/* 上の行に出す角度（度）。本物は ang16 を float にして ±180 に寄せる
+ * （オーバーレイ 23 の 0x2e0b1〜0x2e154。測定：(150,-80) の向きが
+ * `-28.073`——atan2 のちょうどの値だと -28.072）。 */
+static double shown_angle(double x1, double y1, double x2, double y2)
+{
+    float a = (float)((double)ang16(x1, y1, x2, y2) * 1.52587890625e-05);
+
+    while (a > 180.0f) {
+        a = a - 360.0f;
+    }
+    while (a < -180.0f) {
+        a = 360.0f + a;
+    }
+    return a;
 }
 
 static void two_lines(JwCmd *c, Jwc *d);
@@ -359,7 +450,9 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
     if (c->command == 2) {
         axis(c, &x, &y);
     }
-    if (c->command == 3 && c->fix_angle) {
+    if (c->command == 3 && c->par_on) {
+        par_dir(c, &x, &y);
+    } else if (c->command == 3 && c->fix_angle) {
         fix_dir(c, &x, &y);
     }
     if ((c->command == 2 || c->command == 3) && c->fix_len) {
@@ -368,6 +461,9 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
     measure(c, d, x, y);
     if (c->command == 12 && c->pressed == 2 && c->arc_fix) {
         c->num[1] = (float)c->arc_ang;      /* `角度=  120.000ﾟ` */
+    }
+    if (c->command == 12 && c->pressed == 2 && c->arc_rfix) {
+        c->num[0] = (float)c->arc_r;        /* `半径=    50.000` */
     }
 }
 
@@ -1124,7 +1220,22 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
     v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
     v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
     at_screen(w, c->x0, c->y0, &px, &py);
-    if (c->command == 4 || JW_RANGE_CMD(c->command)) {
+    if (c->command == 4 && c->box_rot && d) {
+        /* ②角度 の傾いた四角の帯。 */
+        float X[5], Y[5];
+        double mx, my;
+        int k;
+
+        jw_cmd_at(w, sx, sy, &mx, &my);
+        tilt_corners(c, mx, my, X, Y);
+        for (k = 0; k < 4; k++) {
+            int qx0, qy0, qx1, qy1;
+
+            at_screen(w, X[k], Y[k], &qx0, &qy0);
+            at_screen(w, X[k + 1], Y[k + 1], &qx1, &qy1);
+            jw_line(v, qx0, qy0, qx1, qy1, 2, 0x18, JW_STYLE_SOLID);
+        }
+    } else if (c->command == 4 || JW_RANGE_CMD(c->command)) {
         jw_line(v, px, py, px, sy, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, px, sy, sx, sy, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, sx, py, sx, sy, 2, 0x18, JW_STYLE_SOLID);
@@ -1151,7 +1262,10 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
          * 短い回りの方。②角度指定 のあとは、打った角度の弧が矢の側に。 */
         const double fx = (c->x0 - w->ox) * w->scale + w->ax;
         const double fy = w->ay - (c->y0 - w->oy) * w->scale;
-        const double r = hypot_of(c->x1 - c->x0, c->y1 - c->y0) * w->scale;
+        const double r = (c->arc_rfix && d
+                          ? (double)((float)c->arc_r / jwc_zukei_scale(d))
+                          : hypot_of(c->x1 - c->x0, c->y1 - c->y0))
+                         * w->scale;
         double mx, my, a0, a1;
 
         jw_cmd_at(w, sx, sy, &mx, &my);
@@ -1184,7 +1298,7 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
     } else if (c->command == 2 || c->command == 3) {
         int qx = sx, qy = sy;
 
-        if (c->command == 2 || c->fix_len || c->fix_angle) {
+        if (c->command == 2 || c->fix_len || c->fix_angle || c->par_on) {
             double x, y;
 
             /* the axis is chosen in drawing units, so go there and back */
@@ -1192,7 +1306,9 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
             if (c->command == 2) {
                 axis(c, &x, &y);
             }
-            if (c->command == 3 && c->fix_angle) {
+            if (c->command == 3 && c->par_on) {
+                par_dir(c, &x, &y);
+            } else if (c->command == 3 && c->fix_angle) {
                 fix_dir(c, &x, &y);
             }
             /* ②寸法 で長さが決まっていれば、帯もその長さ（本物の赤い線は
@@ -3738,8 +3854,25 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         return 1;
     }
     /* （ の ②角度指定（始点を取って `） 終点指示` のとき）。 */
+    if (c->command == 12 && c->pressed == 2 && item == 1) {
+        c->arc_ask = 2;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 1;
+    }
     if (c->command == 12 && c->pressed == 2 && item == 2) {
         c->arc_ask = 1;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 1;
+    }
+    /* □ の ②角度：`角度 =` の欄（＋ と同じ形の欄）。 */
+    if (c->command == 4 && item == 2 && !c->box_fix) {
+        c->pressed = 0;
+        c->stage = 0;
+        c->box_ask = 2;
         c->typing = 1;
         c->typed[0] = 0;
         c->typed_n = 0;
@@ -3758,7 +3891,12 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         return 1;
     }
     /* ○ の ①径寸法：`半 径 =` の欄を開きます（前は src/item.h の画面だけ）。 */
-    if (c->command == 11 && item == 1 && (c->stage == 0 || c->circ_fix)) {
+    if (c->command == 11 && item == 1) {
+        /* 中心を押したあとの `① 径指定` も同じ欄で、押した中心は捨てて
+         * 半径を決めて置く状態になります（測定：中心のあと 1 → 25 [Enter]
+         * → ` ● 円位置指示` で `半径=    25.000`、次の押しで置く）。 */
+        c->pressed = 0;
+        c->stage = 0;
         c->circ_ask = 1;
         c->typing = 1;
         c->typed[0] = 0;
@@ -3766,7 +3904,12 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         return 1;
     }
     /* □ の ①寸法：`寸法 = ` の欄を開きます（前は src/item.h の画面だけ）。 */
-    if (c->command == 4 && item == 1 && (c->stage == 0 || c->box_fix)) {
+    if (c->command == 4 && item == 1) {
+        /* **始点を押したあとでも**①寸法 は効き、始点は捨てます（測定：
+         * 始点のあと 40,30 [Enter] → `■ 終点指示` で ` 横=40` ` 縦=30`、
+         * 次の押しの所に置く）。 */
+        c->pressed = 0;
+        c->stage = 0;
         c->box_ask = 1;
         c->typing = 1;
         c->typed[0] = 0;
@@ -4950,6 +5093,92 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         return 1;               /* the field has the keyboard until [Enter] */
     }
+    /* **欄の中の [ESC]** は欄を閉じて元の行に戻るだけ（測定：／ の ②寸法
+     * で 50 を打って [ESC] → `・◇始点指示 … |⑤垂 直 |`、何も固定しない）。 */
+    if (key == 27 && c->typing
+        && (((c->command == 2 || c->command == 3) && c->ask_kind)
+            || (c->command == 4 && c->box_ask)
+            || (c->command == 11 && c->circ_ask)
+            || (c->command == 12 && c->arc_ask))) {
+        /* □・○ は 2 点で描く `始点指示 … [BS]前項` へ（測定：□ で 60,40
+         * を打って [ESC] → 2 点の四角、そのあと `確定寸法=`。○ も同じ）。 */
+        if (c->command == 4 && c->box_ask) {
+            c->box_mode = 1;
+            c->box_fix = 0;
+        }
+        if (c->command == 11 && c->circ_ask) {
+            c->circ_mode = 1;
+            c->circ_fix = 0;
+        }
+        c->typing = 0;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        c->ask_kind = 0;
+        c->box_ask = 0;
+        c->circ_ask = 0;
+        c->arc_ask = 0;
+        return 1;
+    }
+    /* `始点指示 … [BS]前項` の [BS]：前の行（①〜⑤ の升）へ戻り、長さ・
+     * 角度の固定もやめます（測定）。 */
+    if (key == 8 && !c->pressed && !c->typing
+        && ((c->command == 4 && c->box_mode)
+            || (c->command == 11 && c->circ_mode))) {
+        c->box_mode = 0;
+        c->circ_mode = 0;
+        c->stage = 0;
+        return 1;
+    }
+    if (key == 8 && (c->command == 2 || c->command == 3) && c->fix_mode
+        && !c->pressed && !c->typing) {
+        c->fix_mode = 0;
+        c->fix_len = 0;
+        c->fix_angle = 0;
+        c->par_on = 0;
+        c->fix_done = 0;
+        return 1;
+    }
+    /* **取り消し。** 何も持っていないときの [ESC] は、直前の押しで足した
+     * ものを消して、その押しの前の段へ戻ります（本物は `＊お待ち下さい＊`
+     * のあと描き直す）。一度だけ：控えは使ったら捨てる。 */
+    if (key == 27 && d && !c->pressed && !c->typing
+        && (c->undo_lines || c->undo_arcs || c->undo_texts)) {
+        long k;
+        double ex = 0.0, ey = 0.0;
+        const int had_line = d->n_lines > 0 && c->undo_lines > 0;
+
+        /* 消す線の終点。＋・／ は取り消したあと、数え箱にその線の長さと
+         * 角度を出し、帯もすぐ出す（測定：`長=    50.000` `角度= -28.072`）。 */
+        if (had_line) {
+            ex = d->lines[d->n_lines - 1].x1;
+            ey = d->lines[d->n_lines - 1].y1;
+        }
+        for (k = 0; k < c->undo_lines && d->n_lines > 0; k++) {
+            jwc_remove_line(d, d->n_lines - 1);
+        }
+        for (k = 0; k < c->undo_arcs && d->n_arcs > 0; k++) {
+            jwc_remove_arc(d, d->n_arcs - 1);
+        }
+        for (k = 0; k < c->undo_texts && d->n_texts > 0; k++) {
+            jwc_remove_text(d, d->n_texts - 1);
+        }
+        c->undo_lines = c->undo_arcs = c->undo_texts = 0;
+        c->pressed = c->undo_to.pressed;
+        c->stage = c->undo_to.stage;
+        c->box_done = c->undo_to.box_done;
+        c->circ_done = c->undo_to.circ_done;
+        c->fix_done = c->undo_to.fix_done;
+        c->x0 = c->undo_to.x0;
+        c->y0 = c->undo_to.y0;
+        c->x1 = c->undo_to.x1;
+        c->y1 = c->undo_to.y1;
+        c->escaped = 0;
+        c->moved = 1;
+        if ((c->command == 2 || c->command == 3) && c->pressed && had_line) {
+            measure(c, d, ex, ey);
+        }
+        return 1;
+    }
     if (key == 27) {
         /* [ESC]: the point in hand goes and the command asks for it again.
          * With nothing in hand it writes nothing at all, and a second one
@@ -5013,7 +5242,10 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
          * 戻ります（測定：120 のあと下を押すと 240..0、上を押すと 0..120）。 */
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
-            if (c->typed_n) {
+            if (c->typed_n && c->arc_ask == 2) {
+                c->arc_r = (float)atof(c->typed);
+                c->arc_rfix = 1;
+            } else if (c->typed_n) {
                 c->arc_ang = (float)atof(c->typed);
                 c->arc_fix = 1;
             }
@@ -5038,14 +5270,52 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         /* ○ の `半 径 =` の欄。[Enter] で半径が決まり、矢の所に置く
          * `● 円位置指示` になります。 */
         if (key == 13 || key == 10) {
+            /* 何も打たずに [Enter] は前の半径、0 以下は受けない（測定）。 */
+            double r = c->circ_r;
+
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                c->circ_r = (float)atof(c->typed);
-                c->circ_fix = 1;
-                c->circ_done = 0;
+                r = (float)atof(c->typed);
             }
+            if (r <= 0.0) {
+                c->typed[0] = 0;
+                c->typed_n = 0;
+                return 1;
+            }
+            c->circ_r = r;
+            c->circ_fix = 1;
+            c->circ_done = 0;
+            c->circ_mode = 0;
             c->typing = 0;
             c->circ_ask = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if (c->command == 4 && c->box_ask == 2) {
+        /* □ の `角度 =` の欄。[Enter] で角度が決まり、2 点の四角が傾く
+         * `始点指示 … [BS]前項` へ（測定）。何も打たずに [Enter] は前の角度。 */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                c->box_ang = (float)atof(c->typed);
+            }
+            c->box_rot = 1;
+            c->box_mode = 1;
+            c->box_fix = 0;
+            c->typing = 0;
+            c->box_ask = 0;
             return 1;
         }
         if (key == 8) {
@@ -5066,15 +5336,33 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
          * 矢の所に置く `■ 終点指示` になります。数が一つなら縦も同じ
          * （複写 の ③数値倍率 と同じ読み方。□ では未測定）。 */
         if (key == 13 || key == 10) {
-            c->typed[c->typed_n] = 0;
-            if (c->typed_n) {
-                const char *comma = strchr(c->typed, ',');
+            /* 打たなかった側は前の数のまま（測定：`60,` で 60×1000、
+             * `,40` で 1000×40、何も打たずに [Enter] で 1000×1000）。
+             * 0 以下はどちらでも受けずに欄を出し直す（`0,0`・`-60,40`）。 */
+            const char *comma;
+            double w = c->box_w, h = c->box_h;
 
-                c->box_w = (float)atof(c->typed);
-                c->box_h = comma ? (float)atof(comma + 1) : c->box_w;
-                c->box_fix = 1;
-                c->box_done = 0;
+            c->typed[c->typed_n] = 0;
+            comma = strchr(c->typed, ',');
+            if (c->typed_n && c->typed[0] != ',') {
+                w = (float)atof(c->typed);
+                if (!comma) {
+                    h = w;
+                }
             }
+            if (comma && comma[1]) {
+                h = (float)atof(comma + 1);
+            }
+            if (w <= 0.0 || h <= 0.0) {
+                c->typed[0] = 0;
+                c->typed_n = 0;
+                return 1;
+            }
+            c->box_w = w;
+            c->box_h = h;
+            c->box_fix = 1;
+            c->box_done = 0;
+            c->box_mode = 0;
             c->typing = 0;
             c->box_ask = 0;
             return 1;
@@ -5099,15 +5387,29 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
          * 線を引くと 50mm で、次の始点を待つ）。 */
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
-            if (c->typed_n && c->ask_kind == 1) {
-                c->ask_len = (float)atof(c->typed);
+            /* **0 以下の長さは受けません**：欄が空になってもう一度聞きます
+             * （測定：0 と -50 で `[ESC]  寸法 = ` が出直す）。**何も打たずに
+             * [Enter]** は欄の右に出ている数（前回の長さ・角度）で決まります
+             * （測定：`[  1000.000mm]` のまま `始点指示 … [BS]前項` へ）。
+             * 角度は 0 も負も受けます。 */
+            if (c->ask_kind == 1) {
+                const double v = c->typed_n ? (float)atof(c->typed) : c->ask_len;
+
+                if (v <= 0.0) {
+                    c->typed[0] = 0;
+                    c->typed_n = 0;
+                    return 1;
+                }
+                c->ask_len = v;
                 c->fix_len = 1;
-                c->fix_done = 0;
-            } else if (c->typed_n) {
-                c->ask_ang = (float)atof(c->typed);
+            } else {
+                if (c->typed_n) {
+                    c->ask_ang = (float)atof(c->typed);
+                }
                 c->fix_angle = 1;
-                c->fix_done = 0;
             }
+            c->fix_mode = 1;
+            c->fix_done = 0;
             c->typing = 0;
             c->ask_kind = 0;
             return 1;
@@ -9123,7 +9425,45 @@ static void zukei_place(JwCmd *c, Jwc *d, double px, double py)
     }
 }
 
+static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
+                      int right);
+
+/* 押しの前後で、作図の命令が足した実体の数を数え、取り消しに備えます。
+ * 足さなかった押し（始点を取っただけなど）は取り消しの控えを捨てます。 */
 int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
+{
+    const long nl = d ? d->n_lines : 0, na = d ? d->n_arcs : 0;
+    const long nt = d ? d->n_texts : 0;
+    const int pressed = c->pressed, stage = c->stage;
+    const int box_done = c->box_done, circ_done = c->circ_done;
+    const int fix_done = c->fix_done;
+    const double x0 = c->x0, y0 = c->y0, x1 = c->x1, y1 = c->y1;
+    const int r = press_body(c, d, w, sx, sy, right);
+
+    if (d && (c->command == 2 || c->command == 3 || c->command == 4
+              || c->command == 11 || c->command == 12)) {
+        if (d->n_lines > nl || d->n_arcs > na || d->n_texts > nt) {
+            c->undo_lines = d->n_lines - nl;
+            c->undo_arcs = d->n_arcs - na;
+            c->undo_texts = d->n_texts - nt;
+            c->undo_to.pressed = pressed;
+            c->undo_to.stage = stage;
+            c->undo_to.box_done = box_done;
+            c->undo_to.circ_done = circ_done;
+            c->undo_to.fix_done = fix_done;
+            c->undo_to.x0 = x0;
+            c->undo_to.y0 = y0;
+            c->undo_to.x1 = x1;
+            c->undo_to.y1 = y1;
+        } else {
+            c->undo_lines = c->undo_arcs = c->undo_texts = 0;
+        }
+    }
+    return r;
+}
+
+static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
+                      int right)
 {
     double x, y;
 
@@ -12874,8 +13214,12 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         double a0, a1;
 
         if (c->arc_ask && c->typing) {
-            /* 欄の `任意角度 ﾏｳｽ(L)`・`前回と同じ ﾏｳｽ(R)`。 */
-            c->arc_fix = right ? 1 : 0;
+            /* 欄の `任意角度 ﾏｳｽ(L)`／`任意寸法 ﾏｳｽ(L)`・`前回と同じ ﾏｳｽ(R)`。 */
+            if (c->arc_ask == 2) {
+                c->arc_rfix = right ? 1 : 0;
+            } else {
+                c->arc_fix = right ? 1 : 0;
+            }
             c->typing = 0;
             c->arc_ask = 0;
             return 1;
@@ -12885,6 +13229,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         }
         if (!c->pressed) {
             c->arc_fix = 0;
+            c->arc_rfix = 0;
             c->x0 = x;
             c->y0 = y;
             c->pressed = 1;
@@ -12927,28 +13272,53 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             /* ②角度指定：始点から打った角度だけ。終点の押しは向きだけで、
              * 始点から左回りに 180 までの側なら 始点..始点+角度、反対なら
              * 始点-角度..始点（測定：始点 0 で 120、下を押すと 240..0、
-             * 上を押すと 0..120）。**ちょうど 180 の側は未測定。** */
+             * 上を押すと 0..120）。**ちょうど 180 の側は未測定。**
+             *
+             * 角度の足し算は本物のとおり float で：オーバーレイ 4 の
+             * 0x31e0f〜0x32412 は 始点(i32, 0def:2828 の答え) と
+             * (float)(65536f × 角度) を **float で**足して切り捨てる。
+             * 2^24 を越えると偶数に丸まる（測定：始点 41.1859 に 270 で、
+             * 終点が 1 小さい 0x01372f98）。 */
             const double sweep = a1 - a0 < 0.0 ? a1 - a0 + 360.0 : a1 - a0;
-            const double A = (float)c->arc_ang;
+            const float add = 65536.0f * (float)c->arc_ang;
+            const long s0 = ang16((float)c->x0, (float)c->y0,
+                                  (float)c->x1, (float)c->y1);
+            long e;
 
             if (sweep <= 180.0) {
-                a1 = a0 + A;
-            } else {
-                a1 = a0;
-                a0 = a0 - A;
+                e = (long)(float)((float)s0 + add);
+                while (e >= 360L << 16) {
+                    e -= 360L << 16;
+                }
+                while (e < 0) {
+                    e += 360L << 16;
+                }
+                return jwc_add_arc_at(d, (float)c->x0, (float)c->y0,
+                                      c->arc_rfix
+                                      ? (float)c->arc_r / jwc_zukei_scale(d)
+                                      : (float)hypot_of(c->x1 - c->x0,
+                                                        c->y1 - c->y0),
+                                      s0, e,
+                                      (unsigned char)d->line_type,
+                                      (unsigned char)d->pen,
+                                      (unsigned char)(d->write_layer), 0x12);
             }
-            while (a0 < 0.0) {
-                a0 += 360.0;
+            e = (long)(float)((float)s0 - add);
+            while (e < 0) {
+                e += 360L << 16;
             }
-            while (a0 >= 360.0) {
-                a0 -= 360.0;
+            while (e >= 360L << 16) {
+                e -= 360L << 16;
             }
-            while (a1 < 0.0) {
-                a1 += 360.0;
-            }
-            while (a1 >= 360.0) {
-                a1 -= 360.0;
-            }
+            return jwc_add_arc_at(d, (float)c->x0, (float)c->y0,
+                                  c->arc_rfix
+                                  ? (float)c->arc_r / jwc_zukei_scale(d)
+                                  : (float)hypot_of(c->x1 - c->x0,
+                                                    c->y1 - c->y0),
+                                  e, s0,
+                                  (unsigned char)d->line_type,
+                                  (unsigned char)d->pen,
+                                  (unsigned char)(d->write_layer), 0x12);
         } else if (a1 - a0 < 0.0 ? a1 - a0 + 360.0 > 180.0 : a1 - a0 > 180.0) {
             const double t = a0;
 
@@ -12956,7 +13326,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             a1 = t;
         }
         return jwc_add_arc_at(d, (float)c->x0, (float)c->y0,
-                              (float)hypot_of(c->x1 - c->x0, c->y1 - c->y0),
+                              c->arc_rfix
+                              ? (float)c->arc_r / jwc_zukei_scale(d)
+                              : (float)hypot_of(c->x1 - c->x0, c->y1 - c->y0),
                               fixed16(a0), fixed16(a1),
                               (unsigned char)d->line_type,
                               (unsigned char)d->pen,
@@ -12968,8 +13340,10 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         return 0;               /* ＋ line on an axis, ／ line, □ box, ○ circle */
     }
     if (c->command == 11 && c->circ_ask && c->typing) {
-        /* 欄の `任意寸法ﾏｳｽ(L)`・`前回と同じ ﾏｳｽ(R)`。 */
+        /* 欄の `任意寸法ﾏｳｽ(L)`・`前回と同じ ﾏｳｽ(R)`。L は 2 点で描く
+         * `○ 円中心点 マウス指示 … [BS]前項` になる（測定）。 */
         c->circ_fix = right ? 1 : 0;
+        c->circ_mode = !right;
         c->circ_done = 0;
         c->typing = 0;
         c->circ_ask = 0;
@@ -12998,9 +13372,22 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->circ_done = 1;
         return 1;
     }
+    if (c->command == 4 && c->box_ask == 2 && c->typing) {
+        /* `｜0 度 ﾏｳｽ(L)｜前回と同じ ﾏｳｽ(R)｜`（＋ と同じ欄）。 */
+        if (!right) {
+            c->box_ang = 0.0;
+        }
+        c->box_rot = 1;
+        c->box_mode = 1;
+        c->typing = 0;
+        c->box_ask = 0;
+        return 1;
+    }
     if (c->command == 4 && c->box_ask && c->typing) {
-        /* 欄の `任意寸法 ﾏｳｽ(L)`・`前回と同じ ﾏｳｽ(R)`。 */
+        /* 欄の `任意寸法 ﾏｳｽ(L)`・`前回と同じ ﾏｳｽ(R)`。L は 2 点で描く
+         * `始点指示 … [BS]前項` になる（測定：0,0 を断られたあと L）。 */
         c->box_fix = right ? 1 : 0;
+        c->box_mode = !right;
         c->box_done = 0;
         c->typing = 0;
         c->box_ask = 0;
@@ -13029,6 +13416,40 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         c->box_done = 1;
         return 1;
     }
+    if (c->command == 3 && (c->ask_kind == 3 || c->ask_kind == 4)
+        && !c->typing) {
+        /* ④平行・⑤垂直：`基準線　マウス指示`。押した線の向きに固定して
+         * `始点指示 … [BS]前項` へ（測定：縦の枠を左で押すと `サーチ` の
+         * あとその行）。**右（同一線上の線）はまだ**——左と同じに扱う。 */
+        const long k = jw_cmd_line_at(d, w, sx, sy);
+        double dx, dy, len;
+
+        if (k < 0) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        dx = (double)d->lines[k].x1 - (double)d->lines[k].x0;
+        dy = (double)d->lines[k].y1 - (double)d->lines[k].y0;
+        len = sqrt(dy * dy + dx * dx);
+        if (len <= 0.0) {
+            return 0;
+        }
+        c->par_cs = (float)(dx / len);
+        c->par_sn = (float)(dy / len);
+        if (c->ask_kind == 4) {
+            const float t = c->par_cs;
+
+            c->par_cs = -c->par_sn;
+            c->par_sn = t;
+        }
+        c->par_on = 1;
+        c->fix_angle = 0;
+        c->fix_mode = 1;
+        c->fix_done = 0;
+        c->ask_kind = 0;
+        return 1;
+    }
     if ((c->command == 2 || c->command == 3) && c->ask_kind == 2
         && c->typing) {
         /* `角度 =` の欄では、／ の `任意角度(L)` は向きの固定をやめ、
@@ -13042,6 +13463,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         } else {
             c->fix_angle = 0;
         }
+        c->fix_mode = 1;
         c->fix_done = 0;
         c->typing = 0;
         c->ask_kind = 0;
@@ -13052,7 +13474,10 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         /* `寸法 = ` の欄が開いているときの押しは点ではなく答えです：
          * `任意寸法 ﾏｳｽ(L)` は長さの固定をやめ、`前回と同じ ﾏｳｽ(R)` は
          * 前に決めた長さ（`[  1000.000mm]` の数）で固定します。 */
+        /* `任意寸法 ﾏｳｽ(L)` でも行は `始点指示 … [BS]前項` になります
+         * （測定：-50 を断られたあと L を押すと、その行で始点を待つ）。 */
         c->fix_len = right ? 1 : 0;
+        c->fix_mode = 1;
         c->fix_done = 0;
         c->typing = 0;
         c->ask_kind = 0;
@@ -13075,21 +13500,23 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     if (c->command == 2) {
         axis(c, &x, &y);
     }
-    if (c->command == 3 && c->fix_angle) {
+    if (c->command == 3 && c->par_on) {
+        par_dir(c, &x, &y);
+    } else if (c->command == 3 && c->fix_angle) {
         fix_dir(c, &x, &y);
     }
     if ((c->command == 2 || c->command == 3) && c->fix_len) {
         fix_end(c, d, &x, &y);
     }
     measure(c, d, x, y);
-    if ((c->command == 2 || c->command == 3) && (c->fix_len || c->fix_angle)) {
+    if ((c->command == 2 || c->command == 3) && c->fix_mode) {
         /* 上の行の `確定長さ = … 角度= …ﾟ` は**引いた線の**長さと角度
          * （測定：／ 30 度で `51.547(mm)角度=  30.000ﾟ`、＋ に 30 を打つと
          * `86.004(mm)角度=   0.000ﾟ`——＋ は打った角度では向きが変わらない。
          * 本物の ＋ は 0x2cf7d で軸角だけから座標系を作る）。 */
         c->fix_done = 1;
         c->fix_shown = c->num[0];
-        c->fix_ang = c->num[1];
+        c->fix_ang = shown_angle((float)c->x0, (float)c->y0, (float)x, (float)y);
     }
     /* Both take the pen and the line type the panel shows and go on the layer
      * being written to -- SAMPLE0 writes with pen 2, and what the original
@@ -13108,9 +13535,13 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
          * （／ の線は 0x03）。 */
         const float ax = (float)c->x0, ay = (float)c->y0;
         const float bx = (float)x, by = (float)y;
-        const float cx[5] = { ax, ax, bx, bx, ax };
-        const float cy[5] = { ay, by, by, ay, ay };
+        float cx[5] = { ax, ax, bx, bx, ax };
+        float cy[5] = { ay, by, by, ay, ay };
         int k;
+
+        if (c->box_rot) {
+            tilt_corners(c, x, y, cx, cy);
+        }
 
         for (k = 0; k < 4; k++) {
             if (!jwc_add_line(d, cx[k], cy[k], cx[k + 1], cy[k + 1], t, p, g)) {

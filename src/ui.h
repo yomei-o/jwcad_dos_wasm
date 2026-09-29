@@ -205,17 +205,21 @@ typedef struct {
     /* ＋・／ の ②寸法 で長さを固定している（JwCmd.fix_len）。`fix_done` は
      * 固定してから 1 本引いたか、`fix_ang` はその線の角度。 */
     int fix_len;
+    int fix_mode;
     int fix_done;
     double fix_ang;
     double fix_shown;
     int fix_angle;
     /* □ の ①寸法（JwCmd.box_*）。 */
-    int box_ask, box_fix, box_done, box_base;
+    int box_ask, box_fix, box_done, box_base, box_mode;
+    int circ_mode;
+    double box_ang;
     int circ_ask, circ_fix, circ_done;
     double circ_r;
     int circ_base;
     int arc_ask;
     double arc_ang;
+    double arc_r;
     double box_w, box_h;
     /* The three numbers src/prompt.h carries as digits: 複線's interval,
      * 面取's offset and ２線's pair of them.  They belong to the program's

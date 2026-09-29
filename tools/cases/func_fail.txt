@@ -1,0 +1,45 @@
+# 取り消し・失敗の操作（2026-09-29、利用者：「正常系だけでなく取り消しや失敗系も」）。
+# sh tools/funccases.sh tools/cases/func_fail.txt       記録を本物と突き合わせる
+# sh tools/failscreens.sh                                同じ手順の画面（最後の絵）
+#
+# ／ ②寸法（② は x=380、欄が開いているあいだの数字は数）
+sl_len_esc|SAMPLE0|90 104 left|380 8 left|type 50|key esc|250 200 left|move 400 280|400 280 left
+sl_len_bs|SAMPLE0|90 104 left|380 8 left|type 50|key bs|key bs|type 30|key enter|250 200 left|move 400 280|400 280 left
+sl_len_empty|SAMPLE0|90 104 left|380 8 left|key enter|250 200 left|move 400 280|400 280 left
+sl_len_zero|SAMPLE0|90 104 left|380 8 left|type 0|key enter|250 200 left|move 400 280|400 280 left
+sl_len_neg|SAMPLE0|90 104 left|380 8 left|type -50|key enter|250 200 left|move 400 280|400 280 left
+sl_len_backitem|SAMPLE0|90 104 left|380 8 left|type 50|key enter|key bs|250 200 left|move 400 280|400 280 left
+sl_len_escidle|SAMPLE0|90 104 left|380 8 left|type 50|key enter|key esc|250 200 left|move 400 280|400 280 left
+sl_len_escmid|SAMPLE0|90 104 left|380 8 left|type 50|key enter|250 200 left|move 400 280|key esc|300 300 left|move 350 350|350 350 left
+sl_len_undo|SAMPLE0|90 104 left|380 8 left|type 50|key enter|250 200 left|move 400 280|400 280 left|key esc
+sl_len_samepoint|SAMPLE0|90 104 left|380 8 left|type 50|key enter|250 200 left|250 200 left
+# ／ ③角度（③ は x=440）
+sl_ang_esc|SAMPLE0|90 104 left|440 8 left|type 30|key esc|250 200 left|move 400 280|400 280 left
+sl_ang_empty|SAMPLE0|90 104 left|440 8 left|key enter|250 200 left|move 400 280|400 280 left
+sl_ang_zero|SAMPLE0|90 104 left|440 8 left|type 0|key enter|250 200 left|move 400 280|400 280 left
+sl_ang_big|SAMPLE0|90 104 left|440 8 left|type 400|key enter|250 200 left|move 400 280|400 280 left
+sl_ang_behind|SAMPLE0|90 104 left|440 8 left|type 30|key enter|250 200 left|move 150 300|150 300 left
+sl_ang_undo|SAMPLE0|90 104 left|440 8 left|type 30|key enter|250 200 left|move 400 280|400 280 left|key esc
+# □ ①寸法（① は x=330、1 の鍵でも）
+bx_esc|SAMPLE0|90 120 left|type 1|type 60,40|key esc|250 200 left|move 400 300|400 300 left
+bx_empty|SAMPLE0|90 120 left|type 1|key enter|250 200 left|move 400 300|400 300 left
+bx_comma_only|SAMPLE0|90 120 left|type 1|type 60,|key enter|move 300 250|300 250 left
+bx_lead_comma|SAMPLE0|90 120 left|type 1|type ,40|key enter|move 300 250|300 250 left
+bx_zero|SAMPLE0|90 120 left|type 1|type 0,0|key enter|move 300 250|300 250 left
+bx_neg|SAMPLE0|90 120 left|type 1|type -60,40|key enter|move 300 250|300 250 left
+bx_bs|SAMPLE0|90 120 left|type 1|type 60,4|key bs|type 50|key enter|move 300 250|300 250 left
+bx_escidle|SAMPLE0|90 120 left|type 1|type 60,40|key enter|move 300 250|key esc|250 200 left|move 400 300|400 300 left
+bx_undo|SAMPLE0|90 120 left|type 1|type 60,40|key enter|move 300 250|300 250 left|key esc
+# ○ ①径寸法（① は x=465、1 の鍵でも）
+ci_esc|SAMPLE0|90 232 left|type 1|type 30|key esc|300 250 left|move 350 280|350 280 left
+ci_empty|SAMPLE0|90 232 left|type 1|key enter|300 250 left|move 350 280|350 280 left
+ci_zero|SAMPLE0|90 232 left|type 1|type 0|key enter|move 300 250|300 250 left
+ci_neg|SAMPLE0|90 232 left|type 1|type -30|key enter|move 300 250|300 250 left
+ci_escidle|SAMPLE0|90 232 left|type 1|type 30|key enter|move 300 250|key esc|300 250 left|move 350 280|350 280 left
+ci_undo|SAMPLE0|90 232 left|type 1|type 30|key enter|move 300 250|300 250 left|key esc
+# （ ②角度指定（始点のあと 2 の鍵）
+ar_esc|SAMPLE0|90 248 left|300 250 left|360 250 left|type 2|type 120|key esc|move 250 200|250 200 left
+ar_empty|SAMPLE0|90 248 left|300 250 left|360 250 left|type 2|key enter|move 250 200|250 200 left
+ar_zero|SAMPLE0|90 248 left|300 250 left|360 250 left|type 2|type 0|key enter|move 250 200|250 200 left
+ar_360|SAMPLE0|90 248 left|300 250 left|360 250 left|type 2|type 360|key enter|move 250 200|250 200 left
+ar_undo|SAMPLE0|90 248 left|300 250 left|360 250 left|type 2|type 120|key enter|move 250 200|250 200 left|key esc

@@ -430,12 +430,16 @@ static void sync_ui(void)
     ui.top_right = cmd.top_right;
     ui.ask_kind = cmd.ask_kind;
     ui.fix_len = cmd.fix_len;
+    ui.fix_mode = cmd.fix_mode;
     ui.fix_done = cmd.fix_done;
     ui.fix_ang = cmd.fix_ang;
     ui.fix_shown = cmd.fix_shown;
     ui.fix_angle = cmd.fix_angle;
     ui.box_ask = cmd.box_ask;
     ui.box_base = cmd.box_base;
+    ui.box_mode = cmd.box_mode;
+    ui.circ_mode = cmd.circ_mode;
+    ui.box_ang = cmd.box_ang;
     ui.circ_ask = cmd.circ_ask;
     ui.circ_fix = cmd.circ_fix;
     ui.circ_done = cmd.circ_done;
@@ -443,6 +447,7 @@ static void sync_ui(void)
     ui.circ_base = cmd.circ_base;
     ui.arc_ask = cmd.arc_ask;
     ui.arc_ang = cmd.arc_ang;
+    ui.arc_r = cmd.arc_r;
     ui.box_fix = cmd.box_fix;
     ui.box_done = cmd.box_done;
     ui.box_w = cmd.box_w;

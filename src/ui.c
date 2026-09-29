@@ -2740,6 +2740,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         }
     } else if (((s->command == 2 || s->command == 3) && s->ask_kind)
                || (s->command == 4 && s->box_ask)) {
+        /* □ の ②角度 は ＋ の ③角度 と同じ欄（測定：STR=1）。 */
+        const int ask = s->command == 4 ? (s->box_ask == 2 ? 2 : 1)
+                                        : s->ask_kind;
         /* ＋ and ／'s ②寸 法 and ③角 度.  Read off the original, branches
          * 7 and 9 of tmp/branch/list.txt:
          *
@@ -2753,7 +2756,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * original's, not a tidying. */
         char one[32];
 
-        if (s->command != 4 && s->ask_kind >= 3) {
+        if (s->command != 4 && ask >= 3) {
             /* 平行 and 垂直 ask for a line, not a number, so there is no
              * field and no cursor -- and `[ESC]` here has no trailing
              * spaces, which the two below do have. */
@@ -2769,7 +2772,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                          "\x92\xe8\x89\xf0\x8f\x9c" "|");
         } else {
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
-        if (s->command == 4 || s->ask_kind == 1) {
+        if (ask == 1) {
             jw_ui_text(v, 8, 1, 7, 0, "\x90\xa1\x96" "@ = ");
             jw_ui_text(v, 38, 1, 7, 0,
                        "\x94" "C" "\x88\xd3\x90\xa1\x96" "@ " "\xcf\xb3\xbd" "(L) "
@@ -2786,7 +2789,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 8, 1, 7, 0, "\x8a" "p" "\x93" "x =");
             /* **The two are not the same bar.**  ＋ offers `｜0 度 ﾏｳｽ(L)｜`
              * and ／ offers `｜任意角度(L)｜` -- branches 9 and 19. */
-            jw_ui_text(v, 32, 1, 7, 0, s->command == 2
+            jw_ui_text(v, 32, 1, 7, 0, s->command == 2 || s->command == 4
                        ? "\x81" "b0 " "\x93" "x " "\xcf\xb3\xbd" "(L)" "\x81" "b" "\x91"
                          "O" "\x89\xf1\x82\xc6\x93\xaf\x82\xb6" " " "\xcf\xb3\xbd" "(R) "
                          "\x81" "b[F1] " "\xcf\xb3\xbd\x8a" "p" "\x93" "x" "\x81" "b"
@@ -2794,7 +2797,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                          "b" "\x91" "O" "\x89\xf1\x82\xc6\x93\xaf\x82\xb6" " "
                          "\xcf\xb3\xbd" "(R) " "\x81" "b[F1] " "\xcf\xb3\xbd\x8a" "p"
                          "\x93" "x" "\x81" "b");
-            sprintf(one, "[%8.3f\xdf]", s->ask_ang);
+            sprintf(one, "[%8.3f\xdf]",
+                    s->command == 4 ? s->box_ang : s->ask_ang);
             jw_ui_text(v, 50, 2, 7, 0xffff, one);
         }
         jw_ui_text(v, 15, 1, 7, 0, "        ");
@@ -2812,7 +2816,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
         }
     } else if ((s->command == 2 || s->command == 3)
-               && (s->fix_len || s->fix_angle) && s->stage != 1) {
+               && s->fix_mode && s->stage != 1) {
         /* ②寸法 で長さを決めたあとの `始点指示`。①〜⑤ の升は無く、右に
          * `[BS]前項`。1 本引いたあとは `確定長さ = … 角度= …ﾟ` が続き、
          * 桁 1 に `[ESC]` が戻ります（測定：STR=1 で 50 [Enter] のあと
@@ -2847,9 +2851,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         }
 
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
-        jw_ui_text(v, 8, 1, 7, 0, "\x8a" "p\x93" "x =");
-        jw_ui_text(v, 34, 1, 7, 0, "\x94" "C\x88" "\xd3" "\x8a" "p\x93" "x \xcf" "\xb3" "\xbd" "(L) \x91" "O\x89" "\xf1" "\x82" "\xc6" "\x93" "\xaf" "\x82" "\xb6" " \xcf" "\xb3" "\xbd" "(R) ");
-        sprintf(one, "[%8.3f" "\xdf" "]", s->arc_ang);
+        if (s->arc_ask == 2) {
+            /* ①半径指定：`寸法 =` と `[1000.000mm]`（測定：桁 8 と 68）。 */
+            jw_ui_text(v, 8, 1, 7, 0, "\x90" "\xa1" "\x96" "@ =");
+            jw_ui_text(v, 34, 1, 7, 0, "\x94" "C\x88" "\xd3" "\x90" "\xa1" "\x96" "@ \xcf" "\xb3" "\xbd" "(L) \x91" "O\x89" "\xf1" "\x82" "\xc6" "\x93" "\xaf" "\x82" "\xb6" " \xcf" "\xb3" "\xbd" "(R) ");
+            sprintf(one, "[%8.3fmm]", s->arc_r);
+        } else {
+            jw_ui_text(v, 8, 1, 7, 0, "\x8a" "p\x93" "x =");
+            jw_ui_text(v, 34, 1, 7, 0, "\x94" "C\x88" "\xd3" "\x8a" "p\x93" "x \xcf" "\xb3" "\xbd" "(L) \x91" "O\x89" "\xf1" "\x82" "\xc6" "\x93" "\xaf" "\x82" "\xb6" " \xcf" "\xb3" "\xbd" "(R) ");
+            sprintf(one, "[%8.3f" "\xdf" "]", s->arc_ang);
+        }
         jw_ui_text(v, 68, 1, 7, 0, one);
         if (s->typed_n > 0) {
             char t[9];
@@ -2859,6 +2870,33 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 15, 1, 7, 0, t);
         }
         fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
+    } else if ((s->command == 4 && s->box_mode && s->stage != 1)
+               || (s->command == 11 && s->circ_mode && s->stage != 1)) {
+        /* □・○ の、欄を閉じたあとの 2 点で描く状態（測定：STR=1）。
+         * □ `・` 桁 6、`始点指示 (L)free (R)Read            `、
+         * 描いたあとは `[ESC]` と ` 確定寸法=    86.004 ,    57.336 mm`。
+         * ○ は `○ 円中心点 マウス指示 (L)free (R)Read ` と `半径=    33.432 `。 */
+        char one[128];
+
+        jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+        if (s->stage >= 2) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        }
+        if (s->command == 4) {
+            if (s->stage >= 2) {
+                sprintf(one, "\x8e" "n\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read  \x8a" "m\x92" "\xe8" "\x90" "\xa1" "\x96" "@=" "%10.3f ,%10.3f mm",
+                        s->num[0], s->num[1]);
+            } else {
+                strcpy(one, "\x8e" "n\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read            ");
+            }
+        } else if (s->stage >= 2) {
+            sprintf(one, "\x81" "\x9b" " \x89" "~\x92" "\x86" "\x90" "S\x93" "_ \x83" "}\x83" "E\x83" "X\x8e" "w\x8e" "\xa6" " (L)free (R)Read \x94" "\xbc" "\x8c" "a=" "%10.3f ",
+                    s->num[0]);
+        } else {
+            strcpy(one, "\x81" "\x9b" " \x89" "~\x92" "\x86" "\x90" "S\x93" "_ \x83" "}\x83" "E\x83" "X\x8e" "w\x8e" "\xa6" " (L)free (R)Read ");
+        }
+        jw_ui_text(v, 8, 1, 7, 0, one);
+        jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91" "O\x8d" "\x80");
     } else if (s->command == 11 && s->circ_ask) {
         /* ○ の ①径寸法 の欄（測定：STR=1。打つ字は桁 20 から）。 */
         char one[32];
