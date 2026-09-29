@@ -464,6 +464,10 @@ typedef struct {
     /* 固定したあとの 1 本目を引き終えた（上の行が `確定長さ =` になる）。 */
     int fix_done;
     double fix_ang;             /* その線の角度（度）。上の行に出る */
+    double fix_shown;           /* その線の長さ（mm）。上の行に出る */
+    /* ③角度 が決まっている（**向きを固定**して、矢はその向きの上に
+     * 映した所）。本物は DGROUP 0x0fdc に角度を float で持つ。 */
+    int fix_angle;
     double hatch_angle;         /* ③角 度, degrees -- 45.00 to start with */
     double hatch_pitch;         /* ④ﾋﾟｯﾁ, millimetres of paper -- 10.0 */
     /* How wide and how tall the string being typed comes out, in drawing

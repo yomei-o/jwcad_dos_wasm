@@ -207,6 +207,8 @@ typedef struct {
     int fix_len;
     int fix_done;
     double fix_ang;
+    double fix_shown;
+    int fix_angle;
     /* The three numbers src/prompt.h carries as digits: 複線's interval,
      * 面取's offset and ２線's pair of them.  They belong to the program's
      * state, and how many decimals they are shown to belongs to the

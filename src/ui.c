@@ -2789,8 +2789,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * with nothing typed. */
         fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
         }
-    } else if ((s->command == 2 || s->command == 3) && s->fix_len
-               && s->stage != 1) {
+    } else if ((s->command == 2 || s->command == 3)
+               && (s->fix_len || s->fix_angle) && s->stage != 1) {
         /* ②寸法 で長さを決めたあとの `始点指示`。①〜⑤ の升は無く、右に
          * `[BS]前項`。1 本引いたあとは `確定長さ = … 角度= …ﾟ` が続き、
          * 桁 1 に `[ESC]` が戻ります（測定：STR=1 で 50 [Enter] のあと
@@ -2803,7 +2803,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             sprintf(one, "\x8e" "n\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read "
                          "\x8a" "m\x92" "\xe8" "\x92" "\xb7" "\x82" "\xb3" " =" "%10.3f"
                          "(mm)\x8a" "p\x93" "x=" "%8.3f" "\xdf",
-                    s->ask_len, s->fix_ang);
+                    s->fix_shown, s->fix_ang);
             jw_ui_text(v, 8, 1, 7, 0, one);
         } else {
             jw_ui_text(v, 8, 1, 7, 0,

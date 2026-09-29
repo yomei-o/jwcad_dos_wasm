@@ -426,6 +426,8 @@ static void sync_ui(void)
     ui.fix_len = cmd.fix_len;
     ui.fix_done = cmd.fix_done;
     ui.fix_ang = cmd.fix_ang;
+    ui.fix_shown = cmd.fix_shown;
+    ui.fix_angle = cmd.fix_angle;
     ui.gap = cmd.gap;
     ui.gap_chamfer = cmd.gap_chamfer;
     ui.chamfer = cmd.chamfer;

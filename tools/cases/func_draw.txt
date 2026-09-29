@@ -35,3 +35,11 @@ slash_len_dec|SAMPLE0|90 104 left|380 8 left|type 12.5|key enter|250 200 left|mo
 plus_len50|SAMPLE0|90 88 left|380 8 left|type 50|key enter|250 200 left|move 400 230|400 230 left
 slash_len_prevR|SAMPLE0|90 104 left|380 8 left|type 30|key enter|250 200 left|400 280 left|380 8 left|300 300 right|300 300 left|move 200 350|200 350 left
 slash_len_freeL|SAMPLE0|90 104 left|380 8 left|300 300 left|250 200 left|move 400 280|400 280 left
+# ＋・／ ③角度（2026-09-29）。③ は x=440（／）。欄の L は ／ で任意角度、＋ で 0 度。
+slash_ang30|SAMPLE0|90 104 left|440 8 left|type 30|key enter|250 200 left|move 400 280|400 280 left
+slash_ang_neg|SAMPLE0|90 104 left|440 8 left|type -60|key enter|250 200 left|move 400 380|400 380 left
+slash_ang_len|SAMPLE0|90 104 left|440 8 left|type 30|key enter|380 8 left|type 40|key enter|250 200 left|move 400 280|400 280 left
+slash_ang_prevR|SAMPLE0|90 104 left|440 8 left|300 300 right|250 200 left|move 400 280|400 280 left
+slash_ang_freeL|SAMPLE0|90 104 left|440 8 left|300 300 left|250 200 left|move 400 280|400 280 left
+plus_ang30|SAMPLE0|90 88 left|440 8 left|type 30|key enter|250 200 left|move 400 280|400 280 left
+plus_ang_zeroL|SAMPLE0|90 88 left|440 8 left|300 300 left|250 200 left|move 400 280|400 280 left

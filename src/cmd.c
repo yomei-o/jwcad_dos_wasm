@@ -149,6 +149,31 @@ static void fix_end(const JwCmd *c, const Jwc *d, double *x, double *y)
     *y = (float)((double)(float)(cy - y0) * k + (double)y0);
 }
 
+/* ＋・／ の ③角度：向きを固定したときの終点。本物はオーバーレイ 23 の
+ * 0x2d002〜0x2d081 と 0x2d4ea〜0x2d5b7 で、
+ *
+ *   a  = (float)(角度 + 軸角)                  -- 軸角は [0xa158]、ふだん 0
+ *   cs = (float)cos((double)a * π/180)，sn = (float)sin(同じ)
+ *   原点は始点（始点を押したときに [0xb30c]/[0xb37e] に入る）
+ *   u  = 1bb4:2981(向き 1, 矢)                 -- 矢をその向きへ映した長さ
+ *   終点 = 1bb4:2981/2a18(向き 0, u, 0)
+ *
+ * 測定：30 を打って (250,200) → (400,280) で (129,263)-(206.858978,307.951904)。
+ * ②寸法 も決まっていれば、このあとで長さを合わせます（本物も 0x2db82 で
+ * 続けて見ている）。 */
+static void fix_dir(const JwCmd *c, double *x, double *y)
+{
+    const float a = (float)((float)c->ask_ang + 0.0f);
+    const double r = (double)a * 0.017453292519943295;
+    const float cs = (float)cos(r), sn = (float)sin(r);
+    const float ox = (float)c->x0, oy = (float)c->y0;
+    const float px = (float)*x, py = (float)*y;
+    const float u = (float)(((double)py - oy) * sn + ((double)px - ox) * cs);
+
+    *x = (float)((double)cs * u - (double)sn * 0.0 + ox);
+    *y = (float)((double)cs * 0.0 + (double)sn * u + oy);
+}
+
 /* What the panel shows for a command in hand: a length and an angle for a line,
  * the two sides for a box, the radius and the diameter for a circle.  A length
  * is millimetres of the real thing -- drawing units over `unit_mm`, times the
@@ -282,6 +307,9 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
     jw_cmd_at(w, sx, sy, &x, &y);
     if (c->command == 2) {
         axis(c, &x, &y);
+    }
+    if (c->command == 3 && c->fix_angle) {
+        fix_dir(c, &x, &y);
     }
     if ((c->command == 2 || c->command == 3) && c->fix_len) {
         fix_end(c, d, &x, &y);
@@ -1014,13 +1042,16 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
     } else if (c->command == 2 || c->command == 3) {
         int qx = sx, qy = sy;
 
-        if (c->command == 2 || c->fix_len) {
+        if (c->command == 2 || c->fix_len || c->fix_angle) {
             double x, y;
 
             /* the axis is chosen in drawing units, so go there and back */
             jw_cmd_at(w, sx, sy, &x, &y);
             if (c->command == 2) {
                 axis(c, &x, &y);
+            }
+            if (c->command == 3 && c->fix_angle) {
+                fix_dir(c, &x, &y);
             }
             /* ②寸法 で長さが決まっていれば、帯もその長さ（本物の赤い線は
              * 矢の向きに 50mm で止まっていた）。 */
@@ -3566,13 +3597,11 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     if ((c->command == 2 || c->command == 3) && (item == 2 || item == 3)
         && c->stage == 0) {
         c->ask_kind = item - 1;
-        /* ②寸法 は欄を開いてキーを受けます（前は画面だけで、打った数は
-         * 捨てていました）。③角度 はまだ（数の使い道を読んでいない）。 */
-        if (item == 2) {
-            c->typing = 1;
-            c->typed[0] = 0;
-            c->typed_n = 0;
-        }
+        /* ②寸法・③角度 は欄を開いてキーを受けます（前は画面だけで、
+         * 打った数は捨てていました）。 */
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
         return 1;
     }
     /* ④平行 and ⑤垂直 ask for a 基準線 to be parallel or square to.  **＋
@@ -4794,15 +4823,20 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     if (!c->typing) {
         return 0;
     }
-    if ((c->command == 2 || c->command == 3) && c->ask_kind == 1) {
+    if ((c->command == 2 || c->command == 3)
+        && (c->ask_kind == 1 || c->ask_kind == 2)) {
         /* ＋・／ の `寸法 = ` の欄。[Enter] で長さが決まり、`始点指示` に
          * 戻って、**長さは固定のまま**になります（測定：50 [Enter] のあと
          * 線を引くと 50mm で、次の始点を待つ）。 */
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
-            if (c->typed_n) {
+            if (c->typed_n && c->ask_kind == 1) {
                 c->ask_len = (float)atof(c->typed);
                 c->fix_len = 1;
+                c->fix_done = 0;
+            } else if (c->typed_n) {
+                c->ask_ang = (float)atof(c->typed);
+                c->fix_angle = 1;
                 c->fix_done = 0;
             }
             c->typing = 0;
@@ -12630,6 +12664,24 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         && c->command != 11) {
         return 0;               /* ＋ line on an axis, ／ line, □ box, ○ circle */
     }
+    if ((c->command == 2 || c->command == 3) && c->ask_kind == 2
+        && c->typing) {
+        /* `角度 =` の欄では、／ の `任意角度(L)` は向きの固定をやめ、
+         * `前回と同じ ﾏｳｽ(R)` は前の角度で固定します。＋ の (L) は
+         * `0 度` です（どちらも本物の上の行の字。0 度 の働きは未測定）。 */
+        if (right) {
+            c->fix_angle = 1;
+        } else if (c->command == 2) {
+            c->ask_ang = 0.0;
+            c->fix_angle = 1;
+        } else {
+            c->fix_angle = 0;
+        }
+        c->fix_done = 0;
+        c->typing = 0;
+        c->ask_kind = 0;
+        return 1;
+    }
     if ((c->command == 2 || c->command == 3) && c->ask_kind == 1
         && c->typing) {
         /* `寸法 = ` の欄が開いているときの押しは点ではなく答えです：
@@ -12658,12 +12710,22 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     if (c->command == 2) {
         axis(c, &x, &y);
     }
+    if (c->command == 3 && c->fix_angle) {
+        fix_dir(c, &x, &y);
+    }
     if ((c->command == 2 || c->command == 3) && c->fix_len) {
         fix_end(c, d, &x, &y);
-        c->fix_done = 1;
-        c->fix_ang = atan2(y - c->y0, x - c->x0) * 180.0 / 3.14159265358979323846;
     }
     measure(c, d, x, y);
+    if ((c->command == 2 || c->command == 3) && (c->fix_len || c->fix_angle)) {
+        /* 上の行の `確定長さ = … 角度= …ﾟ` は**引いた線の**長さと角度
+         * （測定：／ 30 度で `51.547(mm)角度=  30.000ﾟ`、＋ に 30 を打つと
+         * `86.004(mm)角度=   0.000ﾟ`——＋ は打った角度では向きが変わらない。
+         * 本物の ＋ は 0x2cf7d で軸角だけから座標系を作る）。 */
+        c->fix_done = 1;
+        c->fix_shown = c->num[0];
+        c->fix_ang = c->num[1];
+    }
     /* Both take the pen and the line type the panel shows and go on the layer
      * being written to -- SAMPLE0 writes with pen 2, and what the original
      * draws there comes out white, which is what pen 2 is. */
