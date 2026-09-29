@@ -214,6 +214,8 @@ typedef struct {
     int circ_ask, circ_fix, circ_done;
     double circ_r;
     int circ_base;
+    int arc_ask;
+    double arc_ang;
     double box_w, box_h;
     /* The three numbers src/prompt.h carries as digits: 複線's interval,
      * 面取's offset and ２線's pair of them.  They belong to the program's
@@ -734,5 +736,6 @@ const char *jw_ui_guide(void);
  * It reads the line jw_ui_draw last drew, so call it after that. */
 void jw_ui_band_last(VGA *v, const JwUi *s);
 int jw_ui_top_item(int x, int y);
+int jw_ui_top_cell_x(int n);
 
 #endif

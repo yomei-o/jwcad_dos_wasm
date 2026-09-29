@@ -485,6 +485,11 @@ typedef struct {
     int circ_done;
     double circ_r;
     int circ_base;              /* ②基点変 で 0〜8 を回る（0 が中心） */
+    /* （ の ②角度指定：`角度 =` の欄（arc_ask）、角度が決まって終点の押しは
+     * 向きだけを決める（arc_fix）。角度は度、初めは 90（本物の `[  90.000ﾟ]`）。 */
+    int arc_ask;
+    int arc_fix;
+    double arc_ang;
     double hatch_angle;         /* ③角 度, degrees -- 45.00 to start with */
     double hatch_pitch;         /* ④ﾋﾟｯﾁ, millimetres of paper -- 10.0 */
     /* How wide and how tall the string being typed comes out, in drawing

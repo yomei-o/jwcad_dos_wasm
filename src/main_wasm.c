@@ -441,6 +441,8 @@ static void sync_ui(void)
     ui.circ_done = cmd.circ_done;
     ui.circ_r = cmd.circ_r;
     ui.circ_base = cmd.circ_base;
+    ui.arc_ask = cmd.arc_ask;
+    ui.arc_ang = cmd.arc_ang;
     ui.box_fix = cmd.box_fix;
     ui.box_done = cmd.box_done;
     ui.box_w = cmd.box_w;
@@ -4455,6 +4457,25 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
                 ui.command = cmd.command;
                 ui.guide = 0;
             }
+            sync_ui();
+            present();
+            return -1;
+        }
+    }
+    /* **数字の鍵は上の行の升。** `1` は ① を左で押したのと同じ（測定：
+     * □ で `1` → ①寸法 の欄、そのまま 60,40 [Enter] で置く所）。欄が
+     * 開いているあいだは上の jw_cmd_key が数として取っています。 */
+    if (cmd.command && key >= '1' && key <= '9' && !cmd.typing
+        && !cmd.typing_text) {
+        const int x = jw_ui_top_cell_x(key - '0');
+
+        if (x >= 0) {
+            /* 鍵で押しても矢は動きません（本物の矢は元の所のまま）。 */
+            const int mx = mouse_x, my = mouse_y;
+
+            jw_click(x, 8, 0);
+            mouse_x = mx;
+            mouse_y = my;
             sync_ui();
             present();
             return -1;

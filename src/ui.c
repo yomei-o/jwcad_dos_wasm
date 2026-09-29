@@ -609,6 +609,22 @@ int jw_ui_top_item(int x, int y)
     return bars;                /* 0 = before the first bar, so not an item */
 }
 
+/* 上の行の升 n（1 から）の中の x、無ければ -1。数字の鍵 1〜9 が、その升を
+ * 左で押したのと同じになるため（測定：□ で `1` を打つと ①寸法 の欄が出る）。 */
+int jw_ui_top_cell_x(int n)
+{
+    int i, bars = 0;
+
+    for (i = 0; i < 79; i++) {
+        if (top_line[i] == '|' && ++bars == n) {
+            const int x = (i + 1) * 8 + 4;
+
+            return jw_ui_top_item(x, 8) == n ? x : -1;
+        }
+    }
+    return -1;
+}
+
 /* 盤の字の幅（画素）。全角は 16、半角は 8。 */
 static int ui_text_width(const char *s)
 {
@@ -2816,6 +2832,33 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\x8e" "n\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read ");
         }
         jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91" "O\x8d" "\x80");
+    } else if (s->command == 12 && s->arc_ask) {
+        /* （ の ②角度指定 の欄（測定：STR=1。打つ字は桁 15 から）。 */
+        char one[32];
+        const JwStage *q;
+
+        /* 数え箱は 2 段目のまま（`半径=` `角度=`）。本物は欄を開いても
+         * 書き直さない。 */
+        fill(v, 1, 17, 120, 47, 4);
+        for (q = JW_STAGE; q->command; q++) {
+            if (q->command == 12 && q->stage == 2 && q->row > 1) {
+                stage_text(v, q, s, 2);
+            }
+        }
+
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, "\x8a" "p\x93" "x =");
+        jw_ui_text(v, 34, 1, 7, 0, "\x94" "C\x88" "\xd3" "\x8a" "p\x93" "x \xcf" "\xb3" "\xbd" "(L) \x91" "O\x89" "\xf1" "\x82" "\xc6" "\x93" "\xaf" "\x82" "\xb6" " \xcf" "\xb3" "\xbd" "(R) ");
+        sprintf(one, "[%8.3f" "\xdf" "]", s->arc_ang);
+        jw_ui_text(v, 68, 1, 7, 0, one);
+        if (s->typed_n > 0) {
+            char t[9];
+
+            memcpy(t, s->typed, 8);
+            t[s->typed_n < 8 ? s->typed_n : 8] = 0;
+            jw_ui_text(v, 15, 1, 7, 0, t);
+        }
+        fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
     } else if (s->command == 11 && s->circ_ask) {
         /* ○ の ①径寸法 の欄（測定：STR=1。打つ字は桁 20 から）。 */
         char one[32];

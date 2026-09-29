@@ -19,6 +19,7 @@ void jw_cmd_pick(JwCmd *c, int command)
     const double keep_len = c->ask_len, keep_ang = c->ask_ang;
     const double keep_bw = c->box_w, keep_bh = c->box_h;
     const double keep_cr = c->circ_r;
+    const double keep_aa = c->arc_ang;
 
     free(c->hen_end);
     free(c->sel_line);
@@ -86,6 +87,7 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->box_w = had ? keep_bw : 1000.0;
     c->box_h = had ? keep_bh : 1000.0;
     c->circ_r = had ? keep_cr : 1000.0;
+    c->arc_ang = had ? keep_aa : 90.0;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -364,6 +366,9 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
         fix_end(c, d, &x, &y);
     }
     measure(c, d, x, y);
+    if (c->command == 12 && c->pressed == 2 && c->arc_fix) {
+        c->num[1] = (float)c->arc_ang;      /* `角度=  120.000ﾟ` */
+    }
 }
 
 static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
@@ -1139,6 +1144,42 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         const double dx = sx - fx, dy = sy - fy;
 
         jw_arc_poly(v, fx, fy, sqrt(dx * dx + dy * dy), 10000, 0, 0, 0,
+                    2, 0x18, JW_STYLE_SOLID);
+    } else if (c->command == 12 && c->pressed == 2 && !c->arc_ask) {
+        /* 「（」の始点を取ったあと：始点から矢の向きまでの弧が付いてきます
+         * （前は何も出していなかった：本物との差 118 画素）。記録と同じく
+         * 短い回りの方。②角度指定 のあとは、打った角度の弧が矢の側に。 */
+        const double fx = (c->x0 - w->ox) * w->scale + w->ax;
+        const double fy = w->ay - (c->y0 - w->oy) * w->scale;
+        const double r = hypot_of(c->x1 - c->x0, c->y1 - c->y0) * w->scale;
+        double mx, my, a0, a1;
+
+        jw_cmd_at(w, sx, sy, &mx, &my);
+        a0 = angle_at(c->x1 - c->x0, c->y1 - c->y0);
+        a1 = angle_at(mx - c->x0, my - c->y0);
+        if (c->arc_fix) {
+            const double sweep = a1 - a0 < 0.0 ? a1 - a0 + 360.0 : a1 - a0;
+            const double A = (float)c->arc_ang;
+
+            if (sweep <= 180.0) {
+                a1 = a0 + A;
+            } else {
+                a1 = a0;
+                a0 = a0 - A;
+            }
+            while (a0 < 0.0) {
+                a0 += 360.0;
+            }
+            while (a1 >= 360.0) {
+                a1 -= 360.0;
+            }
+        } else if (a1 - a0 < 0.0 ? a1 - a0 + 360.0 > 180.0 : a1 - a0 > 180.0) {
+            const double t = a0;
+
+            a0 = a1;
+            a1 = t;
+        }
+        jw_arc_poly(v, fx, fy, r, 10000, fixed16(a0), fixed16(a1), 0,
                     2, 0x18, JW_STYLE_SOLID);
     } else if (c->command == 2 || c->command == 3) {
         int qx = sx, qy = sy;
@@ -3696,6 +3737,14 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->circ_base = (c->circ_base + 1) % 9;
         return 1;
     }
+    /* （ の ②角度指定（始点を取って `） 終点指示` のとき）。 */
+    if (c->command == 12 && c->pressed == 2 && item == 2) {
+        c->arc_ask = 1;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 1;
+    }
     /* □ の ④基点変（大きさを決めて置いているとき）。○ の ②基点変 と同じ
      * 順に 9 か所を回ります（測定：押した点が四角の 左上→左→左下→下→右下→
      * 右→右上→上→真ん中）。 */
@@ -4958,6 +5007,32 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (!c->typing) {
         return 0;
+    }
+    if (c->command == 12 && c->arc_ask) {
+        /* （ の `角度 =` の欄。[Enter] で角度が決まり、`） 終点指示` に
+         * 戻ります（測定：120 のあと下を押すと 240..0、上を押すと 0..120）。 */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                c->arc_ang = (float)atof(c->typed);
+                c->arc_fix = 1;
+            }
+            c->typing = 0;
+            c->arc_ask = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
     }
     if (c->command == 11 && c->circ_ask) {
         /* ○ の `半 径 =` の欄。[Enter] で半径が決まり、矢の所に置く
@@ -12798,10 +12873,18 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
          * the radius is the distance to the second.  RESUME 4.13. */
         double a0, a1;
 
+        if (c->arc_ask && c->typing) {
+            /* 欄の `任意角度 ﾏｳｽ(L)`・`前回と同じ ﾏｳｽ(R)`。 */
+            c->arc_fix = right ? 1 : 0;
+            c->typing = 0;
+            c->arc_ask = 0;
+            return 1;
+        }
         if (!take(c, d, w, sx, sy, right, &x, &y)) {
             return 0;
         }
         if (!c->pressed) {
+            c->arc_fix = 0;
             c->x0 = x;
             c->y0 = y;
             c->pressed = 1;
@@ -12840,7 +12923,33 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
          * -- the last two being 69.96 and 169.96 of sweep, where the other
          * order would have been 290 and 190.  What it does at exactly 180 is
          * not measured. */
-        if (a1 - a0 < 0.0 ? a1 - a0 + 360.0 > 180.0 : a1 - a0 > 180.0) {
+        if (c->arc_fix) {
+            /* ②角度指定：始点から打った角度だけ。終点の押しは向きだけで、
+             * 始点から左回りに 180 までの側なら 始点..始点+角度、反対なら
+             * 始点-角度..始点（測定：始点 0 で 120、下を押すと 240..0、
+             * 上を押すと 0..120）。**ちょうど 180 の側は未測定。** */
+            const double sweep = a1 - a0 < 0.0 ? a1 - a0 + 360.0 : a1 - a0;
+            const double A = (float)c->arc_ang;
+
+            if (sweep <= 180.0) {
+                a1 = a0 + A;
+            } else {
+                a1 = a0;
+                a0 = a0 - A;
+            }
+            while (a0 < 0.0) {
+                a0 += 360.0;
+            }
+            while (a0 >= 360.0) {
+                a0 -= 360.0;
+            }
+            while (a1 < 0.0) {
+                a1 += 360.0;
+            }
+            while (a1 >= 360.0) {
+                a1 -= 360.0;
+            }
+        } else if (a1 - a0 < 0.0 ? a1 - a0 + 360.0 > 180.0 : a1 - a0 > 180.0) {
             const double t = a0;
 
             a0 = a1;

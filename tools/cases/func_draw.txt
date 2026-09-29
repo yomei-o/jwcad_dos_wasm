@@ -65,3 +65,14 @@ box_base1|SAMPLE0|90 120 left|330 8 left|type 60,40|key enter|move 300 250|540 8
 box_base3|SAMPLE0|90 120 left|330 8 left|type 60,40|key enter|move 300 250|540 8 left|540 8 left|540 8 left|move 300 250|300 250 left
 box_base5|SAMPLE0|90 120 left|330 8 left|type 60,40|key enter|move 300 250|540 8 left|540 8 left|540 8 left|540 8 left|540 8 left|move 300 250|300 250 left
 box_base8|SAMPLE0|90 120 left|330 8 left|type 60,40|key enter|move 300 250|540 8 left|540 8 left|540 8 left|540 8 left|540 8 left|540 8 left|540 8 left|540 8 left|move 300 250|300 250 left
+# （ ②角度指定（2026-09-29）。始点を取ったあとの ② は x=500。終点の押しは向きだけ。
+arc_ang120_cw|SAMPLE0|90 248 left|300 250 left|360 250 left|500 8 left|type 120|key enter|move 300 300|300 300 left
+arc_ang120_ccw|SAMPLE0|90 248 left|300 250 left|360 250 left|500 8 left|type 120|key enter|move 250 200|250 200 left
+arc_ang75_odd|SAMPLE0|90 248 left|300 250 left|340 215 left|500 8 left|type 75.5|key enter|move 250 200|250 200 left
+arc_ang75_odd_cw|SAMPLE0|90 248 left|300 250 left|340 215 left|500 8 left|type 75.5|key enter|move 350 300|350 300 left
+arc_ang270|SAMPLE0|90 248 left|300 250 left|340 215 left|500 8 left|type 270|key enter|move 250 200|250 200 left
+# 数字の鍵は上の行の升（2026-09-29、利用者の指摘）。`1` は ① を左で押したのと同じ。
+key_box1|SAMPLE0|90 120 left|type 1|type 60,40|key enter|move 300 250|300 250 left
+key_slash2|SAMPLE0|90 104 left|type 2|type 50|key enter|250 200 left|move 400 280|400 280 left
+key_circ1|SAMPLE0|90 232 left|type 1|type 30|key enter|move 300 250|300 250 left
+key_arc2|SAMPLE0|90 248 left|300 250 left|360 250 left|type 2|type 120|key enter|move 250 200|250 200 left
