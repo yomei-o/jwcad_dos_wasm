@@ -1676,6 +1676,19 @@ EMSCRIPTEN_KEEPALIVE long jw_count(int which)
          : which == 4 ? drawing->n_temp : -1;   /* 4 = the 仮点 */
 }
 
+/* 検査用：いまのコマンドの状態（tools/cmdstate.mjs）。 */
+EMSCRIPTEN_KEEPALIVE const char *jw_cmd_state(void)
+{
+    static char buf[160];
+
+    snprintf(buf, sizeof buf,
+             "cmd=%d stage=%d pressed=%d typing=%d fix_mode=%d fix_done=%d "
+             "fix_len=%d fix_angle=%d ask_kind=%d top_item=%d",
+             cmd.command, cmd.stage, cmd.pressed, cmd.typing, cmd.fix_mode,
+             cmd.fix_done, cmd.fix_len, cmd.fix_angle, cmd.ask_kind,
+             cmd.top_item);
+    return buf;
+}
 EMSCRIPTEN_KEEPALIVE int jw_top_item(int x, int y) { return jw_ui_top_item(x, y); }
 EMSCRIPTEN_KEEPALIVE int jw_io_stage(void) { return ui.io_stage; }
 EMSCRIPTEN_KEEPALIVE int jw_file_count(void) { return ui.file_n; }

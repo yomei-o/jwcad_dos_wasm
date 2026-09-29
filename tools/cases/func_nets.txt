@@ -1,0 +1,7 @@
+# 受け入れ試験：寸法入りの展開図（2026-09-29）。本物と同じ操作でレコードを比べます。
+# 直方体 W40×D30×H20mm：□ ①寸法＋④基点変＋右押しの読取で 6 面を貼り合わせ、寸法 ①の連続と ②。
+# **寸法線の rest[1] だけ違う（既知）**：本物の 3ab8:0dba が書かないスタックの残り。
+net_box|SAMPLE0|90 120 left|330 8 left|type 20,30|key enter|move 200 330|540 8 left|540 8 left|540 8 left|move 200 330|200 330 left|330 8 left|type 40,30|key enter|move 235 330|235 330 right|330 8 left|type 20,30|key enter|move 305 330|305 330 right|330 8 left|type 40,30|key enter|move 340 330|340 330 right|330 8 left|type 40,20|key enter|move 235 278|235 278 right|540 8 left|540 8 left|540 8 left|540 8 left|540 8 left|540 8 left|540 8 left|move 235 330|235 330 right|90 280 left|200 330 left|200 330 right|200 395 left|200 330 right|235 330 right|305 330 right|340 330 right|410 330 right|90 280 left|200 330 right|200 330 right|180 330 left|200 330 right|200 278 right|235 243 right|move 450 420
+# 円錐 底面 r20・母線 50mm（中心角 144°）：／ ③90→[BS]→②50、（ 中心・始点(R)・②角度指定 144、
+# ／ で弧の端まで、○ ①径 20＋②基点変(下) で弧の端に接する円、寸法 ② 50。
+net_cone|SAMPLE0|90 104 left|440 8 left|type 90|key enter|key bs|380 8 left|type 50|key enter|300 330 left|move 300 250|300 250 left|90 248 left|300 330 right|300 243 right|500 8 left|type 144|key enter|move 230 300|230 300 left|90 104 left|300 330 right|move 249 401|249 401 right|90 232 left|465 8 left|type 20|key enter|move 300 243|420 8 left|420 8 left|420 8 left|420 8 left|move 300 243|300 243 right|90 280 left|300 330 right|300 330 right|330 330 left|300 330 right|300 243 right|move 450 420

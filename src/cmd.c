@@ -1598,6 +1598,46 @@ static void near_mark(Jwc *m, const JwView *w, int sx, int sy)
             l->rest[2] |= 1u;
         }
     }
+    /* 円弧も同じ探索の中で（0x17d15〜0x181e7）：外枠 [中心 ± 半径] が矢の
+     * 四角にかかり、|中心までの距離 - 半径| が範囲より小さく、弧なら矢の
+     * 角度が [始角 - 許し, 終角 + 許し] に入るもの（許しは
+     * 0def:2828(範囲, 半径)）。円（始角 = 終角）は角度を見ません。
+     * **楕円（flatten ≠ 10000）と傾いた弧はまだ**：印を付けません。 */
+    for (k = 0; k < m->n_arcs; k++) {
+        JwcArc *a = &m->arcs[k];
+        double dx, dy, dist;
+
+        if (a->pen >= 0x5a || !in_reach_layer(m, a->layer)
+            || a->flatten != 10000 || a->tilt != 0) {
+            continue;
+        }
+        if (fx - r > a->cx + a->r || fy - r > a->cy + a->r
+            || a->cx - a->r > fx + r || a->cy - a->r > fy + r) {
+            continue;
+        }
+        dx = (double)a->cx - fx;
+        dy = (double)a->cy - fy;
+        dist = fabs(sqrt(dx * dx + dy * dy) - a->r);
+        if (!((double)r > dist)) {
+            continue;
+        }
+        if (a->start != a->end) {
+            const long tol = ang16(0.0, 0.0, (double)r, (double)a->r);
+            const long th = ang16(a->cx, a->cy, fx, fy);
+            const long full = 360L << 16;
+            long s0 = a->start - tol, e0 = a->end + tol;
+            long t = th;
+
+            /* 始角から左回りに測った位置で比べます。 */
+            s0 = ((s0 % full) + full) % full;
+            e0 = ((e0 - s0) % full + full) % full;
+            t = ((t - s0) % full + full) % full;
+            if (t > e0) {
+                continue;
+            }
+        }
+        a->rest[2] |= 1u;
+    }
 }
 
 /* Where a press says its point is, before any snap: the left button takes the
@@ -5200,11 +5240,16 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (key == 8 && (c->command == 2 || c->command == 3) && c->fix_mode
         && !c->pressed && !c->typing) {
+        /* 線を引いたあと（`確定長さ = …` の行、stage 2）でも同じで、
+         * `・◇始点指示 … |①  ＋  |②寸 法 |…` の行に戻ります（測定：
+         * そのあと ③ に 18 を打つと 18 度、長さは矢まで）。 */
         c->fix_mode = 0;
         c->fix_len = 0;
         c->fix_angle = 0;
         c->par_on = 0;
         c->fix_done = 0;
+        c->stage = 0;
+        c->moved = 0;
         return 1;
     }
     /* **寸法 の [ESC]。** 本物は段ごとに一つ前へ戻ります（ovl27 3ab8:206c、
@@ -6637,6 +6682,31 @@ static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
 
 /* 寸法の線は本物の線の入口 11f2:67fa を通るので、**長さ 0 の線は入りません**
  * （ペン < 0x5a のとき。測定：同じ角を二度読んだ寸法は文字 `0` だけ）。 */
+/* 寸法値を置きます。本物の 3ab8:5ff8（ovl27、リンク時 0x30f2b〜0x310df）の
+ * とおり、寸法線の小さいほうの端 (ox,oy) を原点にした線の座標で
+ *   u = (float)((寸法線の長さ - 文字の長さ) * 0.5)、v = (float)間隔
+ * を置き、1bb4:2981/2a18 の向き 0 で図面へ戻します：
+ *   x = (float)(cs*u - sn*v + ox)、y = (float)(cs*v + sn*u + oy)。
+ * 終点は始点を原点にして (文字の長さ, 0) を同じく戻したもの。double で
+ * (始+終)/2 - 長さ/2 とすると float の最後の 1 ビットがずれます（測定：
+ * □ の上辺の `57.3` の x が 0x432ea3c5、本物は 0x432ea3c6）。 */
+static int dim_put_text(Jwc *d, double ux, double uy, float ox, float oy,
+                        double span, double len, double off,
+                        const char *buf, unsigned char layer)
+{
+    const float cs = (float)ux, sn = (float)uy;
+    const float fl = (float)len;
+    const float u = (float)((span - (double)fl) * 0.5);
+    const float v = (float)off;
+    const float tx = (float)((double)cs * u - (double)sn * v + ox);
+    const float ty = (float)((double)cs * v + (double)sn * u + oy);
+    const float ex = (float)((double)cs * fl - (double)sn * 0.0 + tx);
+    const float ey = (float)((double)cs * 0.0 + (double)sn * fl + ty);
+
+    return jwc_add_text(d, tx, ty, ex, ey, buf,
+                        (unsigned char)d->dim_size, layer);
+}
+
 static int dim_point(const JwCmd *c, Jwc *d, float x, float y,
                      unsigned char layer);
 
@@ -6750,12 +6820,10 @@ static void dimension_more(JwCmd *c, Jwc *d, double x1)
     jwc_dim_text(buf, sizeof buf, c->dim_value, c->dim_unit, c->dim_dec,
                  c->dim_comma_on, c->dim_zero_on);
     len = jwc_text_length(d, buf, d->dim_size);
-    if (jwc_add_text(d,
-                     DIM_X(mid - len / 2.0, y + off),
-                     DIM_Y(mid - len / 2.0, y + off),
-                     DIM_X(mid + len / 2.0, y + off),
-                     DIM_Y(mid + len / 2.0, y + off),
-                     buf, (unsigned char)d->dim_size, layer)) {
+    (void)mid;
+    if (dim_put_text(d, ux, uy, DIM_X(x0 < x1 ? x0 : x1, y),
+                     DIM_Y(x0 < x1 ? x0 : x1, y), fabs(x1 - x0), len, off,
+                     buf, layer)) {
         d->texts[d->n_texts - 1].rest[2] = 0x10;
         d->texts[d->n_texts - 1].rest[3] = 0x40;
     }
@@ -7327,34 +7395,13 @@ no_ext1:
                  c->dim_value, c->dim_unit, c->dim_dec,
                  c->dim_comma_on, c->dim_zero_on);
     len = jwc_text_length(d, buf, d->dim_size);
-    {
-        /* 置き場所は本物の 3ab8:5ff8（ovl27、リンク時 0x30f2b〜0x310df）の
-         * とおり、寸法線の端を原点にした線の座標で
-         *   u = (float)((寸法線の長さ - 文字の長さ) * 0.5)、v = (float)間隔
-         * を置き、1bb4:2981/2a18 の向き 0 で図面へ戻します：
-         *   x = (float)(cs*u - sn*v + ox)、y = (float)(cs*v + sn*u + oy)。
-         * 終点は始点を原点にして (文字の長さ, 0) を同じく戻したもの。
-         * double で (始+終)/2 - 長さ/2 とすると float の最後の 1 ビットが
-         * ずれます（測定：□ の上辺の寸法 `57.3` の x が 0x432ea3c5、本物は
-         * 0x432ea3c6）。 */
-        const double lo = x0 < x1 ? x0 : x1, hi = x0 < x1 ? x1 : x0;
-        const float cs = (float)ux, sn = (float)uy;
-        const float ox = DIM_X(lo, y), oy = DIM_Y(lo, y);
-        const float fl = (float)len;
-        const float u = (float)((hi - lo - (double)fl) * 0.5);
-        const float v = (float)off;
-        const float tx = (float)((double)cs * u - (double)sn * v + ox);
-        const float ty = (float)((double)cs * v + (double)sn * u + oy);
-        const float ex = (float)((double)cs * fl - (double)sn * 0.0 + tx);
-        const float ey = (float)((double)cs * 0.0 + (double)sn * fl + ty);
-
-        (void)mid;
-        if (jwc_add_text(d, tx, ty, ex, ey,
-                         buf, (unsigned char)d->dim_size, layer)) {
-            d->texts[d->n_texts - 1].rest[2] = 0x10;
-            d->texts[d->n_texts - 1].rest[3] =
-                (unsigned char)(0x40 + c->dim_circle);
-        }
+    (void)mid;
+    if (dim_put_text(d, ux, uy, DIM_X(x0 < x1 ? x0 : x1, y),
+                     DIM_Y(x0 < x1 ? x0 : x1, y), fabs(x1 - x0), len, off,
+                     buf, layer)) {
+        d->texts[d->n_texts - 1].rest[2] = 0x10;
+        d->texts[d->n_texts - 1].rest[3] =
+            (unsigned char)(0x40 + c->dim_circle);
     }
 #undef DIM_X
 #undef DIM_Y
