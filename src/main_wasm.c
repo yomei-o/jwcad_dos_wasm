@@ -435,6 +435,7 @@ static void sync_ui(void)
     ui.fix_shown = cmd.fix_shown;
     ui.fix_angle = cmd.fix_angle;
     ui.box_ask = cmd.box_ask;
+    ui.box_base = cmd.box_base;
     ui.circ_ask = cmd.circ_ask;
     ui.circ_fix = cmd.circ_fix;
     ui.circ_done = cmd.circ_done;

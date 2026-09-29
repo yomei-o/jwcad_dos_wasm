@@ -477,6 +477,7 @@ typedef struct {
     int box_done;
     double box_w, box_h;
     int box_bi, box_bj;
+    int box_base;               /* ④基点変 で 0〜8 を回る（0 が真ん中） */
     /* ○ の ①径寸法：`半 径 =` の欄（circ_ask）、半径が決まって置く場所を
      * 待っている（circ_fix）。半径は紙の mm、初めは 1000。 */
     int circ_ask;

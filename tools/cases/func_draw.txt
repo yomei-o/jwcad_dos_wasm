@@ -60,3 +60,8 @@ circ_base1|SAMPLE0|90 232 left|465 8 left|type 20|key enter|move 300 250|420 8 l
 circ_base3|SAMPLE0|90 232 left|465 8 left|type 20|key enter|move 300 250|420 8 left|420 8 left|420 8 left|move 300 250|300 250 left
 circ_base5|SAMPLE0|90 232 left|465 8 left|type 20|key enter|move 300 250|420 8 left|420 8 left|420 8 left|420 8 left|420 8 left|move 300 250|300 250 left
 circ_base8|SAMPLE0|90 232 left|465 8 left|type 20|key enter|move 300 250|420 8 left|420 8 left|420 8 left|420 8 left|420 8 left|420 8 left|420 8 left|420 8 left|move 300 250|300 250 left
+# □ ④基点変（置いているときの ④ は x=540）。○ と同じ順に 9 か所を回る。
+box_base1|SAMPLE0|90 120 left|330 8 left|type 60,40|key enter|move 300 250|540 8 left|move 300 250|300 250 left
+box_base3|SAMPLE0|90 120 left|330 8 left|type 60,40|key enter|move 300 250|540 8 left|540 8 left|540 8 left|move 300 250|300 250 left
+box_base5|SAMPLE0|90 120 left|330 8 left|type 60,40|key enter|move 300 250|540 8 left|540 8 left|540 8 left|540 8 left|540 8 left|move 300 250|300 250 left
+box_base8|SAMPLE0|90 120 left|330 8 left|type 60,40|key enter|move 300 250|540 8 left|540 8 left|540 8 left|540 8 left|540 8 left|540 8 left|540 8 left|540 8 left|move 300 250|300 250 left

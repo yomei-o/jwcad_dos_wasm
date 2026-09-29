@@ -3696,6 +3696,18 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->circ_base = (c->circ_base + 1) % 9;
         return 1;
     }
+    /* □ の ④基点変（大きさを決めて置いているとき）。○ の ②基点変 と同じ
+     * 順に 9 か所を回ります（測定：押した点が四角の 左上→左→左下→下→右下→
+     * 右→右上→上→真ん中）。 */
+    if (c->command == 4 && c->box_fix && item == 4) {
+        static const int DX[9] = { 0, 1, 1, 1, 0, -1, -1, -1, 0 };
+        static const int DY[9] = { 0, -1, 0, 1, 1, 1, 0, -1, -1 };
+
+        c->box_base = (c->box_base + 1) % 9;
+        c->box_bi = -DX[c->box_base];
+        c->box_bj = -DY[c->box_base];
+        return 1;
+    }
     /* ○ の ①径寸法：`半 径 =` の欄を開きます（前は src/item.h の画面だけ）。 */
     if (c->command == 11 && item == 1 && (c->stage == 0 || c->circ_fix)) {
         c->circ_ask = 1;

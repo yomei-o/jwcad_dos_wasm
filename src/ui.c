@@ -5416,9 +5416,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * 中にあります。真ん中の基点で (583..587, 6..10) の 3-5-5-5-3
              * （測定。④基点変 で動いた先はまだ測っていない）。 */
             if (s->box_fix) {
-                fill(v, 584, 6, 586, 6, 2);
-                fill(v, 583, 7, 587, 9, 2);
-                fill(v, 584, 10, 586, 10, 2);
+                static const int DX[9] = { 0, 1, 1, 1, 0, -1, -1, -1, 0 };
+                static const int DY[9] = { 0, -1, 0, 1, 1, 1, 0, -1, -1 };
+                const int b = s->box_base % 9;
+                const int ex = 585 - DX[b] * 5, ey = 8 + DY[b] * 5;
+
+                fill(v, ex - 1, ey - 2, ex + 1, ey - 2, 2);
+                fill(v, ex - 2, ey - 1, ex + 2, ey + 1, 2);
+                fill(v, ex - 1, ey + 2, ex + 1, ey + 2, 2);
             }
         }
         /* What a *modified* read would take, which is there while a modifier

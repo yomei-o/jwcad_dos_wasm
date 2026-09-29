@@ -210,7 +210,7 @@ typedef struct {
     double fix_shown;
     int fix_angle;
     /* □ の ①寸法（JwCmd.box_*）。 */
-    int box_ask, box_fix, box_done;
+    int box_ask, box_fix, box_done, box_base;
     int circ_ask, circ_fix, circ_done;
     double circ_r;
     int circ_base;
