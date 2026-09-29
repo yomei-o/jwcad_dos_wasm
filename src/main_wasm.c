@@ -129,6 +129,16 @@ EMSCRIPTEN_KEEPALIVE void jw_init(void)
     jwc_free(drawing);
     drawing = jwc_new();
     jw_view_original(&view);
+    /* 起動したところなので、命令をまたいで残る数（＋・／ の長さ・角度、
+     * □ の大きさなど。本物では DGROUP の変数）も初めの値に戻します。
+     * 検査（tools/seqall.mjs）は 1 つの wasm で何件も起動し直すので、
+     * これが無いと前の件の数が残っていました。 */
+    jw_cmd_pick(&cmd, 0);
+    free(cmd.hen_end);
+    free(cmd.sel_line);
+    free(cmd.sel_arc);
+    free(cmd.sel_text);
+    memset(&cmd, 0, sizeof cmd);
     jw_cmd_pick(&cmd, 0);
     jw_ui_from(&ui, drawing);
     dim_from_drawing();
