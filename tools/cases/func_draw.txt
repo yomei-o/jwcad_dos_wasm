@@ -78,3 +78,8 @@ key_circ1|SAMPLE0|90 232 left|type 1|type 30|key enter|move 300 250|300 250 left
 key_arc2|SAMPLE0|90 248 left|300 250 left|360 250 left|type 2|type 120|key enter|move 250 200|250 200 left
 # 寸法 ①横方向（2026-09-29）：引出し線の始点(R)・寸法線の位置・値の始点(R)・終点(R)。
 dim_horiz|SAMPLE0|90 280 left|162 140 right|300 110 left|162 140 right|598 140 right|move 420 300
+# 寸法 の本物の 5 押し（2026-09-29）：図面を押して ①（右なら ②）→ 引出し線の始点 →
+# 寸法線の位置 → 値の始点(R) → 終点(R)。端部【点】なら寸法線の両端に実点が 2 つ入る。
+dim_full|SAMPLE0|90 280 left|162 140 left|162 140 left|300 110 left|162 140 right|598 140 right
+# □ を描いて、その上辺に寸法（ユーザーの手順）。
+dim_on_box|SAMPLE0|90 120 left|250 300 left|350 350 left|90 280 left|250 300 left|300 280 left|300 250 left|250 300 right|350 300 right

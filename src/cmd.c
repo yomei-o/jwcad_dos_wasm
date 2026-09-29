@@ -1553,6 +1553,53 @@ long jw_cmd_text_at(const Jwc *d, const JwView *w, int sx, int sy)
     return -1;
 }
 
+/* **読取の探索が近い線に付ける印**（rest[2] の bit 0）。本物は 11f2:573f
+ * （ルート 0x1765f）で矢の周りの四角 [矢 ± 範囲]（範囲 = [0x92e0] /
+ * [0xc3c]、紙の上の 8 ドット）に外枠がかかる線を回り、線の長いほうの
+ * 軸で矢までの隔たり——|dx| >= |dy| なら矢の x での線の y と矢の y の差、
+ * そうでなければ矢の y での x の差、長さ 0 なら |dx|+|dy|——が範囲より
+ * 小さい線に、**選ぶかどうかの前に** `or es:[bx+14h],1` します（0x17c66）。
+ * 読んだ点に端がある線だけではありません。ペン 0x5a 以上の線と読めない
+ * レイヤの線は飛ばします（0x1792c・0x17916）。 */
+static void near_mark(Jwc *m, const JwView *w, int sx, int sy)
+{
+    double cx, cy;
+    float r, fx, fy;
+    long k;
+
+    jw_cmd_at(w, sx, sy, &cx, &cy);
+    fx = (float)cx;
+    fy = (float)cy;
+    r = (float)(JW_READ_REACH / w->scale);
+    for (k = 0; k < m->n_lines; k++) {
+        JwcLine *l = &m->lines[k];
+        const float lx0 = l->x0 < l->x1 ? l->x0 : l->x1;
+        const float lx1 = l->x0 < l->x1 ? l->x1 : l->x0;
+        const float ly0 = l->y0 < l->y1 ? l->y0 : l->y1;
+        const float ly1 = l->y0 < l->y1 ? l->y1 : l->y0;
+        const float dx = l->x1 - l->x0, dy = l->y1 - l->y0;
+        float dist;
+
+        if (l->pen >= 0x5a || !in_reach_layer(m, l->layer)
+            || lx1 < fx - r || lx0 > fx + r || ly1 < fy - r || ly0 > fy + r) {
+            continue;
+        }
+        if (dx == 0.0f && dy == 0.0f) {
+            dist = (float)(fabs((double)fy - l->y0) + fabs((double)fx - l->x0));
+        } else if (fabs(dx) >= fabs(dy)) {
+            dist = (float)fabs((double)fy
+                               - ((double)(dy / dx) * ((double)fx - l->x0)
+                                  + l->y0));
+        } else {
+            dist = (float)fabs((double)fx
+                               - ((double)((fy - l->y0) / dy) * dx + l->x0));
+        }
+        if (dist <= r) {
+            l->rest[2] |= 1u;
+        }
+    }
+}
+
 /* Where a press says its point is, before any snap: the left button takes the
  * pointer and the right one reads what is already drawn.  Returns 0 when the
  * right button found nothing, which is when the original says 読取可能データ無
@@ -1581,28 +1628,12 @@ static int indicate(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
             m->arcs[k].rest[2] &= (unsigned char)~1u;
         }
     }
+    if (d) {
+        near_mark((Jwc *)d, w, sx, sy);
+    }
     if (!jw_read(d, w, sx, sy, x, y)) {
         c->missed = 1;
         return 0;
-    }
-    if (d) {
-        Jwc *m = (Jwc *)d;
-        const float fx = (float)*x, fy = (float)*y;
-        long k;
-
-
-        for (k = 0; k < m->n_lines; k++) {
-            JwcLine *l = &m->lines[k];
-
-            /* **読んだ端点を持つ線に rest[2] の bit 0 が立ちます**——上で
-             * 全部の線から落とした同じ印（測定：寸法 で (162,140) と
-             * (598,140) を読むと印は線 1・2 だけ、□ で (232,157) を読むと
-             * 線 5・6）。どの命令のどこで立てているかは本物ではまだ見て
-             * いない。 */
-            if ((l->x0 == fx && l->y0 == fy) || (l->x1 == fx && l->y1 == fy)) {
-                l->rest[2] |= 1u;
-            }
-        }
     }
     c->missed = 0;
     return 1;
@@ -3956,8 +3987,11 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
      * question, not the way in -- and the item is the whole cell.  What is
      * done with the number is the next thing; this is the screen, which is
      * what a branch of the table is. */
+    /* **始点を取ったあとでも** ②寸法・③角度 は効き、始点は持ったまま
+     * （測定：始点のあと 2 → 40 [Enter] で `◆終点指示` に戻り、次の押しで
+     * 40mm の線、そのあと `確定長さ … [BS]前項`）。 */
     if ((c->command == 2 || c->command == 3) && (item == 2 || item == 3)
-        && c->stage == 0) {
+        && (c->stage == 0 || c->pressed == 1 || c->fix_mode)) {
         c->ask_kind = item - 1;
         /* ②寸法・③角度 は欄を開いてキーを受けます（前は画面だけで、
          * 打った数は捨てていました）。 */
@@ -3970,11 +4004,12 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
      * has the two in one item and ／ keeps them apart** -- `④ 平 行・垂 直`
      * against `④平 行 |⑤垂 直` -- and ＋'s item puts up the same screen as
      * ／'s ④, the one that offers 平行線(L) / 同一線上の線(R). */
-    if (c->command == 2 && item == 4 && c->stage == 0) {
+    if (c->command == 2 && item == 4 && (c->stage == 0 || c->pressed == 1)) {
         c->ask_kind = 3;
         return 1;
     }
-    if (c->command == 3 && (item == 4 || item == 5) && c->stage == 0) {
+    if (c->command == 3 && (item == 4 || item == 5)
+        && (c->stage == 0 || c->pressed == 1)) {
         c->ask_kind = item - 1;
         return 1;
     }
@@ -5211,6 +5246,16 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if ((c->command == 2 || c->command == 3) && c->pressed && had_line) {
             measure(c, d, ex, ey);
         }
+        return 1;
+    }
+    /* `始点指示 … [BS]前項` の状態で始点を持っているときの [ESC] は、始点を
+     * 捨てて**その前の行**（`[ESC]・始点指示 … 確定長さ = …`）に戻るだけ
+     * （測定：40mm を引いたあと次の始点を押して [ESC]）。 */
+    if (key == 27 && (c->command == 2 || c->command == 3) && c->fix_mode
+        && c->pressed && !c->typing) {
+        c->pressed = 0;
+        c->stage = c->fix_done ? 2 : 0;
+        c->moved = 0;
         return 1;
     }
     if (key == 27) {
@@ -7035,6 +7080,34 @@ static void dimension_circle(JwCmd *c, Jwc *d, long k, int right)
 #undef DIM_Y
 }
 
+/* 寸法線の端の実点（1bb4:35b8 → 1efe0）。同じ所・同じレイヤに
+ * rest[1] <= 6 の点があれば足しません。 */
+static void dim_point(const JwCmd *c, Jwc *d, float x, float y,
+                      unsigned char layer)
+{
+    JwcPoint p;
+    long k;
+
+    for (k = 0; k < d->n_points; k++) {
+        const JwcPoint *q = &d->points[k];
+
+        if (q->rest[1] <= 6 && q->x == x && q->y == y
+            && q->rest[0] == layer) {
+            return;
+        }
+    }
+    memset(&p, 0, sizeof p);
+    p.x = x;
+    p.y = y;
+    p.layer = layer;
+    p.rest[0] = layer;
+    p.rest[1] = (unsigned char)(c->dim_pen_point ? c->dim_pen_point
+                                                 : JW_DIM_PEN);
+    p.rest[2] = 0x40;
+    p.rest[3] = 0x1d;
+    jwc_put_point(d, &p);
+}
+
 static void dimension(JwCmd *c, Jwc *d, double x1)
 {
     const unsigned char layer =
@@ -7098,6 +7171,19 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
             (c->dim_lot_run ? 0x00
              : c->dim_circle ? 0xa2 : uy == 0.0 && ux > 0.0 ? 0x80 : 0x00);
         d->lines[d->n_lines - 1].rest[3] = 0x20;
+        /* 寸法設定 ②寸法線端部 が【点】（[0x1126] == 0）なら、寸法線の
+         * **両端に実点**。本物は 3ab8:0dba（ovl27、リンク時 0x2bd67〜
+         * 0x2be7c）で寸法線レコードの始点・終点をそのまま 1bb4:35b8 に
+         * 渡します。点は 書込レイヤ・[0x1d0]（点のペン）・0x40・0x1d。
+         * 1bb4:1efe0 は寸法コマンド中（[0xa62] == 14）だけ、座標と
+         * レイヤが同じで rest[1] <= 6 の点がもうあれば足しません。
+         * ⑤一括・④円･角 の道はまだ測っていないので入れていません。 */
+        if (!c->dim_end && !c->dim_lot_run && !c->dim_circle) {
+            const JwcLine *l = &d->lines[d->n_lines - 1];
+
+            dim_point(c, d, l->x0, l->y0, layer);
+            dim_point(c, d, l->x1, l->y1, layer);
+        }
     }
     if (c->dim_lot_run != 2
         && jwc_add_line(d, DIM_X(x0, b), DIM_Y(x0, b),
@@ -7159,15 +7245,34 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
                  c->dim_value, c->dim_unit, c->dim_dec,
                  c->dim_comma_on, c->dim_zero_on);
     len = jwc_text_length(d, buf, d->dim_size);
-    if (jwc_add_text(d,
-                     DIM_X(mid - len / 2.0, y + off),
-                     DIM_Y(mid - len / 2.0, y + off),
-                     DIM_X(mid + len / 2.0, y + off),
-                     DIM_Y(mid + len / 2.0, y + off),
-                     buf, (unsigned char)d->dim_size, layer)) {
-        d->texts[d->n_texts - 1].rest[2] = 0x10;
-        d->texts[d->n_texts - 1].rest[3] =
-            (unsigned char)(0x40 + c->dim_circle);
+    {
+        /* 置き場所は本物の 3ab8:5ff8（ovl27、リンク時 0x30f2b〜0x310df）の
+         * とおり、寸法線の端を原点にした線の座標で
+         *   u = (float)((寸法線の長さ - 文字の長さ) * 0.5)、v = (float)間隔
+         * を置き、1bb4:2981/2a18 の向き 0 で図面へ戻します：
+         *   x = (float)(cs*u - sn*v + ox)、y = (float)(cs*v + sn*u + oy)。
+         * 終点は始点を原点にして (文字の長さ, 0) を同じく戻したもの。
+         * double で (始+終)/2 - 長さ/2 とすると float の最後の 1 ビットが
+         * ずれます（測定：□ の上辺の寸法 `57.3` の x が 0x432ea3c5、本物は
+         * 0x432ea3c6）。 */
+        const double lo = x0 < x1 ? x0 : x1, hi = x0 < x1 ? x1 : x0;
+        const float cs = (float)ux, sn = (float)uy;
+        const float ox = DIM_X(lo, y), oy = DIM_Y(lo, y);
+        const float fl = (float)len;
+        const float u = (float)((hi - lo - (double)fl) * 0.5);
+        const float v = (float)off;
+        const float tx = (float)((double)cs * u - (double)sn * v + ox);
+        const float ty = (float)((double)cs * v + (double)sn * u + oy);
+        const float ex = (float)((double)cs * fl - (double)sn * 0.0 + tx);
+        const float ey = (float)((double)cs * 0.0 + (double)sn * fl + ty);
+
+        (void)mid;
+        if (jwc_add_text(d, tx, ty, ex, ey,
+                         buf, (unsigned char)d->dim_size, layer)) {
+            d->texts[d->n_texts - 1].rest[2] = 0x10;
+            d->texts[d->n_texts - 1].rest[3] =
+                (unsigned char)(0x40 + c->dim_circle);
+        }
     }
 #undef DIM_X
 #undef DIM_Y
@@ -9815,9 +9920,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * press on empty paper leaves the original saying サーチ and
          * 読取可能データ無.  JW_MNU.DOC has the whole tree. */
         if (c->stage == 0) {
-            c->dim_vert = 0;
-            c->dim_ux = 1.0;
-            c->dim_uy = 0.0;
+            /* 左は ①横方向、**右は ②縦方向**。本物は項目行の 1bb4:2cb4 が
+             * 返したボタン [bp-0xa0] が 1 なら項目 1、2 なら項目 2 にします
+             * （ovl27 3ab8:206c、リンク時 0x2cdcb〜0x2cde5）。 */
+            c->dim_vert = right != 0;
+            c->dim_ux = right ? 0.0 : 1.0;
+            c->dim_uy = right ? 1.0 : 0.0;
             c->pressed = 1;
             c->stage = 1;
             return 1;

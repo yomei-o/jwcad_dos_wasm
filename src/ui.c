@@ -2775,6 +2775,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * original's, not a tidying. */
         char one[32];
 
+        if (s->command != 4 && ask >= 3 && s->missed) {
+            /* 基準線が見つからなかった押し：`.読取可能データ無`（BEL つき、
+             * 桁 32。測定）。 */
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83\x66\x81\x5b\x83\x5e\x96\xb3");
+        }
         if (s->command != 4 && ask >= 3) {
             /* 平行 and 垂直 ask for a line, not a number, so there is no
              * field and no cursor -- and `[ESC]` here has no trailing

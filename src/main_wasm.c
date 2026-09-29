@@ -4489,6 +4489,13 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
             return -1;
         }
     }
+    /* 基準線を聞いているあいだの [Enter] は、矢の所での押しと同じ（測定：
+     * ／ の ④平行 で [Enter] を打つと `サーチ` → `.読取可能データ無`）。 */
+    if ((cmd.command == 2 || cmd.command == 3) && cmd.ask_kind >= 3
+        && !cmd.typing && (key == 13 || key == 10)) {
+        jw_click(mouse_x, mouse_y, 0);
+        return -1;
+    }
     /* **数字の鍵は上の行の升。** `1` は ① を左で押したのと同じ（測定：
      * □ で `1` → ①寸法 の欄、そのまま 60,40 [Enter] で置く所）。欄が
      * 開いているあいだは上の jw_cmd_key が数として取っています。 */
