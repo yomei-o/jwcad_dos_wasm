@@ -1884,6 +1884,17 @@ void jwc_remove_arc(Jwc *d, long k)
     d->n_arcs--;
 }
 
+void jwc_remove_point(Jwc *d, long k)
+{
+    if (k < 0 || k >= d->n_points) {
+        return;
+    }
+    jwc_ink_note(d, 1, JW_INK_POINT, &d->points[k]);
+    memmove(d->points + k, d->points + k + 1,
+            (size_t)(d->n_points - k - 1) * sizeof *d->points);
+    d->n_points--;
+}
+
 void jwc_remove_text(Jwc *d, long k)
 {
     if (k < 0 || k >= d->n_texts) {

@@ -403,6 +403,9 @@ void jwc_remove_arc(Jwc *d, long k);
 /* And a text. */
 void jwc_remove_text(Jwc *d, long k);
 
+/* And a point. */
+void jwc_remove_point(Jwc *d, long k);
+
 /* Put one in, the way 文字 does: the record **and** the string, which is
  * appended to the pool the way the original appends it.  Returns 0 if there
  * was no memory for it. */

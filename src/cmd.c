@@ -5207,6 +5207,47 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->fix_done = 0;
         return 1;
     }
+    /* **寸法 の [ESC]。** 本物は段ごとに一つ前へ戻ります（ovl27 3ab8:206c、
+     * 0x2e020〜0x2e16d、測定も同じ）：
+     *   寸法を入れた直後 → その寸法（線・実点・文字）を消して 寸法値始点指示
+     *   寸法値終点       → 寸法値始点指示
+     *   寸法値始点・寸法線位置 → 引出し線の始点
+     *   引出し線の始点   → 項目の行
+     * 消せるのは最後の一つだけ（[bp-0x72] は消したら 0）。
+     * ①横方向・②縦方向 の道だけで、ほかの項目はまだ測っていません。 */
+    if (key == 27 && d && c->command == 14 && !c->typing && !c->top_item
+        && !c->dim_val && !c->dim_lot && !c->dim_ck && !c->dim_arc
+        && !c->dim_circle && !c->dim_only && !c->dim_prog
+        && c->stage >= 1 && c->stage <= 5) {
+        if (c->stage == 5 || (c->stage == 3 && c->dim_undo)) {
+            if (c->dim_undo) {
+                while (d->n_lines > c->dim_ul) {
+                    jwc_remove_line(d, d->n_lines - 1);
+                }
+                while (d->n_points > c->dim_up) {
+                    jwc_remove_point(d, d->n_points - 1);
+                }
+                while (d->n_texts > c->dim_ut) {
+                    jwc_remove_text(d, d->n_texts - 1);
+                }
+                /* 本物は消したあと図面を全部描き直す（0x2e15e の 885:23aa）
+                 * ので、重なっていた別の線は残ります。 */
+                jwc_ink_clear(d);
+                c->dim_undo = 0;
+                c->dim_texts = d->n_texts;
+            }
+            c->stage = 3;
+        } else if (c->stage == 4) {
+            c->stage = 3;
+        } else if (c->stage == 2 || c->stage == 3) {
+            c->stage = 1;
+        } else {
+            c->stage = 0;
+            c->pressed = 0;
+        }
+        c->moved = 0;
+        return 1;
+    }
     /* **取り消し。** 何も持っていないときの [ESC] は、直前の押しで足した
      * ものを消して、その押しの前の段へ戻ります（本物は `＊お待ち下さい＊`
      * のあと描き直す）。一度だけ：控えは使ったら捨てる。 */
@@ -6594,6 +6635,21 @@ static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
     jwc_relink_line(d, second, bx, by, (float)cx, (float)cy);
 }
 
+/* 寸法の線は本物の線の入口 11f2:67fa を通るので、**長さ 0 の線は入りません**
+ * （ペン < 0x5a のとき。測定：同じ角を二度読んだ寸法は文字 `0` だけ）。 */
+static int dim_point(const JwCmd *c, Jwc *d, float x, float y,
+                     unsigned char layer);
+
+static int dim_add_line(Jwc *d, float x0, float y0, float x1, float y1,
+                        int type, int pen, int layer)
+{
+    if (x0 == x1 && y0 == y1 && pen < 0x5a) {
+        return 0;
+    }
+    return jwc_add_line(d, x0, y0, x1, y1, type, pen, layer);
+}
+
+
 /* ------------------------------------------------------------- 寸法 ①横方向 */
 
 /* ①横方向: the dimension line, its two extension lines and the value.
@@ -6643,13 +6699,25 @@ static void dimension_more(JwCmd *c, Jwc *d, double x1)
 
 #define DIM_X(a, bb) ((float)((a) * ux + (bb) * vx))
 #define DIM_Y(a, bb) ((float)((a) * uy + (bb) * vy))
-    if (jwc_add_line(d, DIM_X(x0, y), DIM_Y(x0, y),
+    if (dim_add_line(d, DIM_X(x0, y), DIM_Y(x0, y),
                      DIM_X(x1, y), DIM_Y(x1, y), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x6e;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
-    if (jwc_add_line(d, DIM_X(x1, b), DIM_Y(x1, b),
-                     DIM_X(x1, ye), DIM_Y(x1, ye), type, pen, layer)) {
+    /* 【点】なら両端で実点を試し、足せた端にだけ引出し線（dimension() と
+     * 同じ 0dba の道）。始めの端には前の寸法の点があるので、引出し線は
+     * 新しい端の 1 本だけになります。【矢印】は新しい端の 1 本（測定）。 */
+    if (!c->dim_end) {
+        if (dim_point(c, d, DIM_X(x0, y), DIM_Y(x0, y), layer)
+            && dim_add_line(d, DIM_X(x0, b), DIM_Y(x0, b),
+                            DIM_X(x0, ye), DIM_Y(x0, ye), type, pen, layer)) {
+            d->lines[d->n_lines - 1].rest[1] = 0x59;
+            d->lines[d->n_lines - 1].rest[3] = 0x20;
+        }
+    }
+    if ((c->dim_end || dim_point(c, d, DIM_X(x1, y), DIM_Y(x1, y), layer))
+        && dim_add_line(d, DIM_X(x1, b), DIM_Y(x1, b),
+                        DIM_X(x1, ye), DIM_Y(x1, ye), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
@@ -6670,7 +6738,7 @@ static void dimension_more(JwCmd *c, Jwc *d, double x1)
             const double at = (i < 2 ? x0 + ax : x1 - ax);
             const double per = (i & 1) ? y - ay : y + ay;
 
-            if (jwc_add_line(d, DIM_X(on, y), DIM_Y(on, y),
+            if (dim_add_line(d, DIM_X(on, y), DIM_Y(on, y),
                              DIM_X(at, per), DIM_Y(at, per),
                              type, pen, layer)) {
                 d->lines[d->n_lines - 1].rest[1] = 0xf2;
@@ -6738,18 +6806,18 @@ static void dimension_prog(JwCmd *c, Jwc *d, double a)
 
 #define DIM_X(aa, bb) ((float)((aa) * ux + (bb) * vx))
 #define DIM_Y(aa, bb) ((float)((aa) * uy + (bb) * vy))
-    if (jwc_add_line(d, DIM_X(a0, y), DIM_Y(a0, y),
+    if (dim_add_line(d, DIM_X(a0, y), DIM_Y(a0, y),
                      DIM_X(a, y), DIM_Y(a, y), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x80;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
-    if (jwc_add_line(d, DIM_X(a, b), DIM_Y(a, b),
+    if (dim_add_line(d, DIM_X(a, b), DIM_Y(a, b),
                      DIM_X(a, ye), DIM_Y(a, ye), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
     if (!c->dim_prog_n
-        && jwc_add_line(d, DIM_X(a0, b), DIM_Y(a0, b),
+        && dim_add_line(d, DIM_X(a0, b), DIM_Y(a0, b),
                         DIM_X(a0, ye), DIM_Y(a0, ye), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
@@ -6757,7 +6825,7 @@ static void dimension_prog(JwCmd *c, Jwc *d, double a)
     for (i = 0; i < 2; i++) {
         const double per = i ? y + ay : y - ay;
 
-        if (jwc_add_line(d, DIM_X(a, y), DIM_Y(a, y),
+        if (dim_add_line(d, DIM_X(a, y), DIM_Y(a, y),
                          DIM_X(a - ax, per), DIM_Y(a - ax, per),
                          type, pen, layer)) {
             d->lines[d->n_lines - 1].rest[1] =
@@ -7036,7 +7104,7 @@ static void dimension_circle(JwCmd *c, Jwc *d, long k, int right)
     at = x1 + alen / 2.0 + (c->dim_ck_out ? alen : 0.0);
     from = right ? x0 - past : x0;
     to = c->dim_ck_vout ? at + len : x1 + past;
-    if (jwc_add_line(d, DIM_X(from, y), DIM_Y(from, y),
+    if (dim_add_line(d, DIM_X(from, y), DIM_Y(from, y),
                      DIM_X(to, y), DIM_Y(to, y), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x8f;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
@@ -7053,7 +7121,7 @@ static void dimension_circle(JwCmd *c, Jwc *d, long k, int right)
         if (!right && !far) {
             continue;           /* 半径 has the one pair */
         }
-        if (jwc_add_line(d, DIM_X(on, y), DIM_Y(on, y),
+        if (dim_add_line(d, DIM_X(on, y), DIM_Y(on, y),
                          DIM_X(on + dir * ax, per),
                          DIM_Y(on + dir * ax, per), type, pen, layer)) {
             d->lines[d->n_lines - 1].rest[1] = 0x8f;
@@ -7082,8 +7150,8 @@ static void dimension_circle(JwCmd *c, Jwc *d, long k, int right)
 
 /* 寸法線の端の実点（1bb4:35b8 → 1efe0）。同じ所・同じレイヤに
  * rest[1] <= 6 の点があれば足しません。 */
-static void dim_point(const JwCmd *c, Jwc *d, float x, float y,
-                      unsigned char layer)
+static int dim_point(const JwCmd *c, Jwc *d, float x, float y,
+                     unsigned char layer)
 {
     JwcPoint p;
     long k;
@@ -7093,7 +7161,7 @@ static void dim_point(const JwCmd *c, Jwc *d, float x, float y,
 
         if (q->rest[1] <= 6 && q->x == x && q->y == y
             && q->rest[0] == layer) {
-            return;
+            return 0;
         }
     }
     memset(&p, 0, sizeof p);
@@ -7105,7 +7173,7 @@ static void dim_point(const JwCmd *c, Jwc *d, float x, float y,
                                                  : JW_DIM_PEN);
     p.rest[2] = 0x40;
     p.rest[3] = 0x1d;
-    jwc_put_point(d, &p);
+    return jwc_put_point(d, &p);
 }
 
 static void dimension(JwCmd *c, Jwc *d, double x1)
@@ -7165,7 +7233,7 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
 
 #define DIM_X(a, bb) ((float)((a) * ux + (bb) * vx))
 #define DIM_Y(a, bb) ((float)((a) * uy + (bb) * vy))
-    if (jwc_add_line(d, DIM_X(x0, y), DIM_Y(x0, y),
+    if (dim_add_line(d, DIM_X(x0, y), DIM_Y(x0, y),
                      DIM_X(x1, y), DIM_Y(x1, y), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = (unsigned char)
             (c->dim_lot_run ? 0x00
@@ -7178,24 +7246,38 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
          * 1bb4:1efe0 は寸法コマンド中（[0xa62] == 14）だけ、座標と
          * レイヤが同じで rest[1] <= 6 の点がもうあれば足しません。
          * ⑤一括・④円･角 の道はまだ測っていないので入れていません。 */
-        if (!c->dim_end && !c->dim_lot_run && !c->dim_circle) {
-            const JwcLine *l = &d->lines[d->n_lines - 1];
+    }
+    /* 【点】の道では、**実点を新しく足せた端にだけ引出し線**を引きます
+     * （0x2bdad・0x2be62：35b8 が 0 を返したら 304ff を飛ばす）。同じ
+     * 所に点がもうあれば引出し線も重ならない。寸法線が長さ 0 で入らな
+     * くても点は寸法線の両端で試します（測定：同じ角を二度読んだ寸法は
+     * 文字 `0` だけ）。 */
+    {
+        const int pts = !c->dim_end && !c->dim_lot_run && !c->dim_circle;
+        int e0 = 1, e1 = 1;
 
-            dim_point(c, d, l->x0, l->y0, layer);
-            dim_point(c, d, l->x1, l->y1, layer);
+        if (pts) {
+            e0 = dim_point(c, d, DIM_X(x0, y), DIM_Y(x0, y), layer);
+        }
+        if (e0 && c->dim_lot_run != 2
+            && dim_add_line(d, DIM_X(x0, b), DIM_Y(x0, b),
+                            DIM_X(x0, ye), DIM_Y(x0, ye), type, pen, layer)) {
+            d->lines[d->n_lines - 1].rest[1] = 0x59;
+            d->lines[d->n_lines - 1].rest[3] = 0x20;
+        }
+        if (pts) {
+            e1 = dim_point(c, d, DIM_X(x1, y), DIM_Y(x1, y), layer);
+        }
+        if (!e1) {
+            goto no_ext1;
         }
     }
-    if (c->dim_lot_run != 2
-        && jwc_add_line(d, DIM_X(x0, b), DIM_Y(x0, b),
-                        DIM_X(x0, ye), DIM_Y(x0, ye), type, pen, layer)) {
-        d->lines[d->n_lines - 1].rest[1] = 0x59;
-        d->lines[d->n_lines - 1].rest[3] = 0x20;
-    }
-    if (jwc_add_line(d, DIM_X(x1, b), DIM_Y(x1, b),
+    if (dim_add_line(d, DIM_X(x1, b), DIM_Y(x1, b),
                      DIM_X(x1, ye), DIM_Y(x1, ye), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
+no_ext1:
     /* 寸法設定 ②寸法線端部 が【矢印】なら、両端に 4 本。SAMPLE0 を
      * 矢印長さ 3mm・角度 15 度のまま 250mm の寸法で測ると、
      *
@@ -7219,7 +7301,7 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
             const double at = (i < 2 ? x0 + ax : x1 - ax);
             const double per = (i & 1) ? y - ay : y + ay;
 
-            if (jwc_add_line(d, DIM_X(on, y), DIM_Y(on, y),
+            if (dim_add_line(d, DIM_X(on, y), DIM_Y(on, y),
                              DIM_X(at, per), DIM_Y(at, per),
                              type, pen, layer)) {
                 d->lines[d->n_lines - 1].rest[1] = 0xf2;
@@ -10259,6 +10341,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->n0_lines = d->n_lines;
             c->n0_arcs = d->n_arcs;
             c->n0_texts = d->n_texts;
+            c->dim_undo = 1;
+            c->dim_ul = d->n_lines;
+            c->dim_up = d->n_points;
+            c->dim_ut = d->n_texts;
             dimension_more(c, d, x * c->dim_ux + y * c->dim_uy);
             c->dim_texts = d->n_texts;
             c->stage = 5;
@@ -10338,6 +10424,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->n0_lines = d->n_lines;
             c->n0_arcs = d->n_arcs;
             c->n0_texts = d->n_texts;
+            c->dim_undo = 1;
+            c->dim_ul = d->n_lines;
+            c->dim_up = d->n_points;
+            c->dim_ut = d->n_texts;
             dimension(c, d, x * c->dim_ux + y * c->dim_uy);
             c->dim_texts = d->n_texts;      /* the band counts the new one */
             c->stage = 5;

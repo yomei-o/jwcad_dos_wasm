@@ -345,6 +345,10 @@ typedef struct {
     int dim_dec;
     int dim_comma_on;
     int dim_pen_point;
+    /* 寸法 の [ESC]：最後に入れた寸法の前の件数（本物の [bp-0x72] と
+     * [bp-0x16]・[bp-0xa2]・[bp-0x1c]、ovl27 0x2e0ba〜0x2e16d）。 */
+    int dim_undo;
+    long dim_ul, dim_up, dim_ut;
     int dim_did;         /* ⑥点・⑦矢印 が一つ作った（桁 1 の [ESC]） */
     long dim_lines0;     /* ⑦矢印 を選んだときの線数。箱はそれを出し続けます */
     int dim_only;        /* ⑤寸法値: 線を引かず、値だけ書く */
