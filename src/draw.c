@@ -615,6 +615,16 @@ static void clipped_line(VGA *v, double x0, double y0, double x1, double y1,
     }
 }
 
+/* 窓で切ってから引く線（clipped_line を外から使うため）。帯の線のように、
+ * 端が窓のずっと外にあるもの用です——jw_line は切らないので、x が -640 より
+ * 小さいと前の行へ回り込んで、窓の中に線が出ていました（□ の始点を取った
+ * あとで拡大すると、始点が (-923,-878) になって x=357 に縦線）。 */
+void jw_line_clipped(VGA *v, double x0, double y0, double x1, double y1,
+                     unsigned colour, unsigned rop, int style)
+{
+    clipped_line(v, x0, y0, x1, y1, colour, rop, style);
+}
+
 void jw_arc_poly(VGA *v, double cx, double cy, double r, int flatten,
                  long start, long end, long tilt, unsigned colour, unsigned rop,
                  int style)

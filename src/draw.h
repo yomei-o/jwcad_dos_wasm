@@ -44,6 +44,9 @@ void jw_point(VGA *v, int x, int y, unsigned colour, unsigned rop);
  * fixed-point degrees (the record stores them that way), and `flatten` is the
  * other semi-axis as a ratio x10000.  The vertices are the float centre plus
  * whole numbers; see draw.c for where each of those comes from. */
+void jw_line_clipped(VGA *v, double x0, double y0, double x1, double y1,
+                     unsigned colour, unsigned rop, int style);
+
 void jw_arc_poly(VGA *v, double cx, double cy, double r, int flatten,
                  long start, long end, long tilt, unsigned colour, unsigned rop,
                  int style);

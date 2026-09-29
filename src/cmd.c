@@ -270,6 +270,8 @@ static void par_dir(const JwCmd *c, double *x, double *y)
  * is millimetres of the real thing -- drawing units over `unit_mm`, times the
  * scale -- and (300,200) to (400,200) is a hundred pixels, which the original
  * calls 57.336 mm on SAMPLE0: 100 / (518/297) / 1. */
+static double shown_angle(double x1, double y1, double x2, double y2);
+
 static void measure(JwCmd *c, const Jwc *d, double x, double y)
 {
     const double mm = d->unit_mm > 0.0f ? d->denom / d->unit_mm : 1.0;
@@ -286,7 +288,11 @@ static void measure(JwCmd *c, const Jwc *d, double x, double y)
         c->num[0] = sqrt(dx * dx + dy * dy) * mm;
         /* An angle is degrees, so the drawing's scale has nothing to say about
          * it: always three decimals. */
-        c->num[1] = atan2(dy, dx) * 180.0 / 3.14159265358979323846;
+        /* 本物の角度の道具（0def:2828）を float にしたもの。atan2 の
+         * ちょうどの値とは 3 桁目がずれることがある（(150,-80) で -28.073）。 */
+        c->num[1] = shown_angle((float)c->x0, (float)c->y0, (float)x, (float)y);
+        (void)dx;
+        (void)dy;
         c->dec[1] = 3;
         /* 「（」holds the radius still once the start point is in: the panel
          * kept saying 57.336 while the pointer went round to the end point and
@@ -1236,10 +1242,19 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
             jw_line(v, qx0, qy0, qx1, qy1, 2, 0x18, JW_STYLE_SOLID);
         }
     } else if (c->command == 4 || JW_RANGE_CMD(c->command)) {
-        jw_line(v, px, py, px, sy, 2, 0x18, JW_STYLE_SOLID);
-        jw_line(v, px, sy, sx, sy, 2, 0x18, JW_STYLE_SOLID);
-        jw_line(v, sx, py, sx, sy, 2, 0x18, JW_STYLE_SOLID);
-        jw_line(v, px, py, sx, py, 2, 0x18, JW_STYLE_SOLID);
+        /* 窓で切って引く（始点が窓のずっと外にあるとき：拡大のあとなど）。
+         * 矢の角は、矢の点を図面へ出して画面へ戻したもの（測定：7.45 倍で
+         * 矢が (300,300) のとき、本物の帯の角は (300,299)）。 */
+        if (c->command == 4) {
+            double mx, my;
+
+            jw_cmd_at(w, sx, sy, &mx, &my);
+            at_screen(w, mx, my, &sx, &sy);
+        }
+        jw_line_clipped(v, px, py, px, sy, 2, 0x18, JW_STYLE_SOLID);
+        jw_line_clipped(v, px, sy, sx, sy, 2, 0x18, JW_STYLE_SOLID);
+        jw_line_clipped(v, sx, py, sx, sy, 2, 0x18, JW_STYLE_SOLID);
+        jw_line_clipped(v, px, py, sx, py, 2, 0x18, JW_STYLE_SOLID);
     } else if (c->command == 11) {
         /* The centre **unrounded**.  A point taken by a read is rarely on a
          * whole pixel, and the circle is as wide as the pointer is far from
@@ -13509,6 +13524,15 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         fix_end(c, d, &x, &y);
     }
     measure(c, d, x, y);
+    /* **長さの無い線は引きません**（本物の 11f2:67fa が断る）。上の行も
+     * `確定長さ` にはならず `始点指示 … [BS]前項` に戻る（測定：終点を始点と
+     * 同じ所で押すと `＊お待ち下さい＊` のあと線数 30 のまま）。 */
+    if ((c->command == 2 || c->command == 3)
+        && (float)x == (float)c->x0 && (float)y == (float)c->y0
+        && d->pen < 0x5a) {
+        c->fix_done = 0;
+        return 1;
+    }
     if ((c->command == 2 || c->command == 3) && c->fix_mode) {
         /* 上の行の `確定長さ = … 角度= …ﾟ` は**引いた線の**長さと角度
          * （測定：／ 30 度で `51.547(mm)角度=  30.000ﾟ`、＋ に 30 を打つと

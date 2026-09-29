@@ -904,7 +904,11 @@ static void present(void)
     }
     /* the line a half-finished command drags, then the pointer -- both
      * exclusive-or, and both after everything else */
-    jw_cmd_band(&cmd, drawing, &vga, &view, mouse_x, mouse_y);
+    /* 拡大の範囲を取っているあいだは、命令の帯は出ません（測定：□ の
+     * 始点のあと Zoom を押すと、赤い四角が消えて緑の枠だけ）。 */
+    if (ui.zoom_stage != 1 && ui.zoom_stage != 2) {
+        jw_cmd_band(&cmd, drawing, &vga, &view, mouse_x, mouse_y);
+    }
     if (ui.zoom_stage == 2) {
         jw_ui_zoom_band(&vga, zoom_x, zoom_y, mouse_x, mouse_y);
     }
@@ -1917,7 +1921,10 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
     {
         const long n0 = drawing ? drawing->n_lines : 0;
 
-        jw_cmd_track(&cmd, drawing, &view, x, y);
+        /* 拡大の範囲を取っているあいだは、命令の読みは止まっています。 */
+        if (ui.zoom_stage != 1 && ui.zoom_stage != 2) {
+            jw_cmd_track(&cmd, drawing, &view, x, y);
+        }
         if (drawing && drawing->n_lines != n0) {
             /* 手書線 は矢が動くだけで線が増えます。 */
             jw_ui_from(&ui, drawing);
@@ -2375,6 +2382,11 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
      * measured but not built (RESUME 4.27). */
     if (bar) {
         if (bar == JW_BAR_ZOOM) {
+            /* 数え箱は、帯を押した点までの大きさで止まります（測定）。 */
+            if (drawing && cmd.pressed) {
+                jw_cmd_track(&cmd, drawing, &view, x, y);
+                sync_ui();
+            }
             ui.zoom_stage = 1;
             ui.guide = 0;   /* 起動の案内は消えます */
         } else if (bar == JW_BAR_SCALE) {

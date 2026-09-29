@@ -2738,6 +2738,25 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         } else {
             jw_ui_text(v, 30, 1, 7, 0, s->zoom_stage == 1 ? "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "\x8e" "n" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " " : "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "    " "\x8f" "I" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " ");
         }
+        /* **命令の途中なら、数え箱はその命令のまま**（測定：□ の始点のあと
+         * Zoom を押すと、数え箱は Zoom の帯を押した点までの ` 横=  11.467`
+         * ` 縦= 154.807` のまま、赤い帯は消える）。 */
+        if ((s->zoom_stage == 1 || s->zoom_stage == 2) && s->command
+            && s->stage >= 1) {
+            const JwStage *q;
+            int drew = 0;
+
+            for (q = JW_STAGE; q->command; q++) {
+                if (q->command == s->command && q->stage == s->stage
+                    && q->row > 1) {
+                    if (!drew) {
+                        fill(v, 1, 17, 120, 47, 4);
+                        drew = 1;
+                    }
+                    stage_text(v, q, s, s->stage);
+                }
+            }
+        }
     } else if (((s->command == 2 || s->command == 3) && s->ask_kind)
                || (s->command == 4 && s->box_ask)) {
         /* □ の ②角度 は ＋ の ③角度 と同じ欄（測定：STR=1）。 */
