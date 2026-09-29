@@ -202,6 +202,11 @@ typedef struct {
      * 変形 and 図形 do anything with it -- see jw_ui_draw. */
     int again;
     int ask_kind;
+    /* ＋・／ の ②寸法 で長さを固定している（JwCmd.fix_len）。`fix_done` は
+     * 固定してから 1 本引いたか、`fix_ang` はその線の角度。 */
+    int fix_len;
+    int fix_done;
+    double fix_ang;
     /* The three numbers src/prompt.h carries as digits: 複線's interval,
      * 面取's offset and ２線's pair of them.  They belong to the program's
      * state, and how many decimals they are shown to belongs to the

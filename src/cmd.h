@@ -454,8 +454,16 @@ typedef struct {
      * chrome read the drawing again. */
     int again;
     int ask_kind;
+    /* 本物は float で持っています（DGROUP 0x0fe0 が長さ、0x0fe4 が角度。
+     * 測定：50 を打つと 0x42480000）。 */
     double ask_len;             /* `[  1000.000mm]` */
     double ask_ang;             /* `[  45.000\xdf]` */
+    /* ＋・／ の ②寸法 が決まっている（**長さを固定**して向きだけ矢に
+     * 付いてくる）。オーバーレイ 23 の 0x2db8c〜0x2dcc3。 */
+    int fix_len;
+    /* 固定したあとの 1 本目を引き終えた（上の行が `確定長さ =` になる）。 */
+    int fix_done;
+    double fix_ang;             /* その線の角度（度）。上の行に出る */
     double hatch_angle;         /* ③角 度, degrees -- 45.00 to start with */
     double hatch_pitch;         /* ④ﾋﾟｯﾁ, millimetres of paper -- 10.0 */
     /* How wide and how tall the string being typed comes out, in drawing

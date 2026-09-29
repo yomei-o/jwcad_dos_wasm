@@ -2776,12 +2776,40 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 50, 2, 7, 0xffff, one);
         }
         jw_ui_text(v, 15, 1, 7, 0, "        ");
+        if (s->typed_n > 0) {
+            char t[9];
+
+            memcpy(t, s->typed, 8);
+            t[s->typed_n < 8 ? s->typed_n : 8] = 0;
+            jw_ui_text(v, 15, 1, 7, 0, t);
+        }
         /* And the cursor -- the same green block the other fields have, in
          * the lower nine rows of the cell the next character goes in.
          * Measured on the original: x 112..119, y 7..15, which is column 15
          * with nothing typed. */
         fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
         }
+    } else if ((s->command == 2 || s->command == 3) && s->fix_len
+               && s->stage != 1) {
+        /* ②寸法 で長さを決めたあとの `始点指示`。①〜⑤ の升は無く、右に
+         * `[BS]前項`。1 本引いたあとは `確定長さ = … 角度= …ﾟ` が続き、
+         * 桁 1 に `[ESC]` が戻ります（測定：STR=1 で 50 [Enter] のあと
+         * `・` 桁 6、行は桁 8、`[BS]前項` は桁 73）。 */
+        jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+        if (s->fix_done) {
+            char one[96];
+
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            sprintf(one, "\x8e" "n\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read "
+                         "\x8a" "m\x92" "\xe8" "\x92" "\xb7" "\x82" "\xb3" " =" "%10.3f"
+                         "(mm)\x8a" "p\x93" "x=" "%8.3f" "\xdf",
+                    s->ask_len, s->fix_ang);
+            jw_ui_text(v, 8, 1, 7, 0, one);
+        } else {
+            jw_ui_text(v, 8, 1, 7, 0,
+                       "\x8e" "n\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read ");
+        }
+        jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91" "O\x8d" "\x80");
     } else if (s->command == 30 && s->saved_done) {
         /* Straight after ① 実 行: the original goes back to 入出力's own
          * line with the mark at column 6, and leaves ` 登 録  完 了 ` on

@@ -12,6 +12,12 @@
 
 void jw_cmd_pick(JwCmd *c, int command)
 {
+    /* ＋・／ の長さと角度は**命令を選び直しても残ります**。本物は DGROUP の
+     * 0x0fe0・0x0fe4 に持っている（命令の中の変数ではない）ので、
+     * `前回と同じ ﾏｳｽ(R)` は前に打った数です。初めは 1000 と 45。 */
+    const int had = c->ask_len > 0.0;   /* まだ一度も作っていなければ 0 */
+    const double keep_len = c->ask_len, keep_ang = c->ask_ang;
+
     free(c->hen_end);
     free(c->sel_line);
     free(c->sel_arc);
@@ -73,8 +79,8 @@ void jw_cmd_pick(JwCmd *c, int command)
     /* 円線接 ①接線 ④角度指定 の `[  45.000\xdf]`、その欄の前回と同じ。 */
     c->tan_prev = 45.0;
     /* ＋ and ／'s `[  1000.000mm]` and `[  45.000\xdf]`, likewise. */
-    c->ask_len = 1000.0;
-    c->ask_ang = 45.0;
+    c->ask_len = had ? keep_len : 1000.0;
+    c->ask_ang = had ? keep_ang : 45.0;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -104,6 +110,43 @@ static void axis(const JwCmd *c, double *x, double *y)
     } else {
         *x = c->x0;
     }
+}
+
+/* ＋・／ の ②寸法：長さを固定したときの終点。本物はオーバーレイ 23 の
+ * 0x2db8c〜0x2dcc3 で、
+ *
+ *   d = 1bb4:2aaf(始点, 矢)            -- 紙の mm での距離（float）
+ *   d < 0.001 なら終点は始点
+ *   k = (double)長さ / d
+ *   x = (float)(k * (float)(矢x - 始点x) + 始点x)
+ *   y = (float)((float)(矢y - 始点y) * k + 始点y)
+ *
+ * 2aaf の中身は s * sqrt(dx*(float)dx + (float)(dyf*dyf))、dx は double、
+ * dyf は float、s は (float)(紙/518) と縮尺の float の積
+ * （jwc_zukei_scale）。測定：SAMPLE0 で 50 を打ち (250,200) → (400,280) で
+ * (129,263)-(205.945938,221.962173)。 */
+static void fix_end(const JwCmd *c, const Jwc *d, double *x, double *y)
+{
+    const float x0 = (float)c->x0, y0 = (float)c->y0;
+    const float cx = (float)*x, cy = (float)*y;
+    const float s = jwc_zukei_scale(d);
+    const double dy = (double)cy - (double)y0;
+    const float dyf = (float)dy;
+    const double dx = (double)cx - (double)x0;
+    const float dxf = (float)dx;
+    const float dist = (float)((double)s
+                               * sqrt(dx * (double)dxf
+                                      + (double)(float)(dyf * dyf)));
+    double k;
+
+    if ((double)dist < 0.001) {
+        *x = x0;
+        *y = y0;
+        return;
+    }
+    k = (double)(float)c->ask_len / (double)dist;
+    *x = (float)(k * (double)(float)(cx - x0) + (double)x0);
+    *y = (float)((double)(float)(cy - y0) * k + (double)y0);
 }
 
 /* What the panel shows for a command in hand: a length and an angle for a line,
@@ -239,6 +282,9 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
     jw_cmd_at(w, sx, sy, &x, &y);
     if (c->command == 2) {
         axis(c, &x, &y);
+    }
+    if ((c->command == 2 || c->command == 3) && c->fix_len) {
+        fix_end(c, d, &x, &y);
     }
     measure(c, d, x, y);
 }
@@ -968,12 +1014,19 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
     } else if (c->command == 2 || c->command == 3) {
         int qx = sx, qy = sy;
 
-        if (c->command == 2) {
+        if (c->command == 2 || c->fix_len) {
             double x, y;
 
             /* the axis is chosen in drawing units, so go there and back */
             jw_cmd_at(w, sx, sy, &x, &y);
-            axis(c, &x, &y);
+            if (c->command == 2) {
+                axis(c, &x, &y);
+            }
+            /* ②寸法 で長さが決まっていれば、帯もその長さ（本物の赤い線は
+             * 矢の向きに 50mm で止まっていた）。 */
+            if (c->fix_len && d) {
+                fix_end(c, d, &x, &y);
+            }
             at_screen(w, x, y, &qx, &qy);
         }
         jw_line(v, px, py, qx, qy, 2, 0x18, JW_STYLE_SOLID);
@@ -1206,6 +1259,23 @@ static int indicate(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
     if (!right) {
         jw_cmd_at(w, sx, sy, x, y);
         return 1;
+    }
+    /* **読み取りは、通りがけに線と円弧の rest[2] の bit 0 を落とします。**
+     * 本物の探索 11f2:573f は全部の線を回り、層を見る前に
+     * `and byte es:[bx+14h],0FEh`（円弧は +1Eh）をしている（ルートの
+     * 0x1790a と 0x17d15）。bit 0 は 線変更 が立てる「変えた」印です。
+     * 測定：SAMPLE0 の線 11（レイヤ 1、隠れている）の 0x03 が、何も無い所を
+     * 右で押しただけで 0x02 になった（tools/functest.sh）。 */
+    if (d) {
+        Jwc *m = (Jwc *)d;
+        long k;
+
+        for (k = 0; k < m->n_lines; k++) {
+            m->lines[k].rest[2] &= (unsigned char)~1u;
+        }
+        for (k = 0; k < m->n_arcs; k++) {
+            m->arcs[k].rest[2] &= (unsigned char)~1u;
+        }
     }
     if (!jw_read(d, w, sx, sy, x, y)) {
         c->missed = 1;
@@ -3496,6 +3566,13 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     if ((c->command == 2 || c->command == 3) && (item == 2 || item == 3)
         && c->stage == 0) {
         c->ask_kind = item - 1;
+        /* ②寸法 は欄を開いてキーを受けます（前は画面だけで、打った数は
+         * 捨てていました）。③角度 はまだ（数の使い道を読んでいない）。 */
+        if (item == 2) {
+            c->typing = 1;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+        }
         return 1;
     }
     /* ④平行 and ⑤垂直 ask for a 基準線 to be parallel or square to.  **＋
@@ -4716,6 +4793,34 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (!c->typing) {
         return 0;
+    }
+    if ((c->command == 2 || c->command == 3) && c->ask_kind == 1) {
+        /* ＋・／ の `寸法 = ` の欄。[Enter] で長さが決まり、`始点指示` に
+         * 戻って、**長さは固定のまま**になります（測定：50 [Enter] のあと
+         * 線を引くと 50mm で、次の始点を待つ）。 */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                c->ask_len = (float)atof(c->typed);
+                c->fix_len = 1;
+                c->fix_done = 0;
+            }
+            c->typing = 0;
+            c->ask_kind = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
     }
     if (key >= JW_KEY_F1 && key <= JW_KEY_F5) {
         /* The five the top line offers.  They belong to the program's state,
@@ -12525,6 +12630,17 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         && c->command != 11) {
         return 0;               /* ＋ line on an axis, ／ line, □ box, ○ circle */
     }
+    if ((c->command == 2 || c->command == 3) && c->ask_kind == 1
+        && c->typing) {
+        /* `寸法 = ` の欄が開いているときの押しは点ではなく答えです：
+         * `任意寸法 ﾏｳｽ(L)` は長さの固定をやめ、`前回と同じ ﾏｳｽ(R)` は
+         * 前に決めた長さ（`[  1000.000mm]` の数）で固定します。 */
+        c->fix_len = right ? 1 : 0;
+        c->fix_done = 0;
+        c->typing = 0;
+        c->ask_kind = 0;
+        return 1;
+    }
     if (!take(c, d, w, sx, sy, right, &x, &y)) {
         return 0;
     }
@@ -12541,6 +12657,11 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     c->stage = 2;
     if (c->command == 2) {
         axis(c, &x, &y);
+    }
+    if ((c->command == 2 || c->command == 3) && c->fix_len) {
+        fix_end(c, d, &x, &y);
+        c->fix_done = 1;
+        c->fix_ang = atan2(y - c->y0, x - c->x0) * 180.0 / 3.14159265358979323846;
     }
     measure(c, d, x, y);
     /* Both take the pen and the line type the panel shows and go on the layer

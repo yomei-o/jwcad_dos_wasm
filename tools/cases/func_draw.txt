@@ -28,3 +28,10 @@ circle_pen5type2|SAMPLE0|60 312 left|60 136 left|60 184 left|move 300 250|90 232
 arc_pen5type2|SAMPLE0|60 312 left|60 136 left|60 184 left|move 300 250|90 248 left|300 250 left|360 250 left|300 310 left
 box_group2_layer5|SAMPLE0|100 344 left|40 360 right|move 300 250|96 360 right|move 300 250|90 120 left|250 200 left|400 300 left
 circle_group2_layer5|SAMPLE0|100 344 left|40 360 right|move 300 250|96 360 right|move 300 250|90 232 left|300 250 left|360 280 left
+# ＋・／ ②寸法（2026-09-29）。② は x=380（／）。欄では L=任意寸法、R=前回と同じ。
+slash_len50|SAMPLE0|90 104 left|380 8 left|type 50|key enter|250 200 left|move 400 280|400 280 left
+slash_len50_twice|SAMPLE0|90 104 left|380 8 left|type 50|key enter|250 200 left|move 400 280|400 280 left|300 300 left|move 200 350|200 350 left
+slash_len_dec|SAMPLE0|90 104 left|380 8 left|type 12.5|key enter|250 200 left|move 260 350|260 350 left
+plus_len50|SAMPLE0|90 88 left|380 8 left|type 50|key enter|250 200 left|move 400 230|400 230 left
+slash_len_prevR|SAMPLE0|90 104 left|380 8 left|type 30|key enter|250 200 left|400 280 left|380 8 left|300 300 right|300 300 left|move 200 350|200 350 left
+slash_len_freeL|SAMPLE0|90 104 left|380 8 left|300 300 left|250 200 left|move 400 280|400 280 left
