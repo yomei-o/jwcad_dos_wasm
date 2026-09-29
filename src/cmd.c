@@ -1585,6 +1585,25 @@ static int indicate(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
         c->missed = 1;
         return 0;
     }
+    if (d) {
+        Jwc *m = (Jwc *)d;
+        const float fx = (float)*x, fy = (float)*y;
+        long k;
+
+
+        for (k = 0; k < m->n_lines; k++) {
+            JwcLine *l = &m->lines[k];
+
+            /* **読んだ端点を持つ線に rest[2] の bit 0 が立ちます**——上で
+             * 全部の線から落とした同じ印（測定：寸法 で (162,140) と
+             * (598,140) を読むと印は線 1・2 だけ、□ で (232,157) を読むと
+             * 線 5・6）。どの命令のどこで立てているかは本物ではまだ見て
+             * いない。 */
+            if ((l->x0 == fx && l->y0 == fy) || (l->x1 == fx && l->y1 == fy)) {
+                l->rest[2] |= 1u;
+            }
+        }
+    }
     c->missed = 0;
     return 1;
 }
