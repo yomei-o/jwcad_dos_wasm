@@ -209,6 +209,12 @@ typedef struct {
     double fix_ang;
     double fix_shown;
     int fix_angle;
+    /* □ の ①寸法（JwCmd.box_*）。 */
+    int box_ask, box_fix, box_done;
+    int circ_ask, circ_fix, circ_done;
+    double circ_r;
+    int circ_base;
+    double box_w, box_h;
     /* The three numbers src/prompt.h carries as digits: 複線's interval,
      * 面取's offset and ２線's pair of them.  They belong to the program's
      * state, and how many decimals they are shown to belongs to the

@@ -88,6 +88,10 @@ for f in orig port; do
         python tools/arcdump.py "$D/$f.JWC" 2> /dev/null || true
         echo "== texts"
         python tools/textdump.py "$D/$f.JWC" 2> /dev/null || true
+        # 生のバイトも（linedump の小数 3 桁・arcdump の 4 桁では、float の
+        # 最後の 1 ビットの違いが見えないため。2026-09-29 に ○ の半径で）。
+        echo "== raw"
+        python tools/recdump.py "$D/$f.JWC" 2> /dev/null || true
     } > "$D/$f.txt"
 done
 # **何も起きなかった検査を「同じ」と言わない**ように、元の図面から
@@ -99,6 +103,7 @@ for f in orig port; do
             echo "== lines"; python tools/linedump.py "orig/$DRAWING.JWC"
             echo "== arcs"; python tools/arcdump.py "orig/$DRAWING.JWC" 2> /dev/null || true
             echo "== texts"; python tools/textdump.py "orig/$DRAWING.JWC" 2> /dev/null || true
+            echo "== raw"; python tools/recdump.py "orig/$DRAWING.JWC" 2> /dev/null || true
         } > "$D/base.txt"
     }
 done

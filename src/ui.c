@@ -2722,7 +2722,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         } else {
             jw_ui_text(v, 30, 1, 7, 0, s->zoom_stage == 1 ? "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "\x8e" "n" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " " : "\x81" "\xa1" "\x8a" "g" "\x91" "\xe5" "\x81" "\xa1" "    " "\x8f" "I" "\x93" "_ " "\x83" "}" "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e" "\xa6" " ");
         }
-    } else if ((s->command == 2 || s->command == 3) && s->ask_kind) {
+    } else if (((s->command == 2 || s->command == 3) && s->ask_kind)
+               || (s->command == 4 && s->box_ask)) {
         /* ＋ and ／'s ②寸 法 and ③角 度.  Read off the original, branches
          * 7 and 9 of tmp/branch/list.txt:
          *
@@ -2736,7 +2737,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * original's, not a tidying. */
         char one[32];
 
-        if (s->ask_kind >= 3) {
+        if (s->command != 4 && s->ask_kind >= 3) {
             /* 平行 and 垂直 ask for a line, not a number, so there is no
              * field and no cursor -- and `[ESC]` here has no trailing
              * spaces, which the two below do have. */
@@ -2752,13 +2753,18 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                          "\x92\xe8\x89\xf0\x8f\x9c" "|");
         } else {
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
-        if (s->ask_kind == 1) {
+        if (s->command == 4 || s->ask_kind == 1) {
             jw_ui_text(v, 8, 1, 7, 0, "\x90\xa1\x96" "@ = ");
             jw_ui_text(v, 38, 1, 7, 0,
                        "\x94" "C" "\x88\xd3\x90\xa1\x96" "@ " "\xcf\xb3\xbd" "(L) "
                        "\x91" "O" "\x89\xf1\x82\xc6\x93\xaf\x82\xb6" " " "\xcf\xb3\xbd"
                        "(R) ");
-            sprintf(one, "[%10.3fmm]", s->ask_len);
+            /* □ は横と縦の二つ：`[  1000.000,  1000.000mm]`（測定：桁 54）。 */
+            if (s->command == 4) {
+                sprintf(one, "[%10.3f,%10.3fmm]", s->box_w, s->box_h);
+            } else {
+                sprintf(one, "[%10.3fmm]", s->ask_len);
+            }
             jw_ui_text(v, 54, 2, 7, 0xffff, one);
         } else {
             jw_ui_text(v, 8, 1, 7, 0, "\x8a" "p" "\x93" "x =");
@@ -2810,6 +2816,26 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\x8e" "n\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read ");
         }
         jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91" "O\x8d" "\x80");
+    } else if (s->command == 11 && s->circ_ask) {
+        /* ○ の ①径寸法 の欄（測定：STR=1。打つ字は桁 20 から）。 */
+        char one[32];
+
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, "    \x94" "\xbc" " \x8c" "a =");
+        jw_ui_text(v, 40, 1, 7, 0, "\x94" "C\x88" "\xd3" "\x90" "\xa1" "\x96" "@\xcf" "\xb3" "\xbd" "(L)");
+        jw_ui_text(v, 74, 1, 7, 0, "|\x92" "\xbc" " \x8c" "a|");
+        sprintf(one, "[%8.3fmm]", s->circ_r);
+        jw_ui_text(v, 60, 2, 7, 0xffff, one);
+        jw_ui_text(v, 77, 2, 7, 0xffff, "F1");
+        jw_ui_text(v, 56, 1, 7, 0, "\x91" "O\x89" "\xf1" "\x82" "\xc6" "\x93" "\xaf" "\x82" "\xb6" " \xcf" "\xb3" "\xbd" "(R) ");
+        if (s->typed_n > 0) {
+            char t[9];
+
+            memcpy(t, s->typed, 8);
+            t[s->typed_n < 8 ? s->typed_n : 8] = 0;
+            jw_ui_text(v, 20, 1, 7, 0, t);
+        }
+        fill(v, 152 + s->typed_n * 8, 7, 159 + s->typed_n * 8, 15, 4);
     } else if (s->command == 30 && s->saved_done) {
         /* Straight after ① 実 行: the original goes back to 入出力's own
          * line with the mark at column 6, and leaves ` 登 録  完 了 ` on
@@ -5159,6 +5185,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (s->span && q->command == 25 && q->stage != 2) {
                     continue;
                 }
+                /* □ の ①寸法 で大きさを決めてから、まだ一つも置いていない
+                 * あいだは `[ESC]` がありません（測定：STR=1）。 */
+                if (q->command == 4 && s->command == 4 && s->box_fix
+                    && !s->box_done && q->row == 1 && q->col == 1) {
+                    continue;
+                }
+                if (q->command == 11 && s->command == 11 && s->circ_fix
+                    && !s->circ_done && q->row == 1 && q->col == 1) {
+                    continue;
+                }
                 /* 線切断 is the right button of the same item as 線伸縮, and
                  * its line is kept at stage 11 so that both fit in the one
                  * table.  It is there only until the pointer moves off the
@@ -5265,10 +5301,20 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                            s->hit_kind == 2 ? "\x89" "~" : "\x90" "\xfc");
             }
             if (s->command == 11 && i == 1 && !s->escaped) {
+                /* ①径寸法 で半径を決めて置いているあいだは、中の丸が赤
+                 * （測定：(468..472, 6..10) が 243,0,0。外の輪は白のまま）。 */
+                const unsigned dot = s->circ_fix ? 2 : 7;
+                /* ②基点変 で基点が回ると、丸は輪の上の「押した点が円の
+                 * どこか」の所へ動きます（測定：1 回押すと (465,3)＝左上）。 */
+                static const int DX[9] = { 0, 1, 1, 1, 0, -1, -1, -1, 0 };
+                static const int DY[9] = { 0, -1, 0, 1, 1, 1, 0, -1, -1 };
+                const int b = s->circ_fix ? s->circ_base % 9 : 0;
+                const int ex = 470 - DX[b] * 5, ey = 8 + DY[b] * 5;
+
                 jw_arc(v, 470, 8, 5, 0, 0, 7, ROP_REPLACE, JW_STYLE_SOLID);
-                jw_arc(v, 470, 8, 2, 0, 0, 7, ROP_REPLACE, JW_STYLE_SOLID);
-                jw_arc(v, 470, 8, 1, 0, 0, 7, ROP_REPLACE, JW_STYLE_SOLID);
-                jw_point(v, 470, 8, 7, ROP_REPLACE);
+                jw_arc(v, ex, ey, 2, 0, 0, dot, ROP_REPLACE, JW_STYLE_SOLID);
+                jw_arc(v, ex, ey, 1, 0, 0, dot, ROP_REPLACE, JW_STYLE_SOLID);
+                jw_point(v, ex, ey, dot, ROP_REPLACE);
             }
             /* 複写's distance field, the same shape but from column 18:
              * `[ESC].距離 X,Y =` fills columns 1 to 16 and the characters go in
@@ -5366,6 +5412,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * that draws it. */
         if (s->command == 4 && s->stage == 1 && !s->escaped) {
             box(v, 580, 3, 590, 13, 7);
+            /* 大きさを決めて置いているあいだは、基点の印（赤い丸）が枠の
+             * 中にあります。真ん中の基点で (583..587, 6..10) の 3-5-5-5-3
+             * （測定。④基点変 で動いた先はまだ測っていない）。 */
+            if (s->box_fix) {
+                fill(v, 584, 6, 586, 6, 2);
+                fill(v, 583, 7, 587, 9, 2);
+                fill(v, 584, 10, 586, 10, 2);
+            }
         }
         /* What a *modified* read would take, which is there while a modifier
          * key is held and the pointer is over the drawing -- see src/snap.h.

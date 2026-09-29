@@ -43,3 +43,20 @@ slash_ang_prevR|SAMPLE0|90 104 left|440 8 left|300 300 right|250 200 left|move 4
 slash_ang_freeL|SAMPLE0|90 104 left|440 8 left|300 300 left|250 200 left|move 400 280|400 280 left
 plus_ang30|SAMPLE0|90 88 left|440 8 left|type 30|key enter|250 200 left|move 400 280|400 280 left
 plus_ang_zeroL|SAMPLE0|90 88 left|440 8 left|300 300 left|250 200 left|move 400 280|400 280 left
+# □ ①寸法（2026-09-29）。① は x=330。`横,縦` [Enter] のあと押した所が真ん中。
+box_100x50|SAMPLE0|90 120 left|330 8 left|type 100,50|key enter|move 300 250|300 250 left
+box_twice|SAMPLE0|90 120 left|330 8 left|type 60,40|key enter|move 250 200|250 200 left|move 400 300|400 300 left
+box_one|SAMPLE0|90 120 left|330 8 left|type 30|key enter|move 300 250|300 250 left
+box_prevR|SAMPLE0|90 120 left|330 8 left|type 60,40|key enter|move 250 200|250 200 left|330 8 left|300 300 right|move 400 300|400 300 left
+box_freeL|SAMPLE0|90 120 left|330 8 left|300 300 left|250 200 left|move 400 300|400 300 left
+box_read|SAMPLE0|90 120 left|330 8 left|type 20,20|key enter|move 232 157|232 157 right
+# ○ ①径寸法（2026-09-29）。① は x=465。半径を打って [Enter]、押した所が中心。
+circ_r30|SAMPLE0|90 232 left|465 8 left|type 30|key enter|move 300 250|300 250 left
+circ_twice|SAMPLE0|90 232 left|465 8 left|type 12.5|key enter|move 250 200|250 200 left|move 400 300|400 300 left
+circ_prevR|SAMPLE0|90 232 left|465 8 left|type 20|key enter|move 250 200|250 200 left|330 8 left|300 300 right|move 400 300|400 300 left
+circ_freeL|SAMPLE0|90 232 left|465 8 left|300 300 left|300 250 left|move 350 280|350 280 left
+# ○ ②基点変（置いているときの ② は x=420）。押すたびに基点が 9 か所を回る。
+circ_base1|SAMPLE0|90 232 left|465 8 left|type 20|key enter|move 300 250|420 8 left|move 300 250|300 250 left
+circ_base3|SAMPLE0|90 232 left|465 8 left|type 20|key enter|move 300 250|420 8 left|420 8 left|420 8 left|move 300 250|300 250 left
+circ_base5|SAMPLE0|90 232 left|465 8 left|type 20|key enter|move 300 250|420 8 left|420 8 left|420 8 left|420 8 left|420 8 left|move 300 250|300 250 left
+circ_base8|SAMPLE0|90 232 left|465 8 left|type 20|key enter|move 300 250|420 8 left|420 8 left|420 8 left|420 8 left|420 8 left|420 8 left|420 8 left|420 8 left|move 300 250|300 250 left

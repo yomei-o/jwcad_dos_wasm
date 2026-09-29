@@ -17,6 +17,8 @@ void jw_cmd_pick(JwCmd *c, int command)
      * `前回と同じ ﾏｳｽ(R)` は前に打った数です。初めは 1000 と 45。 */
     const int had = c->ask_len > 0.0;   /* まだ一度も作っていなければ 0 */
     const double keep_len = c->ask_len, keep_ang = c->ask_ang;
+    const double keep_bw = c->box_w, keep_bh = c->box_h;
+    const double keep_cr = c->circ_r;
 
     free(c->hen_end);
     free(c->sel_line);
@@ -81,6 +83,9 @@ void jw_cmd_pick(JwCmd *c, int command)
     /* ＋ and ／'s `[  1000.000mm]` and `[  45.000\xdf]`, likewise. */
     c->ask_len = had ? keep_len : 1000.0;
     c->ask_ang = had ? keep_ang : 45.0;
+    c->box_w = had ? keep_bw : 1000.0;
+    c->box_h = had ? keep_bh : 1000.0;
+    c->circ_r = had ? keep_cr : 1000.0;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -172,6 +177,38 @@ static void fix_dir(const JwCmd *c, double *x, double *y)
 
     *x = (float)((double)cs * u - (double)sn * 0.0 + ox);
     *y = (float)((double)cs * 0.0 + (double)sn * u + oy);
+}
+
+/* □ の ①寸法：大きさが決まっているときの四隅。本物はオーバーレイ 23 の
+ * 0x2f8e5〜0x3008e で、
+ *
+ *   s  = (float)縮尺 * (float)(紙/518)          -- 1 単位が紙の何 mm か
+ *   W  = (float)(横 / s)、H = (float)(縦 / s)
+ *   u0 = (float)((double)(基点i+1) * W * -0.5)、v0 も同じ
+ *   u1 = (float)(u0 + W)、v1 = (float)(v0 + H)
+ *   座標系の原点は矢の点、cos=1・sin=0（軸角が無いとき）
+ *   隅 = ((float)(u + 矢x), (float)(v + 矢y))
+ *
+ * の (u0,v0) → (u0,v1) → (u1,v1) → (u1,v0) → (u0,v0) の 4 本（縦が先）。
+ * 測定：100,50 を打って (300,250) で (91.7946091,169.397308) から
+ * (266.205383,256.602692)。 */
+static void box_corners(const JwCmd *c, const Jwc *d, double px, double py,
+                        float X[5], float Y[5])
+{
+    const float s = jwc_zukei_scale(d);
+    const float W = (float)c->box_w / s, H = (float)c->box_h / s;
+    const float u0 = (float)((double)(c->box_bi + 1) * (double)W * -0.5);
+    const float v0 = (float)((double)(c->box_bj + 1) * (double)H * -0.5);
+    const float u1 = u0 + W, v1 = v0 + H;
+    const float ox = (float)px, oy = (float)py;
+    const float U[5] = { u0, u0, u1, u1, u0 };
+    const float V[5] = { v0, v1, v1, v0, v0 };
+    int k;
+
+    for (k = 0; k < 5; k++) {
+        X[k] = (float)((double)U[k] + (double)ox);
+        Y[k] = (float)((double)V[k] + (double)oy);
+    }
 }
 
 /* What the panel shows for a command in hand: a length and an angle for a line,
@@ -300,6 +337,18 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
             c->pending = 0;
             two_lines(c, d);
         }
+    }
+    if (d && c->command == 11 && c->circ_fix) {
+        /* 数え箱の `半径=    30.000  ` `直径=    60.000  `。 */
+        c->num[0] = (float)c->circ_r;
+        c->num[1] = (float)c->circ_r * 2.0;
+        c->dec[0] = c->dec[1] = d->decimals;
+    }
+    if (d && c->command == 4 && c->box_fix) {
+        /* 数え箱の ` 横=   100.000 ` ` 縦=    50.000 `——決めた大きさ。 */
+        c->num[0] = (float)c->box_w;
+        c->num[1] = (float)c->box_h;
+        c->dec[0] = c->dec[1] = d->decimals;
     }
     if (!d || !c->pressed) {
         return;
@@ -806,6 +855,58 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         jw_line(v, qx, py, qx, qy, 4, 0x18, JW_STYLE_SOLID);
         jw_line(v, qx, qy, px, qy, 4, 0x18, JW_STYLE_SOLID);
         jw_line(v, px, qy, px, py, 4, 0x18, JW_STYLE_SOLID);
+        return;
+    }
+    /* ○ の ①径寸法 で半径が決まっていれば、円が矢に付いてきます。 */
+    if (c->command == 11 && c->circ_fix && !c->circ_ask && d) {
+        double mx, my;
+        int cx, cy;
+
+        if (sx < w->x0 || sx > w->x1 || sy < w->y0 || sy > w->y1) {
+            return;
+        }
+        v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+        v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+        v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+        v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+        jw_cmd_at(w, sx, sy, &mx, &my);
+        {
+            static const int DX[9] = { 0, 1, 1, 1, 0, -1, -1, -1, 0 };
+            static const int DY[9] = { 0, -1, 0, 1, 1, 1, 0, -1, -1 };
+            const float r = (float)c->circ_r / jwc_zukei_scale(d);
+
+            mx = (float)mx + (float)DX[c->circ_base] * r;
+            my = (float)my + (float)DY[c->circ_base] * r;
+        }
+        at_screen(w, mx, my, &cx, &cy);
+        jw_arc_poly(v, (double)cx, (double)cy,
+                    (double)((float)c->circ_r / jwc_zukei_scale(d)) * w->scale,
+                    10000, 0, 0, 0, 2, 0x18, JW_STYLE_SOLID);
+        return;
+    }
+    /* □ の ①寸法 で大きさが決まっていれば、四角が矢に付いてきます
+     * （赤、排他的論理和。測定：box2 の絵）。 */
+    if (c->command == 4 && c->box_fix && !c->box_ask && d) {
+        float X[5], Y[5];
+        double mx, my;
+        int k;
+
+        if (sx < w->x0 || sx > w->x1 || sy < w->y0 || sy > w->y1) {
+            return;
+        }
+        v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+        v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+        v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+        v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+        jw_cmd_at(w, sx, sy, &mx, &my);
+        box_corners(c, d, mx, my, X, Y);
+        for (k = 0; k < 4; k++) {
+            int ax, ay, bx, by;
+
+            at_screen(w, X[k], Y[k], &ax, &ay);
+            at_screen(w, X[k + 1], Y[k + 1], &bx, &by);
+            jw_line(v, ax, ay, bx, by, 2, 0x18, JW_STYLE_SOLID);
+        }
         return;
     }
     if (!c->moved && !(c->command == 13 && c->typing_text)
@@ -3588,6 +3689,29 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         jw_cmd_pick(c, c->command == 2 ? 3 : 2);
         return 1;
     }
+    /* ○ の ②基点変（半径を決めて置いているとき）。押すたびに基点が 9 か所を
+     * 回ります（測定：円の中心が押した点から r×(+1,-1) (+1,0) (+1,+1) (0,+1)
+     * (-1,+1) (-1,0) (-1,-1) (0,-1) (0,0) の順）。 */
+    if (c->command == 11 && c->circ_fix && item == 2) {
+        c->circ_base = (c->circ_base + 1) % 9;
+        return 1;
+    }
+    /* ○ の ①径寸法：`半 径 =` の欄を開きます（前は src/item.h の画面だけ）。 */
+    if (c->command == 11 && item == 1 && (c->stage == 0 || c->circ_fix)) {
+        c->circ_ask = 1;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 1;
+    }
+    /* □ の ①寸法：`寸法 = ` の欄を開きます（前は src/item.h の画面だけ）。 */
+    if (c->command == 4 && item == 1 && (c->stage == 0 || c->box_fix)) {
+        c->box_ask = 1;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 1;
+    }
     /* ②寸 法 and ③角 度 take the length and the angle of the next line off
      * the top row instead of the second press.  **Either button opens
      * them** -- the (L) and (R) in what they put up are the answer to the
@@ -4822,6 +4946,64 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (!c->typing) {
         return 0;
+    }
+    if (c->command == 11 && c->circ_ask) {
+        /* ○ の `半 径 =` の欄。[Enter] で半径が決まり、矢の所に置く
+         * `● 円位置指示` になります。 */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                c->circ_r = (float)atof(c->typed);
+                c->circ_fix = 1;
+                c->circ_done = 0;
+            }
+            c->typing = 0;
+            c->circ_ask = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+            && c->typed_n < 8) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    if (c->command == 4 && c->box_ask) {
+        /* □ の `寸法 = ` の欄。`横,縦` を打って [Enter] で大きさが決まり、
+         * 矢の所に置く `■ 終点指示` になります。数が一つなら縦も同じ
+         * （複写 の ③数値倍率 と同じ読み方。□ では未測定）。 */
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                const char *comma = strchr(c->typed, ',');
+
+                c->box_w = (float)atof(c->typed);
+                c->box_h = comma ? (float)atof(comma + 1) : c->box_w;
+                c->box_fix = 1;
+                c->box_done = 0;
+            }
+            c->typing = 0;
+            c->box_ask = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-'
+             || key == ',') && c->typed_n < 16) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
     }
     if ((c->command == 2 || c->command == 3)
         && (c->ask_kind == 1 || c->ask_kind == 2)) {
@@ -12663,6 +12845,68 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     if (c->command != 2 && c->command != 3 && c->command != 4
         && c->command != 11) {
         return 0;               /* ＋ line on an axis, ／ line, □ box, ○ circle */
+    }
+    if (c->command == 11 && c->circ_ask && c->typing) {
+        /* 欄の `任意寸法ﾏｳｽ(L)`・`前回と同じ ﾏｳｽ(R)`。 */
+        c->circ_fix = right ? 1 : 0;
+        c->circ_done = 0;
+        c->typing = 0;
+        c->circ_ask = 0;
+        return 1;
+    }
+    if (c->command == 11 && c->circ_fix) {
+        /* 半径の決まった ○ を、押した所（読み取りなら読んだ点）を中心に。
+         * 半径は (float)半径mm / s、s は 1 単位が紙の何 mm か（測定：30 で
+         * r=52.3232307、中心 (179,213)）。置いたあとも次を待つ。 */
+        if (!take(c, d, w, sx, sy, right, &x, &y)) {
+            return 0;
+        }
+        {
+            static const int DX[9] = { 0, 1, 1, 1, 0, -1, -1, -1, 0 };
+            static const int DY[9] = { 0, -1, 0, 1, 1, 1, 0, -1, -1 };
+            const float r = (float)c->circ_r / jwc_zukei_scale(d);
+            const int b = c->circ_base;
+
+            if (!jwc_add_arc(d, (float)x + (float)DX[b] * r,
+                             (float)y + (float)DY[b] * r, r,
+                             (unsigned char)d->line_type, (unsigned char)d->pen,
+                             (unsigned char)d->write_layer)) {
+                return 0;
+            }
+        }
+        c->circ_done = 1;
+        return 1;
+    }
+    if (c->command == 4 && c->box_ask && c->typing) {
+        /* 欄の `任意寸法 ﾏｳｽ(L)`・`前回と同じ ﾏｳｽ(R)`。 */
+        c->box_fix = right ? 1 : 0;
+        c->box_done = 0;
+        c->typing = 0;
+        c->box_ask = 0;
+        return 1;
+    }
+    if (c->command == 4 && c->box_fix) {
+        /* 大きさの決まった □ を、押した所（読み取りなら読んだ点）に置きます。
+         * 置いたあとも同じ大きさで次を待つ（測定：`[ESC]` が付くだけで
+         * 行は `■ 終点指示` のまま）。 */
+        float X[5], Y[5];
+        int k;
+
+        if (!take(c, d, w, sx, sy, right, &x, &y)) {
+            return 0;
+        }
+        box_corners(c, d, x, y, X, Y);
+        for (k = 0; k < 4; k++) {
+            if (!jwc_add_line(d, X[k], Y[k], X[k + 1], Y[k + 1],
+                              (unsigned char)d->line_type,
+                              (unsigned char)d->pen,
+                              (unsigned char)d->write_layer)) {
+                return 0;
+            }
+            d->lines[d->n_lines - 1].rest[1] = 0x41;
+        }
+        c->box_done = 1;
+        return 1;
     }
     if ((c->command == 2 || c->command == 3) && c->ask_kind == 2
         && c->typing) {

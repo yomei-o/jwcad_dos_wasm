@@ -468,6 +468,22 @@ typedef struct {
     /* ③角度 が決まっている（**向きを固定**して、矢はその向きの上に
      * 映した所）。本物は DGROUP 0x0fdc に角度を float で持つ。 */
     int fix_angle;
+    /* □ の ①寸法：`横,縦` の欄が開いている（box_ask）、大きさが決まって
+     * 置く場所を待っている（box_fix）。大きさは紙の mm を float で（本物は
+     * DGROUP 0x0fe8/0x0fec、初めは 1000,1000）。基点は -1〜1 の 2 つ
+     * （0 が真ん中。④基点変 で動く——まだ読んでいない）。 */
+    int box_ask;
+    int box_fix;
+    int box_done;
+    double box_w, box_h;
+    int box_bi, box_bj;
+    /* ○ の ①径寸法：`半 径 =` の欄（circ_ask）、半径が決まって置く場所を
+     * 待っている（circ_fix）。半径は紙の mm、初めは 1000。 */
+    int circ_ask;
+    int circ_fix;
+    int circ_done;
+    double circ_r;
+    int circ_base;              /* ②基点変 で 0〜8 を回る（0 が中心） */
     double hatch_angle;         /* ③角 度, degrees -- 45.00 to start with */
     double hatch_pitch;         /* ④ﾋﾟｯﾁ, millimetres of paper -- 10.0 */
     /* How wide and how tall the string being typed comes out, in drawing

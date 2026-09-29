@@ -374,6 +374,12 @@ static void sync_ui(void)
     ui.mouse_x = mouse_x;
     ui.mouse_y = mouse_y;
     ui.stage = cmd.stage;
+    /* □ の ①寸法 で大きさを決めて置いているあいだは、画面は □ の
+     * 「1 点取ったあと」と同じ（`■ 終点指示`、` 横=` ` 縦=`、枠）。 */
+    if ((cmd.command == 4 && cmd.box_fix && !cmd.box_ask)
+        || (cmd.command == 11 && cmd.circ_fix && !cmd.circ_ask)) {
+        ui.stage = 1;
+    }
     ui.typed_n = cmd.typed_n;
     memcpy(ui.typed, cmd.typed, sizeof ui.typed);
     ui.num[0] = cmd.num[0];
@@ -428,6 +434,16 @@ static void sync_ui(void)
     ui.fix_ang = cmd.fix_ang;
     ui.fix_shown = cmd.fix_shown;
     ui.fix_angle = cmd.fix_angle;
+    ui.box_ask = cmd.box_ask;
+    ui.circ_ask = cmd.circ_ask;
+    ui.circ_fix = cmd.circ_fix;
+    ui.circ_done = cmd.circ_done;
+    ui.circ_r = cmd.circ_r;
+    ui.circ_base = cmd.circ_base;
+    ui.box_fix = cmd.box_fix;
+    ui.box_done = cmd.box_done;
+    ui.box_w = cmd.box_w;
+    ui.box_h = cmd.box_h;
     ui.gap = cmd.gap;
     ui.gap_chamfer = cmd.gap_chamfer;
     ui.chamfer = cmd.chamfer;
