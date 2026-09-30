@@ -5518,6 +5518,16 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* **欄の中の [ESC]** は欄を閉じて元の行に戻るだけ（測定：／ の ②寸法
      * で 50 を打って [ESC] → `・◇始点指示 … |⑤垂 直 |`、何も固定しない）。 */
+    /* 中心線 の [ESC]：一段ずつ戻る（終点 → 始点 → 対象直線（Ｂ）→ …。
+     * 測定：center_plain の 11・13 段目）。 */
+    if (c->command == 20 && key == 27 && !c->typing && c->stage >= 1) {
+        c->stage--;
+        if (c->stage == 0) {
+            c->pressed = 0;
+        }
+        c->moved = 0;
+        return 1;
+    }
     /* 多角形 ③ の [ESC]：辺があれば最後の一本を消してその始点へ（何度でも。
      * 測定：三本引いて [ESC] 二回で一本に）。辺が無ければ一つ前の段へ。 */
     if (c->command == 19 && c->pg3 && key == 27 && !c->typing) {
@@ -14480,6 +14490,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * the same 追加･除外 stage the left one does. */
             c->stage = (right && c->command == 25) ? 2 : 3;
             return 1;
+        }
+        if (c->command == 25 && c->stage == 2 && !right) {
+            /* `復活出来ません |①実行(L)|②中止(R)|` で図面を左で押すと、まず
+             * `消去 再度(L)`、もう一度左で消す（測定：STR と記録）。 */
+            if (!c->erase_again) {
+                c->erase_again = 1;
+                return 1;
+            }
+            c->erase_again = 0;
+            return jw_cmd_top(c, d, 1, 0);
         }
         if (c->stage == 3) {
             /* 追加･除外: 線・円 with the left button, 文字 with the right. */

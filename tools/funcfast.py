@@ -77,8 +77,8 @@ def one(case):
         return name, 'DIFF', 'port wrote nothing'
     try:
         a, b = records(orig), records(out)
-    except Exception as e:      # 移植が壊れた図面を書いた
-        return name, 'DIFF', 'unreadable: %s' % e
+    except BaseException as e:  # 壊れた図面（読み込みは sys.exit で抜ける）
+        return name, 'BAD', 'unreadable: %s' % e
     base = records(os.path.join(ROOT, 'orig/%s.JWC' % drawing))
     if a == b:
         if a == base:
