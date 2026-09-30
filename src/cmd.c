@@ -280,7 +280,9 @@ static void tilt_corners(const JwCmd *c, double px, double py,
 {
     const float a = (float)c->box_ang;
     const double r = (double)a * 0.017453292519943295;
-    const float cs = (float)cos(r), sn = (float)sin(r);
+    /* ③平行 なら基準線の向き（1bb4:27ea：(float)(dx/L), (float)(dy/L)）。 */
+    const float cs = c->box_ref ? c->par_cs : (float)cos(r);
+    const float sn = c->box_ref ? c->par_sn : (float)sin(r);
     const float ox = (float)c->x0, oy = (float)c->y0;
     const float mx = (float)px, my = (float)py;
     const float u = (float)(((double)my - oy) * sn + ((double)mx - ox) * cs);
@@ -4198,7 +4200,22 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         return 1;
     }
     /* □ の ②角度：`角度 =` の欄（＋ と同じ形の欄）。 */
+    /* □ ③平行：`基準線　マウス指示 |①指定解除|`（測定：STR）。その中の ①
+     * は解除。 */
+    if (c->command == 4 && c->box_refask && item == 1) {
+        c->box_refask = 0;
+        return 1;
+    }
+    if (c->command == 4 && item == 3 && !c->box_fix) {
+        c->pressed = 0;         /* 始点を持っていても（未測定：放す） */
+        c->stage = 0;
+        c->box_refask = 1;
+        return 1;
+    }
     if (c->command == 4 && item == 2 && !c->box_fix) {
+        c->circ_hold = c->pressed == 1 && c->stage == 1;
+        c->circ_hx = c->x0;
+        c->circ_hy = c->y0;
         c->pressed = 0;
         c->stage = 0;
         c->box_ask = 2;
@@ -4269,7 +4286,10 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     if (c->command == 4 && item == 1) {
         /* **始点を押したあとでも**①寸法 は効き、始点は捨てます（測定：
          * 始点のあと 40,30 [Enter] → `■ 終点指示` で ` 横=40` ` 縦=30`、
-         * 次の押しの所に置く）。 */
+         * 次の押しの所に置く）。欄の L で戻るときのために控えます。 */
+        c->circ_hold = c->pressed == 1 && c->stage == 1;
+        c->circ_hx = c->x0;
+        c->circ_hy = c->y0;
         c->pressed = 0;
         c->stage = 0;
         c->box_ask = 1;
@@ -10367,6 +10387,18 @@ static int ellipse_put(JwCmd *c, Jwc *d, double deg)
     return 1;
 }
 
+/* □ ①寸法・②角度 の欄を始点を持って開いていたら、その始点に戻します。 */
+static void box_unhold(JwCmd *c)
+{
+    if (c->circ_hold) {
+        c->pressed = 1;
+        c->stage = 1;
+        c->x0 = c->circ_hx;
+        c->y0 = c->circ_hy;
+        c->circ_hold = 0;
+    }
+}
+
 static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                       int right)
 {
@@ -10393,6 +10425,31 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     if ((c->command == 2 || c->command == 3)
         && (c->ask_kind == 3 || c->ask_kind == 4) && !c->typing) {
         return ref_pick(c, d, w, sx, sy);
+    }
+    if (c->command == 4 && c->box_refask) {
+        /* □ ③平行：押した線の向きに傾けた四角を 2 点で（②角度 と同じ道、
+         * 行は `始点指示 … [BS]前項`。測定）。 */
+        const long k = pick_line(d, w, sx, sy);
+        double dx, dy, len;
+
+        if (k < 0) {
+            c->missed = 1;
+            return 0;
+        }
+        dx = (double)d->lines[k].x1 - (double)d->lines[k].x0;
+        dy = (double)d->lines[k].y1 - (double)d->lines[k].y0;
+        len = sqrt(dy * dy + dx * dx);
+        if (len <= 0.0) {
+            return 0;
+        }
+        c->par_cs = (float)(dx / len);
+        c->par_sn = (float)(dy / len);
+        c->box_ref = 1;
+        c->box_refask = 0;
+        c->box_rot = 1;
+        c->box_mode = 1;
+        c->box_fix = 0;
+        return 1;
     }
     /* 図形 ①登録, once the range is fixed: the press is the figure's own
      * base point -- `◇原図形の基準点位置 マウス指示 (L)free (R)Read` -- and
@@ -14662,6 +14719,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->box_mode = 1;
         c->typing = 0;
         c->box_ask = 0;
+        box_unhold(c);
         return 1;
     }
     if (c->command == 4 && c->box_ask && c->typing) {
@@ -14672,6 +14730,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->box_done = 0;
         c->typing = 0;
         c->box_ask = 0;
+        /* 始点を持っていたなら L はその始点のまま `■ 終点指示` へ（測定）。 */
+        if (!right) {
+            box_unhold(c);
+        }
         return 1;
     }
     if (c->command == 4 && c->box_fix) {

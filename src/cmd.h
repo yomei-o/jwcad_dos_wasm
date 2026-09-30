@@ -492,6 +492,8 @@ typedef struct {
     int ell, ell_done;
     /* ○ ③重円 の数（1 は単円）と、①径指定 を押したとき持っていた中心。 */
     int circ_multi;
+    /* □ ③平行：1 なら `基準線　マウス指示`、box_ref なら傾きは基準線から。 */
+    int box_refask, box_ref;
     int circ_hold;
     double circ_hx, circ_hy;
     /* （ ①三点指示：1 始点、2 終点、3 中間点。できたら 1 に戻る。 */

@@ -2785,6 +2785,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
         }
+    } else if (s->command == 4 && s->box_refask) {
+        /* □ ③平行 の基準線待ち（測定：STR=1）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "\x8a\xee\x8f\x80\x90\xfc\x81@\x83}\x83" "E\x83X\x8ew\x8e\xa6 |\x87@\x8ew\x92\xe8\x89\xf0\x8f\x9c|");
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 12 && s->arc3) {
         /* （ ①三点指示 の三つの段（測定：STR=1）。 */
         char one[80];
