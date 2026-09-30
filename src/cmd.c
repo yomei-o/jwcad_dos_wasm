@@ -4346,6 +4346,15 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
      * been drawn, so it is taken here whatever stage the command is at. */
     /* 面取's ① goes round its four shapes, whichever button presses it.
      * tools/cycle.sh walked it: 角面 → 丸面 → Ｌ面 → 楕円面 → 角面. */
+    /* 面取 ③寸法=：`[ESC].寸法 =  前回と同じ ﾏｳｽ(R) [    30.000mm]`、打つ字は
+     * 桁 14（測定：STR）。欄のあいだの左押しは効かない。 */
+    if (c->command == 8 && item == 3 && c->pick_a < 0 && !c->ch_ask) {
+        c->ch_ask = 1;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 1;
+    }
     if (c->command == 8 && item == 1) {
         c->chamfer = (c->chamfer + 1) & 3;
         return 1;
@@ -5485,6 +5494,40 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* **欄の中の [ESC]** は欄を閉じて元の行に戻るだけ（測定：／ の ②寸法
      * で 50 を打って [ESC] → `・◇始点指示 … |⑤垂 直 |`、何も固定しない）。 */
+    /* 面取 ③寸法= の欄の鍵。 */
+    if (c->command == 8 && c->ch_ask) {
+        if (key == 27) {
+            c->ch_ask = 0;
+            c->typing = 0;
+            c->typed_n = 0;
+            return 1;
+        }
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                const double v = field_eval(c->typed);
+
+                if (v > 0.0) {
+                    c->gap_chamfer = v;
+                }
+            }
+            c->ch_ask = 0;
+            c->typing = 0;
+            c->typed_n = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (FIELD_CHAR(key) && c->typed_n < 10) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
     /* （ ①三点指示 の [BS]前項・[ESC]（一つ前の点へ。未測定）。 */
     if (c->command == 12 && c->arc3 && !c->typing) {
         if (key == 8 && c->arc3 == 1) {
@@ -13787,6 +13830,15 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 3;
             return 1;
         }
+    }
+    if (c->command == 8 && c->ch_ask) {
+        /* ③寸法= の欄：左は効かず（本物は行を出し直すだけ）、右は前回と同じ。 */
+        if (!right) {
+            return 0;
+        }
+        c->ch_ask = 0;
+        c->typing = 0;
+        return 1;
     }
     if (c->command == 8) {
         /* 面取【角面】 —— the corner between two lines is cut off and the cut

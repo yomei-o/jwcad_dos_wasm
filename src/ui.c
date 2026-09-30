@@ -2785,6 +2785,24 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
         }
+    } else if (s->command == 8 && s->ch_ask) {
+        /* 面取 ③寸法= の欄（測定：STR=1）。 */
+        char one[32];
+
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]\x07\x90\xa1\x96@ =");
+        jw_ui_text(v, 38, 1, 7, 0, "\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) ");
+        sprintf(one, "[%10.3f", s->gap_chamfer);
+        jw_ui_text(v, 56, 1, 7, 0, one);
+        jw_ui_text(v, 67, 1, 7, 0, "mm");
+        jw_ui_text(v, 69, 1, 7, 0, "]");
+        if (s->typed_n > 0) {
+            char t[11];
+
+            memcpy(t, s->typed, 10);
+            t[s->typed_n < 10 ? s->typed_n : 10] = 0;
+            jw_ui_text(v, 14, 1, 7, 0, t);
+        }
+        fill(v, 104 + s->typed_n * 8, 7, 111 + s->typed_n * 8, 15, 4);
     } else if (s->command == 4 && s->box_refask) {
         /* □ ③平行 の基準線待ち（測定：STR=1）。 */
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");

@@ -492,6 +492,7 @@ typedef struct {
     int ell, ell_done;
     /* ○ ③重円 の数（1 は単円）と、①径指定 を押したとき持っていた中心。 */
     int circ_multi;
+    int ch_ask;                 /* 面取 ③寸法= の欄 */
     /* □ ③平行：1 なら `基準線　マウス指示`、box_ref なら傾きは基準線から。 */
     int box_refask, box_ref;
     int circ_hold;
