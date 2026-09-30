@@ -5730,6 +5730,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                            "\x5b" "\x83" "\x5e" "\x96" "\xb3");
             }
         }
+        /* ○ ③(n)重円 の数と `|④単円|`（測定：桁 65 と 73）。 */
+        if (s->command == 11 && s->circ_multi > 1 && s->stage == 1
+            && !s->ell && !s->circ_ask) {
+            char nb[4];
+
+            sprintf(nb, "%d", s->circ_multi % 10);
+            jw_ui_text(v, 65, 1, 7, 0, nb);
+            jw_ui_text(v, 73, 1, 7, 0, "|\x87" "C\x92P\x89~|");
+        }
         /* A modified read that is waiting for its second press writes a line
          * of its own.  Last of all, because it goes over everything: the top
          * line is blacked and takes [ESC] and the mode's own text, and the

@@ -336,6 +336,7 @@ typedef struct {
     int keep_box_counts;        /* □ を置いたあと ① の欄：数え箱は 横/縦 のまま */
     int hold_counts;
     int ell, ell_done;          /* ○ ②楕円の段（cmd.h） */
+    int circ_multi;             /* ○ ③重円の数 */
     int arc3, arc3_done;        /* （ ①三点指示の段 */
     int arc3_kind;
     double arc3_rmm;

@@ -1384,9 +1384,14 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         const double fx = (c->x0 - w->ox) * w->scale + w->ax;
         const double fy = w->ay - (c->y0 - w->oy) * w->scale;
         const double dx = sx - fx, dy = sy - fy;
+        const int n = c->circ_multi > 1 ? c->circ_multi : 1;
+        int k;
 
-        jw_arc_poly(v, fx, fy, sqrt(dx * dx + dy * dy), 10000, 0, 0, 0,
-                    2, 0x18, JW_STYLE_SOLID);
+        /* ③重円 なら仮の円も数だけ（外側から r x k/n）。 */
+        for (k = n; k >= 1; k--) {
+            jw_arc_poly(v, fx, fy, sqrt(dx * dx + dy * dy) * k / n, 10000,
+                        0, 0, 0, 2, 0x18, JW_STYLE_SOLID);
+        }
     } else if (c->command == 12 && c->arc3 == 3 && c->arc3_kind == 2) {
         /* ②半円の向きを探しているあいだ、本物は仮の半円を**出しません**
          * （測定：(450,330) へ動かしても何も描かれない）。 */
@@ -4234,12 +4239,30 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         /* 中心を押したあとの `① 径指定` も同じ欄で、押した中心は捨てて
          * 半径を決めて置く状態になります（測定：中心のあと 1 → 25 [Enter]
          * → ` ● 円位置指示` で `半径=    25.000`、次の押しで置く）。 */
+        c->circ_hold = c->pressed == 1 && c->stage == 1;
+        c->circ_hx = c->x0;
+        c->circ_hy = c->y0;
         c->pressed = 0;
         c->stage = 0;
         c->circ_ask = 1;
         c->typing = 1;
         c->typed[0] = 0;
         c->typed_n = 0;
+        return 1;
+    }
+    /* ○ ③(n)重円：押すたびに数が一つ増え、置くと同心円をその数だけ
+     * （測定：中心のあと ③ で `③(2)重円` と `|④単円|`、次の押しで
+     * 半径 148.66 と 74.33 の二つ）。④単円 で 1 に戻す。 */
+    if (c->command == 11 && item == 3 && !c->ell
+        && ((c->pressed == 1 && c->stage == 1) || c->circ_fix)) {
+        if (c->circ_multi < 1) {
+            c->circ_multi = 1;
+        }
+        c->circ_multi++;
+        return 1;
+    }
+    if (c->command == 11 && item == 4 && c->circ_multi > 1 && !c->ell) {
+        c->circ_multi = 1;
         return 1;
     }
     /* □ の ①寸法：`寸法 = ` の欄を開きます（前は src/item.h の画面だけ）。 */
@@ -14587,6 +14610,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->circ_done = 0;
         c->typing = 0;
         c->circ_ask = 0;
+        /* 中心を持っていたなら、L はその中心のまま半径の押しを待つ
+         * （測定：中心のあと ① → L → 次の押しがその中心の円の半径）。 */
+        if (!right && c->circ_hold) {
+            c->circ_mode = 0;
+            c->pressed = 1;
+            c->stage = 1;
+            c->x0 = c->circ_hx;
+            c->y0 = c->circ_hy;
+            c->circ_hold = 0;
+        }
         return 1;
     }
     if (c->command == 11 && c->circ_fix) {
@@ -14602,11 +14635,19 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             const float r = (float)c->circ_r / jwc_zukei_scale(d);
             const int b = c->circ_base;
 
-            if (!jwc_add_arc(d, (float)x + (float)DX[b] * r,
-                             (float)y + (float)DY[b] * r, r,
-                             (unsigned char)d->line_type, (unsigned char)d->pen,
-                             (unsigned char)d->write_layer)) {
-                return 0;
+            const int n = c->circ_multi > 1 ? c->circ_multi : 1;
+            int k;
+
+            for (k = n; k >= 1; k--) {
+                const float rk = k == n ? r : (float)((double)r * k / n);
+
+                if (!jwc_add_arc(d, (float)x + (float)DX[b] * r,
+                                 (float)y + (float)DY[b] * r, rk,
+                                 (unsigned char)d->line_type,
+                                 (unsigned char)d->pen,
+                                 (unsigned char)d->write_layer)) {
+                    return 0;
+                }
             }
         }
         c->circ_done = 1;
@@ -14779,11 +14820,18 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     if (c->command == 11) {
         /* ○: the first press is the centre, the second a point on it. */
         const double dx = x - c->x0, dy = y - c->y0;
+        const float r = (float)sqrt(dx * dx + dy * dy);
+        const int n = c->circ_multi > 1 ? c->circ_multi : 1;
+        int k, ok = 1;
 
-        return jwc_add_arc(d, (float)c->x0, (float)c->y0,
-                           (float)sqrt(dx * dx + dy * dy),
-                           (unsigned char)d->line_type, (unsigned char)d->pen,
-                           (unsigned char)(d->write_layer));
+        /* ③重円：外側から r、r x (n-1)/n、…（測定：2 で 148.66 と 74.33）。 */
+        for (k = n; k >= 1 && ok; k--) {
+            ok = jwc_add_arc(d, (float)c->x0, (float)c->y0,
+                             k == n ? r : (float)((double)r * k / n),
+                             (unsigned char)d->line_type, (unsigned char)d->pen,
+                             (unsigned char)(d->write_layer));
+        }
+        return ok;
     }
     return jwc_add_line(d, (float)c->x0, (float)c->y0, (float)x, (float)y,
                         (unsigned char)d->line_type, (unsigned char)d->pen,
