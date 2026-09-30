@@ -317,6 +317,7 @@ static void par_dir(const JwCmd *c, double *x, double *y)
 
 static long ang16(double x1, double y1, double x2, double y2);
 static int ellipse_put(JwCmd *c, Jwc *d, double deg);
+static void place_undo(JwCmd *c, Jwc *d);
 
 /* （ ②半円の形：始点・終点（a3x/a3y）と向きの点 (mx,my) から、中心・半径と
  * 記録の二つの角度（始点側 a と a+180、向きの点を左回りに含む順）。 */
@@ -2945,6 +2946,14 @@ static void place_by(JwCmd *c, Jwc *d, double dx, double dy)
     if (!c->sel_line) {
         freeze(c, d);
     }
+    /* 取り消し（[ESC]）のための控え：複写は足した数、移動は量。 */
+    c->mv_undo = 1;
+    c->mv_nl = d->n_lines;
+    c->mv_na = d->n_arcs;
+    c->mv_nt = d->n_texts;
+    c->mv_np = d->n_points;
+    c->mv_dx = dx;
+    c->mv_dy = dy;
     if (c->command == 16) {
         move_range(c, d, dx, dy);
     } else {
@@ -2953,6 +2962,37 @@ static void place_by(JwCmd *c, Jwc *d, double dx, double dy)
     c->step_x = dx;
     c->step_y = dy;
     c->copies = 1;
+}
+
+/* 複写・移動 の取り消し：複写は足したものを抜き、移動は同じ量だけ float で
+ * 戻す（本物も float で戻すので、最後の 1 ビットが残ることがある——
+ * 測定：61.441078 が 61.441071 に）。 */
+static void place_undo(JwCmd *c, Jwc *d)
+{
+    long k;
+
+    if (!c->mv_undo) {
+        return;
+    }
+    if (c->command == 16) {
+        move_range(c, d, -c->mv_dx, -c->mv_dy);
+    } else {
+        while (d->n_lines > c->mv_nl) {
+            jwc_remove_line(d, d->n_lines - 1);
+        }
+        while (d->n_arcs > c->mv_na) {
+            jwc_remove_arc(d, d->n_arcs - 1);
+        }
+        while (d->n_texts > c->mv_nt) {
+            jwc_remove_text(d, d->n_texts - 1);
+        }
+        while (d->n_points > c->mv_np) {
+            d->n_points--;
+        }
+    }
+    (void)k;
+    jwc_ink_clear(d);
+    c->mv_undo = 0;
 }
 
 static void copy_by_mm(JwCmd *c, Jwc *d)
@@ -3126,7 +3166,10 @@ static void henkei_by_mm(JwCmd *c, Jwc *d)
 
 static void place_at(JwCmd *c, Jwc *d, double px, double py)
 {
-    place_by(c, d, px - c->base_x, py - c->base_y);
+    /* 移動量は二点を float にしてから float で引く（測定：前は double で
+     * 引いていて、動かした線が float の最後の 1〜2 ビットずれた）。 */
+    place_by(c, d, (float)((float)px - (float)c->base_x),
+             (float)((float)py - (float)c->base_y));
     if (c->command == 16) {
         c->base_x = px;
         c->base_y = py;
@@ -5940,6 +5983,10 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
              * it came up with -- `◇消去範囲 始点指示 |①範囲内消去|…` with a
              * `・` at column 6 -- whether the range was half taken or fixed.
              * Measured on 消去 from both. */
+            /* 複写・移動を置いたあとなら、まず最後の一回を取り消します。 */
+            if (JW_MOVE_CMD(c->command) && c->mv_undo && d) {
+                place_undo(c, d);
+            }
             c->pressed = 0;
             c->stage = 0;
             c->n_flip = 0;
@@ -14399,13 +14446,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 c->stage = done;
                 return 1;
             }
-            if (c->stage != 5 && c->stage != 6 && c->stage != 9) {
+            /* 段 4（`|①ﾏｳｽ位置(L,R)|…`）で図面を押すと、①ﾏｳｽ位置 を選ぶと
+             * 同時にそれが基点（変形 と同じ。測定：範囲を右で閉じて二点で移動）。 */
+            if (c->stage != 4 && c->stage != 5 && c->stage != 6
+                && c->stage != 9) {
                 return 0;
             }
             if (!take(c, d, w, sx, sy, right, &px, &py)) {
                 return 1;
             }
-            if (c->stage == 5) {
+            if (c->stage == 5 || c->stage == 4) {
                 c->base_x = px;
                 c->base_y = py;
                 c->stage = 6;
@@ -14488,7 +14538,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * and only the top line differs. */
             /* 複写 has no ①実行, so the right button fixes the range into
              * the same 追加･除外 stage the left one does. */
-            c->stage = (right && c->command == 25) ? 2 : 3;
+            /* 複写・移動も右で閉じると範囲確定して ①ﾏｳｽ位置 へ（測定：移動を
+             * 右で閉じて二点で動かし [ESC] で戻すと、y に float の丸めが残る）。 */
+            c->stage = (right && c->command == 25) ? 2
+                     : (right && JW_MOVE_CMD(c->command)) ? 4 : 3;
             return 1;
         }
         if (c->command == 25 && c->stage == 2 && !right) {

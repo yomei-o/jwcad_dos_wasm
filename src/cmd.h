@@ -492,6 +492,9 @@ typedef struct {
     int ell, ell_done;
     /* ○ ③重円 の数（1 は単円）と、①径指定 を押したとき持っていた中心。 */
     int circ_multi;
+    int mv_undo;                /* 複写・移動 の取り消しの控え */
+    long mv_nl, mv_na, mv_nt, mv_np;
+    double mv_dx, mv_dy;
     int erase_again;            /* 消去 `消去 再度(L)` を出した */
     /* コーナー連結 の 線切断：`残切断点 20` から一つずつ減り、切った所に
      * 小さな白い輪が残る（測定）。 */
