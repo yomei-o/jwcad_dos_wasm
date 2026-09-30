@@ -4634,6 +4634,10 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     ui.stage = 0;
     ui.missed = 0;
     jw_cmd_pick(&cmd, pick);
+    /* 升の行は新しいコマンドでは消える（前のコマンドの top_item が残ると
+     * 別のコマンドの src/item.h の行が出る。測定：文字 ③ のあと `AB` で
+     * □ に替わると本物は `・□ 始点指示…`）。 */
+    ui.top_item = cmd.top_item;
     present();
     return pick;
 }
