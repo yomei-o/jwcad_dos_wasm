@@ -1,0 +1,365 @@
+# çÏê}ÇÃñΩóﬂÇÇ”Ç¬Ç§ÇÃéËèáÇ≈Åitools/opsmatrix.py Ç™çÏÇÈÅBéËÇ≈íºÇ≥Ç»Ç¢Åj
+copy_op_lines|SAMPLE0|90 72 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+copy_op_reads|SAMPLE0|90 72 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+copy_op_rlines|SAMPLE0|90 72 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+copy_op_range|SAMPLE0|90 72 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+copy_op_ranger|SAMPLE0|90 72 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+copy_op_rsmall|SAMPLE0|90 72 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+copy_op_text|SAMPLE0|90 72 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+copy_op_rc1|SAMPLE0|90 72 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+copy_op_rc2|SAMPLE0|90 72 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+copy_op_rc3|SAMPLE0|90 72 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+copy_op_rc4|SAMPLE0|90 72 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+copy_op_rc5|SAMPLE0|90 72 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+copy_op_rc6|SAMPLE0|90 72 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+plus_op_lines|SAMPLE0|90 88 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+plus_op_reads|SAMPLE0|90 88 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+plus_op_rlines|SAMPLE0|90 88 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+plus_op_range|SAMPLE0|90 88 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+plus_op_ranger|SAMPLE0|90 88 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+plus_op_rsmall|SAMPLE0|90 88 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+plus_op_text|SAMPLE0|90 88 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+plus_op_rc1|SAMPLE0|90 88 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+plus_op_rc2|SAMPLE0|90 88 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+plus_op_rc3|SAMPLE0|90 88 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+plus_op_rc4|SAMPLE0|90 88 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+plus_op_rc5|SAMPLE0|90 88 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+plus_op_rc6|SAMPLE0|90 88 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+slash_op_lines|SAMPLE0|90 104 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+slash_op_reads|SAMPLE0|90 104 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+slash_op_rlines|SAMPLE0|90 104 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+slash_op_range|SAMPLE0|90 104 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+slash_op_ranger|SAMPLE0|90 104 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+slash_op_rsmall|SAMPLE0|90 104 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+slash_op_text|SAMPLE0|90 104 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+slash_op_rc1|SAMPLE0|90 104 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+slash_op_rc2|SAMPLE0|90 104 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+slash_op_rc3|SAMPLE0|90 104 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+slash_op_rc4|SAMPLE0|90 104 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+slash_op_rc5|SAMPLE0|90 104 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+slash_op_rc6|SAMPLE0|90 104 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+box_op_lines|SAMPLE0|90 120 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+box_op_reads|SAMPLE0|90 120 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+box_op_rlines|SAMPLE0|90 120 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+box_op_range|SAMPLE0|90 120 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+box_op_ranger|SAMPLE0|90 120 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+box_op_rsmall|SAMPLE0|90 120 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+box_op_text|SAMPLE0|90 120 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+box_op_rc1|SAMPLE0|90 120 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+box_op_rc2|SAMPLE0|90 120 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+box_op_rc3|SAMPLE0|90 120 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+box_op_rc4|SAMPLE0|90 120 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+box_op_rc5|SAMPLE0|90 120 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+box_op_rc6|SAMPLE0|90 120 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+offset_op_lines|SAMPLE0|90 136 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+offset_op_reads|SAMPLE0|90 136 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+offset_op_rlines|SAMPLE0|90 136 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+offset_op_range|SAMPLE0|90 136 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+offset_op_ranger|SAMPLE0|90 136 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+offset_op_rsmall|SAMPLE0|90 136 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+offset_op_text|SAMPLE0|90 136 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+offset_op_rc1|SAMPLE0|90 136 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+offset_op_rc2|SAMPLE0|90 136 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+offset_op_rc3|SAMPLE0|90 136 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+offset_op_rc4|SAMPLE0|90 136 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+offset_op_rc5|SAMPLE0|90 136 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+offset_op_rc6|SAMPLE0|90 136 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tee_op_lines|SAMPLE0|90 152 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+tee_op_reads|SAMPLE0|90 152 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+tee_op_rlines|SAMPLE0|90 152 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+tee_op_range|SAMPLE0|90 152 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+tee_op_ranger|SAMPLE0|90 152 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tee_op_rsmall|SAMPLE0|90 152 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+tee_op_text|SAMPLE0|90 152 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+tee_op_rc1|SAMPLE0|90 152 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tee_op_rc2|SAMPLE0|90 152 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tee_op_rc3|SAMPLE0|90 152 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tee_op_rc4|SAMPLE0|90 152 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tee_op_rc5|SAMPLE0|90 152 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tee_op_rc6|SAMPLE0|90 152 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+lt_op_lines|SAMPLE0|90 168 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+lt_op_reads|SAMPLE0|90 168 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+lt_op_rlines|SAMPLE0|90 168 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+lt_op_range|SAMPLE0|90 168 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+lt_op_ranger|SAMPLE0|90 168 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+lt_op_rsmall|SAMPLE0|90 168 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+lt_op_text|SAMPLE0|90 168 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+lt_op_rc1|SAMPLE0|90 168 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+lt_op_rc2|SAMPLE0|90 168 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+lt_op_rc3|SAMPLE0|90 168 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+lt_op_rc4|SAMPLE0|90 168 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+lt_op_rc5|SAMPLE0|90 168 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+lt_op_rc6|SAMPLE0|90 168 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+chamfer_op_lines|SAMPLE0|90 184 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+chamfer_op_reads|SAMPLE0|90 184 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+chamfer_op_rlines|SAMPLE0|90 184 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+chamfer_op_range|SAMPLE0|90 184 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+chamfer_op_ranger|SAMPLE0|90 184 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+chamfer_op_rsmall|SAMPLE0|90 184 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+chamfer_op_text|SAMPLE0|90 184 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+chamfer_op_rc1|SAMPLE0|90 184 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+chamfer_op_rc2|SAMPLE0|90 184 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+chamfer_op_rc3|SAMPLE0|90 184 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+chamfer_op_rc4|SAMPLE0|90 184 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+chamfer_op_rc5|SAMPLE0|90 184 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+chamfer_op_rc6|SAMPLE0|90 184 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+double_op_lines|SAMPLE0|90 200 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+double_op_reads|SAMPLE0|90 200 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+double_op_rlines|SAMPLE0|90 200 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+double_op_range|SAMPLE0|90 200 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+double_op_ranger|SAMPLE0|90 200 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+double_op_rsmall|SAMPLE0|90 200 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+double_op_text|SAMPLE0|90 200 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+double_op_rc1|SAMPLE0|90 200 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+double_op_rc2|SAMPLE0|90 200 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+double_op_rc3|SAMPLE0|90 200 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+double_op_rc4|SAMPLE0|90 200 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+double_op_rc5|SAMPLE0|90 200 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+double_op_rc6|SAMPLE0|90 200 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linedel_op_lines|SAMPLE0|90 216 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+linedel_op_reads|SAMPLE0|90 216 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+linedel_op_rlines|SAMPLE0|90 216 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+linedel_op_range|SAMPLE0|90 216 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+linedel_op_ranger|SAMPLE0|90 216 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linedel_op_rsmall|SAMPLE0|90 216 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+linedel_op_text|SAMPLE0|90 216 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+linedel_op_rc1|SAMPLE0|90 216 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linedel_op_rc2|SAMPLE0|90 216 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linedel_op_rc3|SAMPLE0|90 216 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linedel_op_rc4|SAMPLE0|90 216 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linedel_op_rc5|SAMPLE0|90 216 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linedel_op_rc6|SAMPLE0|90 216 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+circle_op_lines|SAMPLE0|90 232 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+circle_op_reads|SAMPLE0|90 232 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+circle_op_rlines|SAMPLE0|90 232 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+circle_op_range|SAMPLE0|90 232 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+circle_op_ranger|SAMPLE0|90 232 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+circle_op_rsmall|SAMPLE0|90 232 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+circle_op_text|SAMPLE0|90 232 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+circle_op_rc1|SAMPLE0|90 232 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+circle_op_rc2|SAMPLE0|90 232 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+circle_op_rc3|SAMPLE0|90 232 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+circle_op_rc4|SAMPLE0|90 232 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+circle_op_rc5|SAMPLE0|90 232 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+circle_op_rc6|SAMPLE0|90 232 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+arc_op_lines|SAMPLE0|90 248 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+arc_op_reads|SAMPLE0|90 248 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+arc_op_rlines|SAMPLE0|90 248 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+arc_op_range|SAMPLE0|90 248 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+arc_op_ranger|SAMPLE0|90 248 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+arc_op_rsmall|SAMPLE0|90 248 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+arc_op_text|SAMPLE0|90 248 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+arc_op_rc1|SAMPLE0|90 248 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+arc_op_rc2|SAMPLE0|90 248 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+arc_op_rc3|SAMPLE0|90 248 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+arc_op_rc4|SAMPLE0|90 248 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+arc_op_rc5|SAMPLE0|90 248 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+arc_op_rc6|SAMPLE0|90 248 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+text_op_lines|SAMPLE0|90 264 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+text_op_reads|SAMPLE0|90 264 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+text_op_rlines|SAMPLE0|90 264 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+text_op_range|SAMPLE0|90 264 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+text_op_ranger|SAMPLE0|90 264 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+text_op_rsmall|SAMPLE0|90 264 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+text_op_text|SAMPLE0|90 264 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+text_op_rc1|SAMPLE0|90 264 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+text_op_rc2|SAMPLE0|90 264 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+text_op_rc3|SAMPLE0|90 264 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+text_op_rc4|SAMPLE0|90 264 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+text_op_rc5|SAMPLE0|90 264 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+text_op_rc6|SAMPLE0|90 264 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+dim_op_lines|SAMPLE0|90 280 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+dim_op_reads|SAMPLE0|90 280 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+dim_op_rlines|SAMPLE0|90 280 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+dim_op_range|SAMPLE0|90 280 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+dim_op_ranger|SAMPLE0|90 280 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+dim_op_rsmall|SAMPLE0|90 280 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+dim_op_text|SAMPLE0|90 280 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+dim_op_rc1|SAMPLE0|90 280 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+dim_op_rc2|SAMPLE0|90 280 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+dim_op_rc3|SAMPLE0|90 280 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+dim_op_rc4|SAMPLE0|90 280 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+dim_op_rc5|SAMPLE0|90 280 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+dim_op_rc6|SAMPLE0|90 280 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+measure_op_lines|SAMPLE0|90 296 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+measure_op_reads|SAMPLE0|90 296 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+measure_op_rlines|SAMPLE0|90 296 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+measure_op_range|SAMPLE0|90 296 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+measure_op_ranger|SAMPLE0|90 296 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+measure_op_rsmall|SAMPLE0|90 296 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+measure_op_text|SAMPLE0|90 296 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+measure_op_rc1|SAMPLE0|90 296 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+measure_op_rc2|SAMPLE0|90 296 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+measure_op_rc3|SAMPLE0|90 296 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+measure_op_rc4|SAMPLE0|90 296 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+measure_op_rc5|SAMPLE0|90 296 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+measure_op_rc6|SAMPLE0|90 296 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+move_op_lines|SAMPLE0|30 72 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+move_op_reads|SAMPLE0|30 72 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+move_op_rlines|SAMPLE0|30 72 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+move_op_range|SAMPLE0|30 72 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+move_op_ranger|SAMPLE0|30 72 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+move_op_rsmall|SAMPLE0|30 72 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+move_op_text|SAMPLE0|30 72 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+move_op_rc1|SAMPLE0|30 72 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+move_op_rc2|SAMPLE0|30 72 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+move_op_rc3|SAMPLE0|30 72 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+move_op_rc4|SAMPLE0|30 72 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+move_op_rc5|SAMPLE0|30 72 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+move_op_rc6|SAMPLE0|30 72 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+henkei_op_lines|SAMPLE0|30 88 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+henkei_op_reads|SAMPLE0|30 88 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+henkei_op_rlines|SAMPLE0|30 88 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+henkei_op_range|SAMPLE0|30 88 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+henkei_op_ranger|SAMPLE0|30 88 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+henkei_op_rsmall|SAMPLE0|30 88 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+henkei_op_text|SAMPLE0|30 88 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+henkei_op_rc1|SAMPLE0|30 88 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+henkei_op_rc2|SAMPLE0|30 88 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+henkei_op_rc3|SAMPLE0|30 88 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+henkei_op_rc4|SAMPLE0|30 88 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+henkei_op_rc5|SAMPLE0|30 88 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+henkei_op_rc6|SAMPLE0|30 88 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+hatch_op_lines|SAMPLE0|30 104 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+hatch_op_reads|SAMPLE0|30 104 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+hatch_op_rlines|SAMPLE0|30 104 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+hatch_op_range|SAMPLE0|30 104 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+hatch_op_ranger|SAMPLE0|30 104 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+hatch_op_rsmall|SAMPLE0|30 104 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+hatch_op_text|SAMPLE0|30 104 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+hatch_op_rc1|SAMPLE0|30 104 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+hatch_op_rc2|SAMPLE0|30 104 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+hatch_op_rc3|SAMPLE0|30 104 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+hatch_op_rc4|SAMPLE0|30 104 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+hatch_op_rc5|SAMPLE0|30 104 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+hatch_op_rc6|SAMPLE0|30 104 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+polygon_op_lines|SAMPLE0|30 120 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+polygon_op_reads|SAMPLE0|30 120 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+polygon_op_rlines|SAMPLE0|30 120 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+polygon_op_range|SAMPLE0|30 120 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+polygon_op_ranger|SAMPLE0|30 120 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+polygon_op_rsmall|SAMPLE0|30 120 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+polygon_op_text|SAMPLE0|30 120 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+polygon_op_rc1|SAMPLE0|30 120 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+polygon_op_rc2|SAMPLE0|30 120 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+polygon_op_rc3|SAMPLE0|30 120 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+polygon_op_rc4|SAMPLE0|30 120 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+polygon_op_rc5|SAMPLE0|30 120 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+polygon_op_rc6|SAMPLE0|30 120 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+center_op_lines|SAMPLE0|30 136 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+center_op_reads|SAMPLE0|30 136 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+center_op_rlines|SAMPLE0|30 136 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+center_op_range|SAMPLE0|30 136 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+center_op_ranger|SAMPLE0|30 136 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+center_op_rsmall|SAMPLE0|30 136 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+center_op_text|SAMPLE0|30 136 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+center_op_rc1|SAMPLE0|30 136 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+center_op_rc2|SAMPLE0|30 136 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+center_op_rc3|SAMPLE0|30 136 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+center_op_rc4|SAMPLE0|30 136 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+center_op_rc5|SAMPLE0|30 136 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+center_op_rc6|SAMPLE0|30 136 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+divide_op_lines|SAMPLE0|30 152 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+divide_op_reads|SAMPLE0|30 152 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+divide_op_rlines|SAMPLE0|30 152 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+divide_op_range|SAMPLE0|30 152 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+divide_op_ranger|SAMPLE0|30 152 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+divide_op_rsmall|SAMPLE0|30 152 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+divide_op_text|SAMPLE0|30 152 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+divide_op_rc1|SAMPLE0|30 152 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+divide_op_rc2|SAMPLE0|30 152 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+divide_op_rc3|SAMPLE0|30 152 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+divide_op_rc4|SAMPLE0|30 152 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+divide_op_rc5|SAMPLE0|30 152 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+divide_op_rc6|SAMPLE0|30 152 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+point_op_lines|SAMPLE0|30 168 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+point_op_reads|SAMPLE0|30 168 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+point_op_rlines|SAMPLE0|30 168 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+point_op_range|SAMPLE0|30 168 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+point_op_ranger|SAMPLE0|30 168 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+point_op_rsmall|SAMPLE0|30 168 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+point_op_text|SAMPLE0|30 168 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+point_op_rc1|SAMPLE0|30 168 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+point_op_rc2|SAMPLE0|30 168 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+point_op_rc3|SAMPLE0|30 168 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+point_op_rc4|SAMPLE0|30 168 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+point_op_rc5|SAMPLE0|30 168 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+point_op_rc6|SAMPLE0|30 168 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+curve_op_lines|SAMPLE0|30 184 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+curve_op_reads|SAMPLE0|30 184 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+curve_op_rlines|SAMPLE0|30 184 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+curve_op_range|SAMPLE0|30 184 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+curve_op_ranger|SAMPLE0|30 184 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+curve_op_rsmall|SAMPLE0|30 184 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+curve_op_text|SAMPLE0|30 184 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+curve_op_rc1|SAMPLE0|30 184 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+curve_op_rc2|SAMPLE0|30 184 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+curve_op_rc3|SAMPLE0|30 184 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+curve_op_rc4|SAMPLE0|30 184 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+curve_op_rc5|SAMPLE0|30 184 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+curve_op_rc6|SAMPLE0|30 184 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linechg_op_lines|SAMPLE0|30 200 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+linechg_op_reads|SAMPLE0|30 200 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+linechg_op_rlines|SAMPLE0|30 200 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+linechg_op_range|SAMPLE0|30 200 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+linechg_op_ranger|SAMPLE0|30 200 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linechg_op_rsmall|SAMPLE0|30 200 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+linechg_op_text|SAMPLE0|30 200 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+linechg_op_rc1|SAMPLE0|30 200 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linechg_op_rc2|SAMPLE0|30 200 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linechg_op_rc3|SAMPLE0|30 200 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linechg_op_rc4|SAMPLE0|30 200 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linechg_op_rc5|SAMPLE0|30 200 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+linechg_op_rc6|SAMPLE0|30 200 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+erase_op_lines|SAMPLE0|30 216 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+erase_op_reads|SAMPLE0|30 216 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+erase_op_rlines|SAMPLE0|30 216 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+erase_op_range|SAMPLE0|30 216 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+erase_op_ranger|SAMPLE0|30 216 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+erase_op_rsmall|SAMPLE0|30 216 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+erase_op_text|SAMPLE0|30 216 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+erase_op_rc1|SAMPLE0|30 216 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+erase_op_rc2|SAMPLE0|30 216 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+erase_op_rc3|SAMPLE0|30 216 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+erase_op_rc4|SAMPLE0|30 216 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+erase_op_rc5|SAMPLE0|30 216 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+erase_op_rc6|SAMPLE0|30 216 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tangent_op_lines|SAMPLE0|30 232 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+tangent_op_reads|SAMPLE0|30 232 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+tangent_op_rlines|SAMPLE0|30 232 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+tangent_op_range|SAMPLE0|30 232 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+tangent_op_ranger|SAMPLE0|30 232 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tangent_op_rsmall|SAMPLE0|30 232 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+tangent_op_text|SAMPLE0|30 232 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+tangent_op_rc1|SAMPLE0|30 232 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tangent_op_rc2|SAMPLE0|30 232 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tangent_op_rc3|SAMPLE0|30 232 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tangent_op_rc4|SAMPLE0|30 232 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tangent_op_rc5|SAMPLE0|30 232 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+tangent_op_rc6|SAMPLE0|30 232 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+zukei_op_lines|SAMPLE0|30 248 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+zukei_op_reads|SAMPLE0|30 248 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+zukei_op_rlines|SAMPLE0|30 248 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+zukei_op_range|SAMPLE0|30 248 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+zukei_op_ranger|SAMPLE0|30 248 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+zukei_op_rsmall|SAMPLE0|30 248 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+zukei_op_text|SAMPLE0|30 248 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+zukei_op_rc1|SAMPLE0|30 248 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+zukei_op_rc2|SAMPLE0|30 248 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+zukei_op_rc3|SAMPLE0|30 248 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+zukei_op_rc4|SAMPLE0|30 248 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+zukei_op_rc5|SAMPLE0|30 248 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+zukei_op_rc6|SAMPLE0|30 248 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+textedit_op_lines|SAMPLE0|30 264 left|400 140 left|162 300 left|move 300 250|300 250 left|move 450 350|450 350 left|key esc|move 440 340|key esc
+textedit_op_reads|SAMPLE0|30 264 left|162 140 right|598 419 right|move 300 250|300 250 left|move 450 330|450 330 left|key esc
+textedit_op_rlines|SAMPLE0|30 264 left|400 140 right|move 300 250|162 300 right|move 350 300|300 250 right|key esc
+textedit_op_range|SAMPLE0|30 264 left|150 100 left|move 630 450|630 450 left|move 300 250|300 250 left|move 350 300|350 300 left|move 400 350|400 350 left|key esc|move 390 340|key esc
+textedit_op_ranger|SAMPLE0|30 264 left|150 100 left|move 630 450|630 450 right|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+textedit_op_rsmall|SAMPLE0|30 264 left|150 120 left|move 250 200|250 200 left|move 300 250|300 250 left|move 350 280|350 280 left|key esc
+textedit_op_text|SAMPLE0|30 264 left|300 250 left|type ABC|key enter|move 350 300|350 300 left|type 12|key enter|key esc
+textedit_op_rc1|SAMPLE0|30 264 left|150 100 left|move 630 450|630 450 left|type 1|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+textedit_op_rc2|SAMPLE0|30 264 left|150 100 left|move 630 450|630 450 left|type 2|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+textedit_op_rc3|SAMPLE0|30 264 left|150 100 left|move 630 450|630 450 left|type 3|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+textedit_op_rc4|SAMPLE0|30 264 left|150 100 left|move 630 450|630 450 left|type 4|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+textedit_op_rc5|SAMPLE0|30 264 left|150 100 left|move 630 450|630 450 left|type 5|move 300 250|300 250 left|move 350 300|350 300 left|key esc
+textedit_op_rc6|SAMPLE0|30 264 left|150 100 left|move 630 450|630 450 left|type 6|move 300 250|300 250 left|move 350 300|350 300 left|key esc
