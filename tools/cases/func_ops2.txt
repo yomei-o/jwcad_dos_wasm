@@ -1,0 +1,82 @@
+# よく使う命令を最後まで（tools/ops2matrix.py が作る。手で直さない）
+copy_s_pos|SAMPLE0|90 72 left|150 120 left|move 250 200|250 200 left|type 1|300 250 left|move 350 300|350 300 left|move 420 330|420 330 left
+copy_s_pos_esc|SAMPLE0|90 72 left|150 120 left|move 250 200|250 200 left|type 1|300 250 left|move 350 300|350 300 left|key esc
+copy_s_posr|SAMPLE0|90 72 left|150 120 left|move 250 200|250 200 left|type 1|162 140 right|move 350 300|350 300 left
+copy_s_num|SAMPLE0|90 72 left|150 120 left|move 250 200|250 200 left|type 1|type 2|type 20,30|key enter
+copy_s_numR|SAMPLE0|90 72 left|150 120 left|move 250 200|250 200 left|type 1|type 2|300 300 right
+copy_s_num_rep|SAMPLE0|90 72 left|150 120 left|move 250 200|250 200 left|type 1|type 2|type 10,5|key enter|type 3|type 3
+copy_s_mirror|SAMPLE0|90 72 left|150 120 left|move 250 200|250 200 left|type 1|type 5|598 300 left
+copy_s_rot|SAMPLE0|90 72 left|150 120 left|move 250 200|250 200 left|type 1|type 6|300 250 left|type 30|key enter|move 350 300|350 300 left
+copy_s_mscale|SAMPLE0|90 72 left|150 120 left|move 250 200|250 200 left|type 1|type 4|300 250 left|350 300 left|400 280 left|480 350 left
+copy_t_pos|SAMPLE0|90 72 left|150 120 left|move 260 430|260 430 left|type 1|300 250 left|move 350 300|350 300 left|move 420 330|420 330 left
+copy_t_pos_esc|SAMPLE0|90 72 left|150 120 left|move 260 430|260 430 left|type 1|300 250 left|move 350 300|350 300 left|key esc
+copy_t_posr|SAMPLE0|90 72 left|150 120 left|move 260 430|260 430 left|type 1|162 140 right|move 350 300|350 300 left
+copy_t_num|SAMPLE0|90 72 left|150 120 left|move 260 430|260 430 left|type 1|type 2|type 20,30|key enter
+copy_t_numR|SAMPLE0|90 72 left|150 120 left|move 260 430|260 430 left|type 1|type 2|300 300 right
+copy_t_num_rep|SAMPLE0|90 72 left|150 120 left|move 260 430|260 430 left|type 1|type 2|type 10,5|key enter|type 3|type 3
+copy_t_mirror|SAMPLE0|90 72 left|150 120 left|move 260 430|260 430 left|type 1|type 5|598 300 left
+copy_t_rot|SAMPLE0|90 72 left|150 120 left|move 260 430|260 430 left|type 1|type 6|300 250 left|type 30|key enter|move 350 300|350 300 left
+copy_t_mscale|SAMPLE0|90 72 left|150 120 left|move 260 430|260 430 left|type 1|type 4|300 250 left|350 300 left|400 280 left|480 350 left
+copy_tr_pos|SAMPLE0|90 72 left|150 120 left|move 260 430|260 430 right|300 250 left|move 350 300|350 300 left
+copy_s_add|SAMPLE0|90 72 left|150 120 left|move 250 200|250 200 left|400 140 left|598 300 left|300 330 right|type 1|300 250 left|350 300 left
+move_s_pos|SAMPLE0|30 72 left|150 120 left|move 250 200|250 200 left|type 1|300 250 left|move 350 300|350 300 left|move 420 330|420 330 left
+move_s_pos_esc|SAMPLE0|30 72 left|150 120 left|move 250 200|250 200 left|type 1|300 250 left|move 350 300|350 300 left|key esc
+move_s_posr|SAMPLE0|30 72 left|150 120 left|move 250 200|250 200 left|type 1|162 140 right|move 350 300|350 300 left
+move_s_num|SAMPLE0|30 72 left|150 120 left|move 250 200|250 200 left|type 1|type 2|type 20,30|key enter
+move_s_numR|SAMPLE0|30 72 left|150 120 left|move 250 200|250 200 left|type 1|type 2|300 300 right
+move_s_num_rep|SAMPLE0|30 72 left|150 120 left|move 250 200|250 200 left|type 1|type 2|type 10,5|key enter|type 3|type 3
+move_s_mirror|SAMPLE0|30 72 left|150 120 left|move 250 200|250 200 left|type 1|type 5|598 300 left
+move_s_rot|SAMPLE0|30 72 left|150 120 left|move 250 200|250 200 left|type 1|type 6|300 250 left|type 30|key enter|move 350 300|350 300 left
+move_s_mscale|SAMPLE0|30 72 left|150 120 left|move 250 200|250 200 left|type 1|type 4|300 250 left|350 300 left|400 280 left|480 350 left
+move_t_pos|SAMPLE0|30 72 left|150 120 left|move 260 430|260 430 left|type 1|300 250 left|move 350 300|350 300 left|move 420 330|420 330 left
+move_t_pos_esc|SAMPLE0|30 72 left|150 120 left|move 260 430|260 430 left|type 1|300 250 left|move 350 300|350 300 left|key esc
+move_t_posr|SAMPLE0|30 72 left|150 120 left|move 260 430|260 430 left|type 1|162 140 right|move 350 300|350 300 left
+move_t_num|SAMPLE0|30 72 left|150 120 left|move 260 430|260 430 left|type 1|type 2|type 20,30|key enter
+move_t_numR|SAMPLE0|30 72 left|150 120 left|move 260 430|260 430 left|type 1|type 2|300 300 right
+move_t_num_rep|SAMPLE0|30 72 left|150 120 left|move 260 430|260 430 left|type 1|type 2|type 10,5|key enter|type 3|type 3
+move_t_mirror|SAMPLE0|30 72 left|150 120 left|move 260 430|260 430 left|type 1|type 5|598 300 left
+move_t_rot|SAMPLE0|30 72 left|150 120 left|move 260 430|260 430 left|type 1|type 6|300 250 left|type 30|key enter|move 350 300|350 300 left
+move_t_mscale|SAMPLE0|30 72 left|150 120 left|move 260 430|260 430 left|type 1|type 4|300 250 left|350 300 left|400 280 left|480 350 left
+move_tr_pos|SAMPLE0|30 72 left|150 120 left|move 260 430|260 430 right|300 250 left|move 350 300|350 300 left
+move_s_add|SAMPLE0|30 72 left|150 120 left|move 250 200|250 200 left|400 140 left|598 300 left|300 330 right|type 1|300 250 left|350 300 left
+erase_line_l|SAMPLE0|30 216 left|400 140 left
+erase_line_r|SAMPLE0|30 216 left|400 140 right
+erase_two|SAMPLE0|30 216 left|400 140 left|162 300 left|598 300 right
+erase_range_exec|SAMPLE0|30 216 left|150 120 left|move 250 200|250 200 left|type 1|type 1
+erase_range_cancel|SAMPLE0|30 216 left|150 120 left|move 250 200|250 200 left|type 1|type 2
+erase_range_out|SAMPLE0|30 216 left|type 2|150 120 left|move 250 200|250 200 left|type 1|type 1
+erase_tall_exec|SAMPLE0|30 216 left|150 120 left|move 260 430|260 430 left|type 1|type 1
+erase_tallr_exec|SAMPLE0|30 216 left|150 120 left|move 260 430|260 430 right|type 1
+erase_undo|SAMPLE0|30 216 left|400 140 left|key esc
+text_abc|SAMPLE0|90 264 left|300 250 left|type ABC|key enter
+text_two|SAMPLE0|90 264 left|300 250 left|type AB|key enter|350 300 left|type 12|key enter
+text_bs|SAMPLE0|90 264 left|300 250 left|type ABCD|key bs|key bs|key enter
+text_esc|SAMPLE0|90 264 left|300 250 left|type AB|key esc|350 300 left|type C|key enter
+text_c1|SAMPLE0|90 264 left|type 1|300 250 left|type AB|key enter
+text_c1_v|SAMPLE0|90 264 left|type 1|type 30|key enter|300 250 left|type AB|key enter
+text_c2|SAMPLE0|90 264 left|type 2|300 250 left|type AB|key enter
+text_c2_v|SAMPLE0|90 264 left|type 2|type 30|key enter|300 250 left|type AB|key enter
+text_c3|SAMPLE0|90 264 left|type 3|300 250 left|type AB|key enter
+text_c3_v|SAMPLE0|90 264 left|type 3|type 30|key enter|300 250 left|type AB|key enter
+text_c4|SAMPLE0|90 264 left|type 4|300 250 left|type AB|key enter
+text_c4_v|SAMPLE0|90 264 left|type 4|type 30|key enter|300 250 left|type AB|key enter
+text_c5|SAMPLE0|90 264 left|type 5|300 250 left|type AB|key enter
+text_c5_v|SAMPLE0|90 264 left|type 5|type 30|key enter|300 250 left|type AB|key enter
+text_c6|SAMPLE0|90 264 left|type 6|300 250 left|type AB|key enter
+text_c6_v|SAMPLE0|90 264 left|type 6|type 30|key enter|300 250 left|type AB|key enter
+linechg_one|SAMPLE0|30 200 left|400 140 left
+linechg_two|SAMPLE0|30 200 left|400 140 left|162 300 left
+linechg_r|SAMPLE0|30 200 left|400 140 right
+measure_two|SAMPLE0|90 296 left|162 140 right|598 140 right
+measure_three|SAMPLE0|90 296 left|162 140 right|598 140 right|598 419 right
+measure_free|SAMPLE0|90 296 left|300 250 left|400 300 left|450 250 left
+hatch_lines|SAMPLE0|30 104 left|400 140 left|598 300 left|400 419 left|162 300 left|type 1
+hatch_lines_r|SAMPLE0|30 104 left|400 140 left|598 300 left|400 419 left|162 300 left|300 250 right
+divide_line|SAMPLE0|30 152 left|400 140 left|type 1
+divide_two|SAMPLE0|30 152 left|162 140 right|598 140 right
+center_lines|SAMPLE0|30 136 left|400 140 left|400 419 left|300 250 left|450 250 left
+center_pts|SAMPLE0|30 136 left|162 140 right|598 419 right|300 250 left|450 300 left
+point_free|SAMPLE0|30 168 left|300 250 left|350 300 left
+point_read|SAMPLE0|30 168 left|162 140 right|598 419 right
+tangent_c1|SAMPLE0|30 232 left|type 1|400 140 left|162 300 left
+curve_c1|SAMPLE0|30 184 left|type 1|300 250 left|350 200 left|400 300 left

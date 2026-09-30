@@ -492,6 +492,7 @@ typedef struct {
     int ell, ell_done;
     /* ○ ③重円 の数（1 は単円）と、①径指定 を押したとき持っていた中心。 */
     int circ_multi;
+    int tx_undo;                /* 文字：最後に書いた文字を取り消せる */
     int mv_undo;                /* 複写・移動 の取り消しの控え */
     long mv_nl, mv_na, mv_nt, mv_np;
     double mv_dx, mv_dy;

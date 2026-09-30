@@ -3168,8 +3168,12 @@ static void place_at(JwCmd *c, Jwc *d, double px, double py)
 {
     /* 移動量は二点を float にしてから float で引く（測定：前は double で
      * 引いていて、動かした線が float の最後の 1〜2 ビットずれた）。 */
-    place_by(c, d, (float)((float)px - (float)c->base_x),
-             (float)((float)py - (float)c->base_y));
+    if (c->command == 16) {
+        place_by(c, d, (float)((float)px - (float)c->base_x),
+                 (float)((float)py - (float)c->base_y));
+    } else {
+        place_by(c, d, px - c->base_x, py - c->base_y);
+    }
     if (c->command == 16) {
         c->base_x = px;
         c->base_y = py;
@@ -5031,6 +5035,10 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
              * 変更無し in the band (src/copy.h stage 4). */
             c->stage = (JW_MOVE_CMD(c->command) || c->command == 17)
                      ? 4 : 2;
+            /* 処理したら 1：0 を返すと画面側が src/item.h の「段 0 で ① を
+             * 押したときの字」を上から描いてしまう（消去の段 2 の行が
+             * `消 去 始点マウス指示…` になり、①実行 が押せなかった）。 */
+            return 1;
         }
         return 0;
     }
@@ -5512,10 +5520,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                  * turned routine.  ③角度指定 is not done. */
                 const double len = jwc_text_length(d, c->typed, size);
 
-                jwc_add_text(d, (float)c->x0, (float)c->y0,
-                             (float)(c->x0 + (c->text_vert ? 0.0 : len)),
-                             (float)(c->y0 + (c->text_vert ? len : 0.0)),
-                             c->typed, size, layer);
+                if (jwc_add_text(d, (float)c->x0, (float)c->y0,
+                                 (float)(c->x0 + (c->text_vert ? 0.0 : len)),
+                                 (float)(c->y0 + (c->text_vert ? len : 0.0)),
+                                 c->typed, size, layer)) {
+                    c->tx_undo = 1;
+                }
             }
             c->typed[0] = 0;
             c->typed_n = 0;
@@ -5561,6 +5571,16 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* **欄の中の [ESC]** は欄を閉じて元の行に戻るだけ（測定：／ の ②寸法
      * で 50 を打って [ESC] → `・◇始点指示 … |⑤垂 直 |`、何も固定しない）。 */
+    /* 文字 の取り消し：書いたあとの [ESC] は最後の文字を消します（測定：
+     * `ABC` と `12` を書いて [ESC] で `12` だけ消える）。一回だけ。 */
+    if (c->command == 13 && key == 27 && !c->typing_text && c->tx_undo && d
+        && d->n_texts > 0) {
+        jwc_remove_text(d, d->n_texts - 1);
+        jwc_ink_clear(d);
+        c->tx_undo = 0;
+        c->stage = 0;
+        return 1;
+    }
     /* 中心線 の [ESC]：一段ずつ戻る（終点 → 始点 → 対象直線（Ｂ）→ …。
      * 測定：center_plain の 11・13 段目）。 */
     if (c->command == 20 && key == 27 && !c->typing && c->stage >= 1) {
