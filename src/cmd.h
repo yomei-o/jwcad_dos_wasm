@@ -486,6 +486,10 @@ typedef struct {
     /* ③角度 が決まっている（**向きを固定**して、矢はその向きの上に
      * 映した所）。本物は DGROUP 0x0fdc に角度を float で持つ。 */
     int fix_angle;
+    int line_done;
+    long ld_line;               /* 線消 部分消去：押した線 */
+    float ld_u0;                /* 　　　　　　　 始点の位置（線の上） */
+    int range_marked;           /* 範囲の印（rest の bit1）を落として付け直している */              /* ＋・／ で一本でも引いた */
     /* ／ の ④平行・⑤垂直：基準線の向き（cos,sin を float で）に固定。
      * par_on が立っていると fix_dir のかわりにこの向きへ映す。 */
     int par_on;

@@ -108,6 +108,49 @@ static void at_screen(const JwView *w, double x, double y, int *sx, int *sy)
     *sy = (int)(w->ay - (y - w->oy) * w->scale);
 }
 
+/* 数の欄の字。本物は数字・`.`・`,`・`+`・`-`・`*`・`/` を欄に入れます
+ * （測定：□ ②角度 で 1 字ずつ打って上の行に出るもの。`(` は無視、英字は
+ * 欄を閉じる——閉じるほうはまだ移していません）。 */
+#define FIELD_CHAR(k) (((k) >= '0' && (k) <= '9') || (k) == '.' || (k) == '-'                        || (k) == ',' || (k) == '+' || (k) == '*' || (k) == '/')
+
+/* 欄の値。`,` の手前までを式として読みます（測定：`30+10` で 40 度、
+ * `100/4/5` で 5 度、`40,30` で 40 度）。**掛け算・割り算を先に**しますが、
+ * 本物は `2+3*4` と `10-2-3` で四角を描かなかった——そこはまだ分かって
+ * いません。 */
+static double field_term(const char **p)
+{
+    double v = strtod(*p, (char **)p);
+
+    for (;;) {
+        if (**p == '*') {
+            (*p)++;
+            v *= strtod(*p, (char **)p);
+        } else if (**p == '/') {
+            double d;
+
+            (*p)++;
+            d = strtod(*p, (char **)p);
+            v = d != 0.0 ? v / d : 0.0;
+        } else {
+            return v;
+        }
+    }
+}
+
+static double field_eval(const char *s)
+{
+    const char *p = s;
+    double v = field_term(&p);
+
+    while (*p == '+' || *p == '-') {
+        const int minus = *p == '-';
+
+        p++;
+        v += minus ? -field_term(&p) : field_term(&p);
+    }
+    return v;
+}
+
 /* ＋ draws a line along one axis: whichever of the two the pointer is further
  * along.  Measured -- (300,200) to (450,250) comes out 150 pixels at 0 degrees
  * and (300,200) to (350,350) 150 pixels at -90, and the two equal at 100 each
@@ -3150,6 +3193,16 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      *
      * `jw_view_line` は色の引数を見ない（線のペンで描く）ので、ここは
      * `jw_line` に画面の座標を渡します。 */
+    /* 線消 の部分消去：押した線は切り終えるまで赤（色 2。測定）。 */
+    if (c->command == 10 && (c->stage == 2 || c->stage == 3)
+        && c->ld_line >= 0 && c->ld_line < d->n_lines) {
+        const JwcLine *l = &d->lines[c->ld_line];
+        int x0, y0, x1, y1;
+
+        at_screen(w, l->x0, l->y0, &x0, &y0);
+        at_screen(w, l->x1, l->y1, &x1, &y1);
+        jw_line(v, x0, y0, x1, y1, mark, ROP_REPLACE, JW_STYLE_SOLID);
+    }
     if (c->command == 14 && c->dim_lot && c->stage < 24) {
         int i;
 
@@ -3554,6 +3607,7 @@ void jw_cmd_before(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 {
     long k;
+
 
     /* **寸法 は枠の上に描き直しません。** 案内線は寸法線の上（白い点）で、
      * カウント箱は案内線の上です。つまり 線 → 案内線 → 枠 の順で、ここで
@@ -5343,6 +5397,19 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->moved = 0;
         return 1;
     }
+    /* 線消 の部分消去の [ESC]：終点 → 始点（線は選んだまま）→ 最初の行
+     * （`[ESC]` の無い段 0）。測定。 */
+    if (key == 27 && c->command == 10 && !c->typing
+        && (c->stage == 2 || c->stage == 3)) {
+        if (c->stage == 3) {
+            c->stage = 2;
+        } else {
+            c->stage = 0;
+            c->pressed = 0;
+        }
+        c->moved = 0;
+        return 1;
+    }
     /* **寸法 の [ESC]。** 本物は段ごとに一つ前へ戻ります（ovl27 3ab8:206c、
      * 0x2e020〜0x2e16d、測定も同じ）：
      *   寸法を入れた直後 → その寸法（線・実点・文字）を消して 寸法値始点指示
@@ -5467,6 +5534,17 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             && c->command != 11 && c->command != 12) {
             return 0;
         }
+        /* ＋・／ で 1 本でも引いたあとなら、`確定長さ` の行へ（最後に
+         * 引いた線の長さと角度。測定：plus_plain の 11 段目）。 */
+        if ((c->command == 2 || c->command == 3) && c->line_done
+            && !c->fix_mode) {
+            c->pressed = 0;
+            c->fix_mode = 1;
+            c->fix_done = 1;
+            c->stage = 2;
+            c->moved = 0;
+            return 1;
+        }
         c->pressed = 0;
         c->escaped = 1;
         c->moved = 0;
@@ -5499,10 +5577,10 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n && c->arc_ask == 2) {
-                c->arc_r = (float)atof(c->typed);
+                c->arc_r = (float)field_eval(c->typed);
                 c->arc_rfix = 1;
             } else if (c->typed_n) {
-                c->arc_ang = (float)atof(c->typed);
+                c->arc_ang = (float)field_eval(c->typed);
                 c->arc_fix = 1;
             }
             c->typing = 0;
@@ -5515,7 +5593,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -5531,7 +5609,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                r = (float)atof(c->typed);
+                r = (float)field_eval(c->typed);
             }
             if (r <= 0.0) {
                 c->typed[0] = 0;
@@ -5552,7 +5630,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -5565,7 +5643,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                c->box_ang = (float)atof(c->typed);
+                c->box_ang = (float)field_eval(c->typed);
             }
             c->box_rot = 1;
             c->box_mode = 1;
@@ -5580,7 +5658,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -5601,13 +5679,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typed[c->typed_n] = 0;
             comma = strchr(c->typed, ',');
             if (c->typed_n && c->typed[0] != ',') {
-                w = (float)atof(c->typed);
+                w = (float)field_eval(c->typed);
                 if (!comma) {
                     h = w;
                 }
             }
             if (comma && comma[1]) {
-                h = (float)atof(comma + 1);
+                h = (float)field_eval(comma + 1);
             }
             if (w <= 0.0 || h <= 0.0) {
                 c->typed[0] = 0;
@@ -5630,8 +5708,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-'
-             || key == ',') && c->typed_n < 16) {
+        if (FIELD_CHAR(key) && c->typed_n < 16) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -5650,7 +5727,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
              * （測定：`[  1000.000mm]` のまま `始点指示 … [BS]前項` へ）。
              * 角度は 0 も負も受けます。 */
             if (c->ask_kind == 1) {
-                const double v = c->typed_n ? (float)atof(c->typed) : c->ask_len;
+                const double v = c->typed_n ? (float)field_eval(c->typed) : c->ask_len;
 
                 if (v <= 0.0) {
                     c->typed[0] = 0;
@@ -5661,7 +5738,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 c->fix_len = 1;
             } else {
                 if (c->typed_n) {
-                    c->ask_ang = (float)atof(c->typed);
+                    c->ask_ang = (float)field_eval(c->typed);
                 }
                 c->fix_angle = 1;
             }
@@ -5677,7 +5754,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -5754,7 +5831,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                c->hen_dbl_gap = atof(c->typed);
+                c->hen_dbl_gap = field_eval(c->typed);
             }
             c->typing = 0;
             c->typed[0] = 0;
@@ -5767,7 +5844,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -5782,7 +5859,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                c->tan_r = atof(c->typed);
+                c->tan_r = field_eval(c->typed);
             }
             c->typing = 0;
             c->typed[0] = 0;
@@ -5796,7 +5873,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -5808,7 +5885,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                c->tan_r = atof(c->typed);
+                c->tan_r = field_eval(c->typed);
             }
             c->typing = 0;
             c->typed[0] = 0;
@@ -5822,7 +5899,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -5834,7 +5911,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                c->tan_r = atof(c->typed);
+                c->tan_r = field_eval(c->typed);
             }
             c->typing = 0;
             c->typed[0] = 0;
@@ -5848,7 +5925,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -5860,7 +5937,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                c->tan_r = atof(c->typed);
+                c->tan_r = field_eval(c->typed);
             }
             c->typing = 0;
             c->typed[0] = 0;
@@ -5874,7 +5951,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -5886,7 +5963,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                c->tan_r = atof(c->typed);
+                c->tan_r = field_eval(c->typed);
             }
             c->typing = 0;
             c->typed[0] = 0;
@@ -5900,7 +5977,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -5935,7 +6012,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                c->ch_r = atof(c->typed);
+                c->ch_r = field_eval(c->typed);
             }
             c->ch_r_on = 1;
             c->typing = 0;
@@ -5950,7 +6027,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -5962,7 +6039,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                c->sine_div = atof(c->typed);
+                c->sine_div = field_eval(c->typed);
             }
             c->typing = 0;
             c->typed[0] = 0;
@@ -5977,7 +6054,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -5990,7 +6067,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                const double v = atof(c->typed);
+                const double v = field_eval(c->typed);
 
                 if (c->stage == 12) {
                     c->sine_cycle = v;
@@ -6020,7 +6097,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -6033,7 +6110,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             /* 空のまま [Enter] を押すと「前回と同じ」が使われます。 */
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                c->tan_deg = atof(c->typed);
+                c->tan_deg = field_eval(c->typed);
                 c->tan_prev = c->tan_deg;
             } else {
                 c->tan_deg = c->tan_prev;
@@ -6050,7 +6127,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -6065,7 +6142,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
          * leaves it alone -- all three measured. */
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
-            c->dim_ck_deg = c->typed_n ? atof(c->typed) : 0.0;
+            c->dim_ck_deg = c->typed_n ? field_eval(c->typed) : 0.0;
             if (c->typed_n) {
                 c->dim_ck_prev = c->dim_ck_deg;
             }
@@ -6081,7 +6158,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -6093,7 +6170,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
          * minus, and [Enter] turns the road on. */
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
-            jw_cmd_dim_angle(c, c->typed_n ? atof(c->typed) : 0.0);
+            jw_cmd_dim_angle(c, c->typed_n ? field_eval(c->typed) : 0.0);
             return 1;
         }
         if (key == 8) {
@@ -6102,7 +6179,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (((key >= '0' && key <= '9') || key == '.' || key == '-')
+        if (FIELD_CHAR(key)
             && c->typed_n < 8) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
@@ -6173,8 +6250,8 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             if (c->typed_n) {
                 const char *comma = strchr(c->typed, ',');
 
-                c->scale_x = atof(c->typed);
-                c->scale_y = comma ? atof(comma + 1) : c->scale_x;
+                c->scale_x = field_eval(c->typed);
+                c->scale_y = comma ? field_eval(comma + 1) : c->scale_x;
             }
             c->typing = 0;
             c->scaling = 3;
@@ -6187,8 +6264,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if ((key >= '0' && key <= '9') || key == '.' || key == '-'
-            || key == ',') {
+        if (FIELD_CHAR(key)) {
             if (c->typed_n < 8) {
                 c->typed[c->typed_n++] = (char)key;
                 c->typed[c->typed_n] = 0;
@@ -6204,7 +6280,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                c->rot_deg = atof(c->typed);
+                c->rot_deg = field_eval(c->typed);
             }
             c->typing = 0;
             c->rotate = 3;
@@ -6217,7 +6293,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if ((key >= '0' && key <= '9') || key == '.' || key == '-') {
+        if FIELD_CHAR(key) {
             if (c->typed_n < 8) {
                 c->typed[c->typed_n++] = (char)key;
                 c->typed[c->typed_n] = 0;
@@ -6233,8 +6309,8 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             if (c->typed_n) {
                 const char *comma = strchr(c->typed, ',');
 
-                c->scale_x = atof(c->typed);
-                c->scale_y = comma ? atof(comma + 1) : c->scale_x;
+                c->scale_x = field_eval(c->typed);
+                c->scale_y = comma ? field_eval(comma + 1) : c->scale_x;
             }
             c->typing = 0;
             c->scaling = 3;
@@ -6261,9 +6337,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                d->copy_x_mm = atof(c->typed);
+                d->copy_x_mm = field_eval(c->typed);
                 comma = strchr(c->typed, ',');
-                d->copy_y_mm = comma ? atof(comma + 1) : d->copy_x_mm;
+                d->copy_y_mm = comma ? field_eval(comma + 1) : d->copy_x_mm;
             }
             c->typing = 0;
             c->n0_lines = d->n_lines;
@@ -6295,9 +6371,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                d->copy_x_mm = atof(c->typed);
+                d->copy_x_mm = field_eval(c->typed);
                 comma = strchr(c->typed, ',');
-                d->copy_y_mm = comma ? atof(comma + 1) : d->copy_x_mm;
+                d->copy_y_mm = comma ? field_eval(comma + 1) : d->copy_x_mm;
             }
             c->typing = 0;
             c->stage = 8;
@@ -6322,7 +6398,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (key == 13 || key == 10) {               /* [Enter] */
         c->typed[c->typed_n] = 0;
-        c->gap = atof(c->typed);
+        c->gap = field_eval(c->typed);
         c->typing = 0;
         c->stage = 2;
         /* The interval is shown twice and to two different numbers of
@@ -9819,6 +9895,53 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->undo_lines = c->undo_arcs = c->undo_texts = 0;
         }
     }
+    /* **範囲の印は記録に残ります**（rest の bit1。線・円弧は +14h、点は
+     * +0Ah）。本物は範囲を取り始めるとき全部から落とし（ルート 0x7ac6）、
+     * 選んだものに立てる——保存した図面にそのまま入っています（測定：
+     * 複写 で範囲を取って線 0 を加えると、SAMPLE0 のレイヤ 1 の 0x02 が
+     * 全部落ち、線 0 だけ 0x02）。 */
+    if (d && JW_RANGE_CMD(c->command)) {
+        long k;
+
+        if (stage == 0 && c->stage >= 1) {
+            for (k = 0; k < d->n_lines; k++) {
+                d->lines[k].rest[2] &= (unsigned char)~2u;
+            }
+            for (k = 0; k < d->n_arcs; k++) {
+                d->arcs[k].rest[2] &= (unsigned char)~2u;
+            }
+            for (k = 0; k < d->n_points; k++) {
+                d->points[k].rest[2] &= (unsigned char)~2u;
+            }
+            for (k = 0; k < d->n_texts; k++) {
+                d->texts[k].rest[2] &= (unsigned char)~2u;
+            }
+            c->range_marked = 1;
+        }
+        if (c->range_marked && c->stage >= 1) {
+            for (k = 0; k < d->n_lines && k < c->n0_lines; k++) {
+                if (picked_line(c, d, k)) {
+                    d->lines[k].rest[2] |= 2u;
+                } else {
+                    d->lines[k].rest[2] &= (unsigned char)~2u;
+                }
+            }
+            for (k = 0; k < d->n_arcs && k < c->n0_arcs; k++) {
+                if (picked_arc(c, d, k)) {
+                    d->arcs[k].rest[2] |= 2u;
+                } else {
+                    d->arcs[k].rest[2] &= (unsigned char)~2u;
+                }
+            }
+            for (k = 0; k < d->n_texts && k < c->n0_texts; k++) {
+                if (takes_text(c) && picked_text(c, d, k)) {
+                    d->texts[k].rest[2] |= 2u;
+                } else {
+                    d->texts[k].rest[2] &= (unsigned char)~2u;
+                }
+            }
+        }
+    }
     return r;
 }
 
@@ -9889,6 +10012,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     c->press_y = sy;
     c->moved = 0;
     c->escaped = 0;
+    /* **押せば `読取可能データ無` は消えます**（外れた読取のあとの押しで。
+     * 矢を動かすだけでは残る——測定）。外れればまた立てます。 */
+    c->missed = 0;
     if ((c->command == 2 || c->command == 3)
         && (c->ask_kind == 3 || c->ask_kind == 4) && !c->typing) {
         return ref_pick(c, d, w, sx, sy);
@@ -9997,6 +10123,77 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         }
         return offset_line(c, d, w, sx, sy);
     }
+    if (c->command == 10 && (c->stage == 2 || c->stage == 3)) {
+        /* 部分消去の始点・終点。点は線に下ろします：座標系は 1bb4:27ea と
+         * 同じく cos=(float)(dx/L)・sin=(float)(dy/L)、原点は線の始点、
+         * u = (float)((y-oy)*sin + (x-ox)*cos)、戻しは (float)(cos*u+ox)。
+         * 二点の間を消し、元の線を抜いて**始点側・終点側の順に最後へ**
+         * 足します。種類・ペン・レイヤはそのまま、rest は 0（測定：上の辺を
+         * (300,250) と (450,330) で切ると 161.973〜300 と 450〜598 の 2 本、
+         * 線 29・30、rest 00 00 00）。**線切断（同じ所を再び押す）はまだ**。 */
+        const long k = c->ld_line;
+        float cs, sn, ox, oy, u, ue;
+        double dx, dy, len;
+        JwcLine l;
+
+        if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+            c->missed = 1;
+            return 0;
+        }
+        if (k < 0 || k >= d->n_lines) {
+            c->stage = 0;
+            c->pressed = 0;
+            return 0;
+        }
+        l = d->lines[k];
+        dx = (double)l.x1 - l.x0;
+        dy = (double)l.y1 - l.y0;
+        len = sqrt(dy * dy + dx * dx);
+        if (len <= 0.0) {
+            return 0;
+        }
+        cs = (float)(dx / len);
+        sn = (float)(dy / len);
+        ox = l.x0;
+        oy = l.y0;
+        u = (float)(((double)(float)y - oy) * sn + ((double)(float)x - ox) * cs);
+        if (c->stage == 2) {
+            c->ld_u0 = u;
+            c->stage = 3;
+            return 1;
+        }
+        ue = (float)(((double)l.y1 - oy) * sn + ((double)l.x1 - ox) * cs);
+        {
+            const float a = c->ld_u0 < u ? c->ld_u0 : u;
+            const float b = c->ld_u0 < u ? u : c->ld_u0;
+
+            if (a == b) {
+                return 0;       /* 線切断：まだ */
+            }
+            jwc_remove_line(d, k);
+            if (a > 0.0f) {
+                const float ax = (float)((double)cs * a + ox);
+                const float ay = (float)((double)sn * a + oy);
+
+                if (jwc_add_line(d, l.x0, l.y0, ax, ay, l.type, l.pen,
+                                 l.layer)) {
+                    memset(d->lines[d->n_lines - 1].rest + 1, 0, 3);
+                }
+            }
+            if (b < ue) {
+                const float bx = (float)((double)cs * b + ox);
+                const float by = (float)((double)sn * b + oy);
+
+                if (jwc_add_line(d, bx, by, l.x1, l.y1, l.type, l.pen,
+                                 l.layer)) {
+                    memset(d->lines[d->n_lines - 1].rest + 1, 0, 3);
+                }
+            }
+        }
+        c->pressed = 0;
+        c->stage = 1;
+        return 1;
+    }
     if (c->command == 10) {
         /* 線消: the right button takes the whole line away.  (The left one
          * starts cutting a piece out of it, which is not done yet.) */
@@ -10014,7 +10211,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         }
         c->missed = 0;
         if (!right) {
-            return 0;           /* 部分消去, cutting a piece out: not done yet */
+            /* 部分消去：線を左で押すと `線 部分消去の始点指示 … |①線切断寸法
+             * (図寸 0.0 )|`（段 2）、始点のあと `部分消去 終点指示 …`（段 3）。
+             * 円弧の部分消去はまだです。 */
+            if (k < 0) {
+                return 0;
+            }
+            c->ld_line = k;
+            c->pressed = 1;
+            c->stage = 2;
+            return 1;
         }
         if (k >= 0) {
             jwc_remove_line(d, k);
@@ -13907,6 +14113,14 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         && d->pen < 0x5a) {
         c->fix_done = 0;
         return 1;
+    }
+    if (c->command == 2 || c->command == 3) {
+        /* 固定していなくても、引いた線の長さと角度は覚えておきます：
+         * 次の始点を [ESC] で捨てると、上の行が `始点指示 … 確定長さ =
+         * 165.127(mm)角度= 180.000ﾟ [BS]前項` になる（測定）。 */
+        c->line_done = 1;
+        c->fix_shown = c->num[0];
+        c->fix_ang = shown_angle((float)c->x0, (float)c->y0, (float)x, (float)y);
     }
     if ((c->command == 2 || c->command == 3) && c->fix_mode) {
         /* 上の行の `確定長さ = … 角度= …ﾟ` は**引いた線の**長さと角度

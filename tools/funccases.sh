@@ -12,6 +12,9 @@ only="$2"
 [ -f "$list" ] || { echo "no such list: $list" >&2; exit 2; }
 ok=0; bad=0; none=0
 while IFS= read -r line; do
+    # CRLF の一覧でも行末の CR を手順に残さない（残すと最後の手順の末尾に
+    # CR が付き、tools/rbatch.py が埋めた本物の結果と鍵が合わない）。
+    line=${line%"$(printf '\r')"}
     case "$line" in ''|\#*) continue ;; esac
     name=${line%%|*}
     rest=${line#*|}
@@ -20,7 +23,8 @@ while IFS= read -r line; do
     [ -z "$only" ] || case "$name" in *"$only"*) ;; *) continue ;; esac
     # 手順を | で割って引数に
     old_ifs=$IFS; IFS='|'; set -- $steps; IFS=$old_ifs
-    out=$(DRAWING="$drawing" SHOW=6 sh tools/functest.sh "$@" 2>&1)
+    # 件ごとに自分の場所で（同時に走らせても tmp/func を取り合わない）。
+    out=$(FUNCID="${FUNCID_PREFIX:-fc$$}" DRAWING="$drawing" SHOW=6 sh tools/functest.sh "$@" 2>&1)
     rc=$?
     case $rc in
     0) ok=$((ok + 1)); printf '  ok    %-28s %s\n' "$name" "${out#*: }" ;;

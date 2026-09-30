@@ -22,6 +22,11 @@
 #include "stage.h"
 
 static const JwStage JW_TYPED[] = {
+    /* linedel partial delete (2026-09-30, read off STR): stage 2 start, stage 3 end */
+    { 10, 2,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 10, 2,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x90\xfc \x95\x94\x95\xaa\x8f\xc1\x8b\x8e\x82\xcc\x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read |\x87@\x90\xfc\x90\xd8\x92" "f\x90\xa1\x96@ (\x90}\x90\xa1 0.0 )|" },
+    { 10, 3,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 10, 3,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x95\x94\x95\xaa\x8f\xc1\x8b\x8e \x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read     \x81i\x90\xfc\x90\xd8\x92" "f\x82\xcd\x8d\xc4\x8en\x93_\x8ew\x8e\xa6 \x81j" },
     {  5, 1,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]  " },
     {  5, 1,  7, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x93" "_\x8e" "w\x8e" "\xa6" " or \x8a" "\xd4" "\x8a" "u=" },
     {  5, 1, 36, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "| 1000.00" },

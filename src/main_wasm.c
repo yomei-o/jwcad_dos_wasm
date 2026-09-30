@@ -78,6 +78,8 @@ static int mouse_x = 200, mouse_y = 200;   /* where the original leaves it */
 static int band_x = 200, band_y = 200;
 /* ○ ①径寸法 の欄を [Enter] で閉じてから、矢がまだ動いていない。 */
 static int circ_fresh;
+/* □ の ① の欄を開いたとき、その前は段 1（横=・縦= の箱）だった。 */
+static int box_keep;
 
 EMSCRIPTEN_KEEPALIVE int jw_width(void)  { return vga.width; }
 EMSCRIPTEN_KEEPALIVE int jw_height(void) { return vga.height; }
@@ -395,8 +397,15 @@ static void sync_ui(void)
         || (cmd.command == 11 && cmd.circ_fix && !cmd.circ_ask)) {
         ui.stage = 1;
     }
-    ui.hold_counts = circ_fresh && cmd.command == 11;
-    ui.keep_box_counts = cmd.command == 4 && cmd.box_ask == 1 && cmd.box_fix;
+    ui.hold_counts = circ_fresh && (cmd.command == 11 || cmd.command == 4);
+    /* □ の ①寸法 の欄を開いても数え箱は描き直さない：開く前が 横=・縦= の
+     * 箱（置いているか、始点を持っていた）ならそのまま（測定：始点の
+     * あと ① で `横= 0.000 縦= 0.000`）。 */
+    if (cmd.command != 4 || !cmd.box_ask) {
+        box_keep = 0;
+    }
+    ui.keep_box_counts = cmd.command == 4 && cmd.box_ask
+                         && (cmd.box_fix || box_keep);
     ui.typed_n = cmd.typed_n;
     memcpy(ui.typed, cmd.typed, sizeof ui.typed);
     ui.num[0] = cmd.num[0];
@@ -2276,7 +2285,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
      * 出し直します。 */
     ui.keep_msg = 0;
     ui.offset_msg = 0;
-    if (x >= AREA_X0) {
+    if (x >= AREA_X0 && y >= AREA_Y0) {
         band_x = x;
         band_y = y;
     }
@@ -3834,6 +3843,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         /* 項目を押しても帯の `読取可能データ無` は消えます（測定：
          * 円線接 ④２線 で外したあと ①接円半径 を押すと帯は空）。 */
         cmd.missed = 0;
+        box_keep = cmd.command == 4 && ui.stage == 1;
         if (jw_cmd_top(&cmd, drawing, jw_ui_top_item(x, y), right)) {
             jw_ui_from(&ui, drawing);       /* the counts move with it */
             ui.command = cmd.command;
@@ -4527,10 +4537,16 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
             /* □ ①寸法・○ ①径寸法 の欄を [Enter] で閉じたら、**その場の矢で**
              * 読み直します：本物はすぐ数え箱に 横= 20.000・縦= 30.000 を出し、
              * 赤い四角を矢の所に描く（矢が上の行の上でも。測定）。 */
+            /* 矢がメニューの上なら読み直しません（本物は追わない）：数え箱は
+             * 線数のまま、四角も矢が作図範囲に来るまで出ません（測定）。 */
             if (was_typing && !cmd.typing && (key == 13 || key == 10)
                 && ((cmd.command == 4 && cmd.box_fix)
                     || (cmd.command == 12 && cmd.pressed == 2))) {
-                jw_cmd_track(&cmd, drawing, &view, band_x, band_y);
+                if (mouse_x >= AREA_X0) {
+                    jw_cmd_track(&cmd, drawing, &view, band_x, band_y);
+                } else if (cmd.command == 4) {
+                    circ_fresh = 1;
+                }
             }
             /* ○ は違います：欄を閉じても数え箱は線数のまま、円も矢が
              * 動くまで出ません（測定：20 [Enter] で `32|14`）。 */
