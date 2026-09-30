@@ -5797,6 +5797,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (c->stage == 0) {
             c->pressed = 0;
         }
+        /* 2 点指示でも一段ずつ（未測定。線のときと同じ段の戻り方にした）。 */
+        if (c->cl_pts && c->stage <= 1) {
+            c->cl_pts = c->stage;
+            c->pick_a = c->pick_b = -1;
+        }
         c->moved = 0;
         return 1;
     }
@@ -7504,6 +7509,15 @@ static void centre_line(JwCmd *c, Jwc *d, const JwView *w, double px, double py)
 {
     double ox, oy, dx, dy, pax, pay, pbx, pby, n, t0, t1;
 
+    if (d && c->cl_pts == 2) {
+        /* 2 点の中心線：二点の垂直二等分線（測定：center_pts、角を二つ
+         * 右で読むと (370.125,294.880)-(391.010,262.247)、57.38 度）。 */
+        ox = (c->cl_x1 + c->cl_x2) * 0.5;
+        oy = (c->cl_y1 + c->cl_y2) * 0.5;
+        dx = -(c->cl_y2 - c->cl_y1);
+        dy = c->cl_x2 - c->cl_x1;
+        goto have_axis;
+    }
     if (!d || c->pick_a < 0 || c->pick_b < 0
         || c->pick_a >= d->n_lines || c->pick_b >= d->n_lines) {
         return;
@@ -7514,6 +7528,7 @@ static void centre_line(JwCmd *c, Jwc *d, const JwView *w, double px, double py)
                   pax, pay, pbx, pby, &ox, &oy, &dx, &dy)) {
         return;
     }
+have_axis:
     n = dx * dx + dy * dy;
     if (n <= 0.0) {
         return;
@@ -14323,6 +14338,28 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * The new line is drawn with the writing pen and line type, and the
          * command goes straight back to its own first line (no `[ESC]` and no
          * `・` in front of it). */
+        if (c->cl_pts == 1 || (c->stage == 0 && right && c->pick_a < 0)) {
+            /* 最初を右で押すと点を読む：二点の中心線（測定：center_pts）。
+             * 二つ目は (L)free (R)Read。 */
+            double qx, qy;
+
+            if (!take(c, d, w, sx, sy, right, &qx, &qy)) {
+                return 1;
+            }
+            if (c->cl_pts == 0) {
+                c->cl_x1 = qx;
+                c->cl_y1 = qy;
+                c->cl_pts = 1;
+                c->stage = 1;
+                return 1;
+            }
+            c->cl_x2 = qx;
+            c->cl_y2 = qy;
+            c->cl_pts = 2;
+            c->pick_a = c->pick_b = 0;  /* 以下の点の段へ */
+            c->stage = 2;
+            return 1;
+        }
         if (c->pick_a < 0 || c->pick_b < 0) {
             const long k = pick_line(d, w, sx, sy);
 
@@ -14362,6 +14399,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             centre_line(c, d, w, px, py);
             c->pick_a = -1;
             c->pick_b = -1;
+            c->cl_pts = 0;
             /* Back to its own line, with an `[ESC]` in front -- src/stage.h
              * keeps that as stage 4. */
             c->stage = 4;

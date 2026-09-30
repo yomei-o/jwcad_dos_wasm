@@ -496,6 +496,8 @@ typedef struct {
     int mv_undo;                /* 複写・移動 の取り消しの控え */
     long mv_nl, mv_na, mv_nt, mv_np;
     double mv_dx, mv_dy;
+    int cl_pts;                 /* 中心線の 2 点指示：読んだ点の数 */
+    double cl_x1, cl_y1, cl_x2, cl_y2;
     int text_ang_ask;           /* 文字 ③角度指定 の欄 */
     double text_ang;            /* 文字の角度（度） */
     int text_tate;              /* 文字 ⑥(縦)：縦字（記録の rest[2] に 0x20） */
