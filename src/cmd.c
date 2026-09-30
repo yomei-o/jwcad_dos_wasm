@@ -5419,11 +5419,20 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->stage = 0;
         return 1;
     }
+    /* コーナー連結・面取 の Ｂ を聞いているときの [ESC]：Ａ を放して Ａ の行へ
+     * （取り消せる操作があれば行の頭に `[ESC]`。測定：面取）。 */
+    if (key == 27 && d && (c->command == 7 || c->command == 8) && !c->typing
+        && c->pick_a >= 0) {
+        c->pick_a = -1;
+        c->stage = c->co_undo_n > 0 ? 2 : 0;
+        c->moved = 0;
+        return 1;
+    }
     /* コーナー連結・線切断 の取り消し：最後の操作で足した線を抜き、元の線を
      * 最後に足し直します（測定：右の辺を切ったあと [ESC] で元の 1 本が
      * 並びの最後に。`＊お待ち下さい＊` のあと行は `[ESC]` の無い段 0）。 */
-    if (key == 27 && d && c->command == 7 && !c->typing && c->pick_a < 0
-        && c->co_undo_n > 0 && d->n_lines >= c->co_undo_new) {
+    if (key == 27 && d && (c->command == 7 || c->command == 8) && !c->typing
+        && c->pick_a < 0 && c->co_undo_n > 0 && d->n_lines >= c->co_undo_new) {
         int i;
 
         for (i = 0; i < c->co_undo_new; i++) {
@@ -5442,6 +5451,34 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         jwc_ink_clear(d);
         c->co_undo_n = 0;
         c->stage = 0;
+        return 1;
+    }
+    /* ２線 の取り消し：始点を聞いているとき（何も持っていない）の [ESC] は、
+     * 最後の組を抜いてその組の始点を持った終点の段へ（測定：2 組目を引いて
+     * [ESC] で始点の段、もう一度 [ESC] で 2 組目が消え `○終点指示 … ●連続`）。 */
+    if (key == 27 && d && c->command == 9 && !c->typing && c->pick_a >= 0
+        && c->stage == 3 && c->pending) {
+        /* 終点を押して矢がまだ離れていないときの [ESC] は、その組を置いて
+         * 始点の段へ（測定：`＊お待ち下さい＊` のあと `◇始点指示`）。 */
+        c->pending = 0;
+        two_lines(c, d);
+        c->moved = 0;
+        return 1;
+    }
+    if (key == 27 && d && c->command == 9 && !c->typing && c->pick_a >= 0
+        && c->stage == 3 && !c->pending && c->dl_undo_n > 0
+        && d->n_lines >= c->dl_undo_n) {
+        int i;
+
+        for (i = 0; i < c->dl_undo_n; i++) {
+            jwc_remove_line(d, d->n_lines - 1);
+        }
+        jwc_ink_clear(d);
+        c->dl_undo_n = 0;
+        c->x0 = c->dl_undo_x;
+        c->y0 = c->dl_undo_y;
+        c->stage = 2;
+        c->moved = 0;
         return 1;
     }
     /* 線消 の部分消去の [ESC]：終点 → 始点（線は選んだまま）→ 最初の行
@@ -6709,6 +6746,7 @@ int jw_cmd_two_line(const JwCmd *c, const Jwc *d, int i, double *e)
 static void two_lines(JwCmd *c, Jwc *d)
 {
     int i;
+    const long n0 = d->n_lines;
 
     for (i = 0; i < 2; i++) {
         double e[4];
@@ -6723,6 +6761,11 @@ static void two_lines(JwCmd *c, Jwc *d)
             d->lines[d->n_lines - 1].rest[1] = 0;
         }
     }
+    /* 取り消し（何も持っていないときの [ESC]）：この組を抜いて、この組の
+     * 始点を持った `○終点指示 … ●連続` に戻ります（測定）。 */
+    c->dl_undo_n = (int)(d->n_lines - n0);
+    c->dl_undo_x = c->x0;
+    c->dl_undo_y = c->y0;
 }
 
 /* 面取【角面】: cut the corner off two lines and join the ends.
@@ -6778,8 +6821,16 @@ static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
      * goes on the end.  Ａ first, the way the original's records come out. */
     first = a;
     second = b > a ? b - 1 : b;
+    /* 取り消し（[ESC]）のために元の二本を控えます。 */
+    c->co_undo[0] = d->lines[a];
+    c->co_undo[1] = d->lines[b];
+    c->co_undo_n = 2;
+    c->co_undo_new = 2;
     keep_far(d, first, cx, cy, akx, aky);
     keep_far(d, second, cx, cy, bkx, bky);
+    /* 作り直した二本に読取の印は残りません（測定）。 */
+    d->lines[d->n_lines - 2].rest[2] &= (unsigned char)~1u;
+    d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~1u;
     /* 面取 **clears the last of the three bytes** on the two lines it re-cut.
      * Measured on SAMPLE6, whose lines carry 08 there: the two come back with
      * 00.  線伸縮 and コーナー連結 do not -- the same line through 線伸縮 keeps
@@ -6793,6 +6844,7 @@ static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
         /* A chamfer carries **0** in the byte a drawn line carries 3 in.
          * Measured, like 中心線's 2. */
         d->lines[d->n_lines - 1].rest[1] = 0;
+        c->co_undo_new = 3;
     }
 }
 

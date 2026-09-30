@@ -489,6 +489,8 @@ typedef struct {
     int line_done;
     int co_undo_n, co_undo_new; /* コーナー連結：元の線の数・足した線の数 */
     JwcLine co_undo[2];         /* 　　　　　　　元の線 */
+    int dl_undo_n;              /* ２線：最後の組の線の数（取り消し用） */
+    double dl_undo_x, dl_undo_y;/* 　　　その組の始点 */
     int st_undo_on;             /* 線伸縮：取り消せる線がある */
     JwcLine st_undo;            /* 　　　　伸縮する前の線 */
     long ld_line;               /* 線消 部分消去：押した線 */
