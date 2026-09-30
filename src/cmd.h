@@ -492,6 +492,7 @@ typedef struct {
     int ell, ell_done;
     /* （ ①三点指示：1 始点、2 終点、3 中間点。できたら 1 に戻る。 */
     int arc3, arc3_done;
+    int arc3_kind;              /* 1 三点指示、2 半円 */
     double a3x[2], a3y[2], arc3_rmm;
     double ell_cx, ell_cy;
     double ell_a, ell_b, ell_ang;

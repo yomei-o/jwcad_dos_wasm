@@ -2196,6 +2196,24 @@ int jwc_add_arc_at(Jwc *d, float cx, float cy, float r, long start, long end,
     return 1;
 }
 
+int jwc_add_ellarc(Jwc *d, float cx, float cy, float r, short flatten,
+                   long start, long end, long tilt, unsigned char type,
+                   unsigned char pen, unsigned char layer, unsigned char mark)
+{
+    JwcArc *a;
+
+    if (!jwc_add_arc_at(d, cx, cy, r, start, end, type, pen, layer, mark)) {
+        return 0;
+    }
+    a = &d->arcs[d->n_arcs - 1];
+    a->flatten = flatten;
+    a->tilt = tilt;
+    if (d->n_ink > 0) {
+        d->ink[d->n_ink - 1].u.a = *a;
+    }
+    return 1;
+}
+
 int jwc_add_ellipse(Jwc *d, float cx, float cy, float r, short flatten,
                     long tilt, unsigned char type, unsigned char pen,
                     unsigned char layer)

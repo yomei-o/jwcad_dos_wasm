@@ -2792,7 +2792,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         if (s->arc3 == 1) {
             if (s->arc3_done) {
                 jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
-                sprintf(one, "\x81\x9e \x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read \x94\xbc\x8c" "a=" "%g", s->arc3_rmm);
+                sprintf(one, s->arc3_kind == 3 ? "\x81\x9e \x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read \x92\xb7\x8e\xb2\x94\xbc\x8c" "a=" "%g" : "\x81\x9e \x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read \x94\xbc\x8c" "a=" "%g",
+                        s->arc3_rmm);
                 jw_ui_text(v, 8, 1, 7, 0, one);
             } else {
                 jw_ui_text(v, 8, 1, 7, 0, "\x81\x9e \x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
@@ -2801,6 +2802,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         } else if (s->arc3 == 2) {
             jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
             jw_ui_text(v, 8, 1, 7, 0, "\x81\x9f \x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
+        } else if (s->arc3_kind == 3) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 8, 1, 7, 0, "\x94\xbc\x91\xc8\x89~\x82\xcc\x92\x86\x8a\xd4\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ");
+        } else if (s->arc3_kind == 2) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 8, 1, 7, 0, "\x94\xbc\x89~\x82\xf0\x8f\x91\x82\xad\x95\xfb\x8c\xfc\x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
         } else {
             jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
             jw_ui_text(v, 8, 1, 7, 0, "\x92\x86\x8a\xd4\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ");

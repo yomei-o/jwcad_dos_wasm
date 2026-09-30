@@ -469,6 +469,7 @@ static void sync_ui(void)
     ui.circ_ask = cmd.circ_ask;
     ui.ell = cmd.ell;
     ui.arc3 = cmd.arc3;
+    ui.arc3_kind = cmd.arc3_kind;
     ui.arc3_done = cmd.arc3_done;
     ui.arc3_rmm = cmd.arc3_rmm;
     ui.ell_done = cmd.ell_done;

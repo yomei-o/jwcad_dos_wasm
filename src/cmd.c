@@ -316,6 +316,31 @@ static void par_dir(const JwCmd *c, double *x, double *y)
 static long ang16(double x1, double y1, double x2, double y2);
 static int ellipse_put(JwCmd *c, Jwc *d, double deg);
 
+/* （ ②半円の形：始点・終点（a3x/a3y）と向きの点 (mx,my) から、中心・半径と
+ * 記録の二つの角度（始点側 a と a+180、向きの点を左回りに含む順）。 */
+static void semi_of(const JwCmd *c, double mx, double my, double *ux,
+                    double *uy, double *r, long *s0, long *e0)
+{
+    const long half = 180L << 16, full = 360L << 16;
+    const double ax = c->a3x[0], ay = c->a3y[0];
+    const double bx = c->a3x[1], by = c->a3y[1];
+    long a, b, m;
+
+    *ux = (ax + bx) / 2.0;
+    *uy = (ay + by) / 2.0;
+    *r = sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)) / 2.0;
+    a = ang16(*ux, *uy, ax, ay);
+    b = (a + half) % full;
+    m = ang16(*ux, *uy, mx, my);
+    if (((m - a) % full + full) % full < half) {
+        *s0 = a;
+        *e0 = b;
+    } else {
+        *s0 = b;
+        *e0 = a;
+    }
+}
+
 /* ＋ の ④平行・垂直：基準線の座標系で、矢の長いほうの軸だけを残します
  * （本物は ovl23 の 0x2d097〜0x2d20e。1bb4:2981/2a18 の向き 1 で (u,v) に
  * 写し、|v| >= |u| なら (0,v)、そうでなければ (u,0) を向き 0 で戻す）。
@@ -1362,7 +1387,10 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
 
         jw_arc_poly(v, fx, fy, sqrt(dx * dx + dy * dy), 10000, 0, 0, 0,
                     2, 0x18, JW_STYLE_SOLID);
-    } else if (c->command == 12 && c->arc3 == 3) {
+    } else if (c->command == 12 && c->arc3 == 3 && c->arc3_kind == 2) {
+        /* ②半円の向きを探しているあいだ、本物は仮の半円を**出しません**
+         * （測定：(450,330) へ動かしても何も描かれない）。 */
+    } else if (c->command == 12 && c->arc3 == 3 && c->arc3_kind == 1) {
         /* ①三点指示の中間点を探しているあいだ：始点・終点・矢の三点を通る
          * 弧が付いてきます（色 2、排他的論理和。記録と同じ求め方）。 */
         const double ax = c->a3x[0], ay = c->a3y[0];
@@ -4142,9 +4170,11 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     }
     /* （ の ②角度指定（始点を取って `） 終点指示` のとき）。 */
     /* （ ①三点指示（段 0 の ①）。`◇ 始点指示 … [BS]前項` へ（測定）。 */
-    if (c->command == 12 && item == 1 && !c->pressed && !c->arc3
-        && c->stage == 0) {
+    if (c->command == 12 && item >= 1 && item <= 3 && !c->pressed
+        && !c->arc3 && c->stage == 0) {
+        /* ②半円 も同じ段の仕組み：始点・終点のあと `半円を書く方向マウス指示`。 */
         c->arc3 = 1;
+        c->arc3_kind = item;
         c->arc3_done = 0;
         return 1;
     }
@@ -10297,7 +10327,8 @@ static int ellipse_put(JwCmd *c, Jwc *d, double deg)
     const double t = deg - 360.0 * floor(deg / 360.0);
 
     if (!jwc_add_ellipse(d, (float)c->ell_cx, (float)c->ell_cy, r,
-                         (short)(c->ell_b / c->ell_a * 10000.0 + 0.5),
+                         /* 切り捨て（測定：70,30 で 4285） */
+                         (short)(c->ell_b / c->ell_a * 10000.0),
                          fixed16(t), (unsigned char)d->line_type,
                          (unsigned char)d->pen,
                          (unsigned char)d->write_layer)) {
@@ -14307,6 +14338,78 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 c->a3x[c->arc3 - 1] = x;
                 c->a3y[c->arc3 - 1] = y;
                 c->arc3++;
+                return 1;
+            }
+            if (c->arc3_kind == 3) {
+                /* ③半楕円：中心は二点の中点、短半径はその半分（向きは二点の
+                 * 方向）、長軸はそれに直交して中間点を通る。tilt は 始点の角度
+                 * -90 度（中間点が長軸の正の側になる向き。逆なら +90）、弧は
+                 * 楕円の中の 270..90 度。測定：(400,140) → (300,250) →
+                 * (450,330) が 中心 (229,268)、r 183.4411、flatten 4052、
+                 * tilt 317.7263、270..90。 */
+                const long full = 360L << 16, quarter = 90L << 16;
+                const double ax = c->a3x[0], ay = c->a3y[0];
+                const double bx = c->a3x[1], by = c->a3y[1];
+                const double ux = (ax + bx) / 2.0, uy = (ay + by) / 2.0;
+                const double b = sqrt((bx - ax) * (bx - ax)
+                                      + (by - ay) * (by - ay)) / 2.0;
+                long t = ((ang16(ux, uy, ax, ay) - quarter) % full + full) % full;
+                double tr, u, v, q, a;
+
+                tr = (double)t * 1.52587890625e-05 * 3.14159265358979323846 / 180.0;
+                u = (x - ux) * cos(tr) + (y - uy) * sin(tr);
+                v = -(x - ux) * sin(tr) + (y - uy) * cos(tr);
+                if (u < 0.0) {
+                    t = (t + 2 * quarter) % full;
+                    u = -u;
+                    v = -v;
+                }
+                q = 1.0 - (v * v) / (b * b);
+                if (b <= 0.0 || q <= 0.0) {
+                    return 0;       /* 中間点が短軸の外：未測定 */
+                }
+                a = u / sqrt(q);
+                /* **flatten を先に整数に切り捨て、長半径はそこから逆算**
+                 * （b / 0.4052 = 183.4411。中間点を通る長さ 183.4162 では
+                 * ない——測定）。 */
+                {
+                    const short fl = (short)(b / a * 10000.0);
+
+                    a = b / ((double)fl / 10000.0);
+                }
+                if (!jwc_add_ellarc(d, (float)ux, (float)uy, (float)a,
+                                    (short)(b / a * 10000.0 + 0.5),
+                                    270L << 16, 90L << 16, t,
+                                    (unsigned char)d->line_type,
+                                    (unsigned char)d->pen,
+                                    (unsigned char)(d->write_layer), 0x12)) {
+                    return 0;
+                }
+                c->arc3_rmm = (float)a * jwc_zukei_scale(d);
+                c->arc3 = 1;
+                c->arc3_done = 1;
+                return 1;
+            }
+            if (c->arc3_kind == 2) {
+                /* ②半円：中心は二点の中点、半径はその半分。角度は 始点側 a と
+                 * a+180 の組で、向きの押しを左回りに含む方（測定：(400,140)
+                 * → (300,250) → (450,330) が 中心 (229,268)、半径 74.3303、
+                 * 227.7263..47.7263）。 */
+                double ux, uy, r;
+                long a, b, t;
+
+                semi_of(c, x, y, &ux, &uy, &r, &a, &b);
+                t = a;
+                (void)t;
+                if (!jwc_add_arc_at(d, (float)ux, (float)uy, (float)r, a, b,
+                                    (unsigned char)d->line_type,
+                                    (unsigned char)d->pen,
+                                    (unsigned char)(d->write_layer), 0x12)) {
+                    return 0;
+                }
+                c->arc3_rmm = (float)r * jwc_zukei_scale(d);
+                c->arc3 = 1;
+                c->arc3_done = 1;
                 return 1;
             }
             {

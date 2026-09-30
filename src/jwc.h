@@ -444,6 +444,11 @@ int jwc_add_arc_at(Jwc *d, float cx, float cy, float r, long start, long end,
                    unsigned char type, unsigned char pen, unsigned char layer,
                    unsigned char mark);
 
+/* A part of an ellipse: （ ③半楕円. */
+int jwc_add_ellarc(Jwc *d, float cx, float cy, float r, short flatten,
+                   long start, long end, long tilt, unsigned char type,
+                   unsigned char pen, unsigned char layer, unsigned char mark);
+
 /* An ellipse: ○ ②楕円. */
 int jwc_add_ellipse(Jwc *d, float cx, float cy, float r, short flatten,
                     long tilt, unsigned char type, unsigned char pen,
