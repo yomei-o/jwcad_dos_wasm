@@ -2372,7 +2372,10 @@ static void move_ink(const JwCmd *c, Jwc *d, int erase)
 static void mirror_at(double ax, double ay, double ux, double uy,
                       double x, double y, double *rx, double *ry)
 {
-    const double vx = x - ax, vy = y - ay;
+    /* 軸の始点からの差は float に丸める（測定：copy_t_mirror で縦の軸
+     * （始点 y 323.057）に写した線 33 の y1 が 0x4275c3a8——元は aa。
+     * F(F(y - ay) + ay) と同じ）。 */
+    const double vx = (float)(x - ax), vy = (float)(y - ay);
     const double t = 2.0 * (vx * ux + vy * uy);
 
     *rx = ax + t * ux - vx;
@@ -2415,7 +2418,17 @@ static int mirror_range(JwCmd *c, Jwc *d, long m)
         }
         mirror_at(ax, ay, ux, uy, d->lines[k].x0, d->lines[k].y0, &x0, &y0);
         mirror_at(ax, ay, ux, uy, d->lines[k].x1, d->lines[k].y1, &x1, &y1);
-        if (jwc_dup_line(d, k, 0.0f, 0.0f)) {
+        /* 移動は元の線をその場で裏返す（測定：move_s_mirror は数が増えず、
+         * 線 5 が複写の写しと同じ座標になる）。 */
+        if (JW_MOVING(c)) {
+            JwcLine *q = &d->lines[k];
+
+            q->x0 = (float)x0;
+            q->y0 = (float)y0;
+            q->x1 = (float)x1;
+            q->y1 = (float)y1;
+            n++;
+        } else if (jwc_dup_line(d, k, 0.0f, 0.0f)) {
             JwcLine *q = &d->lines[d->n_lines - 1];
 
             q->x0 = (float)x0;
@@ -2432,7 +2445,17 @@ static int mirror_range(JwCmd *c, Jwc *d, long m)
             continue;
         }
         mirror_at(ax, ay, ux, uy, d->arcs[k].cx, d->arcs[k].cy, &cx, &cy);
-        if (jwc_dup_arc(d, k, 0.0f, 0.0f)) {
+        if (JW_MOVING(c)) {
+            JwcArc *q = &d->arcs[k];
+            const long twice = (long)(2.0 * axis * 65536.0);
+            const long s0 = q->start;
+
+            q->cx = (float)cx;
+            q->cy = (float)cy;
+            q->start = twice - q->end;
+            q->end = twice - s0;
+            n++;
+        } else if (jwc_dup_arc(d, k, 0.0f, 0.0f)) {
             JwcArc *q = &d->arcs[d->n_arcs - 1];
             const long twice = (long)(2.0 * axis * 65536.0);
 
@@ -2526,7 +2549,15 @@ static int mirror_range(JwCmd *c, Jwc *d, long m)
                 y1 += sy;
             }
         }
-        if (jwc_dup_text(d, k, 0.0f, 0.0f)) {
+        if (JW_MOVING(c)) {
+            JwcText *q = &d->texts[k];
+
+            q->x0 = (float)x0;
+            q->y0 = (float)y0;
+            q->x1 = (float)x1;
+            q->y1 = (float)y1;
+            n++;
+        } else if (jwc_dup_text(d, k, 0.0f, 0.0f)) {
             JwcText *q = &d->texts[d->n_texts - 1];
 
             q->x0 = (float)x0;
