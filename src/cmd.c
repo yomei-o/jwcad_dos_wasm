@@ -1304,6 +1304,37 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         int x1, y1;
 
         at_screen(w, c->x0, c->y0, &px, &py);
+        if (c->text_ang != 0.0 && !c->text_vert) {
+            /* ③角度指定 の角度では、L 字も箱も同じ角度に回す（測定：
+             * text_c3_v の 30 度で、L 字は (300,250) から左上へ字の高さ、
+             * 足は右上へ (301,249)(302,248)）。 */
+            const double ar = c->text_ang * 3.14159265358979323846 / 180.0;
+            const double co = cos(ar), si = sin(ar);
+            int ax, ay, bx, by, qx, qy, k;
+
+            at_screen(w, c->x0 - c->text_tall * si, c->y0 + c->text_tall * co,
+                      &qx, &qy);
+            if (c->typed_n == 0) {
+                jw_line(v, qx, qy, px, py, 4, 0x18, JW_STYLE_SOLID);
+                jw_line(v, px, py, px, py, 4, 0x18, JW_STYLE_SOLID);
+                for (k = 1; k <= 2; k++) {
+                    const int fx = px + (int)floor(k * co + 0.5);
+                    const int fy = py - (int)floor(k * si + 0.5);
+
+                    jw_line(v, fx, fy, fx, fy, 4, 0x18, JW_STYLE_SOLID);
+                }
+                return;
+            }
+            at_screen(w, c->x0 + c->text_wide * co, c->y0 + c->text_wide * si,
+                      &ax, &ay);
+            at_screen(w, c->x0 + c->text_wide * co - c->text_tall * si,
+                      c->y0 + c->text_wide * si + c->text_tall * co, &bx, &by);
+            jw_line(v, px, py, ax, ay, 2, 0x18, JW_STYLE_SOLID);
+            jw_line(v, ax, ay, bx, by, 2, 0x18, JW_STYLE_SOLID);
+            jw_line(v, bx, by, qx, qy, 2, 0x18, JW_STYLE_SOLID);
+            jw_line(v, qx, qy, px, py, 2, 0x18, JW_STYLE_SOLID);
+            return;
+        }
         at_screen(w,
                   c->x0 + (c->text_vert ? -c->text_tall : c->text_wide),
                   c->y0 + (c->text_vert ? c->text_wide : c->text_tall),
