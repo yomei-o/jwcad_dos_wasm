@@ -14840,6 +14840,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->y0 = y;
             c->pressed = 1;
             c->stage = 1;
+            /* 消去 ①②の升で出た行（src/item.h）は始点の押しで範囲の行に
+             * 替わる（測定：erase_range_out の始点の押しで `終点指示` の行）。 */
+            if (c->command == 25) {
+                c->top_item = 0;
+                c->top_right = 0;
+            }
             /* ③指定範囲 asks with which button, and says so along the top. */
             c->with_text = right;
             return 0;
