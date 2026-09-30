@@ -5627,6 +5627,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typed_at = 0;
             return 1;
         }
+        /* 文字 の欄の [ESC] は、打った字があれば [Enter] と同じに書き込んで
+         * 次の基点の行へ（測定：text_esc、`AB` を打って [ESC] で AB が
+         * 書かれ、行は `[ESC]・文字種類[F3] 基点指示…`）。空の欄の [ESC] は
+         * 未測定。 */
+        if (key == 27 && c->command == 13 && c->typed_n > 0) {
+            key = 13;
+        }
         if (key == 13 || key == 10) {
             const unsigned char size = (unsigned char)(d ? d->char_type : 1);
             const unsigned char layer =
