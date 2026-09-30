@@ -4611,6 +4611,16 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     /* 文字 ⑥：縦字に切り替える。行は src/item.h のまま（`⑥(縦)`）。縦字
      * で書いた文字は記録の rest[2] に 0x20 が立つ（測定：text_c6、座標は
      * 横字と同じ）。もう一度押して横に戻るかは未測定。 */
+    /* 文字 ③角度指定：`[ESC] 角度 = … [ -90.000ﾟ]` の欄（行は src/item.h、
+     * 打つ字は桁 15。測定：text_c3_v）。[Enter] で角度が決まり、行は
+     * ①水平 を押したときと同じ `・文字種類[F3] 基点指示…` になる。 */
+    if (c->command == 13 && item == 3 && !c->typing_text && !c->text_ang_ask) {
+        c->text_ang_ask = 1;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 0;
+    }
     if (c->command == 13 && item == 6 && !c->typing_text) {
         c->text_tate = !c->text_tate;
         return 0;
@@ -4622,6 +4632,7 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
          * becomes the one the command shows once it has a point, which is
          * stage 2. */
         c->text_vert = item == 2;
+        c->text_ang = 0.0;
         c->stage = 2;
         /* **Nought, not one.**  The state is set; the words the press wrote
          * are the original's own and are in src/item.h, and they are not
@@ -5676,10 +5687,17 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                  * the point that was pressed and jw_view draws it with the
                  * turned routine.  ③角度指定 is not done. */
                 const double len = jwc_text_length(d, c->typed, size);
+                /* ③角度指定 の角度で基線を回す（測定：30 度で `AB` の終わりが
+                 * (+4.909,+2.834)）。 */
+                const double ar = c->text_ang * 3.14159265358979323846 / 180.0;
+                const double ex = c->text_vert ? 0.0
+                                : c->text_ang != 0.0 ? len * cos(ar) : len;
+                const double ey = c->text_vert ? len
+                                : c->text_ang != 0.0 ? len * sin(ar) : 0.0;
 
                 if (jwc_add_text(d, (float)c->x0, (float)c->y0,
-                                 (float)(c->x0 + (c->text_vert ? 0.0 : len)),
-                                 (float)(c->y0 + (c->text_vert ? len : 0.0)),
+                                 (float)(c->x0 + ex),
+                                 (float)(c->y0 + ey),
                                  c->typed, size, layer)) {
                     if (c->text_tate) {
                         d->texts[d->n_texts - 1].rest[2] |= 0x20;
@@ -5771,6 +5789,39 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (c->command == 19 && c->pg3 == 1 && key == 8 && !c->typing) {
         c->pg3 = 0;             /* [BS]前項 */
+        return 1;
+    }
+    /* 文字 ③角度指定 の欄の鍵。 */
+    if (c->command == 13 && c->text_ang_ask) {
+        if (key == 27) {
+            c->text_ang_ask = 0;
+            c->typing = 0;
+            c->typed_n = 0;
+            c->top_item = 0;
+            return 1;
+        }
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            c->text_ang = c->typed_n ? field_eval(c->typed) : 0.0;
+            c->text_vert = 0;
+            c->text_ang_ask = 0;
+            c->typing = 0;
+            c->typed_n = 0;
+            c->typed[0] = 0;
+            c->stage = 2;
+            c->top_item = 1;    /* ①水平 の行（src/item.h） */
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (FIELD_CHAR(key) && c->typed_n < 10) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
         return 1;
     }
     /* 面取 ③寸法= の欄の鍵。 */
@@ -11109,6 +11160,22 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             jwc_remove_arc(d, j);
         }
         c->stage = 1;
+        return 1;
+    }
+    if (c->command == 13 && c->text_ang_ask) {
+        /* ③角度指定 の欄での押し：左は `0 度`、右は `前回と同じ`。どちらも
+         * 基点にはならず、行は ①水平 のものへ（測定：text_c3 で押したあと
+         * `AB` [Enter] は何も書かない）。 */
+        if (!right) {
+            c->text_ang = 0.0;
+        }
+        c->text_vert = 0;
+        c->text_ang_ask = 0;
+        c->typing = 0;
+        c->typed_n = 0;
+        c->typed[0] = 0;
+        c->stage = 2;
+        c->top_item = 1;
         return 1;
     }
     if (c->command == 13) {

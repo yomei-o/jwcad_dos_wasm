@@ -4296,6 +4296,17 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
         }
+        /* 文字 ③角度指定 の欄の字（src/item.h の行の上に。桁 15、矢印の
+         * 升はその後ろ。測定：text_c3_v で `30` を打った画面）。 */
+        if (s->command == 13 && s->text_ang_ask && s->typed_n > 0) {
+            char t[11];
+
+            memcpy(t, s->typed, 10);
+            t[s->typed_n < 10 ? s->typed_n : 10] = 0;
+            fill(v, 112, 0, 127 + s->typed_n * 8, 15, 0);
+            jw_ui_text(v, 15, 1, 7, 0, t);
+            fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
+        }
         /* And the box's rules, **after** the words: each one crosses a
          * column the words are written in, and a write paints its own cell
          * black, so a rule drawn first comes out in pieces.  Measured off
