@@ -490,6 +490,9 @@ typedef struct {
     /* ○ ②楕円：1 中心、2 `長径,短径 =` の欄、3 `長軸の平行線をマウス指示`、
      * 4 `角度 =` の欄。長径・短径・角度は命令を選び直しても残る（前回と同じ）。 */
     int ell, ell_done;
+    /* （ ①三点指示：1 始点、2 終点、3 中間点。できたら 1 に戻る。 */
+    int arc3, arc3_done;
+    double a3x[2], a3y[2], arc3_rmm;
     double ell_cx, ell_cy;
     double ell_a, ell_b, ell_ang;
     int co_undo_n, co_undo_new; /* コーナー連結：元の線の数・足した線の数 */

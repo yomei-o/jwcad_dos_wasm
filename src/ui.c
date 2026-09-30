@@ -2785,6 +2785,33 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
         }
+    } else if (s->command == 12 && s->arc3) {
+        /* （ ①三点指示 の三つの段（測定：STR=1）。 */
+        char one[80];
+
+        if (s->arc3 == 1) {
+            if (s->arc3_done) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                sprintf(one, "\x81\x9e \x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read \x94\xbc\x8c" "a=" "%g", s->arc3_rmm);
+                jw_ui_text(v, 8, 1, 7, 0, one);
+            } else {
+                jw_ui_text(v, 8, 1, 7, 0, "\x81\x9e \x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
+            }
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+        } else if (s->arc3 == 2) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 8, 1, 7, 0, "\x81\x9f \x8fI\x93_\x8ew\x8e\xa6 (L)free (R)Read ");
+        } else {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+            jw_ui_text(v, 8, 1, 7, 0, "\x92\x86\x8a\xd4\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ");
+            jw_ui_text(v, 69, 1, 7, 0, "|\x87@\x94\xbc\x8c" "a\x8ew\x92\xe8|");
+        }
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 11 && s->ell) {
         /* ○ ②楕円 の四つの段（測定：STR=1。桁は 1 から）。 */
         char one[64];
@@ -2828,6 +2855,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 15, 1, 7, 0, t);
             }
             fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
+        }
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
     } else if (((s->command == 2 || s->command == 3) && s->ask_kind)
                || (s->command == 4 && s->box_ask)) {

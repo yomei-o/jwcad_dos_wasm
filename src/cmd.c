@@ -1129,7 +1129,7 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         }
         return;
     }
-    if (!c->pressed) {
+    if (!c->pressed && !(c->command == 12 && c->arc3 == 3)) {
         return;
     }
     if (JW_RANGE_CMD(c->command) && c->pressed == 2) {
@@ -1362,6 +1362,37 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
 
         jw_arc_poly(v, fx, fy, sqrt(dx * dx + dy * dy), 10000, 0, 0, 0,
                     2, 0x18, JW_STYLE_SOLID);
+    } else if (c->command == 12 && c->arc3 == 3) {
+        /* ①三点指示の中間点を探しているあいだ：始点・終点・矢の三点を通る
+         * 弧が付いてきます（色 2、排他的論理和。記録と同じ求め方）。 */
+        const double ax = c->a3x[0], ay = c->a3y[0];
+        const double bx = c->a3x[1], by = c->a3y[1];
+        double mx, my, den, ux, uy, r;
+
+        jw_cmd_at(w, sx, sy, &mx, &my);
+        den = 2.0 * (ax * (by - my) + bx * (my - ay) + mx * (ay - by));
+        if (den != 0.0) {
+            long sa, sb, sm;
+            const long full = 360L << 16;
+
+            ux = ((ax * ax + ay * ay) * (by - my) + (bx * bx + by * by) * (my - ay)
+                  + (mx * mx + my * my) * (ay - by)) / den;
+            uy = ((ax * ax + ay * ay) * (mx - bx) + (bx * bx + by * by) * (ax - mx)
+                  + (mx * mx + my * my) * (bx - ax)) / den;
+            r = hypot_of(ax - ux, ay - uy);
+            sa = ang16(ux, uy, ax, ay);
+            sb = ang16(ux, uy, bx, by);
+            sm = ang16(ux, uy, mx, my);
+            {
+                const long ab = ((sb - sa) % full + full) % full;
+                const long am = ((sm - sa) % full + full) % full;
+
+                jw_arc_poly(v, (ux - w->ox) * w->scale + w->ax,
+                            w->ay - (uy - w->oy) * w->scale, r * w->scale,
+                            10000, am < ab ? sa : sb, am < ab ? sb : sa, 0,
+                            2, 0x18, JW_STYLE_SOLID);
+            }
+        }
     } else if (c->command == 12 && c->pressed == 2 && !c->arc_ask) {
         /* 「（」の始点を取ったあと：始点から矢の向きまでの弧が付いてきます
          * （前は何も出していなかった：本物との差 118 画素）。記録と同じく
@@ -4110,6 +4141,13 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         return 1;
     }
     /* （ の ②角度指定（始点を取って `） 終点指示` のとき）。 */
+    /* （ ①三点指示（段 0 の ①）。`◇ 始点指示 … [BS]前項` へ（測定）。 */
+    if (c->command == 12 && item == 1 && !c->pressed && !c->arc3
+        && c->stage == 0) {
+        c->arc3 = 1;
+        c->arc3_done = 0;
+        return 1;
+    }
     if (c->command == 12 && c->pressed == 2 && item == 1) {
         c->arc_ask = 2;
         c->typing = 1;
@@ -5374,6 +5412,27 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* **欄の中の [ESC]** は欄を閉じて元の行に戻るだけ（測定：／ の ②寸法
      * で 50 を打って [ESC] → `・◇始点指示 … |⑤垂 直 |`、何も固定しない）。 */
+    /* （ ①三点指示 の [BS]前項・[ESC]（一つ前の点へ。未測定）。 */
+    if (c->command == 12 && c->arc3 && !c->typing) {
+        if (key == 8 && c->arc3 == 1) {
+            c->arc3 = 0;
+            c->arc3_done = 0;
+            return 1;
+        }
+        if (key == 27) {
+            if (c->arc3 > 1) {
+                c->arc3--;
+                /* 始点の段に戻ると `[ESC]` も `半径=` も無い行（測定）。 */
+                if (c->arc3 == 1) {
+                    c->arc3_done = 0;
+                }
+            } else {
+                c->arc3 = 0;
+                c->arc3_done = 0;
+            }
+            return 1;
+        }
+    }
     /* ○ ②楕円 の欄と [BS]・[ESC]。 */
     if (c->command == 11 && c->ell) {
         if (c->ell == 1 && key == 8 && !c->typing) {
@@ -14233,6 +14292,64 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * the radius is the distance to the second.  RESUME 4.13. */
         double a0, a1;
 
+        if (c->arc3) {
+            /* ①三点指示：始点・終点・中間点。弧は三点を通る円の、始点から
+             * 終点へ中間点を通る側（記録はいつも左回りなので、中間点が
+             * 左回りの内に入らなければ始点と終点を入れ替える）。最後の
+             * バイトは 0x12（（ の弧と同じ）。測定：SAMPLE0 で (400,140)
+             * → (300,250) → (450,330) が 中心 (279.959,221.673)、
+             * 半径 101.3311、184.9103..90.5424。 */
+            if (!take(c, d, w, sx, sy, right, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            if (c->arc3 < 3) {
+                c->a3x[c->arc3 - 1] = x;
+                c->a3y[c->arc3 - 1] = y;
+                c->arc3++;
+                return 1;
+            }
+            {
+                const double ax = c->a3x[0], ay = c->a3y[0];
+                const double bx = c->a3x[1], by = c->a3y[1];
+                const double den = 2.0 * (ax * (by - y) + bx * (y - ay)
+                                          + x * (ay - by));
+                double ux, uy, r;
+                long sa, sb, sm, s0, e0;
+
+                if (den == 0.0) {
+                    return 0;       /* 一直線：弧にならない（未測定） */
+                }
+                ux = ((ax * ax + ay * ay) * (by - y)
+                      + (bx * bx + by * by) * (y - ay)
+                      + (x * x + y * y) * (ay - by)) / den;
+                uy = ((ax * ax + ay * ay) * (x - bx)
+                      + (bx * bx + by * by) * (ax - x)
+                      + (x * x + y * y) * (bx - ax)) / den;
+                r = hypot_of(ax - ux, ay - uy);
+                sa = ang16(ux, uy, ax, ay);
+                sb = ang16(ux, uy, bx, by);
+                sm = ang16(ux, uy, x, y);
+                {
+                    const long full = 360L << 16;
+                    const long ab = ((sb - sa) % full + full) % full;
+                    const long am = ((sm - sa) % full + full) % full;
+
+                    s0 = am < ab ? sa : sb;
+                    e0 = am < ab ? sb : sa;
+                }
+                if (!jwc_add_arc_at(d, (float)ux, (float)uy, (float)r, s0, e0,
+                                    (unsigned char)d->line_type,
+                                    (unsigned char)d->pen,
+                                    (unsigned char)(d->write_layer), 0x12)) {
+                    return 0;
+                }
+                c->arc3_rmm = (float)r * jwc_zukei_scale(d);
+                c->arc3 = 1;
+                c->arc3_done = 1;
+                return 1;
+            }
+        }
         if (c->arc_ask && c->typing) {
             /* 欄の `任意角度 ﾏｳｽ(L)`／`任意寸法 ﾏｳｽ(L)`・`前回と同じ ﾏｳｽ(R)`。 */
             if (c->arc_ask == 2) {
