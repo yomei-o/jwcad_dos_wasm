@@ -2785,6 +2785,37 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
         }
+    } else if (s->command == 19 && s->pg3) {
+        /* 多角形 ③座標値による多角形（測定：STR=1）。 */
+        if (s->pg3 == 1) {
+            jw_ui_text(v, 8, 1, 7, 0, "\x8c\xb4\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read |\x87@\x8c\xb4\x93_\x8d\xb6\x89\xba|\x87" "A\x81yXY\x8d\xc0\x95W\x81z\x8b\xc9\x8d\xc0\x95W|");
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+        } else {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+            if (s->pg3 == 2) {
+                jw_ui_text(v, 12, 1, 7, 0, "\x8en\x93_\x8ew\x8e\xa6 ");
+            } else {
+                jw_ui_text(v, 8, 1, 7, 0, "|[F1] \x81y");
+                jw_ui_text(v, 16, 1, 7, 0, "\x90\xe2");
+                jw_ui_text(v, 18, 1, 7, 0, "\x91\xce\x81z|");
+            }
+            jw_ui_text(v, 62, 2, 7, 0xffff, "\x91O\x89\xf1 0.000,0.000mm");
+            jw_ui_text(v, 23, 1, 7, 0, "\x8d\xc0\x95W");
+            jw_ui_text(v, 28, 1, 7, 0, "X,Y");
+            jw_ui_text(v, 31, 1, 7, 0, "=");
+            jw_ui_text(v, 58, 1, 7, 0, "|");
+            jw_ui_text(v, 59, 1, 7, 0, "\x8e\xb2\x8ap");
+            jw_ui_text(v, 63, 1, 7, 0, "   0.000\xdf");
+            jw_ui_text(v, 72, 1, 7, 0, "| ");
+            jw_ui_text(v, 74, 1, 7, 0, "\x8c\xb4\x93_");
+            jw_ui_text(v, 78, 1, 7, 0, "\x95\xcf");
+        }
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 8 && s->ch_ask) {
         /* 面取 ③寸法= の欄（測定：STR=1）。 */
         char one[32];
@@ -5757,6 +5788,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                            "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                            "\x5b" "\x83" "\x5e" "\x96" "\xb3");
             }
+        }
+        /* ＜ の `残切断点 20` は線切断のたびに減ります（桁 77。測定）。 */
+        if (s->command == 7 && s->cut_n > 0) {
+            char nb[4];
+
+            sprintf(nb, "%2d", 20 - s->cut_n);
+            jw_ui_text(v, 77, 1, 7, 0, nb);
         }
         /* ○ ③(n)重円 の数と `|④単円|`（測定：桁 65 と 73）。 */
         if (s->command == 11 && s->circ_multi > 1 && s->stage == 1

@@ -469,6 +469,8 @@ static void sync_ui(void)
     ui.circ_ask = cmd.circ_ask;
     ui.ell = cmd.ell;
     ui.circ_multi = cmd.circ_multi;
+    ui.cut_n = cmd.cut_n;
+    ui.pg3 = cmd.pg3;
     ui.ch_ask = cmd.ch_ask;
     ui.box_refask = cmd.box_refask;
     ui.arc3 = cmd.arc3;
@@ -4001,6 +4003,11 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         ui.keep_msg = 0;
         ui.offset_msg = 0;
         present();
+    }
+    /* [ESC] は `読取可能データ無` を消します（行を書き直すので。測定：
+     * 複写・移動・消去 などで外れた読取のあとの [ESC]）。 */
+    if (key == 27) {
+        cmd.missed = 0;
     }
 
     /* **①倍率 横,縦 の打鍵。** 図形 (27) の ◆倍率 とまったく同じで、

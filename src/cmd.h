@@ -492,6 +492,13 @@ typedef struct {
     int ell, ell_done;
     /* ○ ③重円 の数（1 は単円）と、①径指定 を押したとき持っていた中心。 */
     int circ_multi;
+    /* コーナー連結 の 線切断：`残切断点 20` から一つずつ減り、切った所に
+     * 小さな白い輪が残る（測定）。 */
+    int cut_n;
+    double cut_px[20], cut_py[20];
+    /* 多角形 ③座標値による多角形：1 原点、2 始点、3 次の点（辺を足す）。 */
+    int pg3, pg3_n;
+    double pg3_x, pg3_y;
     int ch_ask;                 /* 面取 ③寸法= の欄 */
     /* □ ③平行：1 なら `基準線　マウス指示`、box_ref なら傾きは基準線から。 */
     int box_refask, box_ref;

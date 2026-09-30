@@ -3265,6 +3265,23 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      *
      * `jw_view_line` は色の引数を見ない（線のペンで描く）ので、ここは
      * `jw_line` に画面の座標を渡します。 */
+    /* コーナー連結 の 線切断 の印：切った所に半径 2 の白い輪（上書き。
+     * 測定：(598,300) のまわり）。 */
+    if (c->command == 7) {
+        static const int RX[12] = { -1, 0, 1, -2, 2, -2, 2, -2, 2, -1, 0, 1 };
+        static const int RY[12] = { -2, -2, -2, -1, -1, 0, 0, 1, 1, 2, 2, 2 };
+        int i, j;
+
+        for (i = 0; i < c->cut_n; i++) {
+            int px, py;
+
+            at_screen(w, c->cut_px[i], c->cut_py[i], &px, &py);
+            for (j = 0; j < 12; j++) {
+                jw_line(v, px + RX[j], py + RY[j], px + RX[j], py + RY[j], 7,
+                        ROP_REPLACE, JW_STYLE_SOLID);
+            }
+        }
+    }
     /* 線消 の部分消去：押した線は切り終えるまで赤（色 2。測定）。 */
     if (c->command == 10 && (c->stage == 2 || c->stage == 3)
         && c->ld_line >= 0 && c->ld_line < d->n_lines) {
@@ -4200,6 +4217,13 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         return 1;
     }
     /* □ の ②角度：`角度 =` の欄（＋ と同じ形の欄）。 */
+    /* 多角形 ③座標値による多角形（測定：STR）。 */
+    if (c->command == 19 && item == 3 && !c->pg3 && c->stage == 0
+        && !c->pressed) {
+        c->pg3 = 1;
+        c->pg3_n = 0;
+        return 1;
+    }
     /* □ ③平行：`基準線　マウス指示 |①指定解除|`（測定：STR）。その中の ①
      * は解除。 */
     if (c->command == 4 && c->box_refask && item == 1) {
@@ -5494,6 +5518,28 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* **欄の中の [ESC]** は欄を閉じて元の行に戻るだけ（測定：／ の ②寸法
      * で 50 を打って [ESC] → `・◇始点指示 … |⑤垂 直 |`、何も固定しない）。 */
+    /* 多角形 ③ の [ESC]：辺があれば最後の一本を消してその始点へ（何度でも。
+     * 測定：三本引いて [ESC] 二回で一本に）。辺が無ければ一つ前の段へ。 */
+    if (c->command == 19 && c->pg3 && key == 27 && !c->typing) {
+        if (c->pg3 == 3 && c->pg3_n > 0 && d && d->n_lines > 0) {
+            const JwcLine l = d->lines[d->n_lines - 1];
+
+            jwc_remove_line(d, d->n_lines - 1);
+            jwc_ink_clear(d);
+            c->pg3_x = l.x0;
+            c->pg3_y = l.y0;
+            c->pg3_n--;
+        } else if (c->pg3 > 1) {
+            c->pg3--;
+        } else {
+            c->pg3 = 0;
+        }
+        return 1;
+    }
+    if (c->command == 19 && c->pg3 == 1 && key == 8 && !c->typing) {
+        c->pg3 = 0;             /* [BS]前項 */
+        return 1;
+    }
     /* 面取 ③寸法= の欄の鍵。 */
     if (c->command == 8 && c->ch_ask) {
         if (key == 27) {
@@ -5730,6 +5776,10 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
         }
         jwc_ink_clear(d);
+        /* 線切断を戻したなら `残切断点` と輪の印も一つ戻る（測定）。 */
+        if (c->command == 7 && c->co_undo_n == 1 && c->cut_n > 0) {
+            c->cut_n--;
+        }
         c->co_undo_n = 0;
         c->stage = 0;
         return 1;
@@ -10564,8 +10614,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->typed_n = 0;
             c->typed[0] = 0;
             /* 線はまだ作りません：`○ 複写方向マウス指示(L)` の段で、次の押し
-             * の側に入ります（測定：点指示のあとも線数 30）。 */
+             * の側に入ります（測定：点指示のあとも線数 30）。仮の線は押した
+             * その場で出ます（測定：y=250 に赤）。 */
             c->stage = 2;
+            jw_cmd_track(c, d, w, sx, sy);
+            c->moved = 1;
             return 1;
         }
         if (c->typing) {
@@ -10641,6 +10694,31 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;
         }
         return offset_line(c, d, w, sx, sy);
+    }
+    if (c->command == 19 && c->pg3) {
+        /* ③座標値による多角形：原点 → 始点 → 押すたびに前の点から辺を一本
+         * （rest[1] = 6。測定：(300,250) → (450,330) → (162,250) →
+         * (350,350) で三本）。座標を打つ欄はまだ。 */
+        if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+            c->missed = 1;
+            return 0;
+        }
+        if (c->pg3 == 1) {
+            c->pg3 = 2;
+            return 1;
+        }
+        if (c->pg3 == 3 && jwc_add_line(d, (float)c->pg3_x, (float)c->pg3_y,
+                                        (float)x, (float)y,
+                                        (unsigned char)d->line_type,
+                                        (unsigned char)d->pen,
+                                        (unsigned char)d->write_layer)) {
+            d->lines[d->n_lines - 1].rest[1] = 6;
+            c->pg3_n++;
+        }
+        c->pg3_x = x;
+        c->pg3_y = y;
+        c->pg3 = 3;
+        return 1;
     }
     if (c->command == 11 && c->ell) {
         /* ○ ②楕円 の押し。 */
@@ -14070,6 +14148,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->co_undo[0] = l;
             c->co_undo_n = 1;
             c->co_undo_new = 2;
+            if (c->cut_n < 20) {
+                c->cut_px[c->cut_n] = qx;
+                c->cut_py[c->cut_n] = qy;
+                c->cut_n++;
+            }
             c->stage = 2;
             return 1;
         }
