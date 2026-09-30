@@ -78,7 +78,9 @@ else
     cp "tmp/sroot/$DRAWING.JWC" "$D/orig.JWC"
     cp "$D/orig.JWC" "$CACHE/$key.JWC"
 fi
-OUT="$D/port.JWC" "$NODE" tools/portrec.mjs "orig/$DRAWING.JWC" "$@" "move 400 250" > /dev/null
+# PORTREC で別の写し（tmp/snap など）の移植を使えます——比べている最中に
+# 作り直しても、途中から別の版と比べることになりません。
+OUT="$D/port.JWC" "$NODE" "${PORTREC:-tools/portrec.mjs}" "orig/$DRAWING.JWC" "$@" "move 400 250" > /dev/null
 
 for f in orig port; do
     {

@@ -5194,6 +5194,10 @@ static int offset_line(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
                       (unsigned char)d->write_layer)) {
         return 0;
     }
+    /* rest[1] は元の線のもの（測定：SAMPLE0 の上の辺 0x41 の複線は 0x41）。 */
+    if (c->pick >= 0 && c->pick < d->n_lines - 1) {
+        d->lines[d->n_lines - 1].rest[1] = d->lines[c->pick].rest[1];
+    }
     /* 「②連続」 puts another copy the same distance beyond this one, so what
      * it works from is the copy, not the line that was pointed at. */
     c->lx0 = ax; c->ly0 = ay; c->lx1 = bx; c->ly1 = by;
@@ -5395,6 +5399,49 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->fix_done = 0;
         c->stage = 0;
         c->moved = 0;
+        return 1;
+    }
+    /* 線伸縮 の取り消し：何も持っていないときの [ESC] は、最後に伸縮した線を
+     * 抜いて元の線を**最後に足し直します**（測定：左の辺を伸縮して [ESC] で
+     * 元の座標に戻り、記録は並びの最後へ。行は `[ESC]` の無い段 0）。一回だけ。 */
+    if (key == 27 && d && c->command == 6 && !c->typing && c->pick_a < 0
+        && c->st_undo_on && d->n_lines > 0) {
+        JwcLine was = c->st_undo;
+
+        jwc_remove_line(d, d->n_lines - 1);
+        if (jwc_add_line(d, was.x0, was.y0, was.x1, was.y1, was.type, was.pen,
+                         was.layer)) {
+            memcpy(d->lines[d->n_lines - 1].rest, was.rest, 4);
+            d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~1u;
+        }
+        jwc_ink_clear(d);
+        c->st_undo_on = 0;
+        c->stage = 0;
+        return 1;
+    }
+    /* コーナー連結・線切断 の取り消し：最後の操作で足した線を抜き、元の線を
+     * 最後に足し直します（測定：右の辺を切ったあと [ESC] で元の 1 本が
+     * 並びの最後に。`＊お待ち下さい＊` のあと行は `[ESC]` の無い段 0）。 */
+    if (key == 27 && d && c->command == 7 && !c->typing && c->pick_a < 0
+        && c->co_undo_n > 0 && d->n_lines >= c->co_undo_new) {
+        int i;
+
+        for (i = 0; i < c->co_undo_new; i++) {
+            jwc_remove_line(d, d->n_lines - 1);
+        }
+        for (i = 0; i < c->co_undo_n; i++) {
+            const JwcLine was = c->co_undo[i];
+
+            if (jwc_add_line(d, was.x0, was.y0, was.x1, was.y1, was.type,
+                             was.pen, was.layer)) {
+                memcpy(d->lines[d->n_lines - 1].rest, was.rest, 4);
+                /* 読取の印は付いていません（測定）。 */
+                d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~1u;
+            }
+        }
+        jwc_ink_clear(d);
+        c->co_undo_n = 0;
+        c->stage = 0;
         return 1;
     }
     /* 線消 の部分消去の [ESC]：終点 → 始点（線は選んだまま）→ 最初の行
@@ -6787,26 +6834,29 @@ static void centre_line(JwCmd *c, Jwc *d, const JwView *w, double px, double py)
 
 /* 線伸縮's second press: the end of the line nearer the first press moves to
  * the foot of the perpendicular from the point given. */
-static void stretch_to(JwCmd *c, Jwc *d, const JwView *w, long k,
-                       int sx, int sy, int right)
+static int stretch_to(JwCmd *c, Jwc *d, const JwView *w, long k,
+                      int sx, int sy, int right)
 {
     double px, py, ax, ay, t, fx, fy, dx, dy, n;
     const JwcLine *l;
     int near0;
 
     if (!d || k < 0 || k >= d->n_lines) {
-        return;
+        return 1;
     }
     if (!take(c, d, w, sx, sy, right, &px, &py)) {
-        return;                 /* 読取可能データ無: nothing taken, nothing moves */
+        return 0;               /* 読取可能データ無: nothing taken, nothing moves */
     }
     l = &d->lines[k];
     dx = l->x1 - l->x0;
     dy = l->y1 - l->y0;
     n = dx * dx + dy * dy;
     if (n <= 0.0) {
-        return;
+        return 1;
     }
+    /* 取り消し（[ESC]）のために元の線を控えます。 */
+    c->st_undo = *l;
+    c->st_undo_on = 1;
     t = ((px - l->x0) * dx + (py - l->y0) * dy) / n;
     fx = l->x0 + t * dx;
     fy = l->y0 + t * dy;
@@ -6819,6 +6869,7 @@ static void stretch_to(JwCmd *c, Jwc *d, const JwView *w, long k,
     } else {
         jwc_relink_line(d, k, l->x0, l->y0, (float)fx, (float)fy);
     }
+    return 1;
 }
 
 /* コーナー連結's second press: cut both lines back to their crossing and move
@@ -6844,8 +6895,29 @@ static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
      * it.  Both then sit at the end in the order they were pressed. */
     first = a;
     second = b > a ? b - 1 : b;
-    jwc_relink_line(d, first, ax, ay, (float)cx, (float)cy);
-    jwc_relink_line(d, second, bx, by, (float)cx, (float)cy);
+    /* **切り捨てる側の端点だけを交点に置き換え、始点・終点の並びは保ちます**
+     * （測定：上の辺 (161.973..598) を x=400 で、左の辺を押すと
+     * (161.973,139.943)-(598,139.943) のまま。前は 残す端→交点 の順に
+     * 書いていて、上の辺が逆向きになっていた）。 */
+    c->co_undo[0] = d->lines[a];
+    c->co_undo[1] = d->lines[b];
+    c->co_undo_n = 2;
+    c->co_undo_new = 2;
+    {
+        const JwcLine la = d->lines[first];
+        const int ka = (ax == la.x0 && ay == la.y0);
+
+        jwc_relink_line(d, first, ka ? la.x0 : (float)cx, ka ? la.y0 : (float)cy,
+                        ka ? (float)cx : la.x1, ka ? (float)cy : la.y1);
+    }
+    {
+        const JwcLine lb = d->lines[second];
+        const int kb = (bx == lb.x0 && by == lb.y0);
+
+        jwc_relink_line(d, second, kb ? lb.x0 : (float)cx,
+                        kb ? lb.y0 : (float)cy,
+                        kb ? (float)cx : lb.x1, kb ? (float)cy : lb.y1);
+    }
 }
 
 /* 寸法の線は本物の線の入口 11f2:67fa を通るので、**長さ 0 の線は入りません**
@@ -10049,6 +10121,31 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * units the same way the panel's lengths go the other way:
          * `gap * unit_mm / denom`.  SAMPLE0's line at y=157 with 10, 20 and 40
          * lands on 139, 122 and 87, which is that, truncated. */
+        if (c->typing && c->stage == 1) {
+            /* `点指示 or 間隔=` の欄で**図面を押すと点指示**：押した点までの
+             * 隔たりが間隔になります（測定：上の辺を選んで (300,250) を押すと
+             * `[ 63.10]`、次に下側を押すと y=250 の線）。 */
+            const double dx = c->lx1 - c->lx0, dy = c->ly1 - c->ly0;
+            const double len = sqrt(dx * dx + dy * dy);
+            double px, py, away;
+
+            if (len <= 0.0) {
+                return 0;
+            }
+            jw_cmd_at(w, sx, sy, &px, &py);
+            away = ((px - c->lx0) * dy - (py - c->ly0) * dx) / len;
+            c->gap = (away < 0.0 ? -away : away) / c->per_mm;
+            c->num[0] = c->num[1] = c->gap;
+            c->dec[0] = 2;
+            c->dec[1] = d->decimals;
+            c->typing = 0;
+            c->typed_n = 0;
+            c->typed[0] = 0;
+            /* 線はまだ作りません：`○ 複写方向マウス指示(L)` の段で、次の押し
+             * の側に入ります（測定：点指示のあとも線数 30）。 */
+            c->stage = 2;
+            return 1;
+        }
         if (c->typing) {
             return 0;           /* the number has to be finished first */
         }
@@ -13397,7 +13494,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             const long k = pick_line(d, w, sx, sy);
 
             if (k < 0) {
+                /* 外れると行は `[ESC]` の無い段 0 に戻ります（測定）。 */
                 c->missed = 1;
+                c->stage = 0;
                 return 0;
             }
             c->missed = 0;
@@ -13428,7 +13527,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 1;
             return 1;
         }
-        stretch_to(c, d, w, c->pick_a, sx, sy, right);
+        /* 読取が外れたら同じ段のまま待ちます（測定：`サーチ`
+         * `.読取可能データ無` のあとも `○ 線伸縮の 指定点 をマウス指示`）。 */
+        if (!stretch_to(c, d, w, c->pick_a, sx, sy, right)) {
+            c->missed = 1;
+            return 0;
+        }
         c->pick_a = -1;
         c->stage = 2;
         return 1;
@@ -13459,6 +13563,40 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;
         }
         c->missed = 0;
+        if (c->pick_a < 0 && right) {
+            /* **線切断 ﾏｳｽ(R)**：押した点を線に下ろした所で二本に分けます。
+             * 元の線を抜き、始点側・終点側の順に最後へ（測定：右の辺を
+             * (598,300) で切ると 139.943〜300 と 300〜419 の 2 本）。
+             * 座標系は 1bb4:27ea と同じ float の cos/sin、原点は始点。 */
+            const JwcLine l = d->lines[k];
+            const double dx = (double)l.x1 - l.x0, dy = (double)l.y1 - l.y0;
+            const double len = sqrt(dy * dy + dx * dx);
+            float cs, sn, u, qx, qy;
+            double px, py;
+
+            if (len <= 0.0) {
+                return 0;
+            }
+            cs = (float)(dx / len);
+            sn = (float)(dy / len);
+            jw_cmd_at(w, sx, sy, &px, &py);
+            u = (float)(((double)(float)py - l.y0) * sn
+                        + ((double)(float)px - l.x0) * cs);
+            qx = (float)((double)cs * u + l.x0);
+            qy = (float)((double)sn * u + l.y0);
+            jwc_remove_line(d, k);
+            if (jwc_add_line(d, l.x0, l.y0, qx, qy, l.type, l.pen, l.layer)) {
+                memcpy(d->lines[d->n_lines - 1].rest, l.rest, 4);
+            }
+            if (jwc_add_line(d, qx, qy, l.x1, l.y1, l.type, l.pen, l.layer)) {
+                memcpy(d->lines[d->n_lines - 1].rest, l.rest, 4);
+            }
+            c->co_undo[0] = l;
+            c->co_undo_n = 1;
+            c->co_undo_new = 2;
+            c->stage = 2;
+            return 1;
+        }
         if (c->pick_a < 0) {
             c->pick_a = k;
             c->pick_x = sx;

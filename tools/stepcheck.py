@@ -29,7 +29,7 @@ def raw(p):
 def main():
     lists = [a for a in sys.argv[1:] if os.path.exists(a)]
     only = [a for a in sys.argv[1:] if not os.path.exists(a)]
-    out = os.path.join(ROOT, 'tmp/stepcheck')
+    out = os.path.join(ROOT, os.environ.get('STEPOUT', 'tmp/stepcheck'))
     os.makedirs(out, exist_ok=True)
     same = diff = unknown = 0
     for name, drawing, steps in rbatch.cases(lists):
@@ -39,7 +39,8 @@ def main():
         for f in os.listdir(out):
             if f.startswith(name + '.'):
                 os.remove(os.path.join(out, f))
-        subprocess.run([NODE, os.path.join(HERE, 'stepshots.mjs'),
+        subprocess.run([NODE, os.environ.get('STEPSHOTS',
+                                             os.path.join(HERE, 'stepshots.mjs')),
                         'orig/%s.JWC' % drawing, base] + steps,
                        cwd=ROOT, check=True)
         first = None

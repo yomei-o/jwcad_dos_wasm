@@ -487,6 +487,10 @@ typedef struct {
      * 映した所）。本物は DGROUP 0x0fdc に角度を float で持つ。 */
     int fix_angle;
     int line_done;
+    int co_undo_n, co_undo_new; /* コーナー連結：元の線の数・足した線の数 */
+    JwcLine co_undo[2];         /* 　　　　　　　元の線 */
+    int st_undo_on;             /* 線伸縮：取り消せる線がある */
+    JwcLine st_undo;            /* 　　　　伸縮する前の線 */
     long ld_line;               /* 線消 部分消去：押した線 */
     float ld_u0;                /* 　　　　　　　 始点の位置（線の上） */
     int range_marked;           /* 範囲の印（rest の bit1）を落として付け直している */              /* ＋・／ で一本でも引いた */
