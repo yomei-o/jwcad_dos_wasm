@@ -4608,6 +4608,13 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
      * ①範囲内消去 reddens 224 in the box.
      *
      * ③指定範囲 is the data selection 複写 and 移動 use; it is not done. */
+    /* 文字 ⑥：縦字に切り替える。行は src/item.h のまま（`⑥(縦)`）。縦字
+     * で書いた文字は記録の rest[2] に 0x20 が立つ（測定：text_c6、座標は
+     * 横字と同じ）。もう一度押して横に戻るかは未測定。 */
+    if (c->command == 13 && item == 6 && !c->typing_text) {
+        c->text_tate = !c->text_tate;
+        return 0;
+    }
     if (c->command == 13 && (item == 1 || item == 2)) {
         /* `文字種類[F4] |①水平(L,R)|②垂直|③角度指定|④設定|…` -- ①水平 is
          * what a press in the drawing takes, and ②垂直 turns the baseline
@@ -5674,6 +5681,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                                  (float)(c->x0 + (c->text_vert ? 0.0 : len)),
                                  (float)(c->y0 + (c->text_vert ? len : 0.0)),
                                  c->typed, size, layer)) {
+                    if (c->text_tate) {
+                        d->texts[d->n_texts - 1].rest[2] |= 0x20;
+                    }
                     c->tx_undo = 1;
                 }
             }
