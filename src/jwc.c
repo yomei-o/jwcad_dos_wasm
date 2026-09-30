@@ -1746,6 +1746,9 @@ int jwc_dup_line(Jwc *d, long k, float dx, float dy)
     l->y0 += dy;
     l->x1 += dx;
     l->y1 += dy;
+    /* 複写でできた線には読み取りの印も範囲の印も無い（rest[2] の bit0・bit1。
+     * 測定：copy_s_posr・copy_t_posr の線 30 は 0x00）。 */
+    l->rest[2] &= (unsigned char)~3u;
     dot_mark(l);
     jwc_ink_note(d, 0, JW_INK_LINE, l);
     return 1;
@@ -1825,6 +1828,7 @@ int jwc_dup_arc(Jwc *d, long k, float dx, float dy)
     *a = d->arcs[k];
     a->cx += dx;
     a->cy += dy;
+    a->rest[2] &= (unsigned char)~3u;   /* 線と同じに（円弧は未測定） */
     jwc_ink_note(d, 0, JW_INK_ARC, a);
     return 1;
 }

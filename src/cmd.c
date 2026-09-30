@@ -2997,9 +2997,16 @@ static void place_undo(JwCmd *c, Jwc *d)
 
 static void copy_by_mm(JwCmd *c, Jwc *d)
 {
-    const double per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
+    /* 1 mm の長さは 518/用紙幅 を **double** のまま使い、距離は float に
+     * 丸めて持つ（測定：[1000,1000] で線 5 の x 40.973 が 0x44df2296、
+     * 10,5 の ③連続 三つ目が 0x42ba97af——float の unit_mm や丸めない
+     * 距離では最後の 1 ビットがずれる）。 */
+    static const double PAPER[5] = { 1189.0, 841.0, 594.0, 420.0, 297.0 };
+    const double per = d->paper >= 0 && d->paper < 5
+                     ? 518.0 / PAPER[d->paper] / d->denom
+                     : d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
 
-    place_by(c, d, d->copy_x_mm * per, d->copy_y_mm * per);
+    place_by(c, d, (float)(d->copy_x_mm * per), (float)(d->copy_y_mm * per));
 }
 
 /* ①ﾏｳｽ位置's second press: the base point goes where the press is.
@@ -3228,7 +3235,13 @@ static void copy_again(JwCmd *c, Jwc *d)
         return;
     }
     if (c->command == 16) {
-        move_range(c, d, c->step_x, c->step_y);
+        /* 移動の ③連続 は、前の合計を float で戻してから n 歩の合計を足す
+         * （測定：②数値位置 10,5 のあと ③ 二回で線 5 が x0 0x42ba97af・
+         * x1 0x43230f82・y0 0x43a5e38f。一歩ずつ足すのでも、元の位置から
+         * 足し直すのでも、どれか一つがずれる）。 */
+        move_range(c, d, -(float)(c->step_x * c->copies),
+                   -(float)(c->step_y * c->copies));
+        move_range(c, d, (float)(c->step_x * n), (float)(c->step_y * n));
     } else {
         copy_range(c, d, c->step_x * n, c->step_y * n);
     }
@@ -10440,7 +10453,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     if (d && JW_RANGE_CMD(c->command)) {
         long k;
 
-        if (stage == 0 && c->stage >= 1) {
+        /* 落とすのは範囲を閉じたとき：始点の押しだけでは記録の印は残る
+         * （測定：消去で一回押しただけで保存すると SAMPLE0 の 0x02 はそのまま）。 */
+        if (pressed < 2 && c->pressed == 2) {
             for (k = 0; k < d->n_lines; k++) {
                 d->lines[k].rest[2] &= (unsigned char)~2u;
             }
