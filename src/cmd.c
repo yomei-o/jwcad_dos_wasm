@@ -1317,6 +1317,13 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
             jw_line(v, px + 1, py, px + 2, py, 4, 0x18, JW_STYLE_SOLID);
             return;
         }
+        /* ②垂直 は横倒し：足もとから左へ字の高さ、上へ 3 画素（測定：
+         * text_c2 で y 250 の x 294..299 と x 300 の y 247..249）。 */
+        if (c->typed_n == 0) {
+            jw_line(v, x1, py, px - 1, py, 4, 0x18, JW_STYLE_SOLID);
+            jw_line(v, px, py - 3, px, py - 1, 4, 0x18, JW_STYLE_SOLID);
+            return;
+        }
         jw_line(v, px, py, px, y1, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, px, y1, x1, y1, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, x1, y1, x1, py, 2, 0x18, JW_STYLE_SOLID);
@@ -11112,6 +11119,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->typed[0] = 0;
         c->typed_n = 0;
         c->typed_at = 0;
+        /* ①水平・②垂直 の升で出た行（src/item.h）はここで欄に替わる
+         * （測定：text_c1 で押すと `文字列入力──10──…` の行）。 */
+        c->top_item = 0;
+        c->top_right = 0;
         text_box(c, d);
         return 1;
     }
