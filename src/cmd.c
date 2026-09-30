@@ -2601,10 +2601,13 @@ static void turn_at(double ax, double ay, double co, double si,
                     double dx, double dy, double x, double y,
                     double *rx, double *ry)
 {
-    const double vx = x - ax, vy = y - ay;
+    /* 基点からの差も、回した差も float に丸めてから置く点を足す（測定：
+     * copy_s_rot・copy_t_rot の 16 の端点が全部合う。丸めないと線 5 の
+     * x0 が 0x427ca0cf、本物は d0）。 */
+    const double vx = (float)(x - ax), vy = (float)(y - ay);
 
-    *rx = vx * co - vy * si + dx;
-    *ry = vx * si + vy * co + dy;
+    *rx = (float)(vx * co - vy * si) + dx;
+    *ry = (float)(vx * si + vy * co) + dy;
 }
 
 static int turn_range(JwCmd *c, Jwc *d, double px, double py)

@@ -1711,15 +1711,16 @@ EMSCRIPTEN_KEEPALIVE long jw_count(int which)
 /* 検査用：いまのコマンドの状態（tools/cmdstate.mjs）。 */
 EMSCRIPTEN_KEEPALIVE const char *jw_cmd_state(void)
 {
-    static char buf[240];
+    static char buf[400];
 
     snprintf(buf, sizeof buf,
              "cmd=%d stage=%d pressed=%d typing=%d fix_mode=%d fix_done=%d "
              "fix_len=%d fix_angle=%d ask_kind=%d top_item=%d box_ask=%d "
-             "box_fix=%d circ_fix=%d",
+             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g",
              cmd.command, cmd.stage, cmd.pressed, cmd.typing, cmd.fix_mode,
              cmd.fix_done, cmd.fix_len, cmd.fix_angle, cmd.ask_kind,
-             cmd.top_item, cmd.box_ask, cmd.box_fix, cmd.circ_fix);
+             cmd.top_item, cmd.box_ask, cmd.box_fix, cmd.circ_fix,
+             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y);
     return buf;
 }
 EMSCRIPTEN_KEEPALIVE int jw_top_item(int x, int y) { return jw_ui_top_item(x, y); }
