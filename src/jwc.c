@@ -2196,6 +2196,26 @@ int jwc_add_arc_at(Jwc *d, float cx, float cy, float r, long start, long end,
     return 1;
 }
 
+int jwc_add_ellipse(Jwc *d, float cx, float cy, float r, short flatten,
+                    long tilt, unsigned char type, unsigned char pen,
+                    unsigned char layer)
+{
+    JwcArc *a;
+
+    /* 描いた跡（ink）は楕円の形で覚えます——円で覚えてから書き換えると、
+     * 描き直しまで円が残って見えます（測定で 968 画素）。 */
+    if (!jwc_add_arc_at(d, cx, cy, r, 0, 0, type, pen, layer, 0x52)) {
+        return 0;
+    }
+    a = &d->arcs[d->n_arcs - 1];
+    a->flatten = flatten;
+    a->tilt = tilt;
+    if (d->n_ink > 0) {
+        d->ink[d->n_ink - 1].u.a = *a;
+    }
+    return 1;
+}
+
 /* Every coordinate the drawing holds, times k.  Both 紙 and the scale beside
  * it work this way: the numbers in the file are millimetres of paper turned
  * into units with 518/width, so changing either changes what a stored number

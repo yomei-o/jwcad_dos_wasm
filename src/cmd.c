@@ -22,6 +22,7 @@ void jw_cmd_pick(JwCmd *c, int command)
     const double keep_ba = c->box_ang;
     const double keep_aa = c->arc_ang;
     const double keep_ar = c->arc_r;
+    const double keep_ea = c->ell_a, keep_eb = c->ell_b, keep_ee = c->ell_ang;
 
     free(c->hen_end);
     free(c->sel_line);
@@ -92,6 +93,10 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->box_ang = had ? keep_ba : 45.0;
     c->arc_ang = had ? keep_aa : 90.0;
     c->arc_r = had ? keep_ar : 1000.0;
+    /* ○ ②楕円 の `[1000.000, 500.000mm]` と `[  90.000ﾟ]`（本物の初め）。 */
+    c->ell_a = keep_ea > 0.0 ? keep_ea : 1000.0;
+    c->ell_b = keep_eb > 0.0 ? keep_eb : 500.0;
+    c->ell_ang = keep_ee != 0.0 || keep_ea > 0.0 ? keep_ee : 90.0;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
@@ -309,6 +314,7 @@ static void par_dir(const JwCmd *c, double *x, double *y)
 }
 
 static long ang16(double x1, double y1, double x2, double y2);
+static int ellipse_put(JwCmd *c, Jwc *d, double deg);
 
 /* ＋ の ④平行・垂直：基準線の座標系で、矢の長いほうの軸だけを残します
  * （本物は ovl23 の 0x2d097〜0x2d20e。1bb4:2981/2a18 の向き 1 で (u,v) に
@@ -4140,8 +4146,23 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->box_bj = -DY[c->box_base];
         return 1;
     }
+    /* ○ ②楕円（測定：STR）。`○ 楕円中心点 マウス指示 … [BS]前項` へ。 */
+    if (c->command == 11 && item == 2 && !c->circ_fix && !c->ell
+        && c->stage == 0 && !c->pressed) {
+        c->ell = 1;
+        c->ell_done = 0;
+        return 1;
+    }
+    /* 楕円の `長軸の平行線をマウス指示 |①角度指定|` の ①。 */
+    if (c->command == 11 && c->ell == 3 && item == 1) {
+        c->ell = 4;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 1;
+    }
     /* ○ の ①径寸法：`半 径 =` の欄を開きます（前は src/item.h の画面だけ）。 */
-    if (c->command == 11 && item == 1) {
+    if (c->command == 11 && item == 1 && !c->ell) {
         /* 中心を押したあとの `① 径指定` も同じ欄で、押した中心は捨てて
          * 半径を決めて置く状態になります（測定：中心のあと 1 → 25 [Enter]
          * → ` ● 円位置指示` で `半径=    25.000`、次の押しで置く）。 */
@@ -5353,6 +5374,73 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* **欄の中の [ESC]** は欄を閉じて元の行に戻るだけ（測定：／ の ②寸法
      * で 50 を打って [ESC] → `・◇始点指示 … |⑤垂 直 |`、何も固定しない）。 */
+    /* ○ ②楕円 の欄と [BS]・[ESC]。 */
+    if (c->command == 11 && c->ell) {
+        if (c->ell == 1 && key == 8 && !c->typing) {
+            c->ell = 0;         /* `[BS]前項`：○ の最初の行へ */
+            c->ell_done = 0;
+            return 1;
+        }
+        if (key == 27) {
+            /* 一つ前へ（中心 → ○ の最初の行。未測定の段は中心へ）。 */
+            c->typing = 0;
+            c->typed_n = 0;
+            c->typed[0] = 0;
+            if (c->ell == 1) {
+                c->ell = 0;
+                c->ell_done = 0;
+            } else {
+                c->ell = 1;
+            }
+            return 1;
+        }
+        if (c->typing && (c->ell == 2 || c->ell == 4)) {
+            if (key == 13 || key == 10) {
+                c->typed[c->typed_n] = 0;
+                if (c->ell == 2) {
+                    /* `長径,短径`。打たなかった側は前のまま。 */
+                    const char *comma = strchr(c->typed, ',');
+                    double a = c->ell_a, b = c->ell_b;
+
+                    if (c->typed_n && c->typed[0] != ',') {
+                        a = field_eval(c->typed);
+                    }
+                    if (comma && comma[1]) {
+                        b = field_eval(comma + 1);
+                    }
+                    if (a <= 0.0 || b <= 0.0) {
+                        c->typed[0] = 0;
+                        c->typed_n = 0;
+                        return 1;
+                    }
+                    c->ell_a = a;
+                    c->ell_b = b;
+                    c->typing = 0;
+                    c->typed_n = 0;
+                    c->ell = 3;
+                    return 1;
+                }
+                {
+                    const double deg = c->typed_n ? field_eval(c->typed)
+                                                  : c->ell_ang;
+
+                    c->typed_n = 0;
+                    return ellipse_put(c, d, deg);
+                }
+            }
+            if (key == 8) {
+                if (c->typed_n > 0) {
+                    c->typed[--c->typed_n] = 0;
+                }
+                return 1;
+            }
+            if (FIELD_CHAR(key) && c->typed_n < 16) {
+                c->typed[c->typed_n++] = (char)key;
+                c->typed[c->typed_n] = 0;
+            }
+            return 1;
+        }
+    }
     /* 複線 の [ESC]：向きを聞いているとき（段 2）は `点指示 or 間隔=` の欄に
      * 戻り、欄からは段 0 の `線指示 …` へ（測定：offset_plain の 11・13 段目）。 */
     if (key == 27 && c->command == 5 && !c->typing && c->stage == 2) {
@@ -10033,7 +10121,12 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
             c->undo_to.y0 = y0;
             c->undo_to.x1 = x1;
             c->undo_to.y1 = y1;
-        } else {
+        }
+        /* 何も足さない押し（次の始点など）では、＋・／・□ は控えを捨てません：
+         * 本物は次に何かを足すまで最後の一つを取り消せます（測定：＋ で線を
+         * 引き、次の始点を押してから [ESC] 二回で、その線が消える）。○・（ は
+         * 捨てます（測定：次の中心を押したあとの [ESC] 二回で円は残る）。 */
+        else if (c->command == 11 || c->command == 12) {
             c->undo_lines = c->undo_arcs = c->undo_texts = 0;
         }
     }
@@ -10131,6 +10224,33 @@ static int ref_pick(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
         jw_cmd_track(c, d, w, sx, sy);
         c->moved = 1;
     }
+    return 1;
+}
+
+/* 楕円を置きます。測定（SAMPLE0、100,50 と 30 度）：
+ *   c=(179,213)（押した中心）、r=174.4108（100mm）、flatten 5000、tilt 30 度、
+ *   始角・終角 0（一周）、最後のバイト 0x52（○ と同じ）。
+ * 長径は**半径**として入ります（r = 長径 / 縮尺）、flatten = 短径/長径 x 10000。
+ * 置いたら `○ 楕円中心点 …` に戻り、数え箱は `長径=` `短径=`。 */
+static int ellipse_put(JwCmd *c, Jwc *d, double deg)
+{
+    const float r = (float)c->ell_a / jwc_zukei_scale(d);
+    const double t = deg - 360.0 * floor(deg / 360.0);
+
+    if (!jwc_add_ellipse(d, (float)c->ell_cx, (float)c->ell_cy, r,
+                         (short)(c->ell_b / c->ell_a * 10000.0 + 0.5),
+                         fixed16(t), (unsigned char)d->line_type,
+                         (unsigned char)d->pen,
+                         (unsigned char)d->write_layer)) {
+        return 0;
+    }
+    c->ell_ang = deg;
+    c->num[0] = (float)c->ell_a;
+    c->num[1] = (float)c->ell_b;
+    c->dec[0] = c->dec[1] = d->decimals;
+    c->ell = 1;
+    c->ell_done = 1;
+    c->typing = 0;
     return 1;
 }
 
@@ -10308,6 +10428,51 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;
         }
         return offset_line(c, d, w, sx, sy);
+    }
+    if (c->command == 11 && c->ell) {
+        /* ○ ②楕円 の押し。 */
+        if (c->ell == 1) {
+            if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->ell_cx = x;
+            c->ell_cy = y;
+            c->ell = 2;
+            c->typing = 1;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            return 1;
+        }
+        if (c->ell == 2) {
+            /* `前回と同じ ﾏｳｽ(R)`。`任意寸法ﾏｳｽ(L)`（１点目・２点目）はまだ。 */
+            if (!right) {
+                return 0;
+            }
+            c->typing = 0;
+            c->ell = 3;
+            return 1;
+        }
+        if (c->ell == 3) {
+            /* 長軸を押した線と平行に：傾きはその線の向き（0def:2828）。 */
+            const long k = pick_line(d, w, sx, sy);
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            return ellipse_put(c, d, (double)ang16(d->lines[k].x0,
+                                                   d->lines[k].y0,
+                                                   d->lines[k].x1,
+                                                   d->lines[k].y1)
+                                     * 1.52587890625e-05);
+        }
+        if (c->ell == 4) {
+            /* `0 度 ﾏｳｽ(L)`・`前回と同じ ﾏｳｽ(R)`。 */
+            c->typing = 0;
+            return ellipse_put(c, d, right ? c->ell_ang : 0.0);
+        }
+        return 0;
     }
     if (c->command == 10 && (c->stage == 2 || c->stage == 3)) {
         /* 部分消去の始点・終点。点は線に下ろします：座標系は 1bb4:27ea と

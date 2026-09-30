@@ -444,6 +444,11 @@ int jwc_add_arc_at(Jwc *d, float cx, float cy, float r, long start, long end,
                    unsigned char type, unsigned char pen, unsigned char layer,
                    unsigned char mark);
 
+/* An ellipse: ○ ②楕円. */
+int jwc_add_ellipse(Jwc *d, float cx, float cy, float r, short flatten,
+                    long tilt, unsigned char type, unsigned char pen,
+                    unsigned char layer);
+
 /* The bounding box of everything shown. */
 void jwc_extent(const Jwc *d, float *x0, float *y0, float *x1, float *y1);
 

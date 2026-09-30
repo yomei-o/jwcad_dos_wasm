@@ -334,7 +334,9 @@ typedef struct {
     int dim_zero;               /* 0 無, 1 有 */
     int dim_end;                /* 0 点, 1 矢印 */
     int keep_box_counts;        /* □ を置いたあと ① の欄：数え箱は 横/縦 のまま */
-    int hold_counts;            /* 数え箱を線数のままにする（○ の欄を閉じた直後） */
+    int hold_counts;
+    int ell, ell_done;          /* ○ ②楕円の段（cmd.h） */
+    double ell_a, ell_b, ell_ang;            /* 数え箱を線数のままにする（○ の欄を閉じた直後） */
     int dim_unit;               /* 0 mm, 1 and 2 both print ｍ */
     int dim_dec;                /* 小数点以下 (n) 桁 */
     /* Which row is being typed into, 6/8/10/12/14/16, and what has been

@@ -2110,6 +2110,15 @@ static void counts(VGA *v, const JwUi *s)
      * a command left there would leave both readable on top of each other.  The
      * original fills (1,17)-(120,47) line by line before it writes. */
     fill(v, 1, 17, 120, 47, 4);
+    /* 楕円を置いたあとの数え箱：` 長径=   100.000  ` ` 短径=    50.000  `
+     * （測定：桁 1、黒の字）。 */
+    if (s->command == 11 && s->ell == 1 && s->ell_done) {
+        sprintf(buf, "\x92\xb7\x8c" "a=" "%10.3f  ", s->num[0]);
+        jw_ui_text(v, 1, 2, 0, 0, buf);
+        sprintf(buf, "\x92Z\x8c" "a=" "%10.3f  ", s->num[1]);
+        jw_ui_text(v, 1, 3, 0, 0, buf);
+        return;
+    }
     /* □ を置いたあと ①寸法 の欄を開いても、数え箱は置いていたときの
      * ` 横= / 縦=` のまま（測定：20,30 で置いたあと ① を押すと
      * `横= 20.000 縦= 30.000`）。 */
@@ -2775,6 +2784,50 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     stage_text(v, q, s, s->stage);
                 }
             }
+        }
+    } else if (s->command == 11 && s->ell) {
+        /* ○ ②楕円 の四つの段（測定：STR=1。桁は 1 から）。 */
+        char one[64];
+
+        if (s->ell == 1) {
+            if (s->ell_done) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            }
+            jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+            jw_ui_text(v, 8, 1, 7, 0, "\x81\x9b \x91\xc8\x89~\x92\x86\x90S\x93_ \x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ");
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+        } else if (s->ell == 2) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+            jw_ui_text(v, 8, 1, 7, 0, "\x92\xb7\x8c" "a,\x92Z\x8c" "a =");
+            jw_ui_text(v, 40, 1, 7, 0, "\x94" "C\x88\xd3\x90\xa1\x96@\xcf\xb3\xbd(L)");
+            sprintf(one, "[%8.3f,%8.3fmm]", s->ell_a, s->ell_b);
+            jw_ui_text(v, 56, 2, 7, 0xffff, one);
+            jw_ui_text(v, 56, 1, 7, 0, "\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) ");
+            if (s->typed_n > 0) {
+                char t[17];
+
+                memcpy(t, s->typed, 16);
+                t[s->typed_n < 16 ? s->typed_n : 16] = 0;
+                jw_ui_text(v, 20, 1, 7, 0, t);
+            }
+            fill(v, 152 + s->typed_n * 8, 7, 159 + s->typed_n * 8, 15, 4);
+        } else if (s->ell == 3) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 8, 1, 7, 0, "\x92\xb7\x8e\xb2\x82\xcc\x95\xbd\x8ds\x90\xfc\x82\xf0\x83}\x83" "E\x83X\x8ew\x8e\xa6 |\x87@\x8ap\x93x\x8ew\x92\xe8|");
+        } else {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+            jw_ui_text(v, 8, 1, 7, 0, "\x8ap\x93x =");
+            jw_ui_text(v, 32, 1, 7, 0, "\x81" "b0 \x93x \xcf\xb3\xbd(L)\x81" "b\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) \x81" "b[F1] \xcf\xb3\xbd\x8ap\x93x\x81" "b");
+            sprintf(one, "[%8.3f" "\xdf]", s->ell_ang);
+            jw_ui_text(v, 50, 2, 7, 0xffff, one);
+            if (s->typed_n > 0) {
+                char t[9];
+
+                memcpy(t, s->typed, 8);
+                t[s->typed_n < 8 ? s->typed_n : 8] = 0;
+                jw_ui_text(v, 15, 1, 7, 0, t);
+            }
+            fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
         }
     } else if (((s->command == 2 || s->command == 3) && s->ask_kind)
                || (s->command == 4 && s->box_ask)) {

@@ -487,6 +487,11 @@ typedef struct {
      * 映した所）。本物は DGROUP 0x0fdc に角度を float で持つ。 */
     int fix_angle;
     int line_done;
+    /* ○ ②楕円：1 中心、2 `長径,短径 =` の欄、3 `長軸の平行線をマウス指示`、
+     * 4 `角度 =` の欄。長径・短径・角度は命令を選び直しても残る（前回と同じ）。 */
+    int ell, ell_done;
+    double ell_cx, ell_cy;
+    double ell_a, ell_b, ell_ang;
     int co_undo_n, co_undo_new; /* コーナー連結：元の線の数・足した線の数 */
     JwcLine co_undo[2];         /* 　　　　　　　元の線 */
     int dl_undo_n;              /* ２線：最後の組の線の数（取り消し用） */

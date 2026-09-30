@@ -467,6 +467,11 @@ static void sync_ui(void)
     ui.circ_mode = cmd.circ_mode;
     ui.box_ang = cmd.box_ang;
     ui.circ_ask = cmd.circ_ask;
+    ui.ell = cmd.ell;
+    ui.ell_done = cmd.ell_done;
+    ui.ell_a = cmd.ell_a;
+    ui.ell_b = cmd.ell_b;
+    ui.ell_ang = cmd.ell_ang;
     ui.circ_fix = cmd.circ_fix;
     ui.circ_done = cmd.circ_done;
     ui.circ_r = cmd.circ_r;

@@ -68,12 +68,17 @@ def one(case):
     if not os.path.exists(orig):
         return name, '?', 'no original record'
     out = os.path.join(ROOT, 'tmp/funcfast', name + '.JWC')
+    if os.path.exists(out):
+        os.remove(out)
     subprocess.run([NODE, PORTREC, 'orig/%s.JWC' % drawing] + steps + ['move 400 250'],
                    cwd=ROOT, env=dict(os.environ, OUT=out),
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if not os.path.exists(out):
         return name, 'DIFF', 'port wrote nothing'
-    a, b = records(orig), records(out)
+    try:
+        a, b = records(orig), records(out)
+    except Exception as e:      # 移植が壊れた図面を書いた
+        return name, 'DIFF', 'unreadable: %s' % e
     base = records(os.path.join(ROOT, 'orig/%s.JWC' % drawing))
     if a == b:
         if a == base:
