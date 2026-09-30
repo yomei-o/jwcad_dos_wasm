@@ -1269,6 +1269,11 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
     if (q->moved && !s->moved) {
         return;
     }
+    /* ○ ①径寸法 の欄を [Enter] で閉じて、矢がまだ動いていないあいだは
+     * 数え箱は線数のまま（測定：`32|14`）。 */
+    if (s->hold_counts && (q->row == 2 || q->row == 3) && q->col <= 15) {
+        return;
+    }
     /* 文字's field is only up while it is taking a string: once [Enter] has
      * written the text the command is at stage 2 and none of stage 1 is on
      * the screen any more (the original writes ` Get type[tab]` back at row 4
@@ -2105,6 +2110,20 @@ static void counts(VGA *v, const JwUi *s)
      * a command left there would leave both readable on top of each other.  The
      * original fills (1,17)-(120,47) line by line before it writes. */
     fill(v, 1, 17, 120, 47, 4);
+    /* □ を置いたあと ①寸法 の欄を開いても、数え箱は置いていたときの
+     * ` 横= / 縦=` のまま（測定：20,30 で置いたあと ① を押すと
+     * `横= 20.000 縦= 30.000`）。 */
+    if (s->keep_box_counts) {
+        const JwStage *r;
+
+        for (r = JW_STAGE; r->command; r++) {
+            if (r->command == 4 && r->stage == 1
+                && (r->row == 2 || r->row == 3) && r->col <= 15) {
+                stage_text_1(v, r, s, 1);
+            }
+        }
+        return;
+    }
     /* **⑦矢印 の 2 本は箱に出ません。** 本物は矢印を引いたあと箱を
      * 書き直さないので、選んだときの線数のままです（30 のまま）。 */
     sprintf(buf, "%7ld|%7ld ",
@@ -4467,7 +4486,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
                 if (q->command == s->command && q->stage == i
                     && (q->row == 2 || q->row == 3) && q->col <= 15
-                    && !(q->moved && !s->moved)) {
+                    && !(q->moved && !s->moved) && !s->hold_counts) {
                     own = 1;    /* inside the box, which is (1,17)-(120,47)
                                  * -- rows 2 and 3.  Columns 17 and 22 of the
                                  * same row are beside it, not in it, and so

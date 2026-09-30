@@ -73,6 +73,11 @@ static char zukei_names[50][10];
 static int zukei_names_n;
 static int zukei_pick;
 static int mouse_x = 200, mouse_y = 200;   /* where the original leaves it */
+/* 命令の帯を描く所：矢が左のメニューの上にあるあいだは、最後に作図範囲側に
+ * いた所のまま（jw_mouse）。 */
+static int band_x = 200, band_y = 200;
+/* ○ ①径寸法 の欄を [Enter] で閉じてから、矢がまだ動いていない。 */
+static int circ_fresh;
 
 EMSCRIPTEN_KEEPALIVE int jw_width(void)  { return vga.width; }
 EMSCRIPTEN_KEEPALIVE int jw_height(void) { return vga.height; }
@@ -390,6 +395,8 @@ static void sync_ui(void)
         || (cmd.command == 11 && cmd.circ_fix && !cmd.circ_ask)) {
         ui.stage = 1;
     }
+    ui.hold_counts = circ_fresh && cmd.command == 11;
+    ui.keep_box_counts = cmd.command == 4 && cmd.box_ask == 1 && cmd.box_fix;
     ui.typed_n = cmd.typed_n;
     memcpy(ui.typed, cmd.typed, sizeof ui.typed);
     ui.num[0] = cmd.num[0];
@@ -917,7 +924,9 @@ static void present(void)
     /* 拡大の範囲を取っているあいだは、命令の帯は出ません（測定：□ の
      * 始点のあと Zoom を押すと、赤い四角が消えて緑の枠だけ）。 */
     if (ui.zoom_stage != 1 && ui.zoom_stage != 2) {
-        jw_cmd_band(&cmd, drawing, &vga, &view, mouse_x, mouse_y);
+        if (!circ_fresh) {
+            jw_cmd_band(&cmd, drawing, &vga, &view, band_x, band_y);
+        }
     }
     if (ui.zoom_stage == 2) {
         jw_ui_zoom_band(&vga, zoom_x, zoom_y, mouse_x, mouse_y);
@@ -1679,14 +1688,15 @@ EMSCRIPTEN_KEEPALIVE long jw_count(int which)
 /* 検査用：いまのコマンドの状態（tools/cmdstate.mjs）。 */
 EMSCRIPTEN_KEEPALIVE const char *jw_cmd_state(void)
 {
-    static char buf[160];
+    static char buf[240];
 
     snprintf(buf, sizeof buf,
              "cmd=%d stage=%d pressed=%d typing=%d fix_mode=%d fix_done=%d "
-             "fix_len=%d fix_angle=%d ask_kind=%d top_item=%d",
+             "fix_len=%d fix_angle=%d ask_kind=%d top_item=%d box_ask=%d "
+             "box_fix=%d circ_fix=%d",
              cmd.command, cmd.stage, cmd.pressed, cmd.typing, cmd.fix_mode,
              cmd.fix_done, cmd.fix_len, cmd.fix_angle, cmd.ask_kind,
-             cmd.top_item);
+             cmd.top_item, cmd.box_ask, cmd.box_fix, cmd.circ_fix);
     return buf;
 }
 EMSCRIPTEN_KEEPALIVE int jw_top_item(int x, int y) { return jw_ui_top_item(x, y); }
@@ -1938,15 +1948,34 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
         ui.group_mode = 0;
         ui.pen_board = 0;
         ui.data_screen = 0;
+        /* **命令を何も選んでいなければ、入出力 に戻ります。** 本物の
+         * 「いまの命令」は起動したときから 入出力（30）で、盤を閉じると
+         * その上の行 `|①ファイル(L)|②プロッタ(R)|…` を出し、メニューの
+         * 入出力 も黄色くなります（測定：線色の盤を開いて閉じただけ）。 */
+        if (!ui.command) {
+            ui.command = 30;
+            ui.guide = 0;
+            jw_cmd_pick(&cmd, 30);
+            ui.stage = 0;
+            ui.io_stage = 0;
+            ui.opt_stage = 0;
+        }
     }
     /* a command with a point in hand keeps its reading up to date as the
      * pointer moves, the way the original does */
     {
         const long n0 = drawing ? drawing->n_lines : 0;
 
-        /* 拡大の範囲を取っているあいだは、命令の読みは止まっています。 */
-        if (ui.zoom_stage != 1 && ui.zoom_stage != 2) {
+        /* 拡大の範囲を取っているあいだは、命令の読みは止まっています。
+         * **左のメニューの上でも止まります**：帯（仮の線・四角）も数え箱も
+         * 最後に作図範囲側にいたときのまま（測定：／ の始点のあと
+         * (350,300) から (60,200) へ動かすと、線は (350,300) まで・
+         * 長さも元のまま）。上の行の上では本物も追いかけます。 */
+        if (ui.zoom_stage != 1 && ui.zoom_stage != 2 && x >= AREA_X0) {
             jw_cmd_track(&cmd, drawing, &view, x, y);
+            band_x = x;
+            band_y = y;
+            circ_fresh = 0;
         }
         if (drawing && drawing->n_lines != n0) {
             /* 手書線 は矢が動くだけで線が増えます。 */
@@ -2247,6 +2276,10 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
      * 出し直します。 */
     ui.keep_msg = 0;
     ui.offset_msg = 0;
+    if (x >= AREA_X0) {
+        band_x = x;
+        band_y = y;
+    }
 
     /* [f2] の拾い場。押した文字の数が欄に入ります。**読めるのは
      * 届くレイヤの文字だけ**で、SAMPLE0 のレイヤ 01 の `250` は
@@ -4488,8 +4521,23 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         const long n0 = drawing ? drawing->n_lines : 0;
         const long a0 = drawing ? drawing->n_arcs : 0;
         const long t0 = drawing ? drawing->n_texts : 0;
+        const int was_typing = cmd.typing;
 
         if (jw_cmd_key(&cmd, drawing, key)) {
+            /* □ ①寸法・○ ①径寸法 の欄を [Enter] で閉じたら、**その場の矢で**
+             * 読み直します：本物はすぐ数え箱に 横= 20.000・縦= 30.000 を出し、
+             * 赤い四角を矢の所に描く（矢が上の行の上でも。測定）。 */
+            if (was_typing && !cmd.typing && (key == 13 || key == 10)
+                && ((cmd.command == 4 && cmd.box_fix)
+                    || (cmd.command == 12 && cmd.pressed == 2))) {
+                jw_cmd_track(&cmd, drawing, &view, band_x, band_y);
+            }
+            /* ○ は違います：欄を閉じても数え箱は線数のまま、円も矢が
+             * 動くまで出ません（測定：20 [Enter] で `32|14`）。 */
+            if (was_typing && !cmd.typing && (key == 13 || key == 10)
+                && cmd.command == 11 && cmd.circ_fix) {
+                circ_fresh = 1;
+            }
             if (drawing && (drawing->n_lines != n0
                             || drawing->n_arcs != a0
                             || drawing->n_texts != t0)) {
@@ -4506,7 +4554,18 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * ／ の ④平行 で [Enter] を打つと `サーチ` → `.読取可能データ無`）。 */
     if ((cmd.command == 2 || cmd.command == 3) && cmd.ask_kind >= 3
         && !cmd.typing && (key == 13 || key == 10)) {
-        jw_click(mouse_x, mouse_y, 0);
+        /* 矢が作図範囲の外（メニューや上の行）でも探しに行って、何も
+         * 無いと言います——メニューを押したことにはなりません（測定：＋ の
+         * ④平行 を鍵で出して、矢がメニューの上のまま [Enter] を打つと
+         * `基準線 マウス指示` のまま `読取可能データ無`）。 */
+        if (mouse_x >= AREA_X0 && mouse_x <= AREA_X1
+            && mouse_y >= AREA_Y0 && mouse_y <= AREA_Y1) {
+            jw_click(mouse_x, mouse_y, 0);
+        } else {
+            cmd.missed = 1;
+            sync_ui();
+            present();
+        }
         return -1;
     }
     /* **数字の鍵は上の行の升。** `1` は ① を左で押したのと同じ（測定：

@@ -265,6 +265,29 @@ static void par_dir(const JwCmd *c, double *x, double *y)
     *y = (float)((double)cs * 0.0 + (double)sn * u + oy);
 }
 
+static long ang16(double x1, double y1, double x2, double y2);
+
+/* ＋ の ④平行・垂直：基準線の座標系で、矢の長いほうの軸だけを残します
+ * （本物は ovl23 の 0x2d097〜0x2d20e。1bb4:2981/2a18 の向き 1 で (u,v) に
+ * 写し、|v| >= |u| なら (0,v)、そうでなければ (u,0) を向き 0 で戻す）。
+ * 水平の座標系なら axis() と同じ。 */
+static void plus_par(const JwCmd *c, double *x, double *y)
+{
+    const float cs = c->par_cs, sn = c->par_sn;
+    const float ox = (float)c->x0, oy = (float)c->y0;
+    const float px = (float)*x, py = (float)*y;
+    float u = (float)(((double)py - oy) * sn + ((double)px - ox) * cs);
+    float v = (float)(((double)py - oy) * cs - ((double)px - ox) * sn);
+
+    if (fabs(v) >= fabs(u)) {
+        u = 0.0f;
+    } else {
+        v = 0.0f;
+    }
+    *x = (float)((double)cs * u - (double)sn * v + ox);
+    *y = (float)((double)cs * v + (double)sn * u + oy);
+}
+
 /* What the panel shows for a command in hand: a length and an angle for a line,
  * the two sides for a box, the radius and the diameter for a circle.  A length
  * is millimetres of the real thing -- drawing units over `unit_mm`, times the
@@ -299,8 +322,20 @@ static void measure(JwCmd *c, const Jwc *d, double x, double y)
          * only the angle followed it (RESUME 4.13). */
         if (c->command == 12 && c->pressed == 2) {
             const double rx = c->x1 - c->x0, ry = c->y1 - c->y0;
+            /* 角度は**始点からの振れ**：中心から見た矢の角度と始点の角度
+             * （どちらも 0〜360 度）の差の絶対値（測定：始点 90 度で矢が
+             * 20.56 度なら 69.444、120.1 度なら 30.101、299.7 度なら
+             * 209.745）。始点が 0 度なら矢の角度そのもの。 */
+            const long a = ang16(c->x0, c->y0, x, y);
+            const long s0 = ang16(c->x0, c->y0, c->x1, c->y1);
 
             c->num[0] = sqrt(rx * rx + ry * ry) * mm;
+            c->num[1] = (float)((double)labs(a - s0) * 1.52587890625e-05);
+            /* ②角度指定 で決めたあとは打った角度（測定：144 [Enter] で
+             * 矢がどこでも `角度= 144.000ﾟ`）。 */
+            if (c->arc_fix) {
+                c->num[1] = c->arc_ang;
+            }
         }
     }
 }
@@ -453,7 +488,9 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
         return;
     }
     jw_cmd_at(w, sx, sy, &x, &y);
-    if (c->command == 2) {
+    if (c->command == 2 && c->par_on) {
+        plus_par(c, &x, &y);
+    } else if (c->command == 2) {
         axis(c, &x, &y);
     }
     if (c->command == 3 && c->par_on) {
@@ -998,9 +1035,8 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         double mx, my;
         int k;
 
-        if (sx < w->x0 || sx > w->x1 || sy < w->y0 || sy > w->y1) {
-            return;
-        }
+        /* 矢が上の行の上にあっても描きます（作図範囲で切れる。測定：
+         * 20,30 [Enter] のあと (400,8) で x 382〜417・y 17〜34 の赤）。 */
         v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
         v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
         v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
@@ -1012,7 +1048,13 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
 
             at_screen(w, X[k], Y[k], &ax, &ay);
             at_screen(w, X[k + 1], Y[k + 1], &bx, &by);
-            jw_line(v, ax, ay, bx, by, 2, 0x18, JW_STYLE_SOLID);
+            if (ax < v->clip_x0 || ax > v->clip_x1 || bx < v->clip_x0
+                || bx > v->clip_x1 || ay < v->clip_y0 || ay > v->clip_y1
+                || by < v->clip_y0 || by > v->clip_y1) {
+                jw_line_clipped(v, ax, ay, bx, by, 2, 0x18, JW_STYLE_SOLID);
+            } else {
+                jw_line(v, ax, ay, bx, by, 2, 0x18, JW_STYLE_SOLID);
+            }
         }
         return;
     }
@@ -1318,7 +1360,9 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
 
             /* the axis is chosen in drawing units, so go there and back */
             jw_cmd_at(w, sx, sy, &x, &y);
-            if (c->command == 2) {
+            if (c->command == 2 && c->par_on) {
+                plus_par(c, &x, &y);
+            } else if (c->command == 2) {
                 axis(c, &x, &y);
             }
             if (c->command == 3 && c->par_on) {
@@ -1638,6 +1682,24 @@ static void near_mark(Jwc *m, const JwView *w, int sx, int sy)
         }
         a->rest[2] |= 1u;
     }
+}
+
+/* 押しで線を探す：本物の 11f2:5670 は探索 573f を呼ぶので、**全部の線・円弧の
+ * rest[2] の bit 0 を落として、矢の範囲内のものに付け直して**から、いちばん
+ * 近い線を返します（測定：＋ ④ で基準線を押すと、その線に印が付き、隠れた
+ * 線 11 の印が落ちる）。 */
+static long pick_line(Jwc *m, const JwView *w, int sx, int sy)
+{
+    long k;
+
+    for (k = 0; k < m->n_lines; k++) {
+        m->lines[k].rest[2] &= (unsigned char)~1u;
+    }
+    for (k = 0; k < m->n_arcs; k++) {
+        m->arcs[k].rest[2] &= (unsigned char)~1u;
+    }
+    near_mark(m, w, sx, sy);
+    return jw_cmd_line_at(m, w, sx, sy);
 }
 
 /* Where a press says its point is, before any snap: the left button takes the
@@ -3947,8 +4009,37 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
      * lines are not even the same length (／ keeps 平行 and 垂直 apart).
      * The port left ① alone, so pressing it did nothing while the original
      * changed command, menu row and line all three. */
+    /* `基準線　マウス指示 |①指定解除|` の ①：固定をやめて元の行へ
+     * （本物は [bp-0x15e] = 0 で 0x2ba89 に戻る。ovl23 0x2bc36）。 */
+    if ((c->command == 2 || c->command == 3) && item == 1
+        && (c->ask_kind == 3 || c->ask_kind == 4)) {
+        c->ask_kind = 0;
+        c->par_on = 0;
+        c->fix_mode = 0;
+        c->fix_done = 0;
+        c->missed = 0;
+        return 1;
+    }
     if ((c->command == 2 || c->command == 3) && item == 1 && c->stage == 0) {
         jw_cmd_pick(c, c->command == 2 ? 3 : 2);
+        return 1;
+    }
+    /* 始点を取ったあと（`◆終点指示`）でも同じで、**始点は持ったまま**
+     * 相手の命令の `◆終点指示 … |①  ＋  |…` に移ります（測定：＋ で
+     * (250,200) を押してから ① → メニューの黄色も ／ に移る）。 */
+    if ((c->command == 2 || c->command == 3) && item == 1 && c->stage == 1
+        && c->pressed == 1) {
+        const double x0 = c->x0, y0 = c->y0, x1 = c->x1, y1 = c->y1;
+        const int moved = c->moved;
+
+        jw_cmd_pick(c, c->command == 2 ? 3 : 2);
+        c->x0 = x0;
+        c->y0 = y0;
+        c->x1 = x1;
+        c->y1 = y1;
+        c->pressed = 1;
+        c->stage = 1;
+        c->moved = moved;
         return 1;
     }
     /* ○ の ②基点変（半径を決めて置いているとき）。押すたびに基点が 9 か所を
@@ -5526,7 +5617,8 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->box_w = w;
             c->box_h = h;
             c->box_fix = 1;
-            c->box_done = 0;
+            /* box_done（行の頭の [ESC]）はそのまま：置いたあとに大きさを
+             * 打ち直しても本物は [ESC] を残します（測定）。 */
             c->box_mode = 0;
             c->typing = 0;
             c->box_ask = 0;
@@ -9730,6 +9822,53 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     return r;
 }
 
+/* ＋・／ の ④平行・⑤垂直：`基準線　マウス指示` で押した線から座標系を作る
+ * （本物は ovl23 の 3ab8:018f、リンク時 0x2ad0f。見つかれば 1bb4:27ea で
+ * cos=(float)(dx/L)、sin=(float)(dy/L)、見つからなければ `読取可能データ無`
+ * で聞き直す）。**始点を持っていても同じ**（押しの先頭で見るので、終点の
+ * 押しには取られない）。 */
+static int ref_pick(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
+{
+    /* ④平行・⑤垂直：`基準線　マウス指示`。押した線の向きに固定して
+     * `始点指示 … [BS]前項` へ（測定：縦の枠を左で押すと `サーチ` の
+     * あとその行）。**右（同一線上の線）はまだ**——左と同じに扱う。 */
+    const long k = pick_line(d, w, sx, sy);
+    double dx, dy, len;
+
+    if (k < 0) {
+        c->missed = 1;
+        return 0;
+    }
+    c->missed = 0;
+    dx = (double)d->lines[k].x1 - (double)d->lines[k].x0;
+    dy = (double)d->lines[k].y1 - (double)d->lines[k].y0;
+    len = sqrt(dy * dy + dx * dx);
+    if (len <= 0.0) {
+        return 0;
+    }
+    c->par_cs = (float)(dx / len);
+    c->par_sn = (float)(dy / len);
+    if (c->ask_kind == 4) {
+        const float t = c->par_cs;
+
+        c->par_cs = -c->par_sn;
+        c->par_sn = t;
+    }
+    c->par_on = 1;
+    c->fix_angle = 0;
+    c->fix_mode = 1;
+    c->fix_done = 0;
+    c->ask_kind = 0;
+    /* 始点を持っていれば、その場で仮の線と 長=・角度= が出ます（測定：
+     * ＋ の始点 (250,200) のあと上の辺を取ると、(400,200) までの赤と
+     * `長= 86.004`）。 */
+    if (c->pressed) {
+        jw_cmd_track(c, d, w, sx, sy);
+        c->moved = 1;
+    }
+    return 1;
+}
+
 static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                       int right)
 {
@@ -9750,6 +9889,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     c->press_y = sy;
     c->moved = 0;
     c->escaped = 0;
+    if ((c->command == 2 || c->command == 3)
+        && (c->ask_kind == 3 || c->ask_kind == 4) && !c->typing) {
+        return ref_pick(c, d, w, sx, sy);
+    }
     /* 図形 ①登録, once the range is fixed: the press is the figure's own
      * base point -- `◇原図形の基準点位置 マウス指示 (L)free (R)Read` -- and
      * the figure is written out measured from it.  The screen then goes to
@@ -9784,7 +9927,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;           /* the number has to be finished first */
         }
         if (c->stage == 4) {    /* 間隔取得: the line to measure from */
-            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const long k = pick_line(d, w, sx, sy);
 
             if (k < 0) {
                 c->missed = 1;
@@ -9819,7 +9962,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;
         }
         if (c->stage != 2) {    /* not waiting for a side: pick a line */
-            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const long k = pick_line(d, w, sx, sy);
 
             if (k < 0) {
                 c->missed = 1;
@@ -9862,7 +10005,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * a line comes first whatever the distances say: on SAMPLE6 (283,236)
          * is right on arc 21 and 2.19 from a line, and (351,179) right on
          * arc 20 and 0.06 from one, and both times it is 線数 that falls. */
-        long k = jw_cmd_line_at(d, w, sx, sy);
+        long k = pick_line(d, w, sx, sy);
         long j = k < 0 ? jw_cmd_arc_at(d, w, sx, sy) : -1;
 
         if (k < 0 && j < 0) {
@@ -9979,7 +10122,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * 矢印長さ long (6mm gives 10.108 and 2.709 instead of 5.054 and
          * 1.354, so the panel's two numbers are the ones).  What a press
          * on an **arc** does is not measured. */
-        const long k = jw_cmd_line_at(d, w, sx, sy);
+        const long k = pick_line(d, w, sx, sy);
         const double alen = (c->dim_arrow_mm > 0.0 ? c->dim_arrow_mm : 3.0)
                           * d->unit_mm;
         const double rad = c->dim_angle_deg * 3.14159265358979323846
@@ -10110,7 +10253,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         if (c->dim_lot && c->stage >= 21 && c->stage <= 24) {
             /* ⑤一括: 始線・終線、そのあとは 追加線･除外線。押した線は
              * 赤（色 2）になります。 */
-            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const long k = pick_line(d, w, sx, sy);
 
             if (c->stage == 24) {
                 /* 一本入れたあと、図面を押すと 始線 から始め直します
@@ -10169,7 +10312,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                  * 外して押しても、弧の始まりは線の向き 153.4350 度の
                  * ままで、押した点への向き 156.83 度ではありません）。
                  * 弧の中心は二本の交わるところ。 */
-                const long k = jw_cmd_line_at(d, w, sx, sy);
+                const long k = pick_line(d, w, sx, sy);
 
                 if (k < 0) {
                     c->missed = 1;
@@ -10233,7 +10376,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                  * 原作は動かず、引出し線のない 180 度 (200,200) と
                  * 270 度 (300,300) では円を選びました）。これは線消
                  * などと同じ拾い方です。 */
-                const long kl = jw_cmd_line_at(d, w, sx, sy);
+                const long kl = pick_line(d, w, sx, sy);
                 const long k = kl >= 0 ? -1
                              : jw_cmd_arc_at(d, w, sx, sy);
 
@@ -10485,7 +10628,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     if (JW_MOVE_CMD(c->command) && c->mirror == 1) {
         /* ⑤反転 is waiting for the line to turn the range over in.  A press
          * that finds none leaves everything as it is. */
-        const long m = jw_cmd_line_at(d, w, sx, sy);
+        const long m = pick_line(d, w, sx, sy);
 
         if (m < 0) {
             c->missed = 1;
@@ -10689,7 +10832,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     if (c->command == 23 && c->sine == 3 && c->stage >= 40
         && c->stage <= 45) {
         if (c->stage == 40) {
-            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const long k = pick_line(d, w, sx, sy);
             const JwcLine *l;
             double ex, ey, ll;
 
@@ -10771,7 +10914,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * 引いてから一本目を押すと `01 00 00 00`、三本目を押すと
          * `00 00 00 01` の並びになりました）。連なりはファイルの中で
          * 0x40 から 0xc0 までひと続きです。 */
-        const long k = jw_cmd_line_at(d, w, sx, sy);
+        const long k = pick_line(d, w, sx, sy);
         long i;
 
         if (k < 0) {
@@ -10814,7 +10957,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     }
     if (c->command == 23 && c->sine) {
         if (c->stage == 10) {
-            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const long k = pick_line(d, w, sx, sy);
             const JwcLine *l;
             double ex, ey, ll;
 
@@ -10962,11 +11105,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 /* ③ は円、① は線。 */
                 const long k = c->tan_circ == 3
                              ? jw_cmd_arc_at(d, w, sx, sy)
-                             : jw_cmd_line_at(d, w, sx, sy);
+                             : pick_line(d, w, sx, sy);
 
                 if (k < 0) {
                     c->tan_miss = c->tan_circ == 3
-                                && jw_cmd_line_at(d, w, sx, sy) >= 0 ? 1 : 0;
+                                && pick_line(d, w, sx, sy) >= 0 ? 1 : 0;
                     c->missed = 1;
                     return 0;
                 }
@@ -11034,7 +11177,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                     int s1, s2;
 
                     if (k < 0) {
-                        c->tan_miss = jw_cmd_line_at(d, w, sx, sy) >= 0
+                        c->tan_miss = pick_line(d, w, sx, sy) >= 0
                                     ? 1 : 0;
                         c->missed = 1;
                         return 0;
@@ -11127,7 +11270,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 return 1;
             }
             {
-                const long kl = jw_cmd_line_at(d, w, sx, sy);
+                const long kl = pick_line(d, w, sx, sy);
                 const long ka = kl >= 0 ? -1 : jw_cmd_arc_at(d, w, sx, sy);
                 const long k = kl >= 0 ? kl : ka;
                 const int at = c->stage - top;
@@ -11400,7 +11543,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 const double bx = c->tan_ccx[0], by = c->tan_ccy[0];
                 const double ex = bx - ax, ey = by - ay;
                 const double len = sqrt(ex * ex + ey * ey);
-                const long kl = jw_cmd_line_at(d, w, sx, sy);
+                const long kl = pick_line(d, w, sx, sy);
                 const long ka = kl >= 0 ? -1 : jw_cmd_arc_at(d, w, sx, sy);
                 const double mx = (ax + bx) / 2.0, my = (ay + by) / 2.0;
                 double dx, dy, q, aa, bb, cc, disc, best = 0.0;
@@ -11534,7 +11677,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * 小項目は命令ごとに一定（①３点 0x02、②菱形内接 0x07）なので、
              * ここだけ初期化されていない一バイトが漏れているように見えます。
              * **当てずっぽうを置かず 0 を書いています。** */
-            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const long k = pick_line(d, w, sx, sy);
             const int at = c->stage - 64;
             double px, py;
 
@@ -11736,7 +11879,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              *   tilt=157.5`
              *
              * **記録の最後のバイトは 0x07**（三つとも）。 */
-            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const long k = pick_line(d, w, sx, sy);
             const int at = c->stage - 61;
             double px, py;
 
@@ -12135,7 +12278,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 return 1;
             }
             {
-                const long k = jw_cmd_line_at(d, w, sx, sy);
+                const long k = pick_line(d, w, sx, sy);
 
                 if (k < 0) {
                     c->tan_miss = 0;
@@ -12251,7 +12394,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 if (k < 0) {
                     /* 線を掴んだら `線データです`、何も無ければ
                      * ほかの命令と同じ `読取可能データ無`（測定）。 */
-                    c->tan_miss = jw_cmd_line_at(d, w, sx, sy) >= 0 ? 1 : 0;
+                    c->tan_miss = pick_line(d, w, sx, sy) >= 0 ? 1 : 0;
                     c->missed = 1;
                     return 0;
                 }
@@ -12326,7 +12469,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * `arc c=(1785.081,-1421.051) r=1744.108 … 01 02 00 00 00 2c`
              * ——交わるところ (40.973,323.057) から右下へ半径ぶんです。
              * 記録の最後のバイトは **0x2c**（⑥２点 の 0x24 とは別）。 */
-            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const long k = pick_line(d, w, sx, sy);
             double px, py;
 
             if (k < 0) {
@@ -12481,7 +12624,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             if (k < 0) {
                 /* 円を探して線が出ると言葉が変わります（測定：桁 17 から
                  * `.線データです`、何もなければ `.読取可能データ無`）。 */
-                c->tan_miss = jw_cmd_line_at(d, w, sx, sy) >= 0;
+                c->tan_miss = pick_line(d, w, sx, sy) >= 0;
                 c->missed = 1;
                 return 0;
             }
@@ -12506,7 +12649,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             if (k < 0) {
                 /* 円を探して線が出ると言葉が変わります（測定：桁 17 から
                  * `.線データです`、何もなければ `.読取可能データ無`）。 */
-                c->tan_miss = jw_cmd_line_at(d, w, sx, sy) >= 0;
+                c->tan_miss = pick_line(d, w, sx, sy) >= 0;
                 c->missed = 1;
                 return 0;
             }
@@ -12554,7 +12697,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             double px, py, side;
 
             if (k < 0) {
-                c->tan_miss = jw_cmd_line_at(d, w, sx, sy) >= 0;
+                c->tan_miss = pick_line(d, w, sx, sy) >= 0;
                 c->missed = 1;
                 return 0;
             }
@@ -12652,7 +12795,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * goes `◇ ハッチ枠 図形の連続線(弧)マウス指示 [中間線]`, then the same
          * with `[開始線で終了]` after it, then
          * `|①【指示終了】|別図形をマウス指示 (L)開始線 (R)単独円`. */
-        const long k = jw_cmd_line_at(d, w, sx, sy);
+        const long k = pick_line(d, w, sx, sy);
         int i;
 
         if (k < 0) {
@@ -12883,7 +13026,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * (129,436.424)-(329,436.424) and (129,174.808)-(329,174.808), which
          * is 130.808 either side = 75mm. */
         if (c->pick_a < 0) {
-            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const long k = pick_line(d, w, sx, sy);
 
             if (k < 0) {
                 c->missed = 1;
@@ -12940,7 +13083,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * 36.998 back along each, and the new line is 52.32 long -- which is
          * 30mm at that scale.  Two lines that do not meet answer
          * `データが不適当` and nothing happens. */
-        const long k = jw_cmd_line_at(d, w, sx, sy);
+        const long k = pick_line(d, w, sx, sy);
 
         if (k < 0) {
             c->missed = 1;
@@ -12983,7 +13126,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * command goes straight back to its own first line (no `[ESC]` and no
          * `・` in front of it). */
         if (c->pick_a < 0 || c->pick_b < 0) {
-            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const long k = pick_line(d, w, sx, sy);
 
             if (k < 0) {
                 c->missed = 1;
@@ -13045,7 +13188,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * new pair, back to front.  The record moves to the end of the list,
          * like コーナー連結's, and the counts do not change. */
         if (c->pick_a < 0) {
-            const long k = jw_cmd_line_at(d, w, sx, sy);
+            const long k = pick_line(d, w, sx, sy);
 
             if (k < 0) {
                 c->missed = 1;
@@ -13103,7 +13246,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          *
          * Both records go to the **back of the list**, in the order they were
          * pressed, and the counts do not change: 30|13 before and after. */
-        const long k = jw_cmd_line_at(d, w, sx, sy);
+        const long k = pick_line(d, w, sx, sy);
 
         if (k < 0) {
             c->missed = 1;
@@ -13148,7 +13291,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * Which entity it takes is the plain pick -- no filtering by the
          * writing pen, which would make the command useless -- so it is
          * jw_cmd_line_at, the same as 線消's. */
-        const long k = jw_cmd_line_at(d, w, sx, sy);
+        const long k = pick_line(d, w, sx, sy);
         const long j = k < 0 ? jw_cmd_arc_at(d, w, sx, sy) : -1;
         const unsigned char layer =
             (unsigned char)(d->write_layer);
@@ -13695,40 +13838,6 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->box_done = 1;
         return 1;
     }
-    if (c->command == 3 && (c->ask_kind == 3 || c->ask_kind == 4)
-        && !c->typing) {
-        /* ④平行・⑤垂直：`基準線　マウス指示`。押した線の向きに固定して
-         * `始点指示 … [BS]前項` へ（測定：縦の枠を左で押すと `サーチ` の
-         * あとその行）。**右（同一線上の線）はまだ**——左と同じに扱う。 */
-        const long k = jw_cmd_line_at(d, w, sx, sy);
-        double dx, dy, len;
-
-        if (k < 0) {
-            c->missed = 1;
-            return 0;
-        }
-        c->missed = 0;
-        dx = (double)d->lines[k].x1 - (double)d->lines[k].x0;
-        dy = (double)d->lines[k].y1 - (double)d->lines[k].y0;
-        len = sqrt(dy * dy + dx * dx);
-        if (len <= 0.0) {
-            return 0;
-        }
-        c->par_cs = (float)(dx / len);
-        c->par_sn = (float)(dy / len);
-        if (c->ask_kind == 4) {
-            const float t = c->par_cs;
-
-            c->par_cs = -c->par_sn;
-            c->par_sn = t;
-        }
-        c->par_on = 1;
-        c->fix_angle = 0;
-        c->fix_mode = 1;
-        c->fix_done = 0;
-        c->ask_kind = 0;
-        return 1;
-    }
     if ((c->command == 2 || c->command == 3) && c->ask_kind == 2
         && c->typing) {
         /* `角度 =` の欄では、／ の `任意角度(L)` は向きの固定をやめ、
@@ -13776,7 +13885,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     }
     c->pressed = 0;
     c->stage = 2;
-    if (c->command == 2) {
+    if (c->command == 2 && c->par_on) {
+        plus_par(c, &x, &y);
+    } else if (c->command == 2) {
         axis(c, &x, &y);
     }
     if (c->command == 3 && c->par_on) {
