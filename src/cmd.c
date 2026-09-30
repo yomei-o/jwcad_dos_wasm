@@ -4652,6 +4652,13 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->typed_n = 0;
         return 0;
     }
+    /* 文字 ⑤文[書/読]：`書出範囲 始点マウス指示（文字）`（行は src/item.h）。
+     * 押しは範囲の始点で、文字は書かない（測定：text_c5）。範囲の先
+     * （ファイルへの書き出し）は移していない。 */
+    if (c->command == 13 && item == 5 && !c->typing_text) {
+        c->text_file = 1;
+        return 0;
+    }
     if (c->command == 13 && item == 6 && !c->typing_text) {
         c->text_tate = !c->text_tate;
         return 0;
@@ -11207,6 +11214,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         }
         c->stage = 1;
         return 1;
+    }
+    if (c->command == 13 && c->text_file) {
+        return 1;               /* 書出範囲 の押し（範囲の先は未移植） */
     }
     if (c->command == 13 && c->text_ang_ask) {
         /* ③角度指定 の欄での押し：左は `0 度`、右は `前回と同じ`。どちらも

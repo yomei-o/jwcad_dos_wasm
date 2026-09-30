@@ -500,6 +500,7 @@ typedef struct {
     double cl_x1, cl_y1, cl_x2, cl_y2;
     int text_ang_ask;           /* 文字 ③角度指定 の欄 */
     double text_ang;            /* 文字の角度（度） */
+    int text_file;              /* 文字 ⑤文[書/読]：書出範囲 を取っている */
     int text_tate;              /* 文字 ⑥(縦)：縦字（記録の rest[2] に 0x20） */
     int rel_place;              /* ①ﾏｳｽ位置 の置き方（基点からの差で） */
     double rel_px, rel_py;
