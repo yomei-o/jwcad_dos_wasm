@@ -95,7 +95,13 @@ python tools/stepcheck.py tools/cases/func_all.txt box_    # 段ごとの画面�
 | 文字 ⑥ | 縦字。記録の rest[2] に 0x20、座標は横字と同じ |
 | 鍵でコマンドを替える | 前の命令の升の行（top_item）を消す |
 
-**func_ops2 の残り**：erase_range_out、center_pts、text_c4（④設定）、text_c5・c5_v（⑤文[書/読]：本物は
+| 中心線 の最初を右で | 点を読む：二点の垂直二等分線の上に（center_pts 一致） |
+| 消去 ①② の升のあと | 範囲の始点の押しで升の行が範囲の行に替わる |
+
+**func_ops2 の残り**：erase_range_out（②範囲外消去は実行まで進むようになったが、**範囲をまたぐ線を
+本物は丸ごと消し、移植は内側を切って残す**——SAMPLE0 の枠の左辺・上辺。移植の「切る」は点線の
+表示から推したもので、記録で確かめたものではない。HELP とデコンパイルで確かめてから直す）、
+text_c4（④設定）、text_c5・c5_v（⑤文[書/読]：本物は
 何も書かない）、text_c3_v の角度つきのしるしの足 2 画素と箱の印。**text_c1_v・text_c2_v は本物の
 記録がキャッシュに無い**（functest が手元で本物を走らせて `the save did not happen`）——
 `python tools/rbatch.py` で撮り直してから見ること。`tmp/one.sh 件名` の差は、走らせ直しに失敗すると
