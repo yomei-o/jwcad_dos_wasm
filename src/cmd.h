@@ -496,6 +496,8 @@ typedef struct {
     int mv_undo;                /* 複写・移動 の取り消しの控え */
     long mv_nl, mv_na, mv_nt, mv_np;
     double mv_dx, mv_dy;
+    int rel_place;              /* ①ﾏｳｽ位置 の置き方（基点からの差で） */
+    double rel_px, rel_py;
     int erase_again;            /* 消去 `消去 再度(L)` を出した */
     /* コーナー連結 の 線切断：`残切断点 20` から一つずつ減り、切った所に
      * 小さな白い輪が残る（測定）。 */

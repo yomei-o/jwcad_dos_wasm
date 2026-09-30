@@ -2976,6 +2976,76 @@ static void freeze(JwCmd *c, const Jwc *d)
 
 /* Put the selection down one step away: 複写 leaves a copy of what the range
  * picked and 移動 shifts it.  The step is remembered so ③連続 can repeat it. */
+/* ①ﾏｳｽ位置 で置くときの座標：基点からの差を float に丸めてから置く点を
+ * 足す（回転・倍率と同じ形。測定：copy_t_posr で線 7 の y1 61.44085 が
+ * 0xc2c53b7c——量を足す形では 7b）。文字も同じにしてあるが未測定。 */
+#define REL_AT(v, b, p) ((float)((float)((v) - (b)) + (p)))
+
+static void rel_range(JwCmd *c, Jwc *d, double px, double py)
+{
+    const double bx = c->base_x, by = c->base_y;
+    long k;
+
+    if (JW_MOVING(c)) {
+        move_ink(c, d, 1);
+    }
+    for (k = 0; k < c->n0_lines; k++) {
+        JwcLine *q = NULL;
+
+        if (!picked_line(c, d, k)) {
+            continue;
+        }
+        if (JW_MOVING(c)) {
+            q = &d->lines[k];
+        } else if (jwc_dup_line(d, k, 0.0f, 0.0f)) {
+            q = &d->lines[d->n_lines - 1];
+        }
+        if (q) {
+            q->x0 = REL_AT(q->x0, bx, px);
+            q->y0 = REL_AT(q->y0, by, py);
+            q->x1 = REL_AT(q->x1, bx, px);
+            q->y1 = REL_AT(q->y1, by, py);
+        }
+    }
+    for (k = 0; k < c->n0_arcs; k++) {
+        JwcArc *q = NULL;
+
+        if (!picked_arc(c, d, k)) {
+            continue;
+        }
+        if (JW_MOVING(c)) {
+            q = &d->arcs[k];
+        } else if (jwc_dup_arc(d, k, 0.0f, 0.0f)) {
+            q = &d->arcs[d->n_arcs - 1];
+        }
+        if (q) {
+            q->cx = REL_AT(q->cx, bx, px);
+            q->cy = REL_AT(q->cy, by, py);
+        }
+    }
+    for (k = 0; k < c->n0_texts && takes_text(c); k++) {
+        JwcText *q = NULL;
+
+        if (!picked_text(c, d, k)) {
+            continue;
+        }
+        if (JW_MOVING(c)) {
+            q = &d->texts[k];
+        } else if (jwc_dup_text(d, k, 0.0f, 0.0f)) {
+            q = &d->texts[d->n_texts - 1];
+        }
+        if (q) {
+            q->x0 = REL_AT(q->x0, bx, px);
+            q->y0 = REL_AT(q->y0, by, py);
+            q->x1 = REL_AT(q->x1, bx, px);
+            q->y1 = REL_AT(q->y1, by, py);
+        }
+    }
+    if (JW_MOVING(c)) {
+        move_ink(c, d, 0);
+    }
+}
+
 static void place_by(JwCmd *c, Jwc *d, double dx, double dy)
 {
     /* Work out what the range holds only the first time.  移動 takes the
@@ -2992,7 +3062,9 @@ static void place_by(JwCmd *c, Jwc *d, double dx, double dy)
     c->mv_np = d->n_points;
     c->mv_dx = dx;
     c->mv_dy = dy;
-    if (c->command == 16) {
+    if (c->rel_place) {
+        rel_range(c, d, c->rel_px, c->rel_py);
+    } else if (c->command == 16) {
         move_range(c, d, dx, dy);
     } else {
         copy_range(c, d, dx, dy);
@@ -3213,12 +3285,16 @@ static void place_at(JwCmd *c, Jwc *d, double px, double py)
 {
     /* 移動量は二点を float にしてから float で引く（測定：前は double で
      * 引いていて、動かした線が float の最後の 1〜2 ビットずれた）。 */
+    c->rel_place = 1;
+    c->rel_px = px;
+    c->rel_py = py;
     if (c->command == 16) {
         place_by(c, d, (float)((float)px - (float)c->base_x),
                  (float)((float)py - (float)c->base_y));
     } else {
         place_by(c, d, px - c->base_x, py - c->base_y);
     }
+    c->rel_place = 0;
     if (c->command == 16) {
         c->base_x = px;
         c->base_y = py;
