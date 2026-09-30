@@ -2770,7 +2770,9 @@ static int turn_range(JwCmd *c, Jwc *d, double px, double py)
  */
 static int scale_range(JwCmd *c, Jwc *d, double px, double py)
 {
-    const double sx = c->scale_x, sy = c->scale_y;
+    /* 倍率は float で持つ（測定：copy_t_mscale の y 倍率 70/50 は float の
+     * 1.4 で掛けないと線 0 の y0 が 1 ビットずれる）。 */
+    const double sx = (float)c->scale_x, sy = (float)c->scale_y;
     long k;
     int n = 0;
 
@@ -2785,10 +2787,12 @@ static int scale_range(JwCmd *c, Jwc *d, double px, double py)
             continue;
         }
         {
-            const double ax = (d->lines[k].x0 - c->base_x) * sx + px;
-            const double ay = (d->lines[k].y0 - c->base_y) * sy + py;
-            const double bx = (d->lines[k].x1 - c->base_x) * sx + px;
-            const double by = (d->lines[k].y1 - c->base_y) * sy + py;
+            /* 差を float に、倍にした差も float に丸めてから置く点を足す（回転と
+             * 同じ。測定：copy_s_mscale の線 30 の x0 が 0x4268a098、丸めないと 9a）。 */
+            const double ax = (float)((float)(d->lines[k].x0 - c->base_x) * sx) + px;
+            const double ay = (float)((float)(d->lines[k].y0 - c->base_y) * sy) + py;
+            const double bx = (float)((float)(d->lines[k].x1 - c->base_x) * sx) + px;
+            const double by = (float)((float)(d->lines[k].y1 - c->base_y) * sy) + py;
             JwcLine *q = NULL;
 
             if (JW_MOVING(c)) {
@@ -2810,8 +2814,8 @@ static int scale_range(JwCmd *c, Jwc *d, double px, double py)
             continue;
         }
         {
-            const double ax = (d->arcs[k].cx - c->base_x) * sx + px;
-            const double ay = (d->arcs[k].cy - c->base_y) * sy + py;
+            const double ax = (float)((float)(d->arcs[k].cx - c->base_x) * sx) + px;
+            const double ay = (float)((float)(d->arcs[k].cy - c->base_y) * sy) + py;
             const double r = d->arcs[k].r * sx;
             JwcArc *q = NULL;
 
@@ -2833,8 +2837,8 @@ static int scale_range(JwCmd *c, Jwc *d, double px, double py)
             continue;
         }
         {
-            const double x0 = (d->texts[k].x0 - c->base_x) * sx + px;
-            const double y0 = (d->texts[k].y0 - c->base_y) * sy + py;
+            const double x0 = (float)((float)(d->texts[k].x0 - c->base_x) * sx) + px;
+            const double y0 = (float)((float)(d->texts[k].y0 - c->base_y) * sy) + py;
             const double dx = d->texts[k].x1 - d->texts[k].x0;
             const double dy = d->texts[k].y1 - d->texts[k].y0;
             JwcText *q = NULL;
