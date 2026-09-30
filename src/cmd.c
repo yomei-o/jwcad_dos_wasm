@@ -5353,6 +5353,24 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* **欄の中の [ESC]** は欄を閉じて元の行に戻るだけ（測定：／ の ②寸法
      * で 50 を打って [ESC] → `・◇始点指示 … |⑤垂 直 |`、何も固定しない）。 */
+    /* 複線 の [ESC]：向きを聞いているとき（段 2）は `点指示 or 間隔=` の欄に
+     * 戻り、欄からは段 0 の `線指示 …` へ（測定：offset_plain の 11・13 段目）。 */
+    if (key == 27 && c->command == 5 && !c->typing && c->stage == 2) {
+        c->typing = 1;
+        c->typed_n = 0;
+        c->typed[0] = 0;
+        c->stage = 1;
+        c->moved = 0;
+        return 1;
+    }
+    if (key == 27 && c->command == 5 && c->typing && c->stage == 1) {
+        c->typing = 0;
+        c->typed_n = 0;
+        c->typed[0] = 0;
+        c->stage = 0;
+        c->moved = 0;
+        return 1;
+    }
     if (key == 27 && c->typing
         && (((c->command == 2 || c->command == 3) && c->ask_kind)
             || (c->command == 4 && c->box_ask)
@@ -10184,7 +10202,26 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             if (len <= 0.0) {
                 return 0;
             }
-            jw_cmd_at(w, sx, sy, &px, &py);
+            /* 欄に打ってあれば、その数が間隔（測定：`2` を打って図面を押すと
+             * 2mm の複線）。 */
+            if (c->typed_n > 0) {
+                c->typed[c->typed_n] = 0;
+                c->gap = field_eval(c->typed);
+                c->num[0] = c->num[1] = c->gap;
+                c->dec[0] = 2;
+                c->dec[1] = d->decimals;
+                c->typing = 0;
+                c->typed_n = 0;
+                c->typed[0] = 0;
+                c->stage = 2;
+                return 1;
+            }
+            /* 右は読取（外れれば欄のまま待つ。測定：`サーチ` `.読取可能データ無`
+             * のあとも `点指示 or 間隔=`）。 */
+            if (!take_point(c, d, w, sx, sy, right, &px, &py)) {
+                c->missed = 1;
+                return 0;
+            }
             away = ((px - c->lx0) * dy - (py - c->ly0) * dx) / len;
             c->gap = (away < 0.0 ? -away : away) / c->per_mm;
             c->num[0] = c->num[1] = c->gap;
