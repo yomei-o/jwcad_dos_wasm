@@ -1308,6 +1308,15 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
                   c->x0 + (c->text_vert ? -c->text_tall : c->text_wide),
                   c->y0 + (c->text_vert ? c->text_wide : c->text_tall),
                   &x1, &y1);
+        /* まだ何も打っていないときは L 字：字の高さの縦線と、足もとの
+         * 右へ 2 画素（色 4 の排他的論理和。測定：text_abc で (300,250) を
+         * 押した直後、x 300 の y 244..249 と y 250 の x 301..302 が緑。角の
+         * (300,250) は矢印の下で見えず、描くかどうかは未測定）。 */
+        if (c->typed_n == 0 && !c->text_vert) {
+            jw_line(v, px, py - 1, px, y1, 4, 0x18, JW_STYLE_SOLID);
+            jw_line(v, px + 1, py, px + 2, py, 4, 0x18, JW_STYLE_SOLID);
+            return;
+        }
         jw_line(v, px, py, px, y1, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, px, y1, x1, y1, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, x1, y1, x1, py, 2, 0x18, JW_STYLE_SOLID);
