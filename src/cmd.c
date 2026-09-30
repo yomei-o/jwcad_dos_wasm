@@ -14717,6 +14717,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 flip(c, JW_FLIP_TEXT, k);
                 return 1;
             }
+            /* 線の探索は読み取りの印を付け直す（pick_line と同じ。測定：
+             * copy_s_add で (598,300) を押すと線 2 に 0x01、線 11 の 0x01 は
+             * 落ちる）。文字(R) の押しは印に触らない。 */
+            for (k = 0; k < d->n_lines; k++) {
+                d->lines[k].rest[2] &= (unsigned char)~1u;
+            }
+            for (k = 0; k < d->n_arcs; k++) {
+                d->arcs[k].rest[2] &= (unsigned char)~1u;
+            }
+            near_mark(d, w, sx, sy);
             /* 0, not 1: the pen and line type only narrow the search while
              * a modifier key is held -- see writing_kind above. */
             k = jw_cmd_line_at_kind(d, w, sx, sy, 0);
