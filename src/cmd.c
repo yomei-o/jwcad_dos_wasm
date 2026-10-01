@@ -5428,12 +5428,28 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
                  * kept piece (161,170)-(161,139) white -- so the corner
                  * the two shared, (161,157), is white.  Cutting in place
                  * with no ink left it under line 5's erase. */
-                jwc_ink_note(d, 1, JW_INK_LINE, l);
-                l->x0 = (float)ax;
-                l->y0 = (float)ay;
-                l->x1 = (float)bx;
-                l->y1 = (float)by;
-                jwc_ink_note(d, 0, JW_INK_LINE, l);
+                /* 残す部分は**元の線を抜いて末尾に足す**（後ろの線から順に
+                 * なので、末尾には後ろの線の残りが先に並ぶ）。範囲の印は
+                 * 落ちる（測定：erase_range_out で枠の上辺・左辺の残りが
+                 * 線 21・22、rest[2] は 0x00）。 */
+                {
+                    JwcLine keep = *l;
+
+                    jwc_ink_note(d, 1, JW_INK_LINE, l);
+                    jwc_remove_line(d, k);
+                    keep.x0 = (float)ax;
+                    keep.y0 = (float)ay;
+                    keep.x1 = (float)bx;
+                    keep.y1 = (float)by;
+                    keep.rest[2] &= (unsigned char)~3u;
+                    if (jwc_add_line(d, keep.x0, keep.y0, keep.x1, keep.y1,
+                                     keep.type, keep.pen, keep.layer)) {
+                        JwcLine *q = &d->lines[d->n_lines - 1];
+
+                        *q = keep;
+                        jwc_ink_note(d, 0, JW_INK_LINE, q);
+                    }
+                }
                 changed = 1;
             } else if ((kind == JW_OUT_OUT) != flipped(c, JW_FLIP_LINE, k)) {
                 jwc_remove_line(d, k);
