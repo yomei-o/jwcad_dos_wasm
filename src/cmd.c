@@ -6533,7 +6533,8 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             memcpy(d->lines[d->n_lines - 1].rest, was.rest, 4);
             d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~1u;
         }
-        jwc_ink_clear(d);
+        /* 描き直さない：伸ばした線を黒で消して元の線を描くだけ（測定：
+         * func_all tee_* の [ESC] で角 (598,139) が黒く残る）。 */
         c->st_undo_on = 0;
         c->stage = 0;
         return 1;
