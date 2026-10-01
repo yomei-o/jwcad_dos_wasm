@@ -519,6 +519,11 @@ typedef struct {
     int text_rep;
     int meas_put;               /* 測定 ①表示：小数点位置を待つ */
     int circ_dia;
+    /* 面取 ④一括処理（丸面 なら ③）：範囲を取っている。段は範囲の命令と同じ
+     * （0 始点、1 終点、3 追加･除外、2 `一括処理 |①実行|②中止|③内角面取|`）。 */
+    int chb, chb_inner;
+    int ch_bad;
+    int ch_side;                /* 面取 ②【辺寸法】（寸法は面でなく辺の長さ） */                 /* 面取 ③寸法= に 0 以下：`データが不適当` */
     /* 手書線：いまの一筆（か直前の一筆）の区間ごとの始点。[ESC] はここから
      * 一つずつ戻る。 */
     int hand_n;
@@ -683,6 +688,8 @@ typedef struct {
  * itself, and 複写, whose own line offers the same `(L)線･円  (R)線･円･文字`
  * and whose first stage is spelt exactly the same (src/copy.h). */
 #define JW_RANGE_CMD(n) ((n) == 25 || (n) == 1 || (n) == 16 || (n) == 27 || (n) == 17)
+/* 面取 の一括処理 も同じ範囲の取り方（本物も ovl5 の同じ範囲の道具）。 */
+#define JW_RANGE(c) (JW_RANGE_CMD((c)->command) || ((c)->command == 8 && (c)->chb))
 
 /* And which of those put what the range holds somewhere else: 複写 leaves the
  * originals and 移動 does not, but everything up to the distance is the same

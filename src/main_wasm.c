@@ -476,6 +476,10 @@ static void sync_ui(void)
     ui.text_rep = cmd.text_rep;
     ui.meas_put = cmd.meas_put;
     ui.circ_dia = cmd.circ_dia;
+    ui.chb = cmd.chb;
+    ui.ch_bad = cmd.ch_bad;
+    ui.ch_side = cmd.ch_side;
+    ui.chb_inner = cmd.chb_inner;
     ui.box_ctr = cmd.box_ctr;
     ui.rep_gap[0] = cmd.rep_gap[0];
     ui.rep_gap[1] = cmd.rep_gap[1];
@@ -1723,11 +1727,11 @@ EMSCRIPTEN_KEEPALIVE const char *jw_cmd_state(void)
     snprintf(buf, sizeof buf,
              "cmd=%d stage=%d pressed=%d typing=%d fix_mode=%d fix_done=%d "
              "fix_len=%d fix_angle=%d ask_kind=%d top_item=%d box_ask=%d "
-             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g",
+             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g chb=%d cham=%d",
              cmd.command, cmd.stage, cmd.pressed, cmd.typing, cmd.fix_mode,
              cmd.fix_done, cmd.fix_len, cmd.fix_angle, cmd.ask_kind,
              cmd.top_item, cmd.box_ask, cmd.box_fix, cmd.circ_fix,
-             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang);
+             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer);
     return buf;
 }
 EMSCRIPTEN_KEEPALIVE int jw_top_item(int x, int y) { return jw_ui_top_item(x, y); }
@@ -4696,6 +4700,12 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     pick = jw_ui_key_command(key);
 
     if (!pick) {
+        /* [ESC] は何もしない命令でも `読取可能データ無` を消すので書き直す
+         * （測定：func_all chamfer_s0_c2_v の最後の [ESC]）。 */
+        if (key == 27) {
+            sync_ui();
+            present();
+        }
         return 0;
     }
     ui.command = pick;

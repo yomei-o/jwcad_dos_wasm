@@ -321,6 +321,7 @@ static void par_dir(const JwCmd *c, double *x, double *y)
 static long ang16(double x1, double y1, double x2, double y2);
 static int ellipse_put(JwCmd *c, Jwc *d, double deg);
 static void place_undo(JwCmd *c, Jwc *d);
+static void chamfer_bulk(JwCmd *c, Jwc *d);
 
 /* （ ②半円の形：始点・終点（a3x/a3y）と向きの点 (mx,my) から、中心・半径と
  * 記録の二つの角度（始点側 a と a+180、向きの点を左回りに含む順）。 */
@@ -1079,7 +1080,7 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         }
         return;
     }
-    if (JW_RANGE_CMD(c->command) && !c->zukei && c->pressed == 2
+    if (JW_RANGE(c) && !c->zukei && c->pressed == 2
         && c->stage == 3) {
         int qx, qy;
 
@@ -1178,7 +1179,7 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
     if (!c->pressed && !(c->command == 12 && c->arc3 == 3)) {
         return;
     }
-    if (JW_RANGE_CMD(c->command) && c->pressed == 2) {
+    if (JW_RANGE(c) && c->pressed == 2) {
         /* 追加･除外 keeps the range on the screen; the right button's
          * 範囲確定 does not -- its screen has no green at all, and that one
          * has 264 pixels of it (SAMPLE0, (150,130)-(245,170)).  The drawing of
@@ -1402,7 +1403,7 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         jw_line(v, x1 + 3, py - 1, x1 + 3, py, 4, 0x18, JW_STYLE_SOLID);
         return;
     }
-    if (JW_RANGE_CMD(c->command) && c->pressed != 1) {
+    if (JW_RANGE(c) && c->pressed != 1) {
         return;                 /* the box is only dragged while it is open */
     }
     /* The chrome leaves the clip open to the whole screen; what is dragged is
@@ -1432,7 +1433,7 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
             at_screen(w, X[k + 1], Y[k + 1], &qx1, &qy1);
             jw_line(v, qx0, qy0, qx1, qy1, 2, 0x18, JW_STYLE_SOLID);
         }
-    } else if (c->command == 4 || JW_RANGE_CMD(c->command)) {
+    } else if (c->command == 4 || JW_RANGE(c)) {
         /* 窓で切って引く（始点が窓のずっと外にあるとき：拡大のあとなど）。
          * 矢の角は、矢の点を図面へ出して画面へ戻したもの（測定：7.45 倍で
          * 矢が (300,300) のとき、本物の帯の角は (300,299)）。 */
@@ -2293,6 +2294,16 @@ static int picked_line(const JwCmd *c, const Jwc *d, long k)
 {
     if (c->sel_line) {
         return k < c->n0_lines && c->sel_line[k];
+    }
+    /* 面取 の一括処理は端が一つでも範囲にあれば取る（測定：probe_chamfer の
+     * chb_a で枠の左辺・上辺に印）。 */
+    if (c->command == 8 && c->chb) {
+        const JwcLine *l = &d->lines[k];
+
+        return in_reach_layer(d, l->layer)
+               && (jw_cmd_in_range(c, l->x0, l->y0, l->x0, l->y0)
+                   || jw_cmd_in_range(c, l->x1, l->y1, l->x1, l->y1))
+                  != flipped(c, JW_FLIP_LINE, k);
     }
     return in_reach_layer(d, d->lines[k].layer)
            && jw_cmd_in_range(c, d->lines[k].x0, d->lines[k].y0,
@@ -3624,7 +3635,7 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         }
         return;
     }
-    if (!JW_RANGE_CMD(c->command) || c->pressed != 2) {
+    if (!JW_RANGE(c) || c->pressed != 2) {
         return;
     }
 
@@ -4230,11 +4241,11 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * has is a figure.  The same difference shows: a placed line crossing one
      * of the drawing's strings is on top in the original and was under it
      * here (18 pixels of TEST1's figure placed at (300,300)). */
-    if (!d || !(JW_RANGE_CMD(c->command) || c->command == 8
+    if (!d || !(JW_RANGE(c) || c->command == 8
                 || c->command == 9 || c->command == 19 || c->command == 20
                 || c->command == 23 || c->command == 26
                 || c->command == 14)
-        || (JW_RANGE_CMD(c->command) && c->pressed != 2
+        || (JW_RANGE(c) && c->pressed != 2
             && !(c->command == 27 && c->zukei == JW_ZUKEI_PUT2)
             && !(c->command == 17 && c->hen_dbl
                  && c->hen_dbl_from > 0)
@@ -4660,14 +4671,58 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
      * tools/cycle.sh walked it: 角面 → 丸面 → Ｌ面 → 楕円面 → 角面. */
     /* 面取 ③寸法=：`[ESC].寸法 =  前回と同じ ﾏｳｽ(R) [    30.000mm]`、打つ字は
      * 桁 14（測定：STR）。欄のあいだの左押しは効かない。 */
-    if (c->command == 8 && item == 3 && c->pick_a < 0 && !c->ch_ask) {
+    /* 面取 ④一括処理（丸面 の行では ③）。`[ESC]  面取範囲  始点マウス指示
+     * (L)線･円` へ（測定：probe_chamfer）。 */
+    if (c->command == 8 && !c->chb && c->pick_a < 0 && !c->ch_ask
+        && ((c->chamfer == 0 && item == 4) || (c->chamfer == 1 && item == 3))) {
+        c->chb = 1;
+        c->chb_inner = 0;
+        c->pressed = 0;
+        c->stage = 0;
+        c->n_flip = 0;
+        c->cleared = 0;
+        return 1;
+    }
+    if (c->command == 8 && c->chb) {
+        /* 範囲の段では ①レイヤ ②線種色（未移植）。確定の段は下で。 */
+        if (!(c->pressed == 2 && c->stage == 2)) {
+            goto range_items;
+        }
+        if (item == 1) {
+            chamfer_bulk(c, d);
+            c->pressed = 0;
+            c->stage = 0;
+            c->chb = 0;
+            return 1;
+        }
+        if (item == 2) {
+            c->pressed = 0;
+            c->stage = 0;
+            return 1;
+        }
+        if (item == 3) {
+            c->chb_inner = !c->chb_inner;
+            return 1;
+        }
+        return 0;
+    }
+range_items:
+    if (c->command == 8 && item == 3 && c->pick_a < 0 && !c->ch_ask
+        && c->chamfer == 0) {
         c->ch_ask = 1;
         c->typing = 1;
         c->typed[0] = 0;
         c->typed_n = 0;
         return 1;
     }
-    if (c->command == 8 && item == 1) {
+    /* 面取【角面】の ②：【面寸法】⇔【辺寸法】（測定：func_all chamfer_s0_c2
+     * の行）。辺寸法なら寸法は角から切る所までの長さ。 */
+    if (c->command == 8 && item == 2 && c->chamfer == 0 && !c->chb
+        && c->pick_a < 0 && !c->ch_ask) {
+        c->ch_side = !c->ch_side;
+        return 1;
+    }
+    if (c->command == 8 && item == 1 && !c->chb) {
         c->chamfer = (c->chamfer + 1) & 3;
         return 1;
     }
@@ -5328,7 +5383,7 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         }
         return 0;
     }
-    if (!JW_RANGE_CMD(c->command) || c->pressed != 2) {
+    if (!JW_RANGE(c) || c->pressed != 2) {
         return 0;
     }
     if (c->stage == 3) {        /* 追加･除外's 「①範囲 確定」 */
@@ -6147,6 +6202,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typed_n = 0;
             return 1;
         }
+        c->ch_bad = 0;
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
@@ -6154,6 +6210,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 
                 if (v > 0.0) {
                     c->gap_chamfer = v;
+                } else {
+                    /* 0 以下は `データが不適当` と出して、欄は空で開いたまま
+                     * （測定：func_all chamfer_s0_c5_v で 0 [Enter]）。 */
+                    c->ch_bad = 1;
+                    c->typed_n = 0;
+                    c->typed[0] = 0;
+                    return 1;
                 }
             }
             c->ch_ask = 0;
@@ -6524,6 +6587,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->moved = 0;
         return 1;
     }
+    if (key == 27 && c->command == 8 && c->chb && !c->pressed) {
+        c->chb = 0;             /* 面取範囲 の始点で [ESC]：面取 の行へ（測定） */
+        c->stage = 0;
+        return 1;
+    }
     if (key == 27) {
         /* [ESC]: the point in hand goes and the command asks for it again.
          * With nothing in hand it writes nothing at all, and a second one
@@ -6532,7 +6600,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (!c->pressed || c->escaped) {
             return 0;
         }
-        if (JW_RANGE_CMD(c->command)) {
+        if (JW_RANGE(c)) {
             /* A command that takes a range goes all the way back to the line
              * it came up with -- `◇消去範囲 始点指示 |①範囲内消去|…` with a
              * `・` at column 6 -- whether the range was half taken or fixed.
@@ -6583,7 +6651,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->dim_val_size = key - JW_KEY_F1 + 1;
         return 1;
     }
-    if (key == JW_KEY_F2 && JW_RANGE_CMD(c->command) && c->stage == 3) {
+    if (key == JW_KEY_F2 && JW_RANGE(c) && c->stage == 3) {
         c->cleared = 1;
         c->n_flip = 0;
         return 1;
@@ -7754,7 +7822,7 @@ static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
     if (sn <= 0.0) {
         return;
     }
-    back = want / 2.0 / sn;
+    back = c->ch_side ? want : want / 2.0 / sn;
     akx = (float)(cx + back * adx);
     aky = (float)(cy + back * ady);
     bkx = (float)(cx + back * bdx);
@@ -7788,6 +7856,243 @@ static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
         d->lines[d->n_lines - 1].rest[1] = 0;
         c->co_undo_new = 3;
     }
+}
+
+/* 面取 の一括処理の実行。範囲で取った線どうしで、範囲の中の端がちょうど
+ * 重なる組を角として、角面なら一本ずつの面取と同じ寸法で切る。
+ *
+ * 測定（tools/cases/probe_chamfer.txt、SAMPLE0、寸法 30 = 52.32）：
+ *   * 角を始点に持つ線を Ｂ、終点に持つ線を Ａ として、二本を抜き、
+ *     **面の線（Ｂ側の点 → Ａ側の点）、Ｂ の残り、Ａ の残り** の順に末尾へ。
+ *     残りはどちらも角から外へ向く（Ａ は向きが変わる）。chb_m・chb_o。
+ *   * 短すぎて切れない角は、二本を抜いて **Ｂ を逆向き、Ａ を逆向き** で
+ *     足し直すだけ（chb_n、長さ 17.44 の線）。
+ *   * 丸面は 半径 = 寸法、接点は角から r / tan(角の半分)。線は Ｂ、Ａ の残り
+ *     の順、弧は円弧の列の末尾（chb_p）。
+ *   * 足し直した線の rest[2]・rest[3] は 0、面の線の rest[1] は 0x41（一本
+ *     ずつの面取の 0 とは違う）。
+ * 一本の線が二つの角にかかるとき、③内角面取、Ｌ面・楕円面は未測定。 */
+static long poly_angle(double cx, double cy, double x, double y);
+
+static void chamfer_bulk(JwCmd *c, Jwc *d)
+{
+    const double per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
+    const double want = c->gap_chamfer * per;
+    const long n0 = c->n0_lines < d->n_lines ? c->n0_lines : d->n_lines;
+    unsigned char *used, *pick;
+    long *pa, *pb, np = 0, i, j, k, rest_n = 0;
+    float *px, *py;
+    JwcLine *la_s, *lb_s;
+
+    if (n0 <= 0) {
+        return;
+    }
+    used = (unsigned char *)calloc((size_t)n0, 1);
+    pick = (unsigned char *)calloc((size_t)n0, 1);
+    pa = (long *)calloc((size_t)n0, sizeof *pa);
+    pb = (long *)calloc((size_t)n0, sizeof *pb);
+    px = (float *)calloc((size_t)n0, sizeof *px);
+    py = (float *)calloc((size_t)n0, sizeof *py);
+    la_s = (JwcLine *)calloc((size_t)n0, sizeof *la_s);
+    lb_s = (JwcLine *)calloc((size_t)n0, sizeof *lb_s);
+    if (!used || !pick || !pa || !pb || !px || !py || !la_s || !lb_s) {
+        goto done;
+    }
+    for (i = 0; i < n0; i++) {
+        pick[i] = (unsigned char)picked_line(c, d, i);
+    }
+    /* 角の組を先に全部集める（線の順に、範囲の中の端どうし）。 */
+    for (i = 0; i < n0; i++) {
+        int ei;
+
+        for (ei = 0; ei < 2 && pick[i] && !used[i]; ei++) {
+            const float ex = ei ? d->lines[i].x1 : d->lines[i].x0;
+            const float ey = ei ? d->lines[i].y1 : d->lines[i].y0;
+
+            if (!jw_cmd_in_range(c, ex, ey, ex, ey)) {
+                continue;
+            }
+            for (j = i + 1; j < n0; j++) {
+                int ej;
+
+                if (!pick[j] || used[j]) {
+                    continue;
+                }
+                for (ej = 0; ej < 2; ej++) {
+                    if ((ej ? d->lines[j].x1 : d->lines[j].x0) == ex
+                        && (ej ? d->lines[j].y1 : d->lines[j].y0) == ey) {
+                        break;
+                    }
+                }
+                if (ej == 2) {
+                    continue;
+                }
+                /* Ｂ = 角を始点に持つほう（どちらもなら先の線）。 */
+                if (ei == 0 || ej != 0) {
+                    pb[np] = i;
+                    pa[np] = j;
+                } else {
+                    pb[np] = j;
+                    pa[np] = i;
+                }
+                px[np] = ex;
+                py[np] = ey;
+                lb_s[np] = d->lines[pb[np]];
+                la_s[np] = d->lines[pa[np]];
+                np++;
+                used[i] = used[j] = 1;
+                break;
+            }
+        }
+    }
+    /* 範囲で取った線は角に関わらなくても全部抜き、角の分を組の順に足して
+     * から、残りを元の順で末尾へ（測定：chb_h で枠の下の内の線 4・7〜10 が
+     * 何も変わらずに最後へ）。 */
+    {
+        long nr = 0;
+
+        for (k = 0; k < n0; k++) {
+            if (pick[k] && !used[k]) {
+                la_s[np + nr++] = d->lines[k];
+            }
+        }
+        for (k = n0 - 1; k >= 0; k--) {
+            if (pick[k]) {
+                jwc_remove_line(d, k);
+            }
+        }
+        rest_n = nr;
+    }
+    for (k = 0; k < np; k++) {
+        const JwcLine lb = lb_s[k], la = la_s[k];
+        const double ex = px[k], ey = py[k];
+        const int b_at0 = lb.x0 == px[k] && lb.y0 == py[k];
+        const int a_at0 = la.x0 == px[k] && la.y0 == py[k];
+        const double bfx = b_at0 ? lb.x1 : lb.x0, bfy = b_at0 ? lb.y1 : lb.y0;
+        const double afx = a_at0 ? la.x1 : la.x0, afy = a_at0 ? la.y1 : la.y0;
+        double bdx = bfx - ex, bdy = bfy - ey;
+        double adx = afx - ex, ady = afy - ey;
+        const double lbn = sqrt(bdx * bdx + bdy * bdy);
+        const double lan = sqrt(adx * adx + ady * ady);
+        double half = 0.0, back = 0.0, r = 0.0;
+        int ok = 0;
+
+        if (lbn > 0.0 && lan > 0.0) {
+            bdx /= lbn; bdy /= lbn;
+            adx /= lan; ady /= lan;
+            half = acos(adx * bdx + ady * bdy) / 2.0;
+            if (sin(half) > 0.0) {
+                if (c->chamfer == 1) {
+                    r = want;
+                    back = r / tan(half);
+                } else {
+                    back = c->ch_side ? want : want / 2.0 / sin(half);
+                }
+                ok = back < lbn && back < lan;
+                /* 戻る長さは float に丸めてから（測定：chb_m の 77.971 が
+                 * 0x429bf138、丸めないと 39）。 */
+                back = (float)back;
+            }
+        }
+        if (!ok) {
+            JwcLine q = lb;
+
+            q.x0 = lb.x1; q.y0 = lb.y1; q.x1 = lb.x0; q.y1 = lb.y0;
+            q.rest[2] = 0;
+            q.rest[3] = 0;
+            if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen,
+                             q.layer)) {
+                d->lines[d->n_lines - 1] = q;
+            }
+            q = la;
+            q.x0 = la.x1; q.y0 = la.y1; q.x1 = la.x0; q.y1 = la.y0;
+            q.rest[2] = 0;
+            q.rest[3] = 0;
+            if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen,
+                             q.layer)) {
+                d->lines[d->n_lines - 1] = q;
+            }
+            continue;
+        }
+        {
+            const float bkx = (float)(ex + back * bdx);
+            const float bky = (float)(ey + back * bdy);
+            const float akx = (float)(ex + back * adx);
+            const float aky = (float)(ey + back * ady);
+            JwcLine q;
+
+            if (c->chamfer != 1) {
+                q = lb;
+                q.x0 = bkx; q.y0 = bky; q.x1 = akx; q.y1 = aky;
+                q.rest[2] = 0;
+                q.rest[3] = 0;
+                if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen,
+                                 q.layer)) {
+                    d->lines[d->n_lines - 1] = q;
+                }
+            }
+            q = lb;
+            q.x0 = bkx; q.y0 = bky; q.x1 = (float)bfx; q.y1 = (float)bfy;
+            q.rest[2] = 0;
+            q.rest[3] = 0;
+            if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen,
+                             q.layer)) {
+                d->lines[d->n_lines - 1] = q;
+            }
+            q = la;
+            q.x0 = akx; q.y0 = aky; q.x1 = (float)afx; q.y1 = (float)afy;
+            q.rest[2] = 0;
+            q.rest[3] = 0;
+            if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen,
+                             q.layer)) {
+                d->lines[d->n_lines - 1] = q;
+            }
+            if (c->chamfer == 1) {
+                /* 弧の中心は角から二等分線の向きに r / sin(半分)。 */
+                const double wx = adx + bdx, wy = ady + bdy;
+                const double wl = sqrt(wx * wx + wy * wy);
+
+                if (wl > 0.0) {
+                    /* 中心までの長さも float（測定：chb_p の中心 x が
+                     * 0x42ba97af、角度が 90°+1/65536 と 180°）。 */
+                    const double dist = (float)(r / sin(half));
+                    const double cx = (float)(ex + wx / wl * dist);
+                    const double cy = (float)(ey + wy / wl * dist);
+                    long sa = poly_angle(cx, cy, akx, aky);
+                    long sb = poly_angle(cx, cy, bkx, bky);
+                    const long full = 360L << 16;
+
+                    /* 小さいほうの弧（左回りで 180 度未満）。 */
+                    if (((sb - sa) % full + full) % full > (180L << 16)) {
+                        const long t = sa;
+
+                        sa = sb;
+                        sb = t;
+                    }
+                    /* 一括処理の丸面の弧は最後のバイトが 0xfc（測定）。 */
+                    jwc_add_arc_at(d, (float)cx, (float)cy, (float)r, sa, sb,
+                                   lb.type, lb.pen, lb.layer, 0xfc);
+                }
+            }
+        }
+    }
+    for (k = 0; k < rest_n; k++) {
+        const JwcLine q = la_s[np + k];
+
+        if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen, q.layer)) {
+            d->lines[d->n_lines - 1] = q;
+            d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~2u;
+        }
+    }
+done:
+    free(used);
+    free(pick);
+    free(pa);
+    free(pb);
+    free(px);
+    free(py);
+    free(la_s);
+    free(lb_s);
 }
 
 /* 中心線's last press: put the line down between the start already taken
@@ -10981,7 +11286,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
      * 選んだものに立てる——保存した図面にそのまま入っています（測定：
      * 複写 で範囲を取って線 0 を加えると、SAMPLE0 のレイヤ 1 の 0x02 が
      * 全部落ち、線 0 だけ 0x02）。 */
-    if (d && JW_RANGE_CMD(c->command)) {
+    if (d && JW_RANGE(c)) {
         long k;
 
         /* 落とすのは範囲を閉じたとき：始点の押しだけでは記録の印は残る
@@ -11004,6 +11309,19 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         if (c->range_marked && c->stage >= 1) {
             for (k = 0; k < d->n_lines && k < c->n0_lines; k++) {
                 if (picked_line(c, d, k)) {
+                    /* 面取 の一括処理は、最後のバイトに範囲に入っている端：
+                     * 1 始点だけ、2 終点だけ、0 両方（測定：chb_a の枠の
+                     * 左辺 02・上辺 01・内の線 00。変形 と同じ書き方）。 */
+                    if (c->command == 8 && pressed < 2) {
+                        const JwcLine *l = &d->lines[k];
+                        const int a = jw_cmd_in_range(c, l->x0, l->y0,
+                                                      l->x0, l->y0);
+                        const int b = jw_cmd_in_range(c, l->x1, l->y1,
+                                                      l->x1, l->y1);
+
+                        d->lines[k].rest[3] = (unsigned char)
+                            (a && b ? 0 : a ? 1 : 2);
+                    }
                     d->lines[k].rest[2] |= 2u;
                 } else {
                     d->lines[k].rest[2] &= (unsigned char)~2u;
@@ -14635,7 +14953,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         }
     }
     if (c->command == 8 && c->ch_ask) {
-        /* ③寸法= の欄：左は効かず（本物は行を出し直すだけ）、右は前回と同じ。 */
+        /* ③寸法= の欄：左は効かず（本物は行を出し直すだけ）、右は前回と同じ。
+         * どちらでも `データが不適当` は消える（測定）。 */
+        c->ch_bad = 0;
         if (!right) {
             return 0;
         }
@@ -14643,7 +14963,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->typing = 0;
         return 1;
     }
-    if (c->command == 8) {
+    if (c->command == 8 && !c->chb) {
         /* 面取【角面】 —— the corner between two lines is cut off and the cut
          * is joined by a third.
          *
@@ -14990,7 +15310,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->stage = 1;
         return 1;
     }
-    if (JW_RANGE_CMD(c->command)) {
+    if (JW_RANGE(c)) {
         /* 消去: the first press takes a corner of the range and the second,
          * with the right button, fixes it -- 範囲確定, as the line it puts up
          * says.  What the box holds whole is then painted in colour 2 and the
@@ -15211,7 +15531,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 1;
             /* 消去 ①②の升で出た行（src/item.h）は始点の押しで範囲の行に
              * 替わる（測定：erase_range_out の始点の押しで `終点指示` の行）。 */
-            if (c->command == 25) {
+            if (c->command == 25 || c->command == 8) {
                 c->top_item = 0;
                 c->top_right = 0;
             }
@@ -15237,9 +15557,17 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * the same 追加･除外 stage the left one does. */
             /* 複写・移動も右で閉じると範囲確定して ①ﾏｳｽ位置 へ（測定：移動を
              * 右で閉じて二点で動かし [ESC] で戻すと、y に float の丸めが残る）。 */
-            c->stage = (right && c->command == 25) ? 2
+            c->stage = (right && (c->command == 25 || c->command == 8)) ? 2
                      : (right && JW_MOVE_CMD(c->command)) ? 4 : 3;
             return 1;
+        }
+        if (c->command == 8 && c->pressed == 2 && c->stage == 2) {
+            /* `①実行(L)|②中止(R)`：図面の左で実行、右で中止（行のとおり。
+             * 押しで確かめたのは ① の升だけ）。 */
+            return jw_cmd_top(c, d, right ? 2 : 1, 0);
+        }
+        if (c->command == 8 && c->pressed == 2 && c->stage == 3) {
+            return 0;           /* 追加･除外 の押し：未移植 */
         }
         if (c->command == 25 && c->stage == 2 && !right) {
             /* `復活出来ません |①実行(L)|②中止(R)|` で図面を左で押すと、まず

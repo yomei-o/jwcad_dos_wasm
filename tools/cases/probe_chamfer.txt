@@ -1,0 +1,16 @@
+# 面取 ④一括処理（2026-10-01）
+chb_a|SAMPLE0|90 184 left|type 4|150 120 left|move 260 200|260 200 right
+chb_b|SAMPLE0|90 184 left|type 4|150 120 left|move 260 200|260 200 left|type 1
+chb_c|SAMPLE0|90 184 left|type 1|type 3|150 120 left|move 260 200|260 200 right
+chb_d|SAMPLE0|90 184 left|type 4|140 380 left|move 620 440|620 440 right
+chb_e|SAMPLE0|90 184 left|type 4|150 120 left|move 260 200|260 200 right|key esc
+chb_f|SAMPLE0|90 184 left|type 4|150 120 left|move 260 200|260 200 left|type 1|type 1
+chb_g|SAMPLE0|90 184 left|type 4|150 120 left|move 260 200|260 200 right|type 1
+chb_h|SAMPLE0|90 184 left|type 4|140 380 left|move 620 440|620 440 left|type 1|type 1
+chb_i|SAMPLE0|90 184 left|type 4|140 380 left|move 620 440|620 440 left|type 1|type 3|type 1
+chb_j|SAMPLE0|90 184 left|type 1|type 3|140 380 left|move 620 440|620 440 left|type 1|type 1
+chb_k|SAMPLE0|90 184 left|type 4|150 120 left|move 260 200|260 200 left|type 1|300 300 left
+chb_m|SAMPLE0|90 184 left|type 4|150 120 left|move 175 150|175 150 left|type 1|type 1
+chb_n|SAMPLE0|90 184 left|type 4|225 150 left|move 240 165|240 165 left|type 1|type 1
+chb_o|SAMPLE0|90 184 left|type 4|580 120 left|move 620 150|620 150 left|type 1|type 1
+chb_p|SAMPLE0|90 184 left|type 1|type 3|150 120 left|move 175 150|175 150 left|type 1|type 1

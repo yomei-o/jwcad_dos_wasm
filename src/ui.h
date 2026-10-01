@@ -344,6 +344,9 @@ typedef struct {
     int text_rep;
     int meas_put;
     int circ_dia;
+    int chb, chb_inner;
+    int ch_bad;
+    int ch_side;
     int box_ctr;
     double rep_gap[2];
     int box_refask;             /* □ ③平行 の基準線待ち */

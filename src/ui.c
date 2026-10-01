@@ -2869,11 +2869,40 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                        "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
+    } else if (s->command == 8 && s->chb) {
+        /* 面取 の一括処理の行（本物の桁を測った：probe_chamfer の各段）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        if (s->stage == 0) {
+            jw_ui_text(v, 8, 1, 7, 0, "\x96\xca\x8e\xe6\x94\xcd\x88\xcd");
+            jw_ui_text(v, 18, 1, 7, 0, "\x8en\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6");
+            jw_ui_text(v, 33, 1, 7, 0, "(L)\x90\xfc\xa5\x89~");
+        } else if (s->stage == 1) {
+            jw_ui_text(v, 8, 1, 7, 0, "<\x90\xfc\xa5\x89~>");
+            jw_ui_text(v, 17, 1, 7, 0, "\x8fI\x93_\x8ew\x8e\xa6");
+            jw_ui_text(v, 26, 1, 7, 0, "\xcf\xb3\xbd(L)");
+            jw_ui_text(v, 34, 1, 7, 0, "\x94\xcd\x88\xcd\x8am\x92\xe8");
+            jw_ui_text(v, 43, 1, 7, 0, "\xcf\xb3\xbd(R)");
+            jw_ui_text(v, 53, 1, 7, 0, "|\x87@\x83\x8c\x83" "C\x83\x84|\x87" "A\x90\xfc\x8e\xed\x90" "F|");
+        } else if (s->stage == 3) {
+            jw_ui_text(v, 6, 1, 7, 0, "\x81Q");
+            jw_ui_text(v, 8, 1, 7, 0, "\x96\xca\x8e\xe6\x94\xcd\x88\xcd");
+            jw_ui_text(v, 18, 1, 7, 0, "\x92\xc7\x89\xc1\xa5\x8f\x9c\x8aO\x83" "f\x81[\x83^\x8ew\x8e\xa6");
+            jw_ui_text(v, 40, 1, 7, 0, "\x90\xfc\x81" "E\x89~(L)");
+            jw_ui_text(v, 51, 1, 7, 0, "[F1\x81`F10]");
+            jw_ui_text(v, 68, 1, 7, 0, "|\x87@\x94\xcd\x88\xcd");
+            jw_ui_text(v, 76, 1, 7, 0, "\x8am\x92\xe8|");
+        } else if (s->stage == 2) {
+            jw_ui_text(v, 8, 1, 7, 0, "\x88\xea\x8a\x87\x8f\x88\x97\x9d");
+            jw_ui_text(v, 18, 1, 7, 0, "|\x87@ \x8e\xc0\x8ds(L)|\x87" "A \x92\x86\x8e~(R)|\x87" "B \x93\xe0\x8ap\x96\xca\x8e\xe6\x81y ");
+            jw_ui_text(v, 55, 1, 7, 0, s->chb_inner ? "\x97L" : "\x96\xb3");
+            jw_ui_text(v, 57, 1, 7, 0, " \x81z|");
+        }
     } else if (s->command == 8 && s->ch_ask) {
         /* 面取 ③寸法= の欄（測定：STR=1）。 */
         char one[32];
 
-        jw_ui_text(v, 1, 1, 7, 0, "[ESC]\x07\x90\xa1\x96@ =");
+        /* 桁 6 は BEL ではなく `.`（測定：chamfer_s0_c2_v の 2x2 の点）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC].\x90\xa1\x96@ =");
         jw_ui_text(v, 38, 1, 7, 0, "\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) ");
         sprintf(one, "[%10.3f", s->gap_chamfer);
         jw_ui_text(v, 56, 1, 7, 0, one);
@@ -2887,6 +2916,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 14, 1, 7, 0, t);
         }
         fill(v, 104 + s->typed_n * 8, 7, 111 + s->typed_n * 8, 15, 4);
+        if (s->ch_bad) {
+            jw_ui_text(v, 18, 2, 7, 0, "\x83" "f\x81[\x83^\x82\xaa\x95s\x93K\x93\x96");
+        }
     } else if (s->command == 4 && s->box_refask) {
         /* □ ③平行 の基準線待ち（測定：STR=1）。 */
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
@@ -4348,6 +4380,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     fill(v, x, 7, x + 7, 15, 4);
                 }
             }
+        }
+        /* 面取【辺寸法】：行の `②【面寸法】` の 面 だけが替わる（桁 45）。 */
+        if (s->command == 8 && s->ch_side && !s->ch_ask && !s->chb
+            && !s->top_item && (s->stage == 0 || s->stage == 2)) {
+            jw_ui_text(v, 45, 1, 7, 0, "\x95\xd3");
         }
         /* 文字 ③角度指定 の欄の字（src/item.h の行の上に。桁 15、矢印の
          * 升はその後ろ。測定：text_c3_v で `30` を打った画面）。 */
