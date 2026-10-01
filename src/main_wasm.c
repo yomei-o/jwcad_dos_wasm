@@ -1731,6 +1731,9 @@ EMSCRIPTEN_KEEPALIVE const char *jw_cmd_state(void)
     return buf;
 }
 EMSCRIPTEN_KEEPALIVE int jw_top_item(int x, int y) { return jw_ui_top_item(x, y); }
+/* 移植の矢の位置（tools/stepshots.mjs が、矢が跳んだかを見る）。 */
+EMSCRIPTEN_KEEPALIVE int jw_mouse_x(void) { return mouse_x; }
+EMSCRIPTEN_KEEPALIVE int jw_mouse_y(void) { return mouse_y; }
 EMSCRIPTEN_KEEPALIVE int jw_io_stage(void) { return ui.io_stage; }
 EMSCRIPTEN_KEEPALIVE int jw_file_count(void) { return ui.file_n; }
 EMSCRIPTEN_KEEPALIVE int jw_file_sel(void) { return ui.file_sel; }
@@ -4582,6 +4585,13 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         const int was_typing = cmd.typing;
 
         if (jw_cmd_key(&cmd, drawing, key)) {
+            /* 手書線の [ESC] で一区間戻ると、矢もその始点へ跳ぶ（測定：
+             * curve_s1_c5 で矢が (598,300) に）。 */
+            if (key == 27 && cmd.command == 23 && cmd.hand
+                && cmd.stage == 61) {
+                mouse_x = cmd.hand_sx;
+                mouse_y = cmd.hand_sy;
+            }
             /* □ ①寸法・○ ①径寸法 の欄を [Enter] で閉じたら、**その場の矢で**
              * 読み直します：本物はすぐ数え箱に 横= 20.000・縦= 30.000 を出し、
              * 赤い四角を矢の所に描く（矢が上の行の上でも。測定）。 */

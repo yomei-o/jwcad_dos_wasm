@@ -43,7 +43,10 @@ for (let i = 1; i <= 10; i++) KEY['f' + i] = 0x100 + i;
 let lastPress = null;
 const W = M._jw_width(), H = M._jw_height();
 const shot = (i) => {
-    if (lastPress) M._jw_mouse(lastPress[0], lastPress[1]);
+    /* 矢が命令に跳ばされた（手書線の [ESC] など）ときは送り直さない——本物の
+     * 矢もそこにある。 */
+    if (lastPress && M._jw_mouse_x() === lastPress[0]
+        && M._jw_mouse_y() === lastPress[1]) M._jw_mouse(lastPress[0], lastPress[1]);
     writeFileSync(out + '.' + String(i).padStart(3, '0') + '.raw',
                   Buffer.from(M.HEAPU8.buffer, M._jw_framebuffer(), W * H * 4));
 };
