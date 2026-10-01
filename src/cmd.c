@@ -4657,6 +4657,18 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
      * ①水平 を押したときと同じ `・文字種類[F3] 基点指示…` になる。 */
     /* 文字を書いたあとの行（段 2：`|①基点変|②行連続|③列連続|`）の ②③ は
      * 連続書（測定：text_rep2・text_rep3）。 */
+    /* 点 ①：【仮点】⇔【実点】（行は src/item.h。測定：point_s0_c1）。 */
+    if (c->command == 22 && item == 1) {
+        c->pt_real = !c->pt_real;
+        return 0;
+    }
+    /* ②距離 ③交点 ④円中心 ⑤仮点削除 は**未移植**。切り替えたあとの押しで
+     * 本物は自由な位置に点を作らない（測定：point_s0_c1_v、③ のあと何も
+     * 足さない）ので、押しは何もしないでおく。 */
+    if (c->command == 22 && item >= 2 && item <= 5) {
+        c->pt_mode = item;
+        return 0;
+    }
     if (c->command == 13 && c->stage == 2 && !c->typing_text && !c->text_ang_ask
         && (item == 2 || item == 3)) {
         c->text_rep = item;
@@ -5953,6 +5965,15 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
+        return 1;
+    }
+    /* 点 の [ESC]：この命令で足した実点を後ろから一つずつ取り消す（測定：
+     * point_s0_c1 で 5 つ足して [ESC] 二回で 3 つ）。 */
+    if (c->command == 22 && key == 27 && c->pt_added > 0 && d
+        && d->n_points > 0) {
+        d->n_points--;
+        jwc_ink_clear(d);
+        c->pt_added--;
         return 1;
     }
     /* 文字 ③角度指定 の欄の鍵。 */
@@ -15065,6 +15086,30 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * repaints the panel -- read off a press at (300,250) with 点 picked,
          * which leaves the twelve white pixels of a circle of radius two there
          * and nothing else.  Two presses leave two. */
+        if (c->pt_mode) {
+            return 0;               /* ②〜⑤ は未移植 */
+        }
+        if (c->pt_real) {
+            /* ①【実点】：押した所に記録の点（x, y, レイヤ, ペン 1, 0x00,
+             * 0x1d。測定：func_all point_s0_c1 の点 16〜18）。 */
+            JwcPoint p;
+
+            if (!take(c, d, w, sx, sy, right, &x, &y)) {
+                return 0;
+            }
+            memset(&p, 0, sizeof p);
+            p.x = (float)x;
+            p.y = (float)y;
+            p.layer = (unsigned char)d->write_layer;
+            p.rest[0] = (unsigned char)d->write_layer;
+            p.rest[1] = 1;
+            p.rest[3] = 0x1d;
+            if (jwc_put_point(d, &p)) {
+                c->pt_added++;
+            }
+            c->stage = 1;
+            return 1;
+        }
         if (!take(c, d, w, sx, sy, right, &x, &y)
             || d->n_temp >= JWC_TEMP_MAX) {
             return 0;
