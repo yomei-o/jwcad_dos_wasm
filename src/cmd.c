@@ -4619,7 +4619,10 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
      * has the two in one item and ／ keeps them apart** -- `④ 平 行・垂 直`
      * against `④平 行 |⑤垂 直` -- and ＋'s item puts up the same screen as
      * ／'s ④, the one that offers 平行線(L) / 同一線上の線(R). */
-    if (c->command == 2 && item == 4 && (c->stage == 0 || c->pressed == 1)) {
+    /* ＋ の `④ 平行・垂直` の 垂直 の所は字の無い ⑤ で、同じ行が出る
+     * （測定：plus_s1_c5）。 */
+    if (c->command == 2 && (item == 4 || item == 5)
+        && (c->stage == 0 || c->pressed == 1)) {
         c->ask_kind = 3;
         return 1;
     }

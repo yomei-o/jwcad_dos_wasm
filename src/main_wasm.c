@@ -4640,8 +4640,11 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         && !cmd.typing_text) {
         const int x = jw_ui_top_cell_x(key - '0');
 
-        /* □ の `④基点変 □` の □ は字の無い ⑤ の升（測定：box_s1_c5）。 */
-        if (x < 0 && key == '5' && cmd.command == 4 && cmd.pressed == 1) {
+        /* □ の `④基点変 □` の □ は字の無い ⑤ の升（測定：box_s1_c5）。
+         * ＋ の `④ 平行・垂直` の 垂直 も ⑤（測定：plus_s1_c5 で基準線を
+         * 聞く行へ）。 */
+        if (x < 0 && key == '5' && cmd.pressed == 1
+            && (cmd.command == 4 || cmd.command == 2)) {
             jw_cmd_top(&cmd, drawing, 5, 0);
             sync_ui();
             present();
