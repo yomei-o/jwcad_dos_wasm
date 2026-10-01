@@ -5896,7 +5896,6 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (c->hand_n > 0 && d && d->n_lines > 0) {
             c->hand_n--;
             jwc_remove_line(d, d->n_lines - 1);
-            jwc_ink_clear(d);
             c->hand_x = c->hand_px[c->hand_n];
             c->hand_y = c->hand_py[c->hand_n];
             c->hand_sx = c->hand_psx[c->hand_n];
