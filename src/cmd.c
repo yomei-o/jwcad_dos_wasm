@@ -6568,7 +6568,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~1u;
             }
         }
-        jwc_ink_clear(d);
+        /* 描き直さない（黒で消して描くだけ）。 */
         /* 線切断を戻したなら `残切断点` と輪の印も一つ戻る（測定）。 */
         if (c->command == 7 && c->co_undo_n == 1 && c->cut_n > 0) {
             c->cut_n--;
