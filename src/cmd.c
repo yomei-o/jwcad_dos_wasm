@@ -525,6 +525,10 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
                              (unsigned char)d->line_type,
                              (unsigned char)d->pen,
                              (unsigned char)d->write_layer)) {
+                /* 手書線の線は rest[1] 0xf5・rest[2] 0xc0（測定：
+                 * curve_s0_c5）。 */
+                d->lines[d->n_lines - 1].rest[1] = 0xf5;
+                d->lines[d->n_lines - 1].rest[2] = 0xc0;
                 c->hand_did = 1;
             }
             c->hand_x = nx;
@@ -5776,6 +5780,15 @@ static void divide_points(JwCmd *c, Jwc *d);
 int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
+
+    /* 手書線の [ESC]：一筆の途中なら始点を捨てて `始点指示`（[ESC] の無い
+     * 行）へ。矢が動いても引かない（測定：curve_s0_c5）。 */
+    if (c->command == 23 && c->hand && key == 27
+        && (c->stage == 60 || c->stage == 61)) {
+        c->stage = 60;
+        c->hand_did = 0;
+        return 1;
+    }
 
     /* [F2] while 消去 is asking 追加･除外: **the selection goes**.  Measured:
      * on SAMPLE0 with (150,130)-(245,170) the 224 red pixels go back to their
@@ -12130,6 +12143,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                          (unsigned char)d->line_type,
                          (unsigned char)d->pen,
                          (unsigned char)d->write_layer)) {
+            d->lines[d->n_lines - 1].rest[1] = 0xf5;
+            d->lines[d->n_lines - 1].rest[2] = 0xc0;
             c->hand_did = 1;
         }
         c->stage = 60;
