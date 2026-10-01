@@ -3544,6 +3544,11 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     if (c->command == 15) {
         int k;
 
+        /* ①表示 の小数点位置を待つあいだは経路を出さない。置けばまた出る
+         * （測定：mes_a、置いたあと枠の上辺が 7 xor 2 の 00ffff）。 */
+        if (c->meas_put) {
+            return;
+        }
         for (k = 1; k < c->meas_n; k++) {
             int x0, y0, x1, y1;
 
@@ -4657,6 +4662,13 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
      * ①水平 を押したときと同じ `・文字種類[F3] 基点指示…` になる。 */
     /* 文字を書いたあとの行（段 2：`|①基点変|②行連続|③列連続|`）の ②③ は
      * 連続書（測定：text_rep2・text_rep3）。 */
+    /* 測定 ①距離 を測っているあいだの ①表示：結果を文字で書く。行は
+     * `%s[F%d]  ◇結果表示   小数点位置%s%s`（ovl29 0x2b2e0）、左の盤は
+     * ` ﾍﾟﾝ%d 残文%5d `（0x2b23e）。測定：tools/cases/probe_measure.txt。 */
+    if (c->command == 15 && c->stage == 1 && item == 1 && !c->meas_put) {
+        c->meas_put = 1;
+        return 1;
+    }
     /* 点 ①：【仮点】⇔【実点】（行は src/item.h。測定：point_s0_c1）。 */
     if (c->command == 22 && item == 1) {
         c->pt_real = !c->pt_real;
@@ -14286,7 +14298,47 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         double px, py;
 
         if (!take(c, d, w, sx, sy, right, &px, &py)) {
+            if (c->meas_put) {
+                c->missed = 1;      /* 測定：mes_d の `読取可能データ無` */
+            }
             return 1;
+        }
+        if (c->meas_put) {
+            /* 小数点位置の押し：累計を m で、小数 3 桁から末尾の 0（と点）を
+             * 落として ` ｍ` を付け、**小数点の真ん中が押した所**に来るよう
+             * 置く（小数点が無いときは文字列全体の後ろに点があるとして同じ
+             * 式）。文字種類は図面の、レイヤは書込レイヤ。測定：0.25・0.41・
+             * 0.086 が x 295.640 から、累計 0 の `0 ｍ` が 286.483 から。 */
+            char num[48], pre[56];
+            const unsigned char size = (unsigned char)d->char_type;
+            double half, start, len;
+            char *dot;
+            int n;
+
+            sprintf(num, "%.3f", c->meas_total);
+            n = (int)strlen(num);
+            while (n > 0 && num[n - 1] == '0') {
+                num[--n] = 0;
+            }
+            if (n > 0 && num[n - 1] == '.') {
+                num[--n] = 0;
+            }
+            strcat(num, " \x82\x8d");
+            dot = strchr(num, '.');
+            n = dot ? (int)(dot - num) : (int)strlen(num);
+            memcpy(pre, num, (size_t)n);
+            pre[n] = '.';
+            pre[n + 1] = 0;
+            half = d->text_w[size <= 10 ? size : 0] / 20.0 * d->unit_mm / 2.0;
+            start = px - (jwc_text_length(d, pre, size) - half);
+            len = jwc_text_length(d, num, size);
+            jwc_add_text(d, (float)start, (float)py, (float)(start + len),
+                         (float)py, num, size,
+                         (unsigned char)d->write_layer);
+            c->meas_put = 0;
+            /* 数え箱はこの押しでは書き直さない（測定：mes_a で 13 のまま、
+             * 次の押しで 14）。 */
+            return 0;
         }
         if (c->stage != 1) {
             c->meas_total = 0.0;

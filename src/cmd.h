@@ -504,6 +504,7 @@ typedef struct {
      * `◇連続書 基点マウス指示`、段 41 は間隔の欄。間隔は図面寸法の mm で、
      * 行連続 と 列連続 で別に持つ（測定：5.0 と 20.0）。 */
     int text_rep;
+    int meas_put;               /* 測定 ①表示：小数点位置を待つ */
     int pt_real;                /* 点 ①【実点】 */
     int pt_mode;                /* 点 ②〜⑤（未移植） */
     int pt_added;               /* 点：足した実点の数（[ESC] で戻す） */

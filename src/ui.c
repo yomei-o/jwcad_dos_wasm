@@ -2852,6 +2852,23 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 38, 1, 7, 0, t);
         }
         fill(v, 296 + s->typed_n * 8, 7, 303 + s->typed_n * 8, 15, 4);
+    } else if (s->command == 15 && s->meas_put) {
+        /* 測定 ①表示 の小数点位置待ち（ovl29 0x2b23e〜0x2b2e0）。 */
+        char buf[64];
+
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "\x95\xb6\x8e\x9a\x8e\xed\x97\xde[F3]  \x81\x9e\x8c\x8b\x89\xca\x95\x5c\x8e\xa6   \x8f\xac\x90\x94\x93_\x88\xca\x92u\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read ");
+        fill(v, 1, 17, 120, 47, 4);
+        sprintf(buf, " \xcd\xdf\xdd%d \x8e" "c\x95\xb6%5d ", s->char_pen, 3626);
+        jw_ui_text(v, 1, 2, 0, 0, buf);
+        sprintf(buf, " \x89\xa1%4.1f \x8f" "c%4.1f ", s->char_w / 10.0, s->char_h / 10.0);
+        jw_ui_text(v, 1, 3, 0, 0, buf);
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 8 && s->ch_ask) {
         /* 面取 ③寸法= の欄（測定：STR=1）。 */
         char one[32];
