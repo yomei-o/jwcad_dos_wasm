@@ -73,6 +73,10 @@ static char zukei_names[50][10];
 static int zukei_names_n;
 static int zukei_pick;
 static int mouse_x = 200, mouse_y = 200;   /* where the original leaves it */
+/* 線記号変形の取り消しの控え。 */
+static int kg_undo;
+static long kg_nl, kg_na, kg_nt, kg_np;
+static JwcLine kg_line;
 /* 命令の帯を描く所：矢が左のメニューの上にあるあいだは、最後に作図範囲側に
  * いた所のまま（jw_mouse）。 */
 static int band_x = 200, band_y = 200;
@@ -350,6 +354,28 @@ static void place_kigou_1(const JwKigouSym *sym, double px, double py,
     /* **消すのは描く前**です——本物と同じ順にしないと、消し跡が
      * 記号の上に乗ります。`base` は写しなので消しても使えます。 */
     jwc_remove_line(drawing, cmd.kigou_line);
+    /* [ESC] の取り消しのために元の線を控える。戻す向きは測った一件
+     * （func_all henkei_s0_c4：左の枠が (40.973,323.057)→(40.973,44) で末尾に）
+     * に合わせた判定で、ほかの向きの線では未確認。 */
+    {
+        const double e0 = (base.x0 - ox) * (base.x0 - ox)
+                        + (base.y0 - oy) * (base.y0 - oy);
+        const double e1 = (base.x1 - ox) * (base.x1 - ox)
+                        + (base.y1 - oy) * (base.y1 - oy);
+
+        kg_line = base;
+        if (e0 < e1) {
+            kg_line.x0 = base.x1;
+            kg_line.y0 = base.y1;
+            kg_line.x1 = base.x0;
+            kg_line.y1 = base.y0;
+        }
+        kg_nl = drawing->n_lines;
+        kg_na = drawing->n_arcs;
+        kg_nt = drawing->n_texts;
+        kg_np = drawing->n_points;
+        kg_undo = 1;
+    }
     cmd.n0_lines = drawing->n_lines;
         cmd.n0_ink = drawing->n_ink + 1;
     cmd.n0_arcs = drawing->n_arcs;
@@ -4062,6 +4088,33 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * 複写・移動・消去 などで外れた読取のあとの [ESC]）。 */
     if (key == 27) {
         cmd.missed = 0;
+    }
+    /* 線記号変形で記号を置いた直後の [ESC]：足したものを消し、抜いた指示線を
+     * 末尾に戻す（測定：func_all henkei_s0_c4 で 31|16 → 30|13）。一度だけ。 */
+    if (key == 27 && kg_undo && cmd.command == 17 && drawing) {
+        while (drawing->n_lines > kg_nl) {
+            jwc_remove_line(drawing, drawing->n_lines - 1);
+        }
+        while (drawing->n_arcs > kg_na) {
+            jwc_remove_arc(drawing, drawing->n_arcs - 1);
+        }
+        while (drawing->n_texts > kg_nt) {
+            jwc_remove_text(drawing, drawing->n_texts - 1);
+        }
+        while (drawing->n_points > kg_np) {
+            jwc_remove_point(drawing, drawing->n_points - 1);
+        }
+        if (jwc_add_line(drawing, kg_line.x0, kg_line.y0, kg_line.x1,
+                         kg_line.y1, kg_line.type, kg_line.pen,
+                         kg_line.layer)) {
+            drawing->lines[drawing->n_lines - 1] = kg_line;
+        }
+        kg_undo = 0;
+        jw_ui_from(&ui, drawing);
+        ui.command = cmd.command;
+        sync_ui();
+        present();
+        return -1;
     }
 
     /* **①倍率 横,縦 の打鍵。** 図形 (27) の ◆倍率 とまったく同じで、
