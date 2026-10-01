@@ -250,6 +250,13 @@ typedef struct {
     double poly_sx, poly_sy;    /* where the segment being drawn starts */
     double edge_mm;             /* ③辺寸法, millimetres of paper */
     double poly_t;              /* and the same in drawing units */
+    /* ⑦連線 の [ESC] のための、押す前の状態（押し一回ぶんずつ）。 */
+    int pu_n;
+    struct {
+        int n;
+        double px, py, ax, ay, dx, dy, sx, sy;
+        long nl, na;
+    } pu[128];
     /* ハッチ（18 番）—— 枠にした線と、その角度とピッチ。
      *
      * 枠は押した線そのもので持ちます（頂点ではなく辺）。ハッチ線は

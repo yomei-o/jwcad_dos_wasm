@@ -5790,6 +5790,29 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 
     /* 手書線の [ESC]：一筆の途中なら始点を捨てて `始点指示`（[ESC] の無い
      * 行）へ。矢が動いても引かない（測定：curve_s0_c5）。 */
+    /* ⑦連線 の [ESC]：押し一回ぶんずつ戻る（その押しで足した線と角の弧も
+     * 消える。測定：func_all curve_s0_c7 で 33|16 → 32|15 → 31|14）。 */
+    if (c->command == 23 && c->poly && key == 27 && c->pu_n > 0 && d
+        && c->poly_n >= 2) {
+        c->pu_n--;
+        while (d->n_arcs > c->pu[c->pu_n].na) {
+            jwc_remove_arc(d, d->n_arcs - 1);
+        }
+        while (d->n_lines > c->pu[c->pu_n].nl) {
+            jwc_remove_line(d, d->n_lines - 1);
+        }
+        jwc_ink_clear(d);
+        c->poly_n = c->pu[c->pu_n].n;
+        c->poly_px = c->pu[c->pu_n].px;
+        c->poly_py = c->pu[c->pu_n].py;
+        c->poly_ax = c->pu[c->pu_n].ax;
+        c->poly_ay = c->pu[c->pu_n].ay;
+        c->poly_dx = c->pu[c->pu_n].dx;
+        c->poly_dy = c->pu[c->pu_n].dy;
+        c->poly_sx = c->pu[c->pu_n].sx;
+        c->poly_sy = c->pu[c->pu_n].sy;
+        return 1;
+    }
     /* 連続弧の [ESC]：最後に足した一本を取り消して、その前の端と向きへ
      * （測定：func_all curve_s0_c6 で 16 → 15 → 14、一本目は残る）。 */
     if (c->command == 23 && c->chain && key == 27 && c->stage == 53
@@ -14341,6 +14364,20 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;
         }
         c->missed = 0;
+        if (c->pu_n < 128) {
+            c->pu[c->pu_n].n = c->poly_n;
+            c->pu[c->pu_n].px = c->poly_px;
+            c->pu[c->pu_n].py = c->poly_py;
+            c->pu[c->pu_n].ax = c->poly_ax;
+            c->pu[c->pu_n].ay = c->poly_ay;
+            c->pu[c->pu_n].dx = c->poly_dx;
+            c->pu[c->pu_n].dy = c->poly_dy;
+            c->pu[c->pu_n].sx = c->poly_sx;
+            c->pu[c->pu_n].sy = c->poly_sy;
+            c->pu[c->pu_n].nl = d->n_lines;
+            c->pu[c->pu_n].na = d->n_arcs;
+            c->pu_n++;
+        }
         c->pressed = 1;
         c->poly_t = c->edge_mm * d->unit_mm;
         if (c->poly_n == 0) {
