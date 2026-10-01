@@ -6576,6 +6576,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         jwc_ink_clear(d);
         c->dim_did = 0;
         c->dim_texts = d->n_texts;
+        c->dim_arc_val[0] = 0;  /* 帯の角度の値も消える（測定） */
         return 1;
     }
     /* **取り消し。** 何も持っていないときの [ESC] は、直前の押しで足した
