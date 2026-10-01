@@ -4608,6 +4608,26 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         }
         return -1;
     }
+    /* **[Enter] は矢の所での作図の押し**（欄が開いていないとき）。矢が
+     * メニューの上でも、メニューを押したことにはならず、その位置の点として
+     * 取られます（測定：（ ②半円 で矢がメニューの上のまま [Enter] →
+     * `◆ 終点指示`、func_all の arc_s0_c2_v。＋ の基準線待ちでも同じ）。 */
+    /* どの命令でもそうなのかは未確認（全部に入れると ○ ③重円 などで本物と
+     * 違った——本物はそこで欄を開いている）ので、測った （ の①②③ に限る。 */
+    if ((key == 13 || key == 10) && cmd.command == 12 && cmd.arc3
+        && !cmd.typing && !cmd.typing_text && drawing) {
+        const int changed = jw_cmd_press(&cmd, drawing, &view, mouse_x,
+                                         mouse_y, 0);
+
+        if (changed) {
+            jw_ui_from(&ui, drawing);
+            ui.command = cmd.command;
+            ui.guide = 0;
+        }
+        sync_ui();
+        present();
+        return -1;
+    }
     /* **数字の鍵は上の行の升。** `1` は ① を左で押したのと同じ（測定：
      * □ で `1` → ①寸法 の欄、そのまま 60,40 [Enter] で置く所）。欄が
      * 開いているあいだは上の jw_cmd_key が数として取っています。 */

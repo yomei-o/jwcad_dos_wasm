@@ -6029,6 +6029,14 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->arc3_done = 0;
             return 1;
         }
+        if (key == 27 && c->arc3 == 1 && c->arc3_done && d && d->n_arcs > 0) {
+            /* 弧を作った直後の [ESC] はその弧を取り消し、始点の行（`[ESC]`
+             * も `半径=` も無い）に残る（測定：func_steps arc_s0_c1_esc）。 */
+            jwc_remove_arc(d, d->n_arcs - 1);
+            jwc_ink_clear(d);
+            c->arc3_done = 0;
+            return 1;
+        }
         if (key == 27) {
             if (c->arc3 > 1) {
                 c->arc3--;
@@ -15116,16 +15124,24 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 tr = (double)t * 1.52587890625e-05 * 3.14159265358979323846 / 180.0;
                 u = (x - ux) * cos(tr) + (y - uy) * sin(tr);
                 v = -(x - ux) * sin(tr) + (y - uy) * cos(tr);
+                /* 中間点が反対の側なら受け付けない（測定：func_all
+                 * arc_s0_c3_v、始点 (90,248)・終点 (400,140) に (450,330) と
+                 * (350,350) を押しても `半楕円の中間点マウス指示` のまま。前は
+                 * 向きを裏返して作っていた——推測だった）。 */
                 if (u < 0.0) {
-                    t = (t + 2 * quarter) % full;
-                    u = -u;
-                    v = -v;
+                    return 0;
                 }
                 q = 1.0 - (v * v) / (b * b);
                 if (b <= 0.0 || q <= 0.0) {
                     return 0;       /* 中間点が短軸の外：未測定 */
                 }
                 a = u / sqrt(q);
+                /* 長半径が短半径より短くなる中間点（二点を直径とする円の内側）
+                 * は受け付けない（測定：func_all arc_s0_c3_v で、本物は
+                 * `半楕円の中間点マウス指示` のまま）。0 や無限大も。 */
+                if (!(a >= b) || a > 1e7) {
+                    return 0;
+                }
                 /* **flatten を先に整数に切り捨て、長半径はそこから逆算**
                  * （b / 0.4052 = 183.4411。中間点を通る長さ 183.4162 では
                  * ない——測定）。 */
