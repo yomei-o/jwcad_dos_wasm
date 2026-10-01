@@ -283,7 +283,7 @@ typedef struct {
     int dim_arc;                /* 1 = ②円周 の道 */
     /* いま入れている一本が始まるところ。n0_* は道に入ったところで、
      * この二つの差が「帯の下 2 行にも残るもの」です。 */
-    long dim_seen_lines, dim_seen_arcs, dim_seen_texts;
+    long dim_seen_lines, dim_seen_arcs, dim_seen_texts, dim_seen_points;
     int dim_arc_end;            /* ①端部: 0 = 点、1 = 矢印 */
     int dim_arc_miss;           /* 円を探して線が出た（線データです） */
     /* ③角度 も同じ道です（dim_arc は 1 が ②円周、2 が ③角度）。②円周 は

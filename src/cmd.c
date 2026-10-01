@@ -4853,6 +4853,7 @@ range_items:
             c->dim_seen_lines = d->n_lines;
             c->dim_seen_arcs = d->n_arcs;
             c->dim_seen_texts = d->n_texts;
+                c->dim_seen_points = d->n_points;
             dimension_lot(c, d);
             c->dim_texts = d->n_texts;
             c->stage = 24;
@@ -6553,6 +6554,28 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->pressed = 0;
         }
         c->moved = 0;
+        return 1;
+    }
+    /* 寸法 ④円･角 の弧・角度の寸法を入れた直後の [ESC]：その寸法を消して
+     * 原点を聞く行（[ESC] の無い）へ（測定：func_all dim_s0_c4_v、③角度）。
+     * 線形の寸法と同じく消したら描き直す。 */
+    if (key == 27 && d && c->command == 14 && c->dim_arc && c->stage == 11
+        && c->dim_did && !c->typing) {
+        while (d->n_lines > c->dim_seen_lines) {
+            jwc_remove_line(d, d->n_lines - 1);
+        }
+        while (d->n_arcs > c->dim_seen_arcs) {
+            jwc_remove_arc(d, d->n_arcs - 1);
+        }
+        while (d->n_texts > c->dim_seen_texts) {
+            jwc_remove_text(d, d->n_texts - 1);
+        }
+        while (d->n_points > c->dim_seen_points) {
+            jwc_remove_point(d, d->n_points - 1);
+        }
+        jwc_ink_clear(d);
+        c->dim_did = 0;
+        c->dim_texts = d->n_texts;
         return 1;
     }
     /* **取り消し。** 何も持っていないときの [ESC] は、直前の押しで足した
@@ -12277,6 +12300,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 c->dim_seen_lines = d->n_lines;
                 c->dim_seen_arcs = d->n_arcs;
                 c->dim_seen_texts = d->n_texts;
+                c->dim_seen_points = d->n_points;
                 dimension_arc(c, d, away);
                 c->dim_did = 1;
                 c->dim_texts = d->n_texts;
@@ -12299,6 +12323,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->dim_seen_lines = d->n_lines;
             c->dim_seen_arcs = d->n_arcs;
             c->dim_seen_texts = d->n_texts;
+                c->dim_seen_points = d->n_points;
             dimension_circle(c, d, k, right);
             c->dim_did = 1;
             c->dim_texts = d->n_texts;
