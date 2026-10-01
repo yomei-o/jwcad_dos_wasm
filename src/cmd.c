@@ -11959,7 +11959,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * 矢印長さ long (6mm gives 10.108 and 2.709 instead of 5.054 and
          * 1.354, so the panel's two numbers are the ones).  What a press
          * on an **arc** does is not measured. */
-        const long k = pick_line(d, w, sx, sy);
+        /* 右押しでは付けない（`読取可能データ無`。測定：func_all dim_s0_c7
+         * で右の枠を右で押しても線は増えない）。 */
+        const long k = right ? -1 : pick_line(d, w, sx, sy);
         const double alen = (c->dim_arrow_mm > 0.0 ? c->dim_arrow_mm : 3.0)
                           * d->unit_mm;
         const double rad = c->dim_angle_deg * 3.14159265358979323846
