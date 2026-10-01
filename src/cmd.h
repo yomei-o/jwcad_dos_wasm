@@ -221,6 +221,12 @@ typedef struct {
     double ch_cx, ch_cy;        /* いまの弧の中心 */
     double ch_tx, ch_ty;        /* 端での進む向き */
     int ch_rev;                 /* ②弧反転（掃きを逆に） */
+    /* [ESC] で一本ずつ戻すための、足す前の状態。 */
+    int ch_n;
+    struct {
+        double px, py, cx, cy, tx, ty;
+        long nl, na;
+    } ch_undo[128];
     int ch_line;                /* ④直線（次は線） */
     double ch_r;                /* ③半径 の欄（実寸ミリ） */
     int ch_r_on;                /* その半径を使うか（欄の既定とは別） */

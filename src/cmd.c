@@ -5790,6 +5790,26 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 
     /* 手書線の [ESC]：一筆の途中なら始点を捨てて `始点指示`（[ESC] の無い
      * 行）へ。矢が動いても引かない（測定：curve_s0_c5）。 */
+    /* 連続弧の [ESC]：最後に足した一本を取り消して、その前の端と向きへ
+     * （測定：func_all curve_s0_c6 で 16 → 15 → 14、一本目は残る）。 */
+    if (c->command == 23 && c->chain && key == 27 && c->stage == 53
+        && c->ch_n > 0 && d) {
+        c->ch_n--;
+        while (d->n_arcs > c->ch_undo[c->ch_n].na) {
+            jwc_remove_arc(d, d->n_arcs - 1);
+        }
+        while (d->n_lines > c->ch_undo[c->ch_n].nl) {
+            jwc_remove_line(d, d->n_lines - 1);
+        }
+        jwc_ink_clear(d);
+        c->ch_px = c->ch_undo[c->ch_n].px;
+        c->ch_py = c->ch_undo[c->ch_n].py;
+        c->ch_cx = c->ch_undo[c->ch_n].cx;
+        c->ch_cy = c->ch_undo[c->ch_n].cy;
+        c->ch_tx = c->ch_undo[c->ch_n].tx;
+        c->ch_ty = c->ch_undo[c->ch_n].ty;
+        return 1;
+    }
     if (c->command == 23 && c->hand && key == 27
         && (c->stage == 60 || c->stage == 61)) {
         /* 区間があれば最後の一本を取り消し、その始点から一筆を続ける
@@ -12290,6 +12310,17 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             chain_first(c, d, x, y);
             c->stage = 53;
             return 1;
+        }
+        if (c->ch_n < 128) {
+            c->ch_undo[c->ch_n].px = c->ch_px;
+            c->ch_undo[c->ch_n].py = c->ch_py;
+            c->ch_undo[c->ch_n].cx = c->ch_cx;
+            c->ch_undo[c->ch_n].cy = c->ch_cy;
+            c->ch_undo[c->ch_n].tx = c->ch_tx;
+            c->ch_undo[c->ch_n].ty = c->ch_ty;
+            c->ch_undo[c->ch_n].nl = d->n_lines;
+            c->ch_undo[c->ch_n].na = d->n_arcs;
+            c->ch_n++;
         }
         chain_arc(c, d, x, y);
         return 1;
