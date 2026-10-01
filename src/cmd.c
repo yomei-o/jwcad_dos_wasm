@@ -4776,6 +4776,16 @@ range_items:
         c->meas_put = 1;
         return 1;
     }
+    /* ２線 ①基準線からの間隔：`間隔 =` の欄（行は src/item.h のまま）。欄での
+     * 左押しは 間隔反転、右押しは 前回と同じ で、どちらも基準線は取らない
+     * （測定：func_all double_s0_c1）。 */
+    if (c->command == 9 && item == 1 && c->pick_a < 0 && !c->dl_ask) {
+        c->dl_ask = 1;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 0;
+    }
     /* 分割：最初の行の ① は２点間分割点、その行の ① は【仮点】⇔【実点】。 */
     if (c->command == 21 && item == 1 && c->stage == 0) {
         c->stage = 5;
@@ -6145,6 +6155,45 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->tan_did = 0;
             return 1;
         }
+    }
+    /* ２線 の間隔の欄の鍵：`a,b`（一つなら両方）。 */
+    if (c->command == 9 && c->dl_ask) {
+        if (key == 27) {
+            c->dl_ask = 0;
+            c->typing = 0;
+            c->typed_n = 0;
+            c->top_item = 0;
+            return 1;
+        }
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                const char *comma = strchr(c->typed, ',');
+                const double a = field_eval(c->typed);
+                const double b = comma ? field_eval(comma + 1) : a;
+
+                if (a > 0.0 && b > 0.0) {
+                    c->gap_two[0] = a;
+                    c->gap_two[1] = b;
+                }
+            }
+            c->dl_ask = 0;
+            c->typing = 0;
+            c->typed_n = 0;
+            c->top_item = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (FIELD_CHAR(key) && c->typed_n < 20) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
     }
     /* 分割 の [ESC]：始点を取ったあとなら `◇２点間分割点 始点指示`（[ESC] の
      * 無い行）へ（測定：divide_s1_c1）。 */
@@ -15023,6 +15072,19 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * at y=305.616 with the points at drawing x=129 and x=329 gives
          * (129,436.424)-(329,436.424) and (129,174.808)-(329,174.808), which
          * is 130.808 either side = 75mm. */
+        if (c->dl_ask) {
+            if (!right) {
+                const double t = c->gap_two[0];
+
+                c->gap_two[0] = c->gap_two[1];
+                c->gap_two[1] = t;
+            }
+            c->dl_ask = 0;
+            c->typing = 0;
+            c->typed_n = 0;
+            c->top_item = 0;
+            return 1;
+        }
         if (c->pick_a < 0) {
             const long k = pick_line(d, w, sx, sy);
 
