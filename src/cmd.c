@@ -6117,6 +6117,26 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->pg3 = 0;             /* [BS]前項 */
         return 1;
     }
+    /* 円線接 ③接円（３条件）③１点と２線･円・④３線･円 の [ESC]：取りかけなら
+     * 最初の段へ、円を作った直後ならその円を取り消して [ESC] の無い行へ
+     * （測定：func_all tangent_s0_c3_v で 14 → 13）。 */
+    if (c->command == 26 && key == 27 && !c->typing
+        && (c->tan_tri == 13 || c->tan_tri == 14)) {
+        const int top = c->tan_tri == 13 ? 51 : 54;
+
+        if (c->stage > top && c->stage <= top + 2) {
+            c->stage = top;
+            c->missed = 0;
+            return 1;
+        }
+        if (c->stage == top && c->tan_did && d
+            && d->n_arcs == c->tan_na_mark) {
+            /* 黒で上から消すだけで描き直さない（枠の線に穴が残る。測定）。 */
+            jwc_remove_arc(d, d->n_arcs - 1);
+            c->tan_did = 0;
+            return 1;
+        }
+    }
     /* 連続書 の間隔の欄の鍵。 */
     if (c->command == 13 && c->stage == 41) {
         if (key == 27) {
@@ -11257,6 +11277,12 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     const double x0 = c->x0, y0 = c->y0, x1 = c->x1, y1 = c->y1;
     const int r = press_body(c, d, w, sx, sy, right);
 
+    /* 円線接 ③ の接円を作った押しなら、取り消しの印に円弧の数を控える。 */
+    if (d && c->command == 26 && (c->tan_tri == 13 || c->tan_tri == 14)
+        && d->n_arcs > na) {
+        c->tan_na_mark = d->n_arcs;
+    }
+
     if (d && (c->command == 2 || c->command == 3 || c->command == 4
               || c->command == 11 || c->command == 12)) {
         if (d->n_lines > nl || d->n_arcs > na || d->n_texts > nt) {
@@ -13092,6 +13118,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * **記録の最後のバイトは 0x00**。 */
             const int top = c->tan_tri == 13 ? 51 : 54;
             const int last = top + 2;
+
 
             if (c->tan_tri == 13 && c->stage == 51) {
                 if (!take_point(c, d, w, sx, sy, right, &x, &y)) {

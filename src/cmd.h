@@ -396,6 +396,7 @@ typedef struct {
     int tan_miss;               /* 円を探して線が出た（線データです） */
     double tan_apx, tan_apy;    /* 円(Ａ)を押したところ */
     int tan_did;                /* 一本引いた（桁 1 の [ESC]） */
+    long tan_na_mark;           /* ③ の取り消し：始めたときの円弧の数 */
     double tan_bx, tan_by;      /* 接線の上の一点（接点） */
     double tan_ax, tan_ay;      /* 始点を落としたところ */
     double tan_x, tan_y;        /* the 指定点 it has in hand */
