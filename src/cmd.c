@@ -1347,8 +1347,15 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
          * 押した直後、x 300 の y 244..249 と y 250 の x 301..302 が緑。角の
          * (300,250) は矢印の下で見えず、描くかどうかは未測定）。 */
         if (c->typed_n == 0 && !c->text_vert) {
+            int fx, fy;
+
+            /* 足の先は半角一字の幅の所（測定：x 179 で 2 画素、213.882 で
+             * 3 画素。どちらも 2.118〜3 の間で、半角幅 2.616 が入る）。 */
+            at_screen(w, c->x0 + c->text_half, c->y0, &fx, &fy);
             jw_line(v, px, py - 1, px, y1, 4, 0x18, JW_STYLE_SOLID);
-            jw_line(v, px + 1, py, px + 2, py, 4, 0x18, JW_STYLE_SOLID);
+            if (fx > px) {
+                jw_line(v, px + 1, py, fx, py, 4, 0x18, JW_STYLE_SOLID);
+            }
             return;
         }
         /* ②垂直 は横倒し：足もとから左へ字の高さ、上へ 3 画素（測定：
@@ -5660,6 +5667,8 @@ static void text_box(JwCmd *c, const Jwc *d)
 
     c->text_wide = d ? jwc_text_length(d, c->typed, (unsigned char)t) : 0.0;
     c->text_tall = d ? d->text_h[t] / 10.0 * d->unit_mm : 0.0;
+    /* 半角一字の幅（L 字の足の長さ）。 */
+    c->text_half = d ? d->text_w[t] / 20.0 * d->unit_mm : 0.0;
 }
 
 /* How many bytes the last character of a Shift-JIS string takes.  Shift-JIS
@@ -5772,6 +5781,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                         d->texts[d->n_texts - 1].rest[2] |= 0x20;
                     }
                     c->tx_undo = 1;
+                    c->tx_count++;
                 }
             }
             if (c->text_rep && c->typed_n > 0 && d) {
@@ -5848,7 +5858,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         jwc_remove_text(d, d->n_texts - 1);
         jwc_ink_clear(d);
         c->tx_undo = 0;
-        c->stage = 0;
+        /* 行は段 2。この命令で書いた文字がまだ残っていれば `[ESC]` の付いた
+         * 行、残っていなければ付かない `・文字種類[F3] 基点指示…`（①水平 の
+         * 升の行と同じ。測定：text_rep2 は AB が残って [ESC] あり、
+         * text_rep2_empty・text_c1_v は残らず [ESC] なし）。 */
+        c->tx_count--;
+        c->stage = 2;
+        c->top_item = c->tx_count > 0 ? 0 : 1;
         return 1;
     }
     /* 中心線 の [ESC]：一段ずつ戻る（終点 → 始点 → 対象直線（Ｂ）→ …。

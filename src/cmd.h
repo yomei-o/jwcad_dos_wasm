@@ -504,6 +504,7 @@ typedef struct {
      * `◇連続書 基点マウス指示`、段 41 は間隔の欄。間隔は図面寸法の mm で、
      * 行連続 と 列連続 で別に持つ（測定：5.0 と 20.0）。 */
     int text_rep;
+    int tx_count;               /* 文字：この命令で書いて残っている数 */
     double rep_gap[2];
     int text_file;              /* 文字 ⑤文[書/読]：書出範囲 を取っている */
     int text_tate;              /* 文字 ⑥(縦)：縦字（記録の rest[2] に 0x20） */
@@ -580,7 +581,7 @@ typedef struct {
     /* How wide and how tall the string being typed comes out, in drawing
      * units -- the box 文字 shows while it is being typed.  Worked out again
      * after every key, because the width follows from the string. */
-    double text_wide, text_tall;
+    double text_wide, text_tall, text_half;
     /* コーナー連結's first line -- the one it calls 「Ａ」 -- while it waits
      * for the second.  -1 when it has none. */
     long pick_a;
