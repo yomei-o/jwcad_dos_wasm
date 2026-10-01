@@ -1480,8 +1480,18 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
 
         n[0] = q->col == 55 ? s->divisions
              : q->col == 72 ? s->divisions
-             : s->temp_left;
+             : s->div_real ? (double)s->real_left : s->temp_left;
         put_numbers(one, sizeof one, q->text, n, 1, 0);
+        /* ①【実点】では `【仮点】` が `【実点】`、残りは実点の数（測定：
+         * `残 3623`）。 */
+        if (q->col == 8 && s->div_real) {
+            char *k = strstr(one, "\x89\xbc\x93\x5f");
+
+            if (k) {
+                k[0] = (char)0x8e;
+                k[1] = (char)0xc0;
+            }
+        }
         jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
         return;
     }

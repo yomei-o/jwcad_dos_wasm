@@ -479,6 +479,8 @@ static void sync_ui(void)
     ui.chb = cmd.chb;
     ui.ch_bad = cmd.ch_bad;
     ui.ch_side = cmd.ch_side;
+    ui.div_real = cmd.div_real;
+    ui.real_left = drawing ? 3639 - drawing->n_points : 0;
     ui.chb_inner = cmd.chb_inner;
     ui.box_ctr = cmd.box_ctr;
     ui.rep_gap[0] = cmd.rep_gap[0];

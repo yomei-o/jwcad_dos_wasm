@@ -347,6 +347,8 @@ typedef struct {
     int chb, chb_inner;
     int ch_bad;
     int ch_side;
+    int div_real;
+    long real_left;             /* 実点の残り（`残 3623`） */
     int box_ctr;
     double rep_gap[2];
     int box_refask;             /* □ ③平行 の基準線待ち */

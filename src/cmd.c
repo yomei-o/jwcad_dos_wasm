@@ -4776,6 +4776,15 @@ range_items:
         c->meas_put = 1;
         return 1;
     }
+    /* 分割：最初の行の ① は２点間分割点、その行の ① は【仮点】⇔【実点】。 */
+    if (c->command == 21 && item == 1 && c->stage == 0) {
+        c->stage = 5;
+        return 1;
+    }
+    if (c->command == 21 && item == 1 && (c->stage == 4 || c->stage == 5)) {
+        c->div_real = !c->div_real;
+        return 1;
+    }
     /* 点 ①：【仮点】⇔【実点】（行は src/item.h。測定：point_s0_c1）。 */
     if (c->command == 22 && item == 1) {
         c->pt_real = !c->pt_real;
@@ -6136,6 +6145,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->tan_did = 0;
             return 1;
         }
+    }
+    /* 分割 の [ESC]：始点を取ったあとなら `◇２点間分割点 始点指示`（[ESC] の
+     * 無い行）へ（測定：divide_s1_c1）。 */
+    if (c->command == 21 && key == 27 && !c->typing && c->stage == 1) {
+        c->stage = 5;
+        return 1;
     }
     /* 連続書 の間隔の欄の鍵。 */
     if (c->command == 13 && c->stage == 41) {
@@ -7737,6 +7752,22 @@ static void divide_points(JwCmd *c, Jwc *d)
     }
     for (i = 1; i < c->divisions; i++) {
         const double t = (double)i / c->divisions;
+
+        /* ①【実点】なら記録の点（点 の実点と同じ形。測定：func_all
+         * divide_s1_c1 の (375,290) に 0x1d の点）。 */
+        if (c->div_real) {
+            JwcPoint p;
+
+            memset(&p, 0, sizeof p);
+            p.x = (float)(c->x0 + t * (c->x1 - c->x0));
+            p.y = (float)(c->y0 + t * (c->y1 - c->y0));
+            p.layer = (unsigned char)d->write_layer;
+            p.rest[0] = (unsigned char)d->write_layer;
+            p.rest[1] = 1;
+            p.rest[3] = 0x1d;
+            jwc_put_point(d, &p);
+            continue;
+        }
 
         if (d->n_temp >= JWC_TEMP_MAX) {
             return;
@@ -14937,6 +14968,28 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * temporary points 点 drops, and they are not saved. */
         double px, py;
 
+        /* 最初の行 `|①２点間分割点(L)|②円分割点(R)|…` では、図面の左押しは
+         * ① を選ぶだけで点は取らない（測定：func_all divide_s1_c1、押したあと
+         * `◇２点間分割点 始点指示 …|①【仮点】| 残 100`）。② は未移植。 */
+        if (c->stage == 0) {
+            if (right) {
+                return 0;
+            }
+            c->stage = 5;
+            return 1;
+        }
+        /* `分割 数 =` の欄：左は効かず、右は 前回と同じ（測定）。 */
+        if (c->stage == 2) {
+            if (!right) {
+                return 0;
+            }
+            c->typing = 0;
+            c->typed_n = 0;
+            c->typed[0] = 0;
+            divide_points(c, d);
+            c->stage = 4;
+            return 1;
+        }
         if (!take(c, d, w, sx, sy, right, &px, &py)) {
             return 1;
         }
