@@ -500,6 +500,11 @@ typedef struct {
     double cl_x1, cl_y1, cl_x2, cl_y2;
     int text_ang_ask;           /* 文字 ③角度指定 の欄 */
     double text_ang;            /* 文字の角度（度） */
+    /* 文字 の ②行連続・③列連続（連続書）：2 か 3。0 はふつう。段 40 は
+     * `◇連続書 基点マウス指示`、段 41 は間隔の欄。間隔は図面寸法の mm で、
+     * 行連続 と 列連続 で別に持つ（測定：5.0 と 20.0）。 */
+    int text_rep;
+    double rep_gap[2];
     int text_file;              /* 文字 ⑤文[書/読]：書出範囲 を取っている */
     int text_tate;              /* 文字 ⑥(縦)：縦字（記録の rest[2] に 0x20） */
     int rel_place;              /* ①ﾏｳｽ位置 の置き方（基点からの差で） */

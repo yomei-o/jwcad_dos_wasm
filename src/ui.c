@@ -2816,6 +2816,42 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                        "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
+    } else if (s->command == 13 && s->stage == 40) {
+        /* 文字 の連続書：`%s[F%d] ◇連続書 基点%s%s|①間隔(%5.1f)変更|`
+         * （ovl15 0x31612）。左の盤は段 2 と同じ。 */
+        char one[16];
+
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "\x95\xb6\x8e\x9a\x8e\xed\x97\xde[F3] \x81\x9e\x98" "A\x91\xb1\x8f\x91 \x8a\xee\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 (L)free (R)Read |\x87@\x8a\xd4\x8au(");
+        sprintf(one, "%5.1f", s->rep_gap[s->text_rep == 2 ? 0 : 1]);
+        jw_ui_text(v, 69, 1, 7, 0, one);
+        jw_ui_text(v, 74, 1, 7, 0, ")\x95\xcf\x8dX|");
+        {
+            const JwStage *q;
+
+            fill(v, 1, 17, 120, 47, 4);     /* 数え箱を塗り直してから */
+            for (q = JW_TYPED; q->command; q++) {
+                if (q->row == 2 || q->row == 3) {
+                    stage_text_1(v, q, s, 40);
+                }
+            }
+        }
+    } else if (s->command == 13 && s->stage == 41) {
+        /* 連続書 の間隔の欄：` 行間`・`1～100) =`・`図面寸法(mm)`（ovl15
+         * 0x2bec5〜0x2bf1b。列連続 も 行間 と出る。測定：text_rep3_gapk）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "\x95\xcf\x8dX");
+        jw_ui_text(v, 12, 1, 7, 0, " \x8ds\x8a\xd4");
+        jw_ui_text(v, 27, 1, 7, 0, "(1\x81`100) =");
+        jw_ui_text(v, 60, 1, 7, 0, "\x90}\x96\xca\x90\xa1\x96@(mm)");
+        if (s->typed_n > 0) {
+            char t[11];
+
+            memcpy(t, s->typed, 10);
+            t[s->typed_n < 10 ? s->typed_n : 10] = 0;
+            jw_ui_text(v, 38, 1, 7, 0, t);
+        }
+        fill(v, 296 + s->typed_n * 8, 7, 303 + s->typed_n * 8, 15, 4);
     } else if (s->command == 8 && s->ch_ask) {
         /* 面取 ③寸法= の欄（測定：STR=1）。 */
         char one[32];
@@ -5566,6 +5602,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * after every key (`A`, `AB`, `ABC`), so this does the same. */
             if ((s->command == 13 || s->command == 28)
                 && i == 1 && s->typing_text) {
+                /* 連続書 の欄は見出しが `文字列入力（終わり[ﾘﾀｰﾝ]）`
+                 * （ovl15 0x31fc5）。目盛りは桁 27 から同じ。 */
+                if (s->text_rep) {
+                    fill(v, 0, 0, 26 * 8 - 1, 15, 0);
+                    jw_ui_text(v, 1, 1, 7, 0, "\x95\xb6\x8e\x9a\x97\xf1\x93\xfc\x97\xcd\x81i\x8fI\x82\xed\x82\xe8[\xd8\xc0\xb0\xdd]\x81j");
+                }
                 jw_ui_text(v, 1, 2, 7, 0, s->typed);
                 /* and the block where the next character will go, colour 4,
                  * nine rows of the cell -- the same one 複線's field has.

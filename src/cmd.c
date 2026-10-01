@@ -23,6 +23,7 @@ void jw_cmd_pick(JwCmd *c, int command)
     const double keep_aa = c->arc_ang;
     const double keep_ar = c->arc_r;
     const double keep_ea = c->ell_a, keep_eb = c->ell_b, keep_ee = c->ell_ang;
+    const double keep_rg0 = c->rep_gap[0], keep_rg1 = c->rep_gap[1];
 
     free(c->hen_end);
     free(c->sel_line);
@@ -95,6 +96,8 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->arc_r = had ? keep_ar : 1000.0;
     /* ○ ②楕円 の `[1000.000, 500.000mm]` と `[  90.000ﾟ]`（本物の初め）。 */
     c->ell_a = keep_ea > 0.0 ? keep_ea : 1000.0;
+    c->rep_gap[0] = keep_rg0 > 0.0 ? keep_rg0 : 5.0;
+    c->rep_gap[1] = keep_rg1 > 0.0 ? keep_rg1 : 20.0;
     c->ell_b = keep_eb > 0.0 ? keep_eb : 500.0;
     c->ell_ang = keep_ee != 0.0 || keep_ea > 0.0 ? keep_ee : 90.0;
 }
@@ -4645,7 +4648,25 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     /* 文字 ③角度指定：`[ESC] 角度 = … [ -90.000ﾟ]` の欄（行は src/item.h、
      * 打つ字は桁 15。測定：text_c3_v）。[Enter] で角度が決まり、行は
      * ①水平 を押したときと同じ `・文字種類[F3] 基点指示…` になる。 */
-    if (c->command == 13 && item == 3 && !c->typing_text && !c->text_ang_ask) {
+    /* 文字を書いたあとの行（段 2：`|①基点変|②行連続|③列連続|`）の ②③ は
+     * 連続書（測定：text_rep2・text_rep3）。 */
+    if (c->command == 13 && c->stage == 2 && !c->typing_text && !c->text_ang_ask
+        && (item == 2 || item == 3)) {
+        c->text_rep = item;
+        c->stage = 40;
+        return 1;
+    }
+    /* 連続書 の `|①間隔( 5.0)変更|`：` 行間 (1～100) =` の欄（測定：
+     * text_rep3_gapk、打つ字は桁 38）。 */
+    if (c->command == 13 && c->stage == 40 && item == 1) {
+        c->stage = 41;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 1;
+    }
+    if (c->command == 13 && item == 3 && c->stage != 2 && !c->typing_text
+        && !c->text_ang_ask) {
         c->text_ang_ask = 1;
         c->typing = 1;
         c->typed[0] = 0;
@@ -5706,6 +5727,16 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 27 && c->command == 13 && c->typed_n > 0) {
             key = 13;
         }
+        /* 連続書 は空の欄の [Enter] か [ESC] で抜けて、ふつうの段 2 へ
+         * （測定：text_rep2_empty、text_rep2_keep）。 */
+        if (c->command == 13 && c->text_rep && c->typed_n == 0
+            && (key == 13 || key == 10 || key == 27)) {
+            c->typing_text = 0;
+            c->pressed = 0;
+            c->text_rep = 0;
+            c->stage = 2;
+            return 1;
+        }
         if (key == 13 || key == 10) {
             const unsigned char size = (unsigned char)(d ? d->char_type : 1);
             const unsigned char layer =
@@ -5742,6 +5773,29 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                     }
                     c->tx_undo = 1;
                 }
+            }
+            if (c->text_rep && c->typed_n > 0 && d) {
+                /* 連続書：次の基点は 間隔 mm だけ下（行）か右（列）。欄は
+                 * 開いたまま（測定：5.0 で 8.721 下、20.0 で 34.882 右）。 */
+                static const double PAPER[5] = { 1189.0, 841.0, 594.0, 420.0,
+                                                 297.0 };
+                const double per = d->paper >= 0 && d->paper < 5
+                                 ? 518.0 / PAPER[d->paper] / d->denom
+                                 : d->unit_mm / d->denom;
+
+                if (c->text_rep == 2) {
+                    c->y0 -= c->rep_gap[0] * per;
+                } else {
+                    c->x0 += c->rep_gap[1] * per;
+                }
+                c->typing_text = 1;
+                c->pressed = 1;
+                c->stage = 1;
+                c->typed[0] = 0;
+                c->typed_n = 0;
+                c->typed_at = 0;
+                text_box(c, d);
+                return 1;
             }
             c->typed[0] = 0;
             c->typed_n = 0;
@@ -5832,6 +5886,41 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (c->command == 19 && c->pg3 == 1 && key == 8 && !c->typing) {
         c->pg3 = 0;             /* [BS]前項 */
+        return 1;
+    }
+    /* 連続書 の間隔の欄の鍵。 */
+    if (c->command == 13 && c->stage == 41) {
+        if (key == 27) {
+            c->typing = 0;
+            c->typed_n = 0;
+            c->stage = 40;
+            return 1;
+        }
+        if (key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (c->typed_n) {
+                const double g = field_eval(c->typed);
+
+                if (g >= 1.0 && g <= 100.0) {
+                    c->rep_gap[c->text_rep == 2 ? 0 : 1] = g;
+                }
+            }
+            c->typing = 0;
+            c->typed_n = 0;
+            c->typed[0] = 0;
+            c->stage = 40;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (FIELD_CHAR(key) && c->typed_n < 10) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
         return 1;
     }
     /* 文字 ③角度指定 の欄の鍵。 */

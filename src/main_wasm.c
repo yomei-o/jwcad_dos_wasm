@@ -473,6 +473,9 @@ static void sync_ui(void)
     ui.pg3 = cmd.pg3;
     ui.ch_ask = cmd.ch_ask;
     ui.text_ang_ask = cmd.text_ang_ask;
+    ui.text_rep = cmd.text_rep;
+    ui.rep_gap[0] = cmd.rep_gap[0];
+    ui.rep_gap[1] = cmd.rep_gap[1];
     ui.box_refask = cmd.box_refask;
     ui.arc3 = cmd.arc3;
     ui.arc3_kind = cmd.arc3_kind;

@@ -53,9 +53,9 @@ text_two|SAMPLE0|90 264 left|300 250 left|type AB|key enter|350 300 left|type 12
 text_bs|SAMPLE0|90 264 left|300 250 left|type ABCD|key bs|key bs|key enter
 text_esc|SAMPLE0|90 264 left|300 250 left|type AB|key esc|350 300 left|type C|key enter
 text_c1|SAMPLE0|90 264 left|type 1|300 250 left|type AB|key enter
-text_c1_v|SAMPLE0|90 264 left|type 1|type 30|key enter|300 250 left|type AB|key enter
+text_c1_v|SAMPLE0|90 264 left|type 1|type 30|key enter|300 250 left|type AB|key enter|key esc|key esc
 text_c2|SAMPLE0|90 264 left|type 2|300 250 left|type AB|key enter
-text_c2_v|SAMPLE0|90 264 left|type 2|type 30|key enter|300 250 left|type AB|key enter
+text_c2_v|SAMPLE0|90 264 left|type 2|type 30|key enter|300 250 left|type AB|key enter|key esc|key esc
 text_c3|SAMPLE0|90 264 left|type 3|300 250 left|type AB|key enter
 text_c3_v|SAMPLE0|90 264 left|type 3|type 30|key enter|300 250 left|type AB|key enter
 text_c4|SAMPLE0|90 264 left|type 4|300 250 left|type AB|key enter
@@ -64,6 +64,16 @@ text_c5|SAMPLE0|90 264 left|type 5|300 250 left|type AB|key enter
 text_c5_v|SAMPLE0|90 264 left|type 5|type 30|key enter|300 250 left|type AB|key enter
 text_c6|SAMPLE0|90 264 left|type 6|300 250 left|type AB|key enter
 text_c6_v|SAMPLE0|90 264 left|type 6|type 30|key enter|300 250 left|type AB|key enter
+text_rep2|SAMPLE0|90 264 left|type 1|type 2|300 250 left|type AB|key enter|type CD|key enter|key esc|key esc
+text_rep2_keep|SAMPLE0|90 264 left|type 1|type 2|300 250 left|type AB|key enter|type CD|key enter|type EF|key enter|key esc
+text_rep2_gapk|SAMPLE0|90 264 left|type 1|type 2|type 1|type 10|key enter|300 250 left|type AB|key enter|type CD|key enter|key esc
+text_rep2_empty|SAMPLE0|90 264 left|type 1|type 2|300 250 left|type AB|key enter|key enter|key esc
+text_rep2_gap|SAMPLE0|90 264 left|type 1|type 2|type 1|type 10|key enter|300 250 left|type AB|key enter|type CD|key enter|key esc|key esc
+text_rep3|SAMPLE0|90 264 left|type 1|type 3|300 250 left|type AB|key enter|type CD|key enter|key esc|key esc
+text_rep3_keep|SAMPLE0|90 264 left|type 1|type 3|300 250 left|type AB|key enter|type CD|key enter|type EF|key enter|key esc
+text_rep3_gapk|SAMPLE0|90 264 left|type 1|type 3|type 1|type 10|key enter|300 250 left|type AB|key enter|type CD|key enter|key esc
+text_rep3_empty|SAMPLE0|90 264 left|type 1|type 3|300 250 left|type AB|key enter|key enter|key esc
+text_rep3_gap|SAMPLE0|90 264 left|type 1|type 3|type 1|type 10|key enter|300 250 left|type AB|key enter|type CD|key enter|key esc|key esc
 linechg_one|SAMPLE0|30 200 left|400 140 left
 linechg_two|SAMPLE0|30 200 left|400 140 left|162 300 left
 linechg_r|SAMPLE0|30 200 left|400 140 right

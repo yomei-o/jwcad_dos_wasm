@@ -69,8 +69,27 @@ add('text_esc', 13, ['300 250 left', 'type AB', 'key esc', '350 300 left', 'type
                      'key enter'])
 for cell in range(1, 7):
     add('text_c%d' % cell, 13, ['type %d' % cell, '300 250 left', 'type AB', 'key enter'])
+    # ①② のあとの `3` は ③列連続（連続書）。書いたあとも次の行を待つので [ESC] で抜ける
+    # （抜けないと本物は保存できない）。
     add('text_c%d_v' % cell, 13, ['type %d' % cell, 'type 30', 'key enter', '300 250 left',
-                                   'type AB', 'key enter'])
+                                   'type AB', 'key enter']
+        + (['key esc', 'key esc'] if cell in (1, 2) else []))
+
+# 文字 ①水平 のあとの ②行連続・③列連続（連続書）。[Enter] ごとに書いて次の行を待つ
+for c2 in (2, 3):
+    add('text_rep%d' % c2, 13, ['type 1', 'type %d' % c2, '300 250 left', 'type AB', 'key enter',
+                                'type CD', 'key enter', 'key esc', 'key esc'])
+    add('text_rep%d_keep' % c2, 13, ['type 1', 'type %d' % c2, '300 250 left', 'type AB',
+                                     'key enter', 'type CD', 'key enter', 'type EF', 'key enter',
+                                     'key esc'])
+    add('text_rep%d_gapk' % c2, 13, ['type 1', 'type %d' % c2, 'type 1', 'type 10', 'key enter',
+                                     '300 250 left', 'type AB', 'key enter', 'type CD',
+                                     'key enter', 'key esc'])
+    add('text_rep%d_empty' % c2, 13, ['type 1', 'type %d' % c2, '300 250 left', 'type AB',
+                                      'key enter', 'key enter', 'key esc'])
+    add('text_rep%d_gap' % c2, 13, ['type 1', 'type %d' % c2, 'type 1', 'type 10', 'key enter',
+                                    '300 250 left', 'type AB', 'key enter', 'type CD',
+                                    'key enter', 'key esc', 'key esc'])
 
 # 線変更・測定・ハッチ・分割・中心線・点
 add('linechg_one', 24, ['400 140 left'])
