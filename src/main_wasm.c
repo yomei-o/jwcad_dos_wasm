@@ -475,6 +475,7 @@ static void sync_ui(void)
     ui.text_ang_ask = cmd.text_ang_ask;
     ui.text_rep = cmd.text_rep;
     ui.meas_put = cmd.meas_put;
+    ui.circ_dia = cmd.circ_dia;
     ui.rep_gap[0] = cmd.rep_gap[0];
     ui.rep_gap[1] = cmd.rep_gap[1];
     ui.box_refask = cmd.box_refask;

@@ -505,6 +505,7 @@ typedef struct {
      * 行連続 と 列連続 で別に持つ（測定：5.0 と 20.0）。 */
     int text_rep;
     int meas_put;               /* 測定 ①表示：小数点位置を待つ */
+    int circ_dia;               /* ○ ②基点変：○（二点が直径） */
     int pt_real;                /* 点 ①【実点】 */
     int pt_mode;                /* 点 ②〜⑤（未移植） */
     int pt_added;               /* 点：足した実点の数（[ESC] で戻す） */

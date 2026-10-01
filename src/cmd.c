@@ -385,7 +385,8 @@ static void measure(JwCmd *c, const Jwc *d, double x, double y)
         c->num[0] = (dx < 0 ? -dx : dx) * mm;
         c->num[1] = (dy < 0 ? -dy : dy) * mm;
     } else if (c->command == 11) {
-        c->num[0] = sqrt(dx * dx + dy * dy) * mm;
+        /* ②基点変 で ○ なら二点が直径（測定：半径= 42.618 直径= 85.236）。 */
+        c->num[0] = sqrt(dx * dx + dy * dy) * mm / (c->circ_dia ? 2.0 : 1.0);
         c->num[1] = c->num[0] * 2.0;
     } else {
         c->num[0] = sqrt(dx * dx + dy * dy) * mm;
@@ -1447,6 +1448,17 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         const int n = c->circ_multi > 1 ? c->circ_multi : 1;
         int k;
 
+        /* ②基点変 で ○ なら、仮の円は二点の中点を中心に半分の半径
+         * （測定：circle_s1_c2 が全段 0 画素）。 */
+        if (c->circ_dia) {
+            const double hx = (fx + sx) / 2.0, hy = (fy + sy) / 2.0;
+
+            for (k = n; k >= 1; k--) {
+                jw_arc_poly(v, hx, hy, sqrt(dx * dx + dy * dy) / 2.0 * k / n,
+                            10000, 0, 0, 0, 2, 0x18, JW_STYLE_SOLID);
+            }
+            return;
+        }
         /* ③重円 なら仮の円も数だけ（外側から r x k/n）。 */
         for (k = n; k >= 1; k--) {
             jw_arc_poly(v, fx, fy, sqrt(dx * dx + dy * dy) * k / n, 10000,
@@ -4424,6 +4436,15 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     /* ○ の ②基点変（半径を決めて置いているとき）。押すたびに基点が 9 か所を
      * 回ります（測定：円の中心が押した点から r×(+1,-1) (+1,0) (+1,+1) (0,+1)
      * (-1,+1) (-1,0) (-1,-1) (0,-1) (0,0) の順）。 */
+    /* 中心を押したあと（半径は決めていない）の ②基点変：基点が ⦿（中心）と
+     * ○（円周）で替わる。○ だと二つの押しを直径の両端とする円（測定：
+     * func_all circle_s1_c2、(400,140)→(300,250) が 中心 (229,268)
+     * 半径 74.3303、次の円も同じ）。 */
+    if (c->command == 11 && c->pressed == 1 && !c->circ_fix && !c->ell
+        && item == 2) {
+        c->circ_dia = !c->circ_dia;
+        return 1;
+    }
     if (c->command == 11 && c->circ_fix && item == 2) {
         c->circ_base = (c->circ_base + 1) % 9;
         return 1;
@@ -15695,9 +15716,15 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     if (c->command == 11) {
         /* ○: the first press is the centre, the second a point on it. */
         const double dx = x - c->x0, dy = y - c->y0;
-        const float r = (float)sqrt(dx * dx + dy * dy);
+        const float r = c->circ_dia ? (float)(sqrt(dx * dx + dy * dy) / 2.0)
+                                    : (float)sqrt(dx * dx + dy * dy);
         const int n = c->circ_multi > 1 ? c->circ_multi : 1;
         int k, ok = 1;
+
+        if (c->circ_dia) {
+            c->x0 = (c->x0 + x) / 2.0;
+            c->y0 = (c->y0 + y) / 2.0;
+        }
 
         /* ③重円：外側から r、r x (n-1)/n、…（測定：2 で 148.66 と 74.33）。 */
         for (k = n; k >= 1 && ok; k--) {

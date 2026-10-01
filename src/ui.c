@@ -5659,9 +5659,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 const int ex = 470 - DX[b] * 5, ey = 8 + DY[b] * 5;
 
                 jw_arc(v, 470, 8, 5, 0, 0, 7, ROP_REPLACE, JW_STYLE_SOLID);
+                /* ②基点変 で ○（円周）にしたら真ん中の点は無い（測定：
+                 * circle_s1_c2）。 */
+                if (s->circ_dia && !s->circ_fix) {
+                    goto no_dot;
+                }
                 jw_arc(v, ex, ey, 2, 0, 0, dot, ROP_REPLACE, JW_STYLE_SOLID);
                 jw_arc(v, ex, ey, 1, 0, 0, dot, ROP_REPLACE, JW_STYLE_SOLID);
                 jw_point(v, ex, ey, dot, ROP_REPLACE);
+no_dot:
+                ;
             }
             /* 複写's distance field, the same shape but from column 18:
              * `[ESC].距離 X,Y =` fills columns 1 to 16 and the characters go in
