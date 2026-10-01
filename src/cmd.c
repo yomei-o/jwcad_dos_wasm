@@ -382,8 +382,11 @@ static void measure(JwCmd *c, const Jwc *d, double x, double y)
 
     c->dec[0] = c->dec[1] = d->decimals;
     if (c->command == 4) {
-        c->num[0] = (dx < 0 ? -dx : dx) * mm;
-        c->num[1] = (dy < 0 ? -dy : dy) * mm;
+        /* 中心から押したなら幅は倍（測定：横= 114.672）。 */
+        const double k = c->box_ctr ? 2.0 : 1.0;
+
+        c->num[0] = (dx < 0 ? -dx : dx) * mm * k;
+        c->num[1] = (dy < 0 ? -dy : dy) * mm * k;
     } else if (c->command == 11) {
         /* ②基点変 で ○ なら二点が直径（測定：半径= 42.618 直径= 85.236）。 */
         c->num[0] = sqrt(dx * dx + dy * dy) * mm / (c->circ_dia ? 2.0 : 1.0);
@@ -1427,6 +1430,10 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
 
             jw_cmd_at(w, sx, sy, &mx, &my);
             at_screen(w, mx, my, &sx, &sy);
+            /* ④基点変 で中心からなら、帯の反対の角は始点の向こう側。 */
+            if (c->box_ctr) {
+                at_screen(w, 2.0 * c->x0 - mx, 2.0 * c->y0 - my, &px, &py);
+            }
         }
         jw_line_clipped(v, px, py, px, sy, 2, 0x18, JW_STYLE_SOLID);
         jw_line_clipped(v, px, sy, sx, sy, 2, 0x18, JW_STYLE_SOLID);
@@ -4508,6 +4515,14 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     /* □ の ④基点変（大きさを決めて置いているとき）。○ の ②基点変 と同じ
      * 順に 9 か所を回ります（測定：押した点が四角の 左上→左→左下→下→右下→
      * 右→右上→上→真ん中）。 */
+    /* 始点を押したあと（大きさは決めていない）の ④基点変：始点が四角の
+     * 中心になる（印の枠の中に白い点。測定：func_all box_s1_c4、(400,140)
+     * → (300,250) が (500,30)-(300,250) の四角）。もう一度で角に戻る。 */
+    if (c->command == 4 && c->pressed == 1 && !c->box_fix && !c->box_rot
+        && item == 4) {
+        c->box_ctr = !c->box_ctr;
+        return 1;
+    }
     if (c->command == 4 && c->box_fix && item == 4) {
         static const int DX[9] = { 0, 1, 1, 1, 0, -1, -1, -1, 0 };
         static const int DY[9] = { 0, -1, 0, 1, 1, 1, 0, -1, -1 };
@@ -15695,7 +15710,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * 測った。tools/functest.sh）。前は横が先で、画面は同じでも記録の
          * 順と向きが違っていました。そして □ の線は **rest[1] が 0x41**
          * （／ の線は 0x03）。 */
-        const float ax = (float)c->x0, ay = (float)c->y0;
+        const float ax = c->box_ctr ? (float)(2.0 * c->x0 - x) : (float)c->x0;
+        const float ay = c->box_ctr ? (float)(2.0 * c->y0 - y) : (float)c->y0;
         const float bx = (float)x, by = (float)y;
         float cx[5] = { ax, ax, bx, bx, ax };
         float cy[5] = { ay, by, by, ay, ay };
