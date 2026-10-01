@@ -1176,7 +1176,8 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         }
         return;
     }
-    if (!c->pressed && !(c->command == 12 && c->arc3 == 3)) {
+    if (!c->pressed && !(c->command == 12 && c->arc3 == 3)
+        && !(c->command == 9 && c->stage == 2)) {
         return;
     }
     if (JW_RANGE(c) && c->pressed == 2) {
@@ -1451,6 +1452,25 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         jw_line_clipped(v, px, sy, sx, sy, 2, 0x18, JW_STYLE_SOLID);
         jw_line_clipped(v, sx, py, sx, sy, 2, 0x18, JW_STYLE_SOLID);
         jw_line_clipped(v, px, py, sx, py, 2, 0x18, JW_STYLE_SOLID);
+    } else if (c->command == 9 && c->pick_a >= 0 && c->stage == 2
+               && !c->pending && d) {
+        /* ２線 の終点を探しているあいだも、仮の二本が矢に付いてくる（色 2。
+         * 測定：func_all double_plain で y 270 の x 300..450 が赤）。 */
+        JwCmd t = *c;
+        int i;
+
+        jw_cmd_at(w, sx, sy, &t.x1, &t.y1);
+        for (i = 0; i < 2; i++) {
+            double e[4];
+            int x0, y0, x1, y1;
+
+            if (!jw_cmd_two_line(&t, d, i, e)) {
+                break;
+            }
+            at_screen(w, e[0], e[1], &x0, &y0);
+            at_screen(w, e[2], e[3], &x1, &y1);
+            jw_line_clipped(v, x0, y0, x1, y1, 2, 0x18, JW_STYLE_SOLID);
+        }
     } else if (c->command == 11) {
         /* The centre **unrounded**.  A point taken by a read is rarely on a
          * whole pixel, and the circle is as wide as the pointer is far from
@@ -3610,6 +3630,11 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     if (c->command == 9) {
         int i;
 
+        /* 作図範囲で切る（測定：外の一本は上の行に出ない）。 */
+        v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+        v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+        v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+        v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
         for (i = 0; c->pending && i < 2; i++) {
             double e[4];
             int x0, y0, x1, y1;
@@ -3619,9 +3644,13 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
             }
             at_screen(w, e[0], e[1], &x0, &y0);
             at_screen(w, e[2], e[3], &x1, &y1);
-            jw_line(v, x0, y0, x1, y1, mark, ROP_REPLACE,
-                    jw_view_line_style(d->line_type));
+            jw_line_clipped(v, x0, y0, x1, y1, mark, ROP_REPLACE,
+                            jw_view_line_style(d->line_type));
         }
+        v->clip_x0 = 0;
+        v->clip_y0 = 0;
+        v->clip_x1 = v->width - 1;
+        v->clip_y1 = v->height - 1;
         return;
     }
     if (c->command == 7 || c->command == 8) {
