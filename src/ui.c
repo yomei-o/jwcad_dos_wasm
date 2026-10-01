@@ -3387,6 +3387,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                    || s->io_stage == JW_IO_WRITE || s->io_stage == JW_IO_MERGE1
                    || s->io_stage == JW_IO_KILLASK
                    || s->io_stage == JW_IO_NEWNAME
+                   || s->io_stage == JW_IO_PICKNAME
                    || s->io_stage == JW_IO_DXFNAME
                    || s->io_stage == JW_IO_DXFWRITE) {
             /* ①保存 keeps its list on the screen the whole way: ①選択確定,
@@ -3477,6 +3478,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
                 jw_ui_text(v, 8, 1, 7, 0, JW_DXFWRITE_BAR);
             } else if (s->io_stage == JW_IO_NEWNAME
+                       || s->io_stage == JW_IO_PICKNAME
                        || s->io_stage == JW_IO_DXFNAME) {
                 /* ③ 新規 保存 asks for a name.  Measured: the line is
                  * `[ESC]  ` and ` ◆ファイル名入力` at column 8, and the
@@ -3494,7 +3496,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                            : s->io_stage == JW_IO_KILL ? JW_KILL_BAR
                            : JW_FILE_BAR);
             }
-            if (!asking) {
+            if (!asking && s->pick_bad) {
+                /* 借りたファイル選択で名前が無かったときは、path の行が
+                 * `ファイル名が不適当`（桁 20）だけになる（測定：func_all
+                 * polygon_s0_c4_v）。 */
+                jw_ui_text(v, 20, 2, 7, 0, "\x83t\x83@\x83" "C\x83\x8b\x96\xbc\x82\xaa\x95s\x93K\x93\x96");
+            } else if (!asking) {
                 /* The two questions clear this line as well as the one
                  * below it -- measured: at 同名ﾌｧｲﾙが存在します the cyan
                  * path and count are gone. */
@@ -3530,6 +3537,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         stem);
                 jw_ui_text(v, ask3 ? 20 : 17, 3,
                            s->io_stage == JW_IO_KILLASK ? 6 : 7, 0xffffu, one);
+            } else if (s->pick_bad) {
+                /* `ファイル名が不適当` のときは空き容量の行も出ない（測定）。 */
             } else {
                 sprintf(one, "%s%s bytes free   ",
                         s->file_word ? s->file_word
@@ -3566,6 +3575,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * original leaves the name field alone on row 5 and nothing at
              * all on row 6 -- no date, no size, no title. */
             if (s->file_n && s->io_stage != JW_IO_NEWNAME
+                && s->io_stage != JW_IO_PICKNAME
                 && s->io_stage != JW_IO_DXFNAME
                 && s->io_stage != JW_IO_DXFWRITE) {
                 const int sel = s->file_sel;
@@ -3586,6 +3596,25 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 47, 5, 7, 0, one);
                 sprintf(one, "%-32.32s", s->file_t2[sel]);
                 jw_ui_text(v, 47, 6, 7, 0, one);
+            }
+            /* 打った名前は欄を閉じても残る（測定：polygon_s0_c4_v）。 */
+            if (s->io_stage == JW_IO_LOAD && s->command != 30
+                && s->io_name_n > 0) {
+                jw_ui_text(v, 17, 5, 7, 0, s->io_name);
+            }
+            if (s->io_stage == JW_IO_PICKNAME) {
+                /* ③ﾌｧｲﾙ名指定 の欄は空から、打った字のあとに緑の升
+                 * （測定：`0` を打つと 桁 17 に 0、桁 18 に升）。 */
+                char field[64];
+                int y;
+
+                snprintf(field, sizeof field, "%s", s->io_name);
+                jw_ui_text(v, 17, 5, 7, 0, field);
+                for (y = 71; y <= 79; y++) {
+                    jw_line(v, 128 + s->io_name_n * 8, y,
+                            135 + s->io_name_n * 8, y, 4, 0x18,
+                            JW_STYLE_SOLID);
+                }
             }
             if (s->io_stage == JW_IO_NEWNAME
                 || s->io_stage == JW_IO_DXFNAME

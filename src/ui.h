@@ -425,6 +425,7 @@ typedef struct {
     /* ③ 新規 保存's field: the name to write under, prefilled with the
      * drawing in hand.  It sits at row 5, column 17 -- measured. */
     char save_name[13];
+    int pick_bad;               /* 借りたファイル選択で `ファイル名が不適当` */
     int save_name_n;
     /* Which of ◆ｍｅｍｏ入力's two lines the cursor is on (0 or 1), and
      * what has been typed into them.  The original asks for two. */
@@ -461,6 +462,7 @@ typedef struct {
 #define JW_IO_DXFNAME 21        /* ③ 新規 保存 on ①保存 -> ◆ファイル名入力 */
 #define JW_IO_DXFWRITE 22       /* [Enter] -> 書き込みます|① 実 行(L)|    */
 #define JW_IO_NEWASK 23         /* ⑤新規図面 with work in hand -> 失われます */
+#define JW_IO_PICKNAME 24       /* 借りたファイル選択の ③ﾌｧｲﾙ名指定 -> ◆ファイル名入力 */
 
 /* ｵﾌﾟｼｮﾝ's own menus, JwUi.opt_stage. */
 #define JW_OPT_PLAN 1           /* ①建具平面 -> 建具選択 の一覧        */

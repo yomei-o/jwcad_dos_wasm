@@ -3615,6 +3615,21 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         present();
         return -1;
     }
+    /* 図形・多角形 が借りたファイル選択の上の行。③ﾌｧｲﾙ名指定 は名前の欄、
+     * ほかは選ぶものが無いので何もしない（ここで止めて、命令の升として
+     * 取らせない。測定：func_all polygon_s0_c4_v）。 */
+    if (ui.io_stage == JW_IO_LOAD && ui.command != 30) {
+        ui.pick_bad = 0;
+        if (y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
+            if (jw_ui_top_item(x, y) == 3) {
+                ui.io_stage = JW_IO_PICKNAME;
+                ui.io_name_n = 0;
+                ui.io_name[0] = 0;
+            }
+            present();
+            return -1;
+        }
+    }
     if (ui.command == 30 && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
         const int item = jw_ui_top_item(x, y);
         /* What the chain below answers, it answers by moving 入出力 on.  If
@@ -4438,6 +4453,35 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
             ui.ix_del = 0;
         } else {
             ui.io_stage = JW_IO_FILE;
+        }
+        present();
+        return -1;
+    }
+    /* 多角形 が借りたファイル選択の [ESC]：多角形 の行へ戻る（測定）。 */
+    if (ui.io_stage == JW_IO_LOAD && ui.command == 19 && key == 27) {
+        ui.io_stage = 0;
+        ui.pick_bad = 0;
+        ui.io_name_n = 0;
+        ui.io_name[0] = 0;
+        jw_ui_pick_kind(&ui, JW_PICK_IO);
+        sync_ui();
+        present();
+        return -1;
+    }
+    if (ui.io_stage == JW_IO_PICKNAME) {
+        if (key == 27) {
+            ui.io_stage = JW_IO_LOAD;
+        } else if (key == 13 || key == 10) {
+            ui.io_stage = JW_IO_LOAD;       /* 無いファイル */
+            ui.pick_bad = 1;
+        } else if (key == 8) {
+            if (ui.io_name_n > 0) {
+                ui.io_name[--ui.io_name_n] = 0;
+            }
+        } else if (key >= ' ' && key < 127
+                   && ui.io_name_n < (int)sizeof ui.io_name - 1) {
+            ui.io_name[ui.io_name_n++] = (char)key;
+            ui.io_name[ui.io_name_n] = 0;
         }
         present();
         return -1;
