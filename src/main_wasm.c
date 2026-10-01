@@ -4640,6 +4640,13 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         && !cmd.typing_text) {
         const int x = jw_ui_top_cell_x(key - '0');
 
+        /* □ の `④基点変 □` の □ は字の無い ⑤ の升（測定：box_s1_c5）。 */
+        if (x < 0 && key == '5' && cmd.command == 4 && cmd.pressed == 1) {
+            jw_cmd_top(&cmd, drawing, 5, 0);
+            sync_ui();
+            present();
+            return -1;
+        }
         if (x >= 0) {
             /* 鍵で押しても矢は動きません（本物の矢は元の所のまま）。 */
             const int mx = mouse_x, my = mouse_y;

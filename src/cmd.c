@@ -4518,8 +4518,10 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     /* 始点を押したあと（大きさは決めていない）の ④基点変：始点が四角の
      * 中心になる（印の枠の中に白い点。測定：func_all box_s1_c4、(400,140)
      * → (300,250) が (500,30)-(300,250) の四角）。もう一度で角に戻る。 */
+    /* 行の `④基点変 □` の □ も升で、⑤ として押しても同じ（測定：
+     * box_s1_c5 も中心からの四角）。 */
     if (c->command == 4 && c->pressed == 1 && !c->box_fix && !c->box_rot
-        && item == 4) {
+        && (item == 4 || item == 5)) {
         c->box_ctr = !c->box_ctr;
         return 1;
     }
