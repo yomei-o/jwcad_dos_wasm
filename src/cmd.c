@@ -6276,6 +6276,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* 点 の [ESC]：この命令で足した実点を後ろから一つずつ取り消す（測定：
      * point_s0_c1 で 5 つ足して [ESC] 二回で 3 つ）。 */
+    /* 仮点 のときも [ESC] で最後の仮点を一つずつ消す（測定：func_all
+     * point_plain、(350,350) の輪が消え、次の [ESC] でその前のも）。 */
+    if (c->command == 22 && key == 27 && !c->pt_real && d && d->n_temp > 0
+        && !c->typing) {
+        d->n_temp--;
+        return 1;
+    }
     if (c->command == 22 && key == 27 && c->pt_added > 0 && d
         && d->n_points > 0) {
         d->n_points--;
