@@ -4608,16 +4608,18 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         }
         return -1;
     }
-    /* **[Enter] は矢の所での作図の押し**（欄が開いていないとき）。矢が
-     * メニューの上でも、メニューを押したことにはならず、その位置の点として
-     * 取られます（測定：（ ②半円 で矢がメニューの上のまま [Enter] →
-     * `◆ 終点指示`、func_all の arc_s0_c2_v。＋ の基準線待ちでも同じ）。 */
+    /* **[Enter] は作図の押し**（欄が開いていないとき）。メニューを押した
+     * ことにはならない（測定：（ ②半円 で矢がメニューの上のまま [Enter] →
+     * `◆ 終点指示`、func_all の arc_s0_c2_v）。 */
     /* どの命令でもそうなのかは未確認（全部に入れると ○ ③重円 などで本物と
      * 違った——本物はそこで欄を開いている）ので、測った （ の①②③ に限る。 */
     if ((key == 13 || key == 10) && cmd.command == 12 && cmd.arc3
         && !cmd.typing && !cmd.typing_text && drawing) {
-        const int changed = jw_cmd_press(&cmd, drawing, &view, mouse_x,
-                                         mouse_y, 0);
+        /* 取る点は矢ではなく**画面の (400,200)**：矢を作図範囲に入れても、
+         * メニューに戻しても、図面を替えても、先に押してからでも同じ
+         * （測定：tools/cases/probe_enter.txt の 7 件）。鍵盤で動かす矢の
+         * 初めの位置と読んでいる——矢印鍵で動かす所は移していない。 */
+        const int changed = jw_cmd_press(&cmd, drawing, &view, 400, 200, 0);
 
         if (changed) {
             jw_ui_from(&ui, drawing);

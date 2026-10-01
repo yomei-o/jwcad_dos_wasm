@@ -15196,13 +15196,36 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 if (den == 0.0) {
                     return 0;       /* 一直線：弧にならない（未測定） */
                 }
-                ux = ((ax * ax + ay * ay) * (by - y)
-                      + (bx * bx + by * by) * (y - ay)
-                      + (x * x + y * y) * (ay - by)) / den;
-                uy = ((ax * ax + ay * ay) * (x - bx)
-                      + (bx * bx + by * by) * (ax - x)
-                      + (x * x + y * y) * (bx - ax)) / den;
-                r = hypot_of(ax - ux, ay - uy);
+                /* 中心は二本の垂直二等分線（終点–中間点、始点–終点）の交点を、
+                 * 交点ルーチン 1bb4:3cd1 と同じく全部 float で（測定：
+                 * func_all arc_s0_c1 の中心 x が 0x438bfac6。double の公式
+                 * では c7）。 */
+                {
+                    JwcLine la, lb;
+                    float fx, fy;
+                    const float mx1 = ((float)bx + (float)x) / 2.0f;
+                    const float my1 = ((float)by + (float)y) / 2.0f;
+                    const float mx2 = ((float)ax + (float)bx) / 2.0f;
+                    const float my2 = ((float)ay + (float)by) / 2.0f;
+
+                    memset(&la, 0, sizeof la);
+                    memset(&lb, 0, sizeof lb);
+                    la.x0 = mx1;
+                    la.y0 = my1;
+                    la.x1 = mx1 - ((float)y - (float)by);
+                    la.y1 = my1 + ((float)x - (float)bx);
+                    lb.x0 = mx2;
+                    lb.y0 = my2;
+                    lb.x1 = mx2 - ((float)by - (float)ay);
+                    lb.y1 = my2 + ((float)bx - (float)ax);
+                    if (env_isect(&la, &lb, &fx, &fy) == 0) {
+                        return 0;
+                    }
+                    ux = fx;
+                    uy = fy;
+                }
+                /* 半径は中心から中間点まで（測定：始点までだと 1 ビット大きい）。 */
+                r = hypot_of(x - ux, y - uy);
                 sa = ang16(ux, uy, ax, ay);
                 sb = ang16(ux, uy, bx, by);
                 sm = ang16(ux, uy, x, y);

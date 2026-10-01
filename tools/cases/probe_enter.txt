@@ -1,0 +1,8 @@
+# [Enter] が押しとして取る点はどこか（2026-10-01）。（ ①三点指示 で始点を [Enter] にする
+enter_a|SAMPLE0|90 248 left|type 1|key enter|400 300 left|350 330 left
+enter_b|SAMPLE0|90 248 left|type 1|move 300 300|move 90 248|key enter|400 300 left|350 330 left
+enter_c|SAMPLE0|90 248 left|type 1|move 300 300|key enter|400 300 left|350 330 left
+enter_d|SAMPLE0|90 248 left|type 1|move 250 380|key enter|400 300 left|350 330 left
+enter_e|SAMPLE0|90 248 left|type 1|300 320 left|key enter|350 330 left
+enter_f|SAMPLE6|90 248 left|type 1|key enter|400 300 left|350 330 left
+enter_g|SAMPLE0|90 248 left|type 1|300 320 left|350 340 left|key enter|key enter|key enter|400 300 left
