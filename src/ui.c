@@ -2880,6 +2880,20 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                        "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
+    } else if (s->command == 10 && s->ld_ask) {
+        /* 線消 の ①線切断寸法 の欄（桁は本物の画面から）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "\x90\xfc\x90\xd8\x92" "f\x90\xa1\x96@");
+        jw_ui_text(v, 20, 1, 7, 0, "=");
+        jw_ui_text(v, 60, 1, 7, 0, "\x90}\x90\xa1(mm)");
+        if (s->typed_n > 0) {
+            char t[11];
+
+            memcpy(t, s->typed, 10);
+            t[s->typed_n < 10 ? s->typed_n : 10] = 0;
+            jw_ui_text(v, 22, 1, 7, 0, t);
+        }
+        fill(v, 168 + s->typed_n * 8, 7, 175 + s->typed_n * 8, 15, 4);
     } else if (s->command == 8 && s->chb) {
         /* 面取 の一括処理の行（本物の桁を測った：probe_chamfer の各段）。 */
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");

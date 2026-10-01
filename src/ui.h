@@ -348,6 +348,7 @@ typedef struct {
     int ch_bad;
     int ch_side;
     int div_real;
+    int ld_ask;
     long real_left;             /* 実点の残り（`残 3623`） */
     int box_ctr;
     double rep_gap[2];

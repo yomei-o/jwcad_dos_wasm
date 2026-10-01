@@ -3555,7 +3555,8 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         }
     }
     /* 線消 の部分消去：押した線は切り終えるまで赤（色 2。測定）。 */
-    if (c->command == 10 && (c->stage == 2 || c->stage == 3)
+    /* ①線切断寸法 の欄のあいだは赤くしない（測定：linedel_s1_c1）。 */
+    if (c->command == 10 && (c->stage == 2 || c->stage == 3) && !c->ld_ask
         && c->ld_line >= 0 && c->ld_line < d->n_lines) {
         const JwcLine *l = &d->lines[c->ld_line];
         int x0, y0, x1, y1;
@@ -4774,6 +4775,15 @@ range_items:
      * ` ﾍﾟﾝ%d 残文%5d `（0x2b23e）。測定：tools/cases/probe_measure.txt。 */
     if (c->command == 15 && c->stage == 1 && item == 1 && !c->meas_put) {
         c->meas_put = 1;
+        return 1;
+    }
+    /* 線消 部分消去 の ①線切断寸法：`[ESC]  線切断寸法 =` の欄（測定：
+     * func_all linedel_s1_c1。欄での左押しは欄を閉じるだけで始点にならない）。 */
+    if (c->command == 10 && c->stage == 2 && item == 1 && !c->ld_ask) {
+        c->ld_ask = 1;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
         return 1;
     }
     /* ２線 ①基準線からの間隔：`間隔 =` の欄（行は src/item.h のまま）。欄での
@@ -6156,6 +6166,34 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
     }
+    /* 線消 の線切断寸法の欄の鍵。値は 0 以上を取る（使い道の線切断は未移植）。 */
+    if (c->command == 10 && c->ld_ask) {
+        if (key == 27 || key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if ((key == 13 || key == 10) && c->typed_n) {
+                const double v = field_eval(c->typed);
+
+                if (v >= 0.0) {
+                    c->ld_cut = v;
+                }
+            }
+            c->ld_ask = 0;
+            c->typing = 0;
+            c->typed_n = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (FIELD_CHAR(key) && c->typed_n < 10) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
     /* ２線 の間隔の欄の鍵：`a,b`（一つなら両方）。 */
     if (c->command == 9 && c->dl_ask) {
         if (key == 27) {
@@ -6564,6 +6602,21 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->y0 = c->dl_undo_y;
         c->stage = 2;
         c->moved = 0;
+        return 1;
+    }
+    /* 線消 で部分消去したあとの [ESC]：抜いた元の線を rest を 0 にして末尾へ
+     * 戻す（切った残りはそのまま。測定：func_all linedel_s1_c1、間に右押しの
+     * 消去があっても上の辺が戻る）。一度だけ。 */
+    if (key == 27 && d && c->command == 10 && !c->typing && c->stage == 1
+        && c->ld_undo_on) {
+        JwcLine q = c->ld_undo;
+
+        memset(q.rest + 1, 0, 3);
+        if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen, q.layer)) {
+            d->lines[d->n_lines - 1] = q;
+        }
+        c->ld_undo_on = 0;
+        c->stage = 0;
         return 1;
     }
     /* 線消 の部分消去の [ESC]：終点 → 始点（線は選んだまま）→ 最初の行
@@ -11835,6 +11888,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         }
         return 0;
     }
+    if (c->command == 10 && c->ld_ask) {
+        c->ld_ask = 0;          /* 欄での押しは閉じるだけ（測定） */
+        c->typing = 0;
+        c->typed_n = 0;
+        return 1;
+    }
     if (c->command == 10 && (c->stage == 2 || c->stage == 3)) {
         /* 部分消去の始点・終点。点は線に下ろします：座標系は 1bb4:27ea と
          * 同じく cos=(float)(dx/L)・sin=(float)(dy/L)、原点は線の始点、
@@ -11882,6 +11941,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             if (a == b) {
                 return 0;       /* 線切断：まだ */
             }
+            c->ld_undo = l;
+            c->ld_undo_on = 1;
             jwc_remove_line(d, k);
             if (a > 0.0f) {
                 const float ax = (float)((double)cs * a + ox);
