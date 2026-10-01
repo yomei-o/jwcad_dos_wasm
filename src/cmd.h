@@ -506,6 +506,11 @@ typedef struct {
     int text_rep;
     int meas_put;               /* 測定 ①表示：小数点位置を待つ */
     int circ_dia;
+    /* 手書線：いまの一筆（か直前の一筆）の区間ごとの始点。[ESC] はここから
+     * 一つずつ戻る。 */
+    int hand_n;
+    double hand_px[256], hand_py[256];
+    int hand_psx[256], hand_psy[256];
     int box_ctr;                /* □ ④基点変：始点が四角の中心 */               /* ○ ②基点変：○（二点が直径） */
     int pt_real;                /* 点 ①【実点】 */
     int pt_mode;                /* 点 ②〜⑤（未移植） */

@@ -1793,9 +1793,14 @@ EMSCRIPTEN_KEEPALIVE int jw_open(const char *path)
 static unsigned char *saved;
 static long saved_len;
 
+static void hand_abandon(void);
+
 EMSCRIPTEN_KEEPALIVE int jw_save(void)
 {
     const char *why;
+
+    /* 本物の保存は 入出力 を押して命令を離れてから（一筆の途中なら捨てる）。 */
+    hand_abandon();
 
     free(saved);
     saved = NULL;
@@ -2295,6 +2300,21 @@ static int calc_press(int x, int y)
         ui.n_arcs = drawing->n_arcs + drawing->n_texts;
     }
     return 1;
+}
+
+/* 曲線 ⑤手書線 の一筆の途中で命令を離れると、その一筆の線は全部捨てられる
+ * （測定：func_all curve_s1_c5、保存のためにメニューを押すと二筆目の線が
+ * 記録に残らない）。 */
+static void hand_abandon(void)
+{
+    if (cmd.command == 23 && cmd.hand && cmd.stage == 61 && drawing
+        && drawing->n_lines > cmd.hand_from) {
+        while (drawing->n_lines > cmd.hand_from) {
+            jwc_remove_line(drawing, drawing->n_lines - 1);
+        }
+        jwc_ink_clear(drawing);
+        jw_ui_from(&ui, drawing);
+    }
 }
 
 EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
@@ -2837,6 +2857,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         ui.saved_done = 0;      /* the banner belongs to the save that made it */
         ui.command = pick;
         ui.guide = 0;
+        hand_abandon();
         jw_cmd_pick(&cmd, pick);
         cmd.chamfer = chamfer;
         ui.stage = 0;
@@ -4671,6 +4692,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     ui.guide = 0;
     ui.stage = 0;
     ui.missed = 0;
+    hand_abandon();
     jw_cmd_pick(&cmd, pick);
     /* 升の行は新しいコマンドでは消える（前のコマンドの top_item が残ると
      * 別のコマンドの src/item.h の行が出る。測定：文字 ③ のあと `AB` で

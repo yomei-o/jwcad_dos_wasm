@@ -530,6 +530,13 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
                 d->lines[d->n_lines - 1].rest[1] = 0xf5;
                 d->lines[d->n_lines - 1].rest[2] = 0xc0;
                 c->hand_did = 1;
+                if (c->hand_n < 256) {
+                    c->hand_px[c->hand_n] = c->hand_x;
+                    c->hand_py[c->hand_n] = c->hand_y;
+                    c->hand_psx[c->hand_n] = c->hand_sx;
+                    c->hand_psy[c->hand_n] = c->hand_sy;
+                    c->hand_n++;
+                }
             }
             c->hand_x = nx;
             c->hand_y = ny;
@@ -5785,6 +5792,20 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
      * 行）へ。矢が動いても引かない（測定：curve_s0_c5）。 */
     if (c->command == 23 && c->hand && key == 27
         && (c->stage == 60 || c->stage == 61)) {
+        /* 区間があれば最後の一本を取り消し、その始点から一筆を続ける
+         * （一筆を終えたあとでも。測定：curve_s1_c5 で 33 → 32、行は
+         * `終点指示`、矢を動かすとまたそこから引く）。 */
+        if (c->hand_n > 0 && d && d->n_lines > 0) {
+            c->hand_n--;
+            jwc_remove_line(d, d->n_lines - 1);
+            jwc_ink_clear(d);
+            c->hand_x = c->hand_px[c->hand_n];
+            c->hand_y = c->hand_py[c->hand_n];
+            c->hand_sx = c->hand_psx[c->hand_n];
+            c->hand_sy = c->hand_psy[c->hand_n];
+            c->stage = 61;
+            return 1;
+        }
         c->stage = 60;
         c->hand_did = 0;
         return 1;
@@ -12131,6 +12152,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->hand_sx = sx;
             c->hand_sy = sy;
             c->hand_from = d ? d->n_lines : 0;
+            c->hand_n = 0;
             c->stage = 61;
             return 1;
         }
@@ -12146,7 +12168,18 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             d->lines[d->n_lines - 1].rest[1] = 0xf5;
             d->lines[d->n_lines - 1].rest[2] = 0xc0;
             c->hand_did = 1;
+            if (c->hand_n < 256) {
+                c->hand_px[c->hand_n] = c->hand_x;
+                c->hand_py[c->hand_n] = c->hand_y;
+                c->hand_psx[c->hand_n] = c->hand_sx;
+                c->hand_psy[c->hand_n] = c->hand_sy;
+                c->hand_n++;
+            }
         }
+        c->hand_x = x;
+        c->hand_y = y;
+        c->hand_sx = sx;
+        c->hand_sy = sy;
         c->stage = 60;
         return 1;
     }
