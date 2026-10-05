@@ -16247,17 +16247,29 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         } else {
             jwc_ink_note(d, 1, JW_INK_ARC, &d->arcs[j]);
         }
+        /* **The layer only moves when ②レイヤ変更 is 【有】** (c->lc_off
+         * clear).  Driven against the original with it switched to 【無】
+         * (SAMPLE6, the same (499,271) press as above): the saved file's
+         * pen byte still goes 1 -> 4 and the touched bit (rest[2]) still
+         * sets, but the layer byte (rest[0], right after pen) stays 00 --
+         * it does not become 02.  decomp/ovl26 reads DS:[0x5e40] (the same
+         * 【有】/【無】 flag c->lc_off mirrors) several times further into
+         * FUN_4000_0cb6; this is what it gates. */
         if (k >= 0) {
             d->lines[k].type = (unsigned char)d->line_type;
             d->lines[k].pen = (unsigned char)d->pen;
-            d->lines[k].layer = layer;
-            d->lines[k].rest[0] = layer;
+            if (!c->lc_off) {
+                d->lines[k].layer = layer;
+                d->lines[k].rest[0] = layer;
+            }
             d->lines[k].rest[2] |= 1;
         } else {
             d->arcs[j].type = (unsigned char)d->line_type;
             d->arcs[j].pen = (unsigned char)d->pen;
-            d->arcs[j].layer = layer;
-            d->arcs[j].rest[0] = layer;
+            if (!c->lc_off) {
+                d->arcs[j].layer = layer;
+                d->arcs[j].rest[0] = layer;
+            }
             d->arcs[j].rest[2] |= 1;
         }
         if (k >= 0) {
