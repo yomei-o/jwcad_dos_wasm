@@ -6149,7 +6149,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
              * src/typed.h, stage 2. */
             if (d && c->edit_text >= 0 && c->edit_text < d->n_texts) {
                 jwc_edit_text_at(d, c->edit_text, c->typed,
-                                 c->te_bh * 0.5);
+                                 c->te_bh, c->te_bv);
             }
             c->typing_text = 0;
             c->pressed = 0;

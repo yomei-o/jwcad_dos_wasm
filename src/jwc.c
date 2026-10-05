@@ -2079,38 +2079,144 @@ int jwc_set_text(Jwc *d, long k, const char *str, unsigned char size)
 
 int jwc_edit_text(Jwc *d, long k, const char *str)
 {
-    return jwc_edit_text_at(d, k, str, 0.0);
+    return jwc_edit_text_at(d, k, str, 0, 0);
 }
 
-/* 文編集【変更】の書き換え。長さが変わった分 D を文字基準点の横の位置 `f`
- * （左 0・中 0.5・右 1）で振り分け、始点を -f·D、終点を (1-f)·D だけ字の
- * 向きに動かす（測定：tools/cases/probe_textedit.txt te_h（右）・te_i（中）・
- * te_j（左））。縦の基準は高さが変わらないので位置に効かない。 */
-int jwc_edit_text_at(Jwc *d, long k, const char *str, double f)
+/* 本物の文編集の置き直し（ovl15 3ab8:08b3）。2 点の座標系（1bb4:27ea：
+ * cos・sin・長さは double で割って float に丸める）の原点を (px,py) に
+ * 置き換え、文字基準点のぶんだけ t・v をずらした所を始点、長さぶん先を
+ * 終点にする。`s` は -1 で基点を求め、+1 で基点から始点へ戻る。 */
+typedef struct { float ox, oy, co, si, len; } EdFrame;
+
+static EdFrame ed_frame(float x0, float y0, float x1, float y1)
+{
+    EdFrame f;
+    const double dx = (double)x1 - x0, dy = (double)y1 - y0;
+    const double ln = sqrt(dx * dx + dy * dy);
+
+    f.ox = x0;
+    f.oy = y0;
+    f.co = ln > 0.0 ? (float)(dx / ln) : 1.0f;
+    f.si = ln > 0.0 ? (float)(dy / ln) : 0.0f;
+    f.len = (float)ln;
+    return f;
+}
+
+static float ed_x(const EdFrame *f, float t, float v)
+{
+    return (float)(((double)f->co * t - (double)f->si * v) + f->ox);
+}
+
+static float ed_y(const EdFrame *f, float t, float v)
+{
+    return (float)(((double)f->co * v + (double)f->si * t) + f->oy);
+}
+
+static void ed_place(float r[4], double s, float px, float py, int hb,
+                     int vb, float h, EdFrame *out)
+{
+    EdFrame f = ed_frame(r[0], r[1], r[2], r[3]);
+    float t = 0.0f, v = 0.0f, t2;
+
+    f.ox = px;
+    f.oy = py;
+    /* 横位置・縦位置（盤の ③・⑤）は 0 のまま（表 [0x10b2]・[0x10be]）。 */
+    if (hb == 1) {
+        t = (float)((double)f.len * -0.5 * s + t);
+    } else if (hb == 2) {
+        t = (float)((double)t - (double)f.len * s);
+    }
+    if (vb == 1) {
+        v = (float)((double)h * -0.5 * s + v);
+    } else if (vb == 2) {
+        v = (float)((double)v - (double)h * s);
+    }
+    t2 = (float)((double)f.len + t);
+    r[0] = ed_x(&f, t, v);
+    r[1] = ed_y(&f, t, v);
+    r[2] = ed_x(&f, t2, v);
+    r[3] = ed_y(&f, t2, v);
+    if (out) {
+        *out = f;
+    }
+}
+
+/* 本物の字列の長さ（18b3:03cf）。幅と間隔は 紙の 1/10mm を B4A2 =
+ * F(紙/518) で割った float、和は float、掛け算は double。 */
+static float ed_length(const Jwc *d, const char *str, unsigned char size,
+                       float b4a2)
+{
+    const unsigned char *p = (const unsigned char *)str;
+    const int k = size <= 10 ? size : 0;
+    const float W = (float)((double)(float)d->text_w[k] / b4a2 * 0.1);
+    const float G = (float)((double)(float)d->text_gap[k] / b4a2 * 0.1);
+    long n = 0;
+    int last2 = 0;
+    float P;
+
+    while (p && *p) {
+        if (((p[0] >= 0x81 && p[0] <= 0x9f) || (p[0] >= 0xe0 && p[0] <= 0xef))
+            && p[1]) {
+            n += 2;
+            last2 = 1;
+            p += 2;
+        } else {
+            n += 1;
+            last2 = 0;
+            p += 1;
+        }
+    }
+    P = (float)((double)(G + W) * n * 0.5);
+    return last2 ? P - G : (float)((double)G * -0.5 + P);
+}
+
+/* 文編集【変更】の書き換え（ovl15 3ab8:2e67 → 7132 → 08b3 → 1f66）。
+ *   1. r1 = 置き直し(旧, -1, 旧の始点)、r2 = 置き直し(r1, -1, r1 の始点)。
+ *      基点 P は r1 の始点、cos・sin は 2 回目の座標系のもの
+ *   2. 仮の終点 = r2 の始点 + (cos·L, sin·L)（float の掛けと足し）
+ *   3. r3 = 置き直し((r2 の始点, 仮の終点), +1, P) で始点が決まる
+ *   4. 終点は r3 から座標系を作り直して長さ L の所（1f66）
+ * 6 例（左・中・右 × 字数）で本物と float のビットまで一致（tools/cases/
+ * probe_textedit.txt te_h〜te_n）。縦の中・上は式どおりで角度 0 では
+ * 位置に効かない。斜めの字・縦書き・`^` の制御列は測っていない。 */
+int jwc_edit_text_at(Jwc *d, long k, const char *str, int hb, int vb)
 {
     JwcText was;
     long off, gone, m;
     JwcText *t;
-    double grow, ux, uy, len;
+    float r1[4], r2[4], r3[4], L, b4a2, h;
+    EdFrame f2, f4;
+    float px, py;
 
     if (k < 0 || k >= d->n_texts || !str) {
         return 0;
     }
     was = d->texts[k];
+    {
+        static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f,
+                                        297.0f };
+        const int pp = d->paper >= 0 && d->paper < 5 ? d->paper : 4;
+        const int sz = was.size <= 10 ? was.size : 0;
+
+        b4a2 = (float)((double)PAPER[pp] / 518.0);
+        h = (float)((double)(float)d->text_h[sz] / b4a2 * 0.1);
+        L = ed_length(d, str, was.size, b4a2);
+    }
+    r1[0] = was.x0; r1[1] = was.y0; r1[2] = was.x1; r1[3] = was.y1;
+    ed_place(r1, -1.0, was.x0, was.y0, hb, vb, h, 0);
+    memcpy(r2, r1, sizeof r2);
+    ed_place(r2, -1.0, r1[0], r1[1], hb, vb, h, &f2);
+    px = f2.ox;
+    py = f2.oy;
+    r3[0] = r2[0];
+    r3[1] = r2[1];
+    r3[2] = f2.co * L + r2[0];
+    r3[3] = f2.si * L + r2[1];
+    ed_place(r3, 1.0, px, py, hb, vb, h, 0);
+    f4 = ed_frame(r3[0], r3[1], r3[2], r3[3]);
+
     off = was.text ? (long)(was.text - d->text) : 0;
     gone = (long)strlen(d->text + off) + 1;
-    grow = jwc_text_length(d, str, was.size)
-         - jwc_text_length(d, was.text ? was.text : "", was.size);
-    ux = (double)was.x1 - was.x0;
-    uy = (double)was.y1 - was.y0;
-    len = sqrt(ux * ux + uy * uy);
-    if (len > 0.0) {
-        ux /= len;
-        uy /= len;
-    } else {
-        ux = 1.0;
-        uy = 0.0;
-    }
     jwc_remove_text(d, k);
     /* The pool is one run of strings in record order, so taking the record
      * out takes its string out too and everything after it slides back.  The
@@ -2123,10 +2229,7 @@ int jwc_edit_text_at(Jwc *d, long k, const char *str, double f)
             d->texts[m].text -= gone;
         }
     }
-    if (!jwc_add_text(d, (float)(was.x0 - f * grow * ux),
-                      (float)(was.y0 - f * grow * uy),
-                      (float)(was.x1 + (1.0 - f) * grow * ux),
-                      (float)(was.y1 + (1.0 - f) * grow * uy),
+    if (!jwc_add_text(d, r3[0], r3[1], ed_x(&f4, L, 0.0f), ed_y(&f4, L, 0.0f),
                       str, was.size, was.layer)) {
         return 0;
     }
