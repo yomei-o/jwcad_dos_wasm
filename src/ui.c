@@ -1573,6 +1573,22 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
  * DOSEMU_BP=+0def:2636,+0def:23c5. */
 static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
+    /* 線変更 ②レイヤ変更は【有】⇔【無】（測定：func_all linechg_s0_c2）。 */
+    if (q->command == 24 && s->command == 24 && s->lc_off && q->stage == 1
+        && q->row == 1 && q->col == 8) {
+        char one[200];
+        char *at;
+
+        strncpy(one, q->text, sizeof one - 1);
+        one[sizeof one - 1] = 0;
+        at = strstr(one, "\x97L");
+        if (at) {
+            at[0] = (char)0x96;
+            at[1] = (char)0xb3;
+        }
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+        return;
+    }
     /* 複線 の 複写方向 の行は、一本置いたあとは `連続入力[<┛]` の代わりに
      * `● 前線と連続(R)`（測定：func_all offset_s1_c1 の 11 段目）。 */
     if (q->command == 5 && s->command == 5 && s->off_done && s->off_pt && stage == 2 && q->stage == 2
@@ -4212,6 +4228,23 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (k) {
                     put_numbers(out, sizeof out, p->text, n, k, p->row == 3);
                     text = out;
+                }
+            }
+            /* 線変更 ②レイヤ変更 を【無】にしたあとは、最初の行も【無】
+             * （測定：func_all linechg_s0_c2）。 */
+            if (s->command == 24 && s->lc_off && p->row == 1 && p->col == 8) {
+                char two[200];
+                char *hit;
+
+                strncpy(two, p->text, sizeof two - 1);
+                two[sizeof two - 1] = 0;
+                hit = strstr(two, "\x97L");
+                if (hit) {
+                    hit[0] = (char)0x96;
+                    hit[1] = (char)0xb3;
+                    jw_ui_text(v, p->col, p->row, (unsigned)p->fg,
+                               (unsigned)p->bg, two);
+                    continue;
                 }
             }
             /* ハッチ 最初の行の数字は 残数（桁 70）を消す。 */

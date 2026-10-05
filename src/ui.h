@@ -572,6 +572,7 @@ typedef struct {
      * 100), and the angle and pitch it will fill with. */
     int hatch_n;
     int hatch_used;
+    int lc_off;
     int meas_hold;
     int off_pt;
     int off_done;

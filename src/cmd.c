@@ -5982,6 +5982,9 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
         }
         return changed;
     }
+    if (c->command == 24 && item == 2) {
+        c->lc_off = !c->lc_off;     /* ②レイヤ変更 【有】⇔【無】（linechg_s0_c2） */
+    }
     c->dim_did = 0;      /* 項目を選び直すと [ESC] は消えます */
     c->dim_lines0 = d ? d->n_lines : 0;
     c->dim_only = 0;
@@ -16203,9 +16206,13 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * its own line back -- no `[ESC]`, which is the stage-1 line -- so
              * the command stays where it was. */
             c->missed = 1;
-            return 0;
+            c->stage = 0;       /* `[ESC]` と 線変更 の札は消える（linechg_plain） */
+            c->hit_kind = 0;
+            return 1;
         }
         c->missed = 0;
+        c->top_item = 0;        /* ②レイヤ変更 の升の行から押しで抜ける（linechg_s0_c2） */
+        c->top_right = 0;
         /* The word beside the counts is `線` for a line and `円` for an arc
          * (measured: pressing SAMPLE6's arc at (446,189) says 円 変更). */
         c->hit_kind = k >= 0 ? 1 : 2;
