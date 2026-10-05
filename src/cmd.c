@@ -5927,6 +5927,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     c->te_pick = -1;    /* 文編集：項目を選び直すと選んだ文字も [ESC] も無くなる */
     c->te_esc = 0;
     c->te_plain = 0;
+    c->tx_plain = 0;    /* 文字：升を選ぶと左の盤も描き直す（text_s0_c7_v） */
     /* ④円･角 の桁は別で、押しても [ESC] も帯の値も残ります（測定：①矢印
      * を押したあとも桁 1 の [ESC]、桁 18 の値、桁 62 の 書込角度 がそのまま
      * 書き直されます）。②円周 の ①端部 も同じ扱いにしてあります。 */
@@ -6278,10 +6279,20 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         /* 文字 の欄の [ESC] は、打った字があれば [Enter] と同じに書き込んで
          * 次の基点の行へ（測定：text_esc、`AB` を打って [ESC] で AB が
-         * 書かれ、行は `[ESC]・文字種類[F3] 基点指示…`）。空の欄の [ESC] は
-         * 未測定。 */
+         * 書かれ、行は `[ESC]・文字種類[F3] 基点指示…`）。 */
         if (key == 27 && c->command == 13 && c->typed_n > 0) {
             key = 13;
+        }
+        /* 空の欄の [ESC] は欄を閉じて `基点指示` の行へ（押しで閉じたのと
+         * 同じ。測定：func_all text_plain の 12 段目）。 */
+        if (key == 27 && c->command == 13 && c->typed_n == 0
+            && !c->text_rep) {
+            c->typing_text = 0;
+            c->pressed = 0;
+            c->stage = 2;
+            c->top_item = c->tx_count > 0 ? 0 : 1;
+            c->top_right = 0;
+            return 1;
         }
         /* 連続書 は空の欄の [Enter] か [ESC] で抜けて、ふつうの段 2 へ
          * （測定：text_rep2_empty、text_rep2_keep）。 */
@@ -6400,6 +6411,21 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
      * で 50 を打って [ESC] → `・◇始点指示 … |⑤垂 直 |`、何も固定しない）。 */
     /* 文字 の取り消し：書いたあとの [ESC] は最後の文字を消します（測定：
      * `ABC` と `12` を書いて [ESC] で `12` だけ消える）。一回だけ。 */
+    /* 文字：欄の無いときの [Enter] は行と左の盤を描き直す（盤が下りて
+     * いれば戻る。測定：func_all text_s0_c7_v）。 */
+    if (c->command == 13 && (key == 13 || key == 10) && !c->typing_text
+        && !c->typing && c->tx_plain) {
+        c->tx_plain = 0;
+        return 1;
+    }
+    /* 文字：取り消すものが無いときの [ESC] は左の盤を下ろして数え箱に
+     * （測定：func_all text_plain の最後の [ESC]）。 */
+    if (c->command == 13 && key == 27 && !c->typing_text && !c->typing
+        && !(c->tx_undo && d && d->n_texts > 0) && !c->text_ang_ask
+        && c->stage != 40 && c->stage != 41) {
+        c->tx_plain = 1;
+        return 1;
+    }
     if (c->command == 13 && key == 27 && !c->typing_text && c->tx_undo && d
         && d->n_texts > 0) {
         jwc_remove_text(d, d->n_texts - 1);
@@ -12422,6 +12448,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         return 1;
     }
     if (c->command == 13) {
+        c->tx_plain = 0;
         /* 文字: one press takes the place the string starts at -- the base
          * point is 左下, the bottom left, so it is the near end of the
          * baseline -- and the top line turns into a field to type it in.
@@ -12430,7 +12457,25 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * Measured: pressing (250,200) on SAMPLE0 and typing `ABC` leaves
          * a record whose baseline runs (129.000,263.000)-(137.721,263.000),
          * the string at the end of the pool, character type 3 and layer 0. */
-        jw_cmd_at(w, sx, sy, &x, &y);
+        /* 欄が空のあいだの押しは欄を閉じるだけ：`基点指示(L)free(R)Read|
+         * ①基点変|②行連続|③列連続|` の行（この命令で書いた字があれば
+         * [ESC] 付き）へ戻り、次の押しでまた欄（測定：func_all text_plain
+         * の (300,250)、text_s0_c4_v の (300,250)・(162,250)）。 */
+        if (c->typing_text && c->typed_n == 0) {
+            c->typing_text = 0;
+            c->pressed = 0;
+            c->stage = 2;
+            c->top_item = c->tx_count > 0 ? 0 : 1;
+            c->top_right = 0;
+            return 1;
+        }
+        /* (L)free (R)Read：右は点を読み、無ければ `読取可能データ無` で欄は
+         * 開かない（測定：text_plain の (598,300) 右）。 */
+        if (!take(c, d, w, sx, sy, right, &x, &y)) {
+            c->missed = 1;
+            return 1;
+        }
+        c->missed = 0;
         c->x0 = x;
         c->y0 = y;
         c->pressed = 1;

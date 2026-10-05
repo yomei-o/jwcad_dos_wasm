@@ -1547,6 +1547,11 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
     const int before = top_writes, boxed = box_writes;
 
+    if (q->command == 13 && s->command == 13 && s->tx_plain
+        && (q->row == 2 || q->row == 3)) {
+        return;                 /* 文字の左の盤を下ろしたあと */
+    }
+
     stage_text_1(v, q, s, stage);
     if (top_writes != before && q->row == 1 && q->col == 1
         && strlen(q->text) == 80) {
@@ -4005,7 +4010,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * (文字 does it at 43,996,047 instructions in).  Only when it writes
          * inside that box: ハッチ puts 残数 at column 70 and leaves the counts
          * alone. */
-        for (q = p; !s->band_off && q->col; q++) {
+        for (q = p; !s->band_off && !(s->command == 13 && s->tx_plain)
+                    && q->col; q++) {
             /* Not when the band has been turned off: the box is cleared to
              * make room for what the command writes there, and with the
              * command's band gone the two counts stay where they are. */
@@ -4152,6 +4158,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * like everything else, so the prompt's own rows 2 and 3 are
              * skipped whenever a cell has been pressed. */
             if ((s->top_item || s->band_off) && p->row != 1) {
+                continue;
+            }
+            if (s->command == 13 && s->tx_plain && p->row != 1) {
                 continue;
             }
             /* 面取's ① has gone round to another shape: the line is
@@ -4433,6 +4442,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
                 if (s->command == 28 && s->top_item == 6 && s->te_plain
                     && r->row >= 2) {
+                    continue;
+                }
+                /* 文字の左の盤を下ろしたあとは数え箱の行だけ。 */
+                if (s->command == 13 && s->tx_plain
+                    && (r->row == 2 || r->row == 3)
+                    && (strstr(r->text, "\xcd\xdf\xdd")
+                        || strstr(r->text, "\x89\xa1"))) {
                     continue;
                 }
                 /* ④設定 の ③ＦＥＰ【off (1)】：桁 61 から、】は 68、| は 70

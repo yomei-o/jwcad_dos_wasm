@@ -519,6 +519,7 @@ static void sync_ui(void)
     ui.te5 = cmd.te5;
     ui.te5_ask = cmd.te5_ask;
     ui.fep = cmd.fep;
+    ui.tx_plain = cmd.tx_plain;
     ui.te5_gap = cmd.te5_gap;
     ui.real_left = drawing ? 3639 - drawing->n_points : 0;
     ui.chb_inner = cmd.chb_inner;
@@ -4906,6 +4907,15 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* 升の無い数字は何もしないが、本物は行と左の盤を描き直す。始点を持った
      * ＋・／・□・○ では盤が 長= 0.000 角度= 0.000° などになる（測定：func_all
      * plus_s1_c9 の `9`）。 */
+    /* 文字：升の無い数字は行を描き直し、左の盤は数え箱に戻る（測定：
+     * func_all text_s0_c7 の `7`）。 */
+    if (!pick && key >= '0' && key <= '9' && cmd.command == 13
+        && !cmd.typing && !cmd.typing_text) {
+        cmd.tx_plain = 1;
+        sync_ui();
+        present();
+        return 0;
+    }
     if (!pick && key >= '0' && key <= '9' && cmd.pressed == 1 && !cmd.moved
         && (cmd.command == 2 || cmd.command == 3 || cmd.command == 4
             || cmd.command == 11)) {
