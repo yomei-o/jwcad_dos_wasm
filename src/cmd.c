@@ -4004,6 +4004,71 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 {
     long k;
 
+    /* ○・□ で作ったものは、帯の上（数え箱の右、y 17〜47）にも描かれる。
+     * 本物は図形を帯のあとに描き、あとで 2 行目（y 17〜31）に言葉を書くと
+     * そこだけ塗り直す（測定：func_all circle_plain、右押しの外れで円の
+     * y 17〜31 が消え、32〜47 は残る）。帯の四角の中だけを描き直す。 */
+    if (d && (c->command == 4 || c->command == 11)
+        && (c->n0_lines < d->n_lines || c->n0_arcs < d->n_arcs)) {
+        /* 窓で切って別の画面に丸ごと描き、帯の四角だけを写す（四角で切ると
+         * 線の引き方が途中から変わって 1 画素ずれる）。 */
+        static VGA band_scr;
+        static int band_ready;
+        const int ytop = c->band_row2 ? 17 : 32;
+        int p, y, x;
+
+        if (!band_ready) {
+            vga_reset(&band_scr, 0x12);
+            band_ready = 1;
+        }
+        memcpy(band_scr.gc, v->gc, sizeof band_scr.gc);
+        band_scr.stride = v->stride;
+        band_scr.width = v->width;
+        band_scr.height = v->height;
+        band_scr.clip_x0 = w->x0 > 0 ? w->x0 : 0;
+        band_scr.clip_y0 = w->y0 > 0 ? w->y0 : 0;
+        band_scr.clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+        band_scr.clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+        for (p = 0; p < VGA_PLANES; p++) {
+            memset(band_scr.plane[p] + 17L * band_scr.stride, 0,
+                   (size_t)(31 * band_scr.stride));
+        }
+        for (k = c->n0_lines; k < d->n_lines; k++) {
+            if (jwc_visible(d, d->lines[k].layer)) {
+                jw_view_line(&band_scr, d, &d->lines[k], w,
+                             jw_view_pen_colour(d->lines[k].pen));
+            }
+        }
+        for (k = c->n0_arcs; k < d->n_arcs; k++) {
+            if (jwc_visible(d, d->arcs[k].layer)) {
+                jw_view_arc(&band_scr, d, &d->arcs[k], w,
+                            jw_view_pen_colour(d->arcs[k].pen));
+            }
+        }
+        for (y = ytop; y <= 47; y++) {
+            for (x = 122; x <= 638; x++) {
+                const long off = (long)y * v->stride + (x >> 3);
+                const unsigned char bit = VGA_PIXEL_BIT(x);
+                int any = 0;
+
+                for (p = 0; p < VGA_PLANES; p++) {
+                    any |= band_scr.plane[p][off] & bit;
+                }
+                if (!any) {
+                    continue;
+                }
+                for (p = 0; p < VGA_PLANES; p++) {
+                    if (band_scr.plane[p][off] & bit) {
+                        v->plane[p][off] |= bit;
+                    } else {
+                        v->plane[p][off] &= (unsigned char)~bit;
+                    }
+                }
+            }
+        }
+        return;
+    }
+
 
     /* **寸法 は枠の上に描き直しません。** 案内線は寸法線の上（白い点）で、
      * カウント箱は案内線の上です。つまり 線 → 案内線 → 枠 の順で、ここで
@@ -11469,6 +11534,16 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     const int fix_done = c->fix_done;
     const double x0 = c->x0, y0 = c->y0, x1 = c->x1, y1 = c->y1;
     const int r = press_body(c, d, w, sx, sy, right);
+
+    /* 帯の 2 行目は、作った押しから、言葉（読取可能データ無 など）を書く
+     * 押しまで重なっている（測定：circle_plain）。 */
+    if (d) {
+        if (d->n_lines > nl || d->n_arcs > na) {
+            c->band_row2 = 1;
+        } else if (c->missed) {
+            c->band_row2 = 0;
+        }
+    }
 
     /* 円線接 ③ の接円を作った押しなら、取り消しの印に円弧の数を控える。 */
     if (d && c->command == 26 && (c->tan_tri == 13 || c->tan_tri == 14)

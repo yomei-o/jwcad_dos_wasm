@@ -520,6 +520,7 @@ typedef struct {
     int text_rep;
     int meas_put;               /* 測定 ①表示：小数点位置を待つ */
     int circ_dia;
+    int band_row2;              /* 直前の押しで作った：帯の 2 行目にも重ねる */
     /* 面取 ④一括処理（丸面 なら ③）：範囲を取っている。段は範囲の命令と同じ
      * （0 始点、1 終点、3 追加･除外、2 `一括処理 |①実行|②中止|③内角面取|`）。 */
     int chb, chb_inner;
