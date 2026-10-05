@@ -1176,6 +1176,11 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         }
         return;
     }
+    /* ＋・／ の ②寸法・③角度 の欄が開いているあいだは仮の線を出さない
+     * （測定：func_all plus_s1_c2）。 */
+    if ((c->command == 2 || c->command == 3) && c->typing && c->ask_kind) {
+        return;
+    }
     if (!c->pressed && !(c->command == 12 && c->arc3 == 3)
         && !(c->command == 9 && c->stage == 2)) {
         return;
