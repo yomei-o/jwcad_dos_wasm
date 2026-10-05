@@ -7205,8 +7205,15 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->box_done = c->undo_to.box_done;
         c->circ_done = c->undo_to.circ_done;
         c->fix_done = c->undo_to.fix_done;
-        c->x0 = c->undo_to.x0;
-        c->y0 = c->undo_to.y0;
+        /* ＋・／・□ の本体（ovl23 3ab8:0c0d）の始点は、点を読むたびに書き
+         * 換わる一つのローカル変数で、[ESC] の取り消しは触らない（decomp
+         * の読み：始点待ちの -1 で件数分を消して `goto 1395`＝始点はそのまま
+         * 終点待ちへ）。だから取り消し後の始点は、最後に押した（捨てた）始点
+         * のまま。それ以外の命令は従来どおり。 */
+        if (c->command != 2 && c->command != 3 && c->command != 4) {
+            c->x0 = c->undo_to.x0;
+            c->y0 = c->undo_to.y0;
+        }
         c->x1 = c->undo_to.x1;
         c->y1 = c->undo_to.y1;
         c->escaped = 0;
