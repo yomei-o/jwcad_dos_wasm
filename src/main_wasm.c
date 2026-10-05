@@ -4806,6 +4806,18 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     }
     pick = jw_ui_key_command(key);
 
+    /* 升の無い数字は何もしないが、本物は行と左の盤を描き直す。始点を持った
+     * ＋・／・□・○ では盤が 長= 0.000 角度= 0.000° などになる（測定：func_all
+     * plus_s1_c9 の `9`）。 */
+    if (!pick && key >= '0' && key <= '9' && cmd.pressed == 1 && !cmd.moved
+        && (cmd.command == 2 || cmd.command == 3 || cmd.command == 4
+            || cmd.command == 11)) {
+        sync_ui();
+        ui.moved = 1;           /* 盤だけ。帯（仮の線）は矢が動くまで出ない */
+        present();
+        return 0;
+    }
+
     if (!pick) {
         /* [ESC] は何もしない命令でも `読取可能データ無` を消すので書き直す
          * （測定：func_all chamfer_s0_c2_v の最後の [ESC]）。 */
