@@ -522,6 +522,13 @@ int jw_ui_past_cells(int x, int y)
  * jw_cmd_after が上から塗るので、ここだけ最後に書きます。 */
 void jw_ui_band_last(VGA *v, const JwUi *s)
 {
+    /* ハッチ 最初の右押し：`単独円ではありません`（行 2、桁 17 から。
+     * `サーチ`・`.` が桁 18・17。測定：steps_table `18 r 400 140`）。 */
+    if (s->command == 18 && s->missed == 2) {
+        jw_ui_text(v, 20, 2, 7, 0, "\x92P\x93\xc6\x89~");
+        jw_ui_text(v, 26, 2, 7, 0, "\x82\xc5\x82\xcd\x82\xa0\x82\xe8\x82\xdc\x82\xb9\x82\xf1");
+        return;
+    }
     if (s->command != 14 || (!s->dim_ck && !s->dim_arc)) {
         return;
     }
@@ -1456,8 +1463,11 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
         char one[160];
         double n;
 
+        if (s->hatch_plain && q->col == 70) {
+            return;             /* 最初の行の数字で 残数 は消える（測定：h_n1） */
+        }
         if (q->col == 70) {
-            n = 100 - s->hatch_n;
+            n = 100 - s->hatch_used;
         } else if (q->col == 32) {
             n = s->hatch_angle;
         } else if (q->col == 42) {
@@ -4172,6 +4182,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     text = out;
                 }
             }
+            /* ハッチ 最初の行の数字は 残数（桁 70）を消す。 */
+            if (s->command == 18 && s->hatch_plain && p->row == 2
+                && p->col == 70) {
+                continue;
+            }
             /* **A press on the top row clears the band with it.**  測定
              * comes up with `【m】 (3)桁` under its line and ①距離 leaves
              * row 2 empty; what the press writes there is in src/item.h
@@ -6193,7 +6208,8 @@ no_dot:
             /* 寸法 ④円･角 ①円径 は同じ言葉を **一桁左から**、
              * BEL なしに桁 32 から書きます。ほかの道は BEL が一桁を取るので
              * 桁 33 からです――どちらも画面で測りました。 */
-            if (s->command == 14 && (s->dim_ck || s->dim_arc)) {
+            if ((s->command == 14 && (s->dim_ck || s->dim_arc))
+                || (s->command == 18 && s->missed == 2)) {
                 ;               /* jw_ui_band_last で、図面のあとに */
             } else {
                 jw_ui_text(v, 32, 2, 7, 0,

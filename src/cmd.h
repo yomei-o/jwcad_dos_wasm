@@ -264,6 +264,8 @@ typedef struct {
      * 並べて内側だけを引きます。src/cmd.c の hatch_run を見てください。 */
     long hatch_line[JW_HATCH_MAX];
     int hatch_n;                /* how many are in the frame */
+    int hatch_used;             /* 残数の元：取った本数（[ESC] の取消では戻らない） */
+    int hatch_plain;            /* 最初の行の数字で 残数 を消した */
     int hatch;                  /* the frame is being taken */
     /* 円線接（26 番）の ①接線 ③指定点 —— 指した点と、そこから円に引いた
      * 接線。②接円 と ①円～円間・②円周点・④角度指定 は入れていません。 */

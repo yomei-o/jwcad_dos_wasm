@@ -571,6 +571,8 @@ typedef struct {
     /* ハッチ: how many lines the frame has taken (the band counts down from
      * 100), and the angle and pitch it will fill with. */
     int hatch_n;
+    int hatch_used;
+    int hatch_plain;
     double hatch_angle, hatch_pitch;
     /* 連線: how its directions are being rounded -- 45, 90 or 0 for free.
      * The band says so at columns 37 and 46 of row 2. */

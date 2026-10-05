@@ -1,0 +1,20 @@
+h_r1|SAMPLE0|30 104 left|400 140 left|162 250 left|598 300 right
+h_r2|SAMPLE0|30 104 left|400 140 left|162 250 left|598 300 right|598 300 left
+h_r3|SAMPLE0|30 104 left|400 140 right
+h_r4|SAMPLE0|30 104 left|400 140 left|162 250 right
+h_r5|SAMPLE0|30 104 left|400 140 left|598 300 right
+h_s1|SAMPLE0|30 104 left|400 140 left|162 250 left|400 100 left
+h_s2|SAMPLE0|30 104 left|400 140 left|162 250 left|300 350 left
+h_s3|SAMPLE0|30 104 left|400 140 left|162 250 left|162 300 left
+h_s4|SAMPLE0|30 104 left|400 140 left|162 250 left|598 300 left|598 200 left
+h_s5|SAMPLE0|30 104 left|400 140 left|598 300 left
+h_s6|SAMPLE0|30 104 left|400 140 left|598 300 left|162 250 left
+h_s7|SAMPLE0|30 104 left|400 140 left|598 300 left|400 400 left
+h_e1|SAMPLE0|30 104 left|400 140 left|162 250 left|key esc
+h_e2|SAMPLE0|30 104 left|400 140 left|162 250 left|key esc|key esc
+h_e3|SAMPLE0|30 104 left|400 140 left|key esc
+h_e4|SAMPLE0|30 104 left|400 140 left|key esc|key esc
+h_e5|SAMPLE0|30 104 left|400 140 left|162 250 left|key esc|162 250 left
+h_n1|SAMPLE0|30 104 left|type 1
+h_n2|SAMPLE0|30 104 left|400 140 left|type 1
+h_n3|SAMPLE0|30 104 left|400 140 left|162 250 left|type 1

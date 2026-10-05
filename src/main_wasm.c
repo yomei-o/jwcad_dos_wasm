@@ -704,6 +704,8 @@ static void sync_ui(void)
         ui.dim_val_now[sizeof ui.dim_val_now - 1] = 0;
     }
     ui.hatch_n = cmd.hatch_n;
+    ui.hatch_used = cmd.hatch_used;
+    ui.hatch_plain = cmd.hatch_plain;
     ui.hatch_angle = cmd.hatch_angle;
     ui.hatch_pitch = cmd.hatch_pitch;
 }
@@ -1772,11 +1774,11 @@ EMSCRIPTEN_KEEPALIVE const char *jw_cmd_state(void)
     snprintf(buf, sizeof buf,
              "cmd=%d stage=%d pressed=%d typing=%d fix_mode=%d fix_done=%d "
              "fix_len=%d fix_angle=%d ask_kind=%d top_item=%d box_ask=%d "
-             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g chb=%d cham=%d",
+             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g chb=%d cham=%d hn=%d h0=%d",
              cmd.command, cmd.stage, cmd.pressed, cmd.typing, cmd.fix_mode,
              cmd.fix_done, cmd.fix_len, cmd.fix_angle, cmd.ask_kind,
              cmd.top_item, cmd.box_ask, cmd.box_fix, cmd.circ_fix,
-             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer);
+             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer, cmd.hatch_n, cmd.hatch_line[0]);
     return buf;
 }
 EMSCRIPTEN_KEEPALIVE int jw_top_item(int x, int y) { return jw_ui_top_item(x, y); }
@@ -4932,6 +4934,15 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* 升の無い数字は何もしないが、本物は行と左の盤を描き直す。始点を持った
      * ＋・／・□・○ では盤が 長= 0.000 角度= 0.000° などになる（測定：func_all
      * plus_s1_c9 の `9`）。 */
+    /* ハッチ 最初の行の数字は 残数 を消す（測定：func_all hatch_s0_c1〜）。
+     * 枠を取り始めてからの数字は ①自動選択 など（まだ）。 */
+    if (cmd.command == 18 && !cmd.hatch_closed && key >= '0' && key <= '9'
+        && !(key == '1' && cmd.hatch_n >= 2) && !cmd.typing
+        && jw_cmd_key(&cmd, drawing, key)) {
+        sync_ui();
+        present();
+        return -1;
+    }
     /* 文字 ⑤文書 の書出範囲：追加･除外 の段の ① は 範囲確定。 */
     if (cmd.command == 13 && cmd.tx_doc && key >= '0' && key <= '9'
         && !cmd.typing) {

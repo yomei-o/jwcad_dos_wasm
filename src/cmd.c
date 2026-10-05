@@ -4227,7 +4227,7 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
                 jw_line(v, e0x, e0y, e1x, e1y, 0, ROP_REPLACE, JW_STYLE_SOLID);
                 jw_line(v, e0x, e0y, e1x, e1y, 2, ROP_REPLACE,
                         jw_view_line_style(0));
-                if (len < 1e-12) {
+                if (len < 1e-12 || (!cut_a && !cut_b)) {      /* 隣が無い（最初の押し）は全体が赤の点線 */
                     continue;
                 }
                 ta = ((ax - l->x0) * dx + (ay - l->y0) * dy) / len;
@@ -6103,6 +6103,31 @@ static void divide_points(JwCmd *c, Jwc *d);
 int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
+
+    /* ハッチ枠の [ESC]：取った線を一本ずつ戻す（残数は戻らない）。最後の
+     * 一本を戻すと残数も 100 に戻って最初の行（測定：tmp/h6.txt h_e1〜e4）。 */
+    if (key == 27 && c->command == 18 && c->hatch_n > 0 && !c->hatch_closed) {
+        c->hatch_n--;
+        if (c->hatch_n == 0) {
+            c->hatch_used = 0;
+            c->pressed = 0;
+            c->stage = 0;
+        } else {
+            c->stage = c->hatch_n < 3 ? c->hatch_n : 3;
+        }
+        c->missed = 0;
+        return 1;
+    }
+    if (c->command == 18 && !c->hatch_closed
+        && ((key == 27 && c->hatch_n == 0)
+            || (key >= '0' && key <= '9' && (c->hatch_n < 2 || key != '1'))
+            || key == 13 || key == 10)) {
+        /* 升の無い数字・取るものが無い [ESC] は 残数 を消して行を描き直す
+         * だけ。[Enter] はそれを戻す（測定：h_n1・h_n2・h_e4、
+         * hatch_s0_c1_v）。 */
+        c->hatch_plain = (key != 13 && key != 10);
+        return 1;
+    }
 
     /* 文編集 ⑥文字種類変更 の [ESC]：左の盤（ﾍﾟﾝ2 基点）と 変更無・無 の升が
      * 下りて数え箱に戻る。行はそのまま（測定：func_all textedit_s0_c6）。 */
@@ -15301,9 +15326,18 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * goes `◇ ハッチ枠 図形の連続線(弧)マウス指示 [中間線]`, then the same
          * with `[開始線で終了]` after it, then
          * `|①【指示終了】|別図形をマウス指示 (L)開始線 (R)単独円`. */
-        const long k = pick_line(d, w, sx, sy);
+        long k;
         int i;
 
+        /* 右押し：最初は (R)単独円（円を読む。円を足すのはまだ。無ければ
+         * `単独円ではありません`。測定：tmp/h3.txt h_r3）、枠を取り始めてから
+         * は左と同じ（h_r4・h_r5）。 */
+        if (right && c->hatch_n == 0) {
+            c->missed = 2;      /* 単独円ではありません */
+            return 1;
+        }
+        k = pick_line(d, w, sx, sy);
+        c->hatch_plain = 0;     /* 押しで 残数 が戻る（測定：hatch_s1_c1） */
         if (k < 0) {
             c->missed = 1;
             return 0;
@@ -15326,8 +15360,38 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         if (c->hatch_n >= JW_HATCH_MAX) {
             return 0;
         }
+        /* 枠の中のどれかの線（最後の線以外）の端に付く線は足さない（測定：
+         * tmp/h4.txt。線 1・線 0 のあとの線 2、線 1・線 2 のあとの線 0 は
+         * 足されず、枠から離れた線 4 などは足される）。端が付く距離は 1 未満。 */
+        if (c->hatch_n >= 2) {
+            const JwcLine *nw = &d->lines[k];
+            int hit = 0;
+
+            for (i = 0; i < c->hatch_n - 1 && !hit; i++) {
+                const JwcLine *o = &d->lines[c->hatch_line[i]];
+                int a, b;
+
+                for (a = 0; a < 2; a++) {
+                    for (b = 0; b < 2; b++) {
+                        const double ox = a ? o->x1 : o->x0, oy = a ? o->y1 : o->y0;
+                        const double nx = b ? nw->x1 : nw->x0, ny = b ? nw->y1 : nw->y0;
+
+                        if ((ox - nx) * (ox - nx) + (oy - ny) * (oy - ny) < 1.0) {
+                            hit = 1;
+                        }
+                    }
+                }
+            }
+            if (hit) {
+                return 0;
+            }
+        }
         c->hatch = 1;
+        c->hatch_plain = 0;
         c->hatch_line[c->hatch_n++] = k;
+        if (c->hatch_n > c->hatch_used) {
+            c->hatch_used = c->hatch_n;   /* 取消のあとの取り直しでは増えない（h_e5） */
+        }
         c->stage = c->hatch_n < 3 ? c->hatch_n : 3;
         return 1;
     }
