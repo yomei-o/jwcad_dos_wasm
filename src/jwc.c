@@ -2079,9 +2079,19 @@ int jwc_set_text(Jwc *d, long k, const char *str, unsigned char size)
 
 int jwc_edit_text(Jwc *d, long k, const char *str)
 {
+    return jwc_edit_text_at(d, k, str, 0.0);
+}
+
+/* 文編集【変更】の書き換え。長さが変わった分 D を文字基準点の横の位置 `f`
+ * （左 0・中 0.5・右 1）で振り分け、始点を -f·D、終点を (1-f)·D だけ字の
+ * 向きに動かす（測定：tools/cases/probe_textedit.txt te_h（右）・te_i（中）・
+ * te_j（左））。縦の基準は高さが変わらないので位置に効かない。 */
+int jwc_edit_text_at(Jwc *d, long k, const char *str, double f)
+{
     JwcText was;
     long off, gone, m;
     JwcText *t;
+    double grow, ux, uy, len;
 
     if (k < 0 || k >= d->n_texts || !str) {
         return 0;
@@ -2089,6 +2099,18 @@ int jwc_edit_text(Jwc *d, long k, const char *str)
     was = d->texts[k];
     off = was.text ? (long)(was.text - d->text) : 0;
     gone = (long)strlen(d->text + off) + 1;
+    grow = jwc_text_length(d, str, was.size)
+         - jwc_text_length(d, was.text ? was.text : "", was.size);
+    ux = (double)was.x1 - was.x0;
+    uy = (double)was.y1 - was.y0;
+    len = sqrt(ux * ux + uy * uy);
+    if (len > 0.0) {
+        ux /= len;
+        uy /= len;
+    } else {
+        ux = 1.0;
+        uy = 0.0;
+    }
     jwc_remove_text(d, k);
     /* The pool is one run of strings in record order, so taking the record
      * out takes its string out too and everything after it slides back.  The
@@ -2101,9 +2123,11 @@ int jwc_edit_text(Jwc *d, long k, const char *str)
             d->texts[m].text -= gone;
         }
     }
-    if (!jwc_add_text(d, was.x0, was.y0,
-                      (float)(was.x0 + jwc_text_length(d, str, was.size)),
-                      was.y0, str, was.size, was.layer)) {
+    if (!jwc_add_text(d, (float)(was.x0 - f * grow * ux),
+                      (float)(was.y0 - f * grow * uy),
+                      (float)(was.x1 + (1.0 - f) * grow * ux),
+                      (float)(was.y1 + (1.0 - f) * grow * uy),
+                      str, was.size, was.layer)) {
         return 0;
     }
     t = &d->texts[d->n_texts - 1];

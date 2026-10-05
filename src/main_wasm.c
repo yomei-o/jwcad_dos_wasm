@@ -507,6 +507,10 @@ static void sync_ui(void)
     ui.ch_side = cmd.ch_side;
     ui.div_real = cmd.div_real;
     ui.ld_ask = cmd.ld_ask;
+    ui.te_sub = cmd.te_sub;
+    ui.te_bh = cmd.te_bh;
+    ui.te_bv = cmd.te_bv;
+    ui.te_panel = cmd.te_panel;
     ui.real_left = drawing ? 3639 - drawing->n_points : 0;
     ui.chb_inner = cmd.chb_inner;
     ui.box_ctr = cmd.box_ctr;
@@ -4786,6 +4790,14 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* **数字の鍵は上の行の升。** `1` は ① を左で押したのと同じ（測定：
      * □ で `1` → ①寸法 の欄、そのまま 60,40 [Enter] で置く所）。欄が
      * 開いているあいだは上の jw_cmd_key が数として取っています。 */
+    /* 文編集【変更】の行の数字はその行の升（①基点・②文連結切断・③疑似線
+     * 文字）で、項目の行の升ではない（測定：func_all textedit_s1_c1〜c3）。 */
+    if (cmd.command == 28 && key >= '1' && key <= '9' && !cmd.typing
+        && !cmd.typing_text && jw_cmd_te_digit(&cmd, key - '0')) {
+        sync_ui();
+        present();
+        return -1;
+    }
     if (cmd.command && key >= '1' && key <= '9' && !cmd.typing
         && !cmd.typing_text) {
         const int x = jw_ui_top_cell_x(key - '0');

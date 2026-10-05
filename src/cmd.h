@@ -535,6 +535,9 @@ typedef struct {
     int div_real;
     int dl_ask;
     int ld_ask;                 /* 線消 部分消去 の ①線切断寸法 の欄 */
+    int te_sub;                 /* 文編集【変更】の ①基点 1・②文連結切断 2・③疑似線文字 3 */
+    int te_bh, te_bv;           /* 文字基準点：横 0 左 1 中 2 右、縦 0 下 1 中 2 上 */
+    int te_panel;               /* ①基点 の盤で ②・④ を押した後は左の盤が基点を出す */
     double ld_cut;              /* 線切断寸法（図寸 mm） */
     JwcLine ld_undo;            /* 部分消去で抜いた元の線 */
     int ld_undo_on;                 /* ２線 ①基準線からの間隔 の欄 */               /* 分割 ①【実点】 */                /* 面取 ②【辺寸法】（寸法は面でなく辺の長さ） */                 /* 面取 ③寸法= に 0 以下：`データが不適当` */
@@ -795,6 +798,7 @@ int jw_cmd_guide_pos(const JwCmd *c, const JwView *w, int seg[2][4]);
  * 35 to 44 call it off, and column 34, the bar itself, does nothing.
  * Returns 1 if the drawing changed. */
 int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right);
+int jw_cmd_te_digit(JwCmd *c, int n);
 
 /* 図形 ①登録 -- the bytes of the .JWK for what the range picked, measured
  * from the base point that was pressed.  NULL and a reason when there is

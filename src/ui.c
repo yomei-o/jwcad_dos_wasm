@@ -1360,6 +1360,30 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
     }
     /* 文編集's `|種 3|Paste` carries the character type of the text it was
      * pointed at, so that digit is the drawing's too. */
+    /* 盤の `左下` は文字基準点の今の値（測定：probe_textedit te_i で `中上`）。 */
+    if (q->command == 28 && q->col == 1 && q->row == 4) {
+        static const char *const hz[3] = { "\x8d\xb6", "\x92\x86", "\x89\x45" };
+        static const char *const vt[3] = { "\x89\xba", "\x92\x86", "\x8f\xe3" };
+        char two[8];
+
+        sprintf(two, "%s%s", hz[s->te_bh], vt[s->te_bv]);
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, two);
+        return;
+    }
+    /* 書き換えた後の【変更】の行も `基点（左下）` は今の値（桁 34）。 */
+    if (q->command == 28 && q->col == 8 && q->row == 1
+        && strlen(q->text) > 30
+        && memcmp(q->text + 26, "\x8d\xb6\x89\xba", 4) == 0) {
+        static const char *const hz[3] = { "\x8d\xb6", "\x92\x86", "\x89\x45" };
+        static const char *const vt[3] = { "\x89\xba", "\x92\x86", "\x8f\xe3" };
+        char one[160];
+
+        snprintf(one, sizeof one, "%s", q->text);
+        memcpy(one + 26, hz[s->te_bh], 2);
+        memcpy(one + 28, vt[s->te_bv], 2);
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+        return;
+    }
     if (q->command == 28 && q->col == 5 && q->row == 4) {
         char one[160];
         double n = s->edit_type;
@@ -2874,6 +2898,43 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 1, 2, 0, 0, buf);
         sprintf(buf, " \x89\xa1%4.1f \x8f" "c%4.1f ", s->char_w / 10.0, s->char_h / 10.0);
         jw_ui_text(v, 1, 3, 0, 0, buf);
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
+    } else if (s->command == 28 && s->te_sub == 1) {
+        /* 文編集【変更】①基点 の盤（測定：steps_table 28 400 140 t 1 …）。 */
+        static const char *const hz[3] = { "\x8d\xb6", "\x92\x86", "\x89\x45" };
+        static const char *const vt[3] = { "\x89\xba", "\x92\x86", "\x8f\xe3" };
+        char one[120];
+
+        sprintf(one, "\x95\xb6\x8e\x9a\x8a\xee\x8f\x80\x93_|\x87@ \x8am \x92\xe8 |\x87" "A\x89\xa1\x81y%s\x81z|\x87" "B\x89\xa1\x88\xca\x92u%5.1f |\x87" "C\x8f" "c\x81y%s\x81z|\x87" "D\x8f" "c\x88\xca\x92u%5.1f |",
+                hz[s->te_bh], 0.0, vt[s->te_bv], 0.0);
+        jw_ui_text(v, 8, 1, 7, 0, one);
+        /* ② か ④ を押すと左の盤が `ﾍﾟﾝ2 基点 中下` / `横 3.0 縦 3.0` に
+         * なる（測定：tools/cases/probe_textedit.txt te_f・te_g）。 */
+        if (s->te_panel) {
+            fill(v, 1, 17, 120, 47, 4);
+            sprintf(one, " \xcd\xdf\xdd%d \x8a\xee\x93_ %s%s", s->char_pen, hz[s->te_bh], vt[s->te_bv]);
+            jw_ui_text(v, 1, 2, 0, 0, one);
+            sprintf(one, " \x89\xa1%4.1f \x8f" "c%4.1f ", s->char_w / 10.0, s->char_h / 10.0);
+            jw_ui_text(v, 1, 3, 0, 0, one);
+        }
+    } else if (s->command == 28 && s->te_sub == 2) {
+        jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
+        jw_ui_text(v, 8, 1, 7, 0, "\x95\xd2\x8fW\x95\xb6\x8e\x9a\x82\xf0\x91I\x82\xf1\x82\xc5\x89\xba\x82\xb3\x82\xa2   \x98" "A\x8c\x8b(\xcf\xb3\xbd-L)  \x90\xd8\x92" "f\x88\xca\x92u\x8ew\x8e\xa6(\xcf\xb3\xbd-R)");
+        jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
+    } else if (s->command == 28 && s->te_sub == 3) {
+        jw_ui_text(v, 8, 1, 7, 0, "\x8b^\x8e\x97\x90\xfc\x95\xb6\x8e\x9a\x82\xc9\x82\xb7\x82\xe9\x95\xb6\x8e\x9a\x82\xf0\x91I\x82\xf1\x82\xc5\x89\xba\x82\xb3\x82\xa2 (\x95\x9c\x8a\x88\x95s\x89\xc2) |\x87@\x94\xcd\x88\xcd\x93\xe0\x95\xcf\x8dX|");
+        jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
         if (s->missed) {
             jw_ui_text(v, 32, 2, 7, 0,
                        "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
@@ -4651,6 +4712,18 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     break;
                 }
             }
+        }
+        /* 文編集【変更】の行の `①基点（左下）` は文字基準点の今の値（桁 34、
+         * 測定：steps_table `28 400 140 t 1 t 2 t 2 t 4 t 1` で 基点（右中））。 */
+        if (s->command == 28 && !s->te_sub && !s->typing_text
+            && (s->top_item == 1 || (s->stage == 2 && !s->top_item))
+            && (s->te_bh || s->te_bv)) {
+            static const char *const hz[3] = { "\x8d\xb6", "\x92\x86", "\x89\x45" };
+            static const char *const vt[3] = { "\x89\xba", "\x92\x86", "\x8f\xe3" };
+            char two[8];
+
+            sprintf(two, "%s%s", hz[s->te_bh], vt[s->te_bv]);
+            jw_ui_text(v, 34, 1, 7, 0, two);
         }
         /* 変形 ④線記号変形 の一覧 —— 記号の名前と罫。
          *

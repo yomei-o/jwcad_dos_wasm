@@ -4265,14 +4265,20 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
     if (d && c->command == 28 && c->typing_text
         && c->edit_text >= 0 && c->edit_text < d->n_texts) {
         int px, py, qx, qy;
+        /* 箱は文字基準点を動かさずに伸びる：右なら右の辺が、中なら真ん中が
+         * そのまま（測定：probe_textedit te_h の `A`）。 */
+        const JwcText *e0 = &d->texts[c->edit_text];
+        const double bx0 = c->x0 - c->te_bh * 0.5
+                           * (c->text_wide - (e0->text ? jwc_text_length(
+                                  d, e0->text, e0->size) : 0.0));
 
         v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
         v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
         v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
         v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
         jw_view_text(v, d, &d->texts[c->edit_text], w, 0);
-        at_screen(w, c->x0, c->y0, &px, &py);
-        at_screen(w, c->x0 + c->text_wide, c->y0 + c->text_tall, &qx, &qy);
+        at_screen(w, bx0, c->y0, &px, &py);
+        at_screen(w, bx0 + c->text_wide, c->y0 + c->text_tall, &qx, &qy);
         jw_line(v, px, py, px, qy, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, px, qy, qx, qy, 2, 0x18, JW_STYLE_SOLID);
         jw_line(v, qx, qy, qx, py, 2, 0x18, JW_STYLE_SOLID);
@@ -4309,17 +4315,22 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
                 one[1] = (char)t[1];
             }
             cw = one[0] ? jwc_text_length(d, one, et->size) : 0.0;
-            at_screen(w, c->x0 + tw, c->y0, &cx, &cy);
-            at_screen(w, c->x0 + tw + cw, c->y0, &ex, &ey);
+            at_screen(w, bx0 + tw, c->y0, &cx, &cy);
+            at_screen(w, bx0 + tw + cw, c->y0, &ex, &ey);
             jw_line(v, cx, qy, ex, py, 4, 0x18, JW_STYLE_SOLID);
             jw_line(v, cx, py, ex, qy, 4, 0x18, JW_STYLE_SOLID);
             if (tw <= 0.0) {
-                /* 基点のまわりの半径 2 の丸——測った 8 点をそのまま。 */
+                /* 基点のまわりの半径 2 の丸——測った 8 点をそのまま。
+                 * 丸は文字基準点の所（中なら箱の真ん中、上なら上の辺。
+                 * 測定：probe_textedit te_i の 中上）。 */
                 static const int RING[8][2] = {
                     { -1, -2 }, { 1, -2 }, { -2, -1 }, { 2, -1 },
                     { -2, 1 }, { 2, 1 }, { -1, 2 }, { 1, 2 }
                 };
                 int i;
+
+                at_screen(w, bx0 + c->te_bh * 0.5 * c->text_wide,
+                          c->y0 + c->te_bv * 0.5 * c->text_tall, &px, &py);
 
                 for (i = 0; i < 8; i++) {
                     jw_line(v, px + RING[i][0], py + RING[i][1],
@@ -5791,6 +5802,39 @@ void jw_cmd_zukei_put(JwCmd *c, const Jwc *d)
     c->n0_texts = d ? d->n_texts : 0;
 }
 
+/* 文編集【変更】の行（と書き換えた後の段 2）での数字。①基点 は
+ * `文字基準点|① 確 定 |②横【左】|③横位置  0.0 |④縦【下】|⑤縦位置  0.0 |`
+ * の盤で、② は 左→中→右、④ は 下→中→上 と回り、① で【変更】の行に戻る
+ * （行の 基点（左下） が 基点（右中） などに変わる。測定：steps_table
+ * `28 400 140 t 1 t 2 t 2 t 4 t 1`）。③・⑤ の欄はまだ。 */
+int jw_cmd_te_digit(JwCmd *c, int n)
+{
+    if (c->te_sub == 1) {
+        if (n == 1) {
+            c->te_sub = 0;
+            c->te_panel = 0;
+        } else if (n == 2) {
+            c->te_bh = (c->te_bh + 1) % 3;
+            c->te_panel = 1;
+        } else if (n == 4) {
+            c->te_bv = (c->te_bv + 1) % 3;
+            c->te_panel = 1;
+        }
+        return 1;
+    }
+    if (c->te_sub) {
+        return 0;
+    }
+    if (c->top_item == 1 || (c->stage == 2 && c->top_item == 0)) {
+        if (n >= 1 && n <= 3) {
+            c->te_sub = n;
+            c->missed = 0;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
 {
     int changed;
@@ -6104,7 +6148,8 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
              * goes back to the one the item came up with, `[ESC]` in front --
              * src/typed.h, stage 2. */
             if (d && c->edit_text >= 0 && c->edit_text < d->n_texts) {
-                jwc_edit_text(d, c->edit_text, c->typed);
+                jwc_edit_text_at(d, c->edit_text, c->typed,
+                                 c->te_bh * 0.5);
             }
             c->typing_text = 0;
             c->pressed = 0;
@@ -15142,6 +15187,20 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * 文字選択 の行）、右で ②移動（〈移動〉文字を選んで下さい の行）。
          * 文字の上を押しても文字は拾わない（測定：tmp/tep.txt te_b・te_c、
          * SAMPLE0 の (190,152) を左で押しても【変更】の行になるだけ）。 */
+        /* ①基点 の盤のあいだの押しは ① 確定 と同じで、文字は拾わない
+         * （測定：textedit_s1_c1 の (300,250)）。 */
+        if (c->te_sub == 1) {
+            c->te_sub = 0;
+            c->te_panel = 0;
+            return 1;
+        }
+        if (c->te_sub) {
+            /* ②文連結･切断・③疑似線文字：拾ったあとはまだ。外れは同じ。 */
+            if (jw_cmd_text_at(d, w, sx, sy) < 0) {
+                c->missed = 1;
+            }
+            return 1;
+        }
         if (c->top_item == 0 && c->stage != 2) {
             c->top_item = right ? 2 : 1;
             c->top_right = 0;
