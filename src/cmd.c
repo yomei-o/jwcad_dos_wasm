@@ -5967,6 +5967,29 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
 
+    /* □：始点を捨てて描いたあとの行に戻ったところで、もう一度 [ESC] なら
+     * 最後の四角を取り消して、その始点を持った `終点指示` へ戻る（測定：
+     * func_all box_plain）。 */
+    if (key == 27 && c->command == 4 && c->box_esc_back && !c->pressed
+        && !c->typing) {
+        long k;
+
+        /* 最後に描いた四角を取り消す（四角は消え、始点はそのまま）。 */
+        for (k = 0; k < c->undo_lines && d && d->n_lines > 0; k++) {
+            jwc_remove_line(d, d->n_lines - 1);
+        }
+        /* 描き直さない：重なっていた前の四角の辺にも穴が残る（測定）。 */
+        c->undo_lines = 0;
+        c->box_drawn = 0;
+        c->box_esc_back = 0;
+        c->pressed = 1;
+        c->stage = 1;
+        return 1;
+    }
+    if (c->command == 4) {
+        c->box_esc_back = 0;
+    }
+
     /* 手書線の [ESC]：一筆の途中なら始点を捨てて `始点指示`（[ESC] の無い
      * 行）へ。矢が動いても引かない（測定：curve_s0_c5）。 */
     /* ⑦連線 の [ESC]：押し一回ぶんずつ戻る（その押しで足した線と角の弧も
@@ -6911,6 +6934,19 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         /* 中心を持っているだけなら、弧を描いたあとの行（`[ESC]・○中心点指示
          * … 半径=`、段 3）へ。まだ一本も描いていなければいつもの道（測定）。 */
+        /* □ も同じ：始点だけ持っていて、前に一つ描いていれば描いたあとの
+         * 行（`[ESC]・始点指示 … 確定寸法= 前の寸法`、段 2）へ（測定：
+         * func_all box_plain）。 */
+        if (c->command == 4 && c->pressed == 1 && c->box_drawn && !c->box_fix
+            && !c->box_rot) {
+            c->pressed = 0;
+            c->stage = 2;
+            c->box_esc_back = 1;
+            c->num[0] = c->box_last[0];
+            c->num[1] = c->box_last[1];
+            c->moved = 0;
+            return 1;
+        }
         if (c->command == 12 && c->pressed == 1 && !c->arc3 && c->arc_drawn) {
             c->pressed = 0;
             c->stage = 3;
@@ -16537,6 +16573,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             }
             d->lines[d->n_lines - 1].rest[1] = 0x41;
         }
+        c->box_drawn = 1;
+        c->box_last[0] = c->num[0];
+        c->box_last[1] = c->num[1];
         return 1;
     }
     if (c->command == 11) {

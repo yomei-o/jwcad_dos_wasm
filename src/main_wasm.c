@@ -4691,6 +4691,12 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         if (jw_cmd_key(&cmd, drawing, key)) {
             /* 手書線の [ESC] で一区間戻ると、矢もその始点へ跳ぶ（測定：
              * curve_s1_c5 で矢が (598,300) に）。 */
+            /* □ で始点を持ち直したら、数え箱と仮の四角はその場の矢から
+             * （測定：box_plain の `横= 5.734`）。 */
+            if (key == 27 && cmd.command == 4 && cmd.pressed == 1 && drawing
+                && mouse_x >= AREA_X0) {
+                jw_cmd_track(&cmd, drawing, &view, mouse_x, mouse_y);
+            }
             if (key == 27 && cmd.command == 23 && cmd.hand
                 && cmd.stage == 61) {
                 mouse_x = cmd.hand_sx;
