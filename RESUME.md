@@ -98,6 +98,13 @@ python tools/stepcheck.py tools/cases/func_all.txt box_    # 段ごとの画面�
 | 中心線 の最初を右で | 点を読む：二点の垂直二等分線の上に（center_pts 一致） |
 | 消去 ①② の升のあと | 範囲の始点の押しで升の行が範囲の行に替わる |
 
+## 作業手順（必ず守る）
+
+1. 挙動は **decomp（decomp/ovl*/all.c、tmp/dis、tools/strref.py）を読んで写す**。画面の差に合わせた「それらしい規則」を作らない。
+2. 実装した後は、**テスト（stepcheck・funcfast）よりも先に、decomp と一致しているかを確認する**。確認した関数・番地をコメントか下の表に残す。
+3. decomp から裏が取れず測定だけで入れた規則は、コメントと RESUME に「測定のみ・decomp 未確認」と書く。
+4. そのあとテスト（stepcheck・funcfast・回帰は週一）。通っても decomp と違えば未完。
+
 ## 2026-10-01 の結果
 
 func_all（印を伏せた記録）：朝 47 件違い → **26 件**（ok 291）。func_ops2 は文字 18 件が全部一致、
