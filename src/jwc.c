@@ -2142,13 +2142,17 @@ static void ed_place(float r[4], double s, float px, float py, int hb,
 }
 
 /* 本物の字列の長さ（18b3:03cf）。幅と間隔は 紙の 1/10mm を B4A2 =
- * F(紙/518) で割った float、和は float、掛け算は double。 */
+ * F(紙/518) で割った float、和は float、掛け算は double。縦字（vertical
+ * 非0）では 03cf が幅表（DS:182）の代わりに高さ表（DS:198）を読む
+ * （間隔は入れ替えない）。 */
 static float ed_length(const Jwc *d, const char *str, unsigned char size,
-                       float b4a2)
+                       float b4a2, int vertical)
 {
     const unsigned char *p = (const unsigned char *)str;
     const int k = size <= 10 ? size : 0;
-    const float W = (float)((double)(float)d->text_w[k] / b4a2 * 0.1);
+    const float W = (float)((double)(float)(vertical ? d->text_h[k]
+                                                       : d->text_w[k])
+                            / b4a2 * 0.1);
     const float G = (float)((double)(float)d->text_gap[k] / b4a2 * 0.1);
     long n = 0;
     int last2 = 0;
@@ -2200,7 +2204,7 @@ int jwc_edit_text_at(Jwc *d, long k, const char *str, int hb, int vb)
 
         b4a2 = (float)((double)PAPER[pp] / 518.0);
         h = (float)((double)(float)d->text_h[sz] / b4a2 * 0.1);
-        L = ed_length(d, str, was.size, b4a2);
+        L = ed_length(d, str, was.size, b4a2, (was.rest[2] & 0x20) != 0);
     }
     r1[0] = was.x0; r1[1] = was.y0; r1[2] = was.x1; r1[3] = was.y1;
     ed_place(r1, -1.0, was.x0, was.y0, hb, vb, h, 0);
@@ -2256,7 +2260,8 @@ int jwc_move_text(Jwc *d, long k, double px, double py, int copy)
     }
     was = d->texts[k];
     b4a2 = (float)((double)PAPER[pp] / 518.0);
-    L = ed_length(d, was.text ? was.text : "", was.size, b4a2);
+    L = ed_length(d, was.text ? was.text : "", was.size, b4a2,
+                  (was.rest[2] & 0x20) != 0);
     f = ed_frame(was.x0, was.y0, was.x1, was.y1);
     f.ox = (float)px;
     f.oy = (float)py;
@@ -2281,17 +2286,24 @@ int jwc_move_text(Jwc *d, long k, double px, double py, int copy)
     return 1;
 }
 
-/* 文編集 ⑥文字種類変更。記録は場所のまま（測定：tmp/te6d.txt te6f）。
- *   hv 2（縦）：rest[2] に 0x20 を立てる。始点・終点はそのまま（te6f）。
- *   hv 1（横）：横の字には何もしない（te6i）。縦の字から 0x20 を下ろすのは
- *              未測定。
+/* 文編集 ⑥文字種類変更（ovl15 3ab8:481c〜＝dis 02f39c〜02fe13、終点の
+ * 引き直しは 18b3:03cf）。記録は場所のまま（測定：tmp/te6d.txt te6f）。
+ *   hv 2（縦）：rest[2] に 0x20 を立てる。
+ *   hv 1（横）：rest[2] の 0x20 を下ろす。
  *   size：命令の名のとおり図面の文字種類にする。SAMPLE0 の選べる字は
- *         みな字種 3 で、違う字種に変える所は**測っていない**。変わるときは
- *         長さを引き直す（書き換えと同じ 1f66 の道、これも未測定）。
- *   layer：②レイヤ 変更有 のとき書込レイヤへ（未測定）。 */
+ *         みな字種 3 で、違う字種に変える所は**測っていない**。
+ *   layer：②レイヤ 変更有 のとき書込レイヤへ（未測定）。
+ *   終点は 03cf のとおり**常に**引き直す（size が変わらないときも）。
+ *   03cf は縦字（rest[2] の 0x20、hv を適用した後の値）で幅表（text_w）の
+ *   代わりに高さ表（text_h）を読む（ed_length の vertical 引数）。 */
 int jwc_retype_text(Jwc *d, long k, int size, int layer, int hv)
 {
     JwcText *t;
+    static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f, 297.0f };
+    const int pp0 = d->paper >= 0 && d->paper < 5 ? d->paper : 4;
+    const float b4a2 = (float)((double)PAPER[pp0] / 518.0);
+    EdFrame f;
+    float L;
 
     if (k < 0 || k >= d->n_texts) {
         return 0;
@@ -2305,21 +2317,15 @@ int jwc_retype_text(Jwc *d, long k, int size, int layer, int hv)
     if (layer >= 0) {
         t->layer = (unsigned char)layer;
     }
-    if (size >= 0 && size != t->size) {
-        static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f,
-                                        297.0f };
-        const int pp = d->paper >= 0 && d->paper < 5 ? d->paper : 4;
-        const float b4a2 = (float)((double)PAPER[pp] / 518.0);
-        EdFrame f;
-        float L;
-
+    if (size >= 0) {
         t->size = (unsigned char)size;
         t->rest[0] = (unsigned char)size;
-        L = ed_length(d, t->text ? t->text : "", t->size, b4a2);
-        f = ed_frame(t->x0, t->y0, t->x1, t->y1);
-        t->x1 = ed_x(&f, L, 0.0f);
-        t->y1 = ed_y(&f, L, 0.0f);
     }
+    L = ed_length(d, t->text ? t->text : "", t->size, b4a2,
+                  (t->rest[2] & 0x20) != 0);
+    f = ed_frame(t->x0, t->y0, t->x1, t->y1);
+    t->x1 = ed_x(&f, L, 0.0f);
+    t->y1 = ed_y(&f, L, 0.0f);
     return 1;
 }
 

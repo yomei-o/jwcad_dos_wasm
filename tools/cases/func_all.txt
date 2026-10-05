@@ -783,3 +783,12 @@ textedit_s1_c8|SAMPLE0|30 264 left|400 140 left|type 8|move 300 250|300 250 left
 textedit_s0_c9|SAMPLE0|30 264 left|type 9|400 140 left|move 300 250|300 250 left|move 450 330|450 330 left|162 250 left|598 300 right|move 350 350|350 350 left|key esc|move 340 340|key esc|move 330 330
 textedit_s0_c9_v|SAMPLE0|30 264 left|type 9|type 30|key enter|400 140 left|move 300 250|300 250 left|move 450 330|450 330 left|162 250 left|598 300 right|move 350 350|350 350 left|key esc|move 340 340|key esc|move 330 330
 textedit_s1_c9|SAMPLE0|30 264 left|400 140 left|type 9|move 300 250|300 250 left|move 450 330|450 330 left|162 250 left|598 300 right|move 350 350|350 350 left|key esc|move 340 340|key esc|move 330 330
+retype_te6a|SAMPLE0|30 264 left|type 6|190 152 left
+retype_te6b|SAMPLE0|30 264 left|key f3|type 6|190 152 left
+retype_te6c|SAMPLE0|30 264 left|type 6|type 3|type 3|type 2|type 3|type 2|key esc|type 3
+retype_te6d|SAMPLE0|30 264 left|type 6|379 246 left
+retype_te6e|SAMPLE0|30 264 left|type 6|type 3|379 246 left
+retype_te6f|SAMPLE0|30 264 left|type 6|type 3|type 3|190 152 left
+retype_te6g|SAMPLE0|30 264 left|type 6|type 2|379 246 left
+retype_te6h|SAMPLE0|30 264 left|type 6|379 246 right
+retype_te6i|SAMPLE0|30 264 left|type 6|type 3|190 152 left
