@@ -6111,6 +6111,20 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->missed = 0;
         return 1;
     }
+    /* ⑤位置整理 の範囲の始めの [Enter] は、何も選ばずに 追加･除外 の段へ
+     * （測定：func_all textedit_s0_c5_v。前の範囲が無いときの ①前範囲 と
+     * 同じものかは未確認）。 */
+    if ((key == 13 || key == 10) && c->command == 28 && c->te5
+        && !c->pressed && !c->typing && d) {
+        c->x0 = c->x1 = -1e30;
+        c->y0 = c->y1 = -1e30;
+        c->pressed = 2;
+        c->stage = 3;
+        c->n0_lines = d->n_lines;
+        c->n0_arcs = d->n_arcs;
+        c->n0_texts = d->n_texts;
+        return 1;
+    }
     /* ⑥ の [Enter] は行を描き直して盤と升を出し直す（c6_v）。 */
     if ((key == 13 || key == 10) && c->command == 28 && c->top_item == 6
         && !c->typing && !c->typing_text) {
