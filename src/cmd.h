@@ -546,6 +546,7 @@ typedef struct {
     int te5;                    /* 文編集 ⑤位置整理（文字だけの範囲） */
     int fep;                    /* ④設定 の ③ＦＥＰ：0 ON・1 off (1)・2 off (2) */
     int tx_plain;               /* 文字：左の盤（ﾍﾟﾝ・基点・横縦）を下ろして数え箱 */
+    int tx_doc;                 /* 文字 ⑤文書 ①ﾌｧｲﾙに書出 の範囲（文字だけ） */
     int te5_ask;                /* ⑤ ②行間 の欄 */
     double te5_gap;             /* ⑤ の行間（図寸 mm）、0 は現位置 */
     double ld_cut;              /* 線切断寸法（図寸 mm） */
@@ -718,7 +719,8 @@ typedef struct {
 /* 面取 の一括処理 も同じ範囲の取り方（本物も ovl5 の同じ範囲の道具）。 */
 /* 文編集 ⑤位置整理 も同じ範囲の道具で、取るのは文字だけ（`（文字）`）。 */
 #define JW_RANGE(c) (JW_RANGE_CMD((c)->command) || ((c)->command == 8 && (c)->chb) \
-                     || ((c)->command == 28 && (c)->te5))
+                     || ((c)->command == 28 && (c)->te5) \
+                     || ((c)->command == 13 && (c)->tx_doc))
 
 /* And which of those put what the range holds somewhere else: 複写 leaves the
  * originals and 移動 does not, but everything up to the distance is the same

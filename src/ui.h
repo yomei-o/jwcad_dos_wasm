@@ -353,6 +353,7 @@ typedef struct {
     int te5_ask;
     int fep;
     int tx_plain;
+    int tx_doc;
     double te5_gap;
     long te_pick;                /* 選んだ文字 + 1、0 は無し */
     long real_left;             /* 実点の残り（`残 3623`） */

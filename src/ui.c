@@ -2955,12 +2955,22 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
         snprintf(one, sizeof one, "%s%5.1f%s", "\x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read |\x87@\x8a\xee\x93_(\x8d\xb6\x89\xba)|\x87" "A\x8ds\x8a\xd4(", s->te5_gap, "mm)|\x87" "B\x95\xb6\x8e\x9a\x90\x94\x8ew\x92\xe8(\x96\xb3)|");
         jw_ui_text(v, 8, 1, 7, 0, one);
-    } else if (s->command == 28 && s->te5 && !s->te_sub) {
+    } else if (((s->command == 28 && s->te5) || (s->command == 13 && s->tx_doc))
+               && !s->te_sub) {
+        /* 文字 ⑤文書 の書出範囲も同じ並びで、言葉が 書出範囲、始めの行にも
+         * [ESC]（steps_table `13 t 5 400 140 150 400 r 470 420`）。範囲確定の
+         * あとのファイルの画面はまだ。 */
+        const int doc = s->command == 13;
+        const char *const lab = doc ? "\x8f\x91\x8fo\x94\xcd\x88\xcd"
+                                    : "\x90\xae\x97\x9d\x94\xcd\x88\xcd";
+        char one[64];
+
         /* 文編集 ⑤位置整理 の範囲の行（桁は steps_table `28 t 5 150 130 r 460
          * 170 l 200 300 300 300 400 350` から）。 */
         if (s->stage == 0) {
-            jw_ui_text(v, 1, 1, 7, 0, "       ");
-            jw_ui_text(v, 8, 1, 7, 0, "\x90\xae\x97\x9d\x94\xcd\x88\xcd  \x8en\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
+            jw_ui_text(v, 1, 1, 7, 0, doc ? "[ESC]  " : "       ");
+            snprintf(one, sizeof one, "%s  \x8en\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 ", lab);
+            jw_ui_text(v, 8, 1, 7, 0, one);
             jw_ui_text(v, 33, 1, 7, 0, "\x81i\x95\xb6\x8e\x9a\x81j");
             jw_ui_text(v, 68, 1, 7, 0, "|\x87@ \x91O \x94\xcd \x88\xcd|");
         } else if (s->stage == 1) {
@@ -2981,10 +2991,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         } else if (s->stage == 3) {
             jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
             jw_ui_text(v, 6, 1, 7, 0, "\x81Q");
-            jw_ui_text(v, 8, 1, 7, 0, "\x90\xae\x97\x9d\x94\xcd\x88\xcd  \x92\xc7\x89\xc1\xa5\x8f\x9c\x8aO\x83" "f\x81[\x83^\x8ew\x8e\xa6   ");
+            snprintf(one, sizeof one, "%s  \x92\xc7\x89\xc1\xa5\x8f\x9c\x8aO\x83" "f\x81[\x83^\x8ew\x8e\xa6   ", lab);
+            jw_ui_text(v, 8, 1, 7, 0, one);
             jw_ui_text(v, 40, 1, 7, 0, "\x81i\x95\xb6\x8e\x9a\x81j");
             jw_ui_text(v, 68, 1, 7, 0, "|\x87@\x94\xcd\x88\xcd \x8am\x92\xe8|");
-        } else if (s->stage == 2) {
+        } else if (s->stage == 2 && !doc) {
             jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
             jw_ui_text(v, 8, 1, 7, 0, "\x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read |\x87@\x8a\xee\x93_(\x8d\xb6\x89\xba)|\x87" "A\x8ds\x8a\xd4(\x8c\xbb\x88\xca\x92u)|");
         }

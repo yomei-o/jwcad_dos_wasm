@@ -2326,7 +2326,7 @@ static int arc_in_range(const JwCmd *c, const JwcArc *a)
  * the box test until then. */
 static int picked_line(const JwCmd *c, const Jwc *d, long k)
 {
-    if (c->command == 28) {
+    if (c->command == 28 || c->command == 13) {
         return 0;               /* 文編集 ⑤位置整理 は文字だけ */
     }
     if (c->sel_line) {
@@ -2368,7 +2368,7 @@ static int henkei_kind(const JwCmd *c, double ax, double ay,
 
 static int picked_arc(const JwCmd *c, const Jwc *d, long k)
 {
-    if (c->command == 28) {
+    if (c->command == 28 || c->command == 13) {
         return 0;
     }
     if (c->sel_arc) {
@@ -4994,9 +4994,8 @@ range_items:
         c->typed_n = 0;
         return 0;
     }
-    /* 文字 ⑤文[書/読]：`書出範囲 始点マウス指示（文字）`（行は src/item.h）。
-     * 押しは範囲の始点で、文字は書かない（測定：text_c5）。範囲の先
-     * （ファイルへの書き出し）は移していない。 */
+    /* 文字 ⑤文[書/読]：`◇ 文書 |①ﾌｧｲﾙに書出(L)|②読込(R)|…`（行は
+     * src/item.h）。押しは下の 文字 の押しのところ（tx_doc）。 */
     if (c->command == 13 && item == 5 && !c->typing_text) {
         c->text_file = 1;
         return 0;
@@ -6411,6 +6410,19 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
      * で 50 を打って [ESC] → `・◇始点指示 … |⑤垂 直 |`、何も固定しない）。 */
     /* 文字 の取り消し：書いたあとの [ESC] は最後の文字を消します（測定：
      * `ABC` と `12` を書いて [ESC] で `12` だけ消える）。一回だけ。 */
+    /* 文字 ⑤文書 の書出範囲の [ESC]：範囲の途中なら始点の行へ、始点の行
+     * なら 文書 の行へ（測定：text_s0_c5 の二つの [ESC]）。 */
+    if (key == 27 && c->command == 13 && c->tx_doc) {
+        if (c->pressed) {
+            c->pressed = 0;
+            c->stage = 0;
+            c->n_flip = 0;
+        } else {
+            c->tx_doc = 0;
+        }
+        c->missed = 0;
+        return 1;
+    }
     /* 文字：欄の無いときの [Enter] は行と左の盤を描き直す（盤が下りて
      * いれば戻る。測定：func_all text_s0_c7_v）。 */
     if (c->command == 13 && (key == 13 || key == 10) && !c->typing_text
@@ -12429,9 +12441,6 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->stage = 1;
         return 1;
     }
-    if (c->command == 13 && c->text_file) {
-        return 1;               /* 書出範囲 の押し（範囲の先は未移植） */
-    }
     if (c->command == 13 && c->text_ang_ask) {
         /* ③角度指定 の欄での押し：左は `0 度`、右は `前回と同じ`。どちらも
          * 基点にはならず、行は ①水平 のものへ（測定：text_c3 で押したあと
@@ -12448,7 +12457,20 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->top_item = 1;
         return 1;
     }
-    if (c->command == 13) {
+    /* 文字 ⑤文書：左は ①ﾌｧｲﾙに書出 で `書出範囲 始点マウス指示 （文字）` の
+     * 範囲へ（位置整理 と同じ道具）。右の ②読込 はまだ（読むファイルの画面
+     * を移していない）。測定：func_all text_s0_c5。 */
+    if (c->command == 13 && c->top_item == 5 && !c->tx_doc
+        && !c->typing_text) {
+        if (!right) {
+            c->tx_doc = 1;
+            c->pressed = 0;
+            c->stage = 0;
+            c->n_flip = 0;
+        }
+        return 1;
+    }
+    if (c->command == 13 && !c->tx_doc) {
         c->tx_plain = 0;
         /* 文字: one press takes the place the string starts at -- the base
          * point is 左下, the bottom left, so it is the near end of the
@@ -16315,7 +16337,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             /* 複写・移動も右で閉じると範囲確定して ①ﾏｳｽ位置 へ（測定：移動を
              * 右で閉じて二点で動かし [ESC] で戻すと、y に float の丸めが残る）。 */
             c->stage = (right && (c->command == 25 || c->command == 8
-                                  || c->command == 28)) ? 2
+                                  || c->command == 28
+                                  || c->command == 13)) ? 2
                      : (right && JW_MOVE_CMD(c->command)) ? 4 : 3;
             return 1;
         }
@@ -16433,7 +16456,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             long k, j;
 
             /* 文編集 ⑤ は文字だけなので左も文字（行が `（文字）`）。 */
-            if (right || c->command == 28) {    /* 文字(R) */
+            if (right || c->command == 28 || c->command == 13) { /* 文字(R) */
                 k = jw_cmd_text_at(d, w, sx, sy);
                 if (k < 0) {
                     c->missed = 1;
