@@ -12465,6 +12465,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         if (c->typing_text && c->typed_n == 0) {
             c->typing_text = 0;
             c->pressed = 0;
+            c->text_rep = 0;    /* 連続書 もここで抜ける（text_s0_c1_v） */
             c->stage = 2;
             c->top_item = c->tx_count > 0 ? 0 : 1;
             c->top_right = 0;

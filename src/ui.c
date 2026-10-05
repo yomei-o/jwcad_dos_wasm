@@ -2868,7 +2868,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         sprintf(one, "%5.1f", s->rep_gap[s->text_rep == 2 ? 0 : 1]);
         jw_ui_text(v, 69, 1, 7, 0, one);
         jw_ui_text(v, 74, 1, 7, 0, ")\x95\xcf\x8dX|");
-        {
+        if (s->tx_plain) {
+            counts(v, s);               /* 盤を下ろしたあと（text_s0_c1_v の `0`） */
+        } else {
             const JwStage *q;
 
             fill(v, 1, 17, 120, 47, 4);     /* 数え箱を塗り直してから */
