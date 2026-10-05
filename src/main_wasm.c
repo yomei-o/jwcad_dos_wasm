@@ -708,6 +708,7 @@ static void sync_ui(void)
     ui.hatch_used = cmd.hatch_used;
     ui.off_done = cmd.off_done;
     ui.off_pt = cmd.off_pt;
+    ui.meas_hold = cmd.meas_hold;
     memcpy(ui.gap_hist, cmd.gap_hist, sizeof ui.gap_hist);
     ui.hatch_plain = cmd.hatch_plain;
     ui.hatch_angle = cmd.hatch_angle;
@@ -939,6 +940,10 @@ static void present(void)
     }
     ui.snap = mouse_x >= AREA_X0 && mouse_x <= AREA_X1
         && mouse_y >= AREA_Y0 && mouse_y <= AREA_Y1;
+    /* 測定中に置いた文は 数え箱の 円･文数 に数えない（measure_s1_c1）。 */
+    if (drawing && cmd.command == 15 && cmd.meas_hold) {
+        ui.n_arcs = drawing->n_arcs + drawing->n_texts - 1;
+    }
     jw_ui_draw(&vga, &ui);
     jw_ui_data(&vga, &ui, drawing);
     /* **A panel that covers the drawing keeps the command under it quiet.**  jw_cmd_after puts back the entities a running command has

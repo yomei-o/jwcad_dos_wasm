@@ -6129,6 +6129,37 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
 
+    /* 測定 ①距離 の [ESC]：最後の点を一つ取り消し、累計と最後の脚を残った
+     * 点列から数え直す。一点だけになったら `始点指示` の段に戻り、それが
+     * 最初の点なら更に [ESC] で測定の最初の行へ（測定：tmp/m2.txt）。 */
+    if (key == 27 && c->command == 15 && c->stage == 1 && c->meas_n > 0
+        && d && !c->meas_put) {
+        const double mm = d->unit_mm > 0.0f ? d->denom / d->unit_mm : 1.0;
+        int k;
+
+        c->meas_n--;
+        if (c->meas_n == 0) {
+            c->stage = 0;
+            c->meas_total = 0.0;
+            c->meas_last = 0.0;
+            c->top_item = 1;        /* `[ESC]・距離 ◇ 始点指示 … [BS]前項` */
+            c->top_right = 0;
+            return 1;
+        }
+        c->meas_total = 0.0;
+        c->meas_last = 0.0;
+        for (k = 1; k < c->meas_n; k++) {
+            const double dx = c->meas_px[k] - c->meas_px[k - 1];
+            const double dy = c->meas_py[k] - c->meas_py[k - 1];
+
+            c->meas_last = sqrt(dx * dx + dy * dy) * mm / 1000.0;
+            c->meas_total += c->meas_last;
+        }
+        c->meas_x = c->meas_px[c->meas_n - 1];
+        c->meas_y = c->meas_py[c->meas_n - 1];
+        return 1;
+    }
+
     /* 図形 ①登録 の範囲の始点の行での [ESC] は 図形 の最初の行へ戻す
      * （測定：func_all zukei_plain の最後の [ESC]）。 */
     if (key == 27 && c->command == 27 && c->zukei == JW_ZUKEI_RANGE
@@ -15630,6 +15661,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             if (c->meas_put) {
                 c->missed = 1;      /* 測定：mes_d の `読取可能データ無` */
             }
+            if (c->meas_hold == 2) {
+                c->meas_hold = 0;   /* 外れの次の押しで数え箱が追いつく（measure_s1_c1） */
+            } else if (c->meas_hold) {
+                c->meas_hold = 2;
+            }
             return 1;
         }
         if (c->meas_put) {
@@ -15665,10 +15701,13 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                          (float)py, num, size,
                          (unsigned char)d->write_layer);
             c->meas_put = 0;
+            c->meas_hold = 1;           /* 置いた文は次の成功した点押しまで数え箱に数えない（measure_s1_c1・tmp/m5.txt） */
             /* 数え箱はこの押しでは書き直さない（測定：mes_a で 13 のまま、
              * 次の押しで 14）。 */
             return 0;
         }
+        c->top_item = 0;                /* 押しで項目の行から 次点指示 へ */
+        c->top_right = 0;
         if (c->stage != 1) {
             c->meas_total = 0.0;
             c->meas_last = 0.0;
@@ -15679,6 +15718,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
 
             c->meas_last = sqrt(dx * dx + dy * dy) * mm / 1000.0;
             c->meas_total += c->meas_last;
+        }
+        if (c->meas_hold == 2) {
+            c->meas_hold = 0;
         }
         c->meas_x = px;
         c->meas_y = py;

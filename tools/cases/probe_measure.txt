@@ -4,3 +4,8 @@ mes_b|SAMPLE0|90 296 left|162 140 right|598 140 right|598 419 right|type 1|300 2
 mes_c|SAMPLE0|90 296 left|162 140 right|300 200 left|type 1|300 250 left
 mes_d|SAMPLE0|90 296 left|162 140 right|598 140 right|type 1|300 250 right
 mes_e|SAMPLE0|90 296 left|162 140 right|598 140 right|type 1|300 250 left|598 419 right|type 1|300 300 left
+m_e1|SAMPLE0|90 296 left|400 140 left|300 250 left|450 330 left|162 250 left|key esc
+m_e2|SAMPLE0|90 296 left|400 140 left|300 250 left|450 330 left|162 250 left|key esc|key esc
+m_e3|SAMPLE0|90 296 left|400 140 left|300 250 left|450 330 left|162 250 left|key esc|key esc|key esc
+m_e4|SAMPLE0|90 296 left|400 140 left|300 250 left|450 330 left|162 250 left|key esc|key esc|key esc|key esc
+m_e5|SAMPLE0|90 296 left|400 140 left|300 250 left|key esc|450 330 left
