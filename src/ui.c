@@ -4366,6 +4366,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (r->row == 25 || r->row == 30 || r->row == 0) {
                     continue;
                 }
+                if (s->command == 28 && s->top_item == 6 && s->te_plain
+                    && r->row >= 2) {
+                    continue;
+                }
                 /* **文字 ④設定's ten rows come out of the drawing.**  What
                  * src/item.h has there is SAMPLE0's own numbers, and the
                  * panel has to show the ones the drawing carries -- and the

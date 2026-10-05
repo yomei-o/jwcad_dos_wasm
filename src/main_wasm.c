@@ -513,6 +513,7 @@ static void sync_ui(void)
     ui.te_panel = cmd.te_panel;
     ui.te_pick = cmd.te_pick;
     ui.te_esc = cmd.te_esc;
+    ui.te_plain = cmd.te_plain;
     ui.real_left = drawing ? 3639 - drawing->n_points : 0;
     ui.chb_inner = cmd.chb_inner;
     ui.box_ctr = cmd.box_ctr;
@@ -4777,7 +4778,12 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * `◆ 終点指示`、func_all の arc_s0_c2_v）。 */
     /* どの命令でもそうなのかは未確認（全部に入れると ○ ③重円 などで本物と
      * 違った——本物はそこで欄を開いている）ので、測った （ の①②③ に限る。 */
-    if ((key == 13 || key == 10) && cmd.command == 12 && cmd.arc3
+    /* 文編集 ⑦消去 も [Enter] は同じ所の押し（測定：func_all
+     * textedit_s0_c7_v で 読取可能データ無）。②移動・③複写 では言葉が
+     * 出ない（c2_v・c3_v）ので入れていない。 */
+    if ((key == 13 || key == 10)
+        && ((cmd.command == 12 && cmd.arc3)
+            || (cmd.command == 28 && cmd.top_item == 7))
         && !cmd.typing && !cmd.typing_text && drawing) {
         /* 取る点は矢ではなく**画面の (400,200)**：矢を作図範囲に入れても、
          * メニューに戻しても、図面を替えても、先に押してからでも同じ

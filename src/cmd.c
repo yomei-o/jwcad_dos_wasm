@@ -5886,6 +5886,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     c->top_right = 0;
     c->te_pick = -1;    /* 文編集：項目を選び直すと選んだ文字も [ESC] も無くなる */
     c->te_esc = 0;
+    c->te_plain = 0;
     /* ④円･角 の桁は別で、押しても [ESC] も帯の値も残ります（測定：①矢印
      * を押したあとも桁 1 の [ESC]、桁 18 の値、桁 62 の 書込角度 がそのまま
      * 書き直されます）。②円周 の ①端部 も同じ扱いにしてあります。 */
@@ -6055,6 +6056,14 @@ static void divide_points(JwCmd *c, Jwc *d);
 int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
+
+    /* 文編集 ⑥文字種類変更 の [ESC]：左の盤（ﾍﾟﾝ2 基点）と 変更無・無 の升が
+     * 下りて数え箱に戻る。行はそのまま（測定：func_all textedit_s0_c6）。 */
+    if (key == 27 && c->command == 28 && c->top_item == 6 && !c->te_plain) {
+        c->te_plain = 1;
+        c->missed = 0;
+        return 1;
+    }
 
     /* ＋・／ も同じ：始点を捨てて `確定長さ` の行に戻ったところでもう一度
      * [ESC] なら、最後の線を黒で消してその始点を持った `◆終点指示` へ
