@@ -2281,6 +2281,48 @@ int jwc_move_text(Jwc *d, long k, double px, double py, int copy)
     return 1;
 }
 
+/* 文編集 ⑥文字種類変更。記録は場所のまま（測定：tmp/te6d.txt te6f）。
+ *   hv 2（縦）：rest[2] に 0x20 を立てる。始点・終点はそのまま（te6f）。
+ *   hv 1（横）：横の字には何もしない（te6i）。縦の字から 0x20 を下ろすのは
+ *              未測定。
+ *   size：命令の名のとおり図面の文字種類にする。SAMPLE0 の選べる字は
+ *         みな字種 3 で、違う字種に変える所は**測っていない**。変わるときは
+ *         長さを引き直す（書き換えと同じ 1f66 の道、これも未測定）。
+ *   layer：②レイヤ 変更有 のとき書込レイヤへ（未測定）。 */
+int jwc_retype_text(Jwc *d, long k, int size, int layer, int hv)
+{
+    JwcText *t;
+
+    if (k < 0 || k >= d->n_texts) {
+        return 0;
+    }
+    t = &d->texts[k];
+    if (hv == 2) {
+        t->rest[2] |= 0x20;
+    } else if (hv == 1) {
+        t->rest[2] &= (unsigned char)~0x20;
+    }
+    if (layer >= 0) {
+        t->layer = (unsigned char)layer;
+    }
+    if (size >= 0 && size != t->size) {
+        static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f,
+                                        297.0f };
+        const int pp = d->paper >= 0 && d->paper < 5 ? d->paper : 4;
+        const float b4a2 = (float)((double)PAPER[pp] / 518.0);
+        EdFrame f;
+        float L;
+
+        t->size = (unsigned char)size;
+        t->rest[0] = (unsigned char)size;
+        L = ed_length(d, t->text ? t->text : "", t->size, b4a2);
+        f = ed_frame(t->x0, t->y0, t->x1, t->y1);
+        t->x1 = ed_x(&f, L, 0.0f);
+        t->y1 = ed_y(&f, L, 0.0f);
+    }
+    return 1;
+}
+
 /* How long a text's baseline is, in drawing units.
  *
  * It follows from the string and the character size, not from anything stored:

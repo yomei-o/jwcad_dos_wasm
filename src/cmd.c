@@ -5847,6 +5847,24 @@ void jw_cmd_zukei_put(JwCmd *c, const Jwc *d)
  * `28 400 140 t 1 t 2 t 2 t 4 t 1`）。③・⑤ の欄はまだ。 */
 int jw_cmd_te_digit(JwCmd *c, int n)
 {
+    /* ⑥文字種類変更：② で 変更無⇔有、③ で 無→横→縦→無（測定：steps_table
+     * `28 t 6 t 3 t 3 t 3 t 2 t 2`）。升の無い数字は行を描き直して左の盤と
+     * 升を下ろす（func_all textedit_s0_c6_v の `30`）。①範囲内変更 はまだ。 */
+    if (c->top_item == 6 && c->te_pick < 0) {
+        if (n == 2) {
+            c->te6_layer ^= 1;
+            c->te_plain = 0;        /* 盤と升も出し直す（tmp/te6c.txt） */
+        } else if (n == 3) {
+            c->te6_hv = (c->te6_hv + 1) % 3;
+            c->te_plain = 0;
+        } else if (n != 1) {
+            c->te_plain = 1;
+        }
+        return 1;
+    }
+    if (n == 0) {
+        return 0;
+    }
     if (c->te_sub == 1) {
         if (n == 1) {
             c->te_sub = 0;
@@ -6062,6 +6080,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     if (key == 27 && c->command == 28 && c->top_item == 6 && !c->te_plain) {
         c->te_plain = 1;
         c->missed = 0;
+        return 1;
+    }
+    /* ⑥ の [Enter] は行を描き直して盤と升を出し直す（c6_v）。 */
+    if ((key == 13 || key == 10) && c->command == 28 && c->top_item == 6
+        && !c->typing && !c->typing_text) {
+        c->te_plain = 0;
         return 1;
     }
 
@@ -15286,6 +15310,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         if (c->top_item == 7) {
             jwc_remove_text(d, k);
             c->te_esc = 1;
+            return 1;
+        }
+        if (c->top_item == 6) {
+            jwc_retype_text(d, k, d->char_type,
+                            c->te6_layer ? d->write_layer : -1, c->te6_hv);
             return 1;
         }
         if (c->top_item == 2 || c->top_item == 3) {

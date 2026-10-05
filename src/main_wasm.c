@@ -514,6 +514,8 @@ static void sync_ui(void)
     ui.te_pick = cmd.te_pick;
     ui.te_esc = cmd.te_esc;
     ui.te_plain = cmd.te_plain;
+    ui.te6_layer = cmd.te6_layer;
+    ui.te6_hv = cmd.te6_hv;
     ui.real_left = drawing ? 3639 - drawing->n_points : 0;
     ui.chb_inner = cmd.chb_inner;
     ui.box_ctr = cmd.box_ctr;
@@ -4805,7 +4807,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * 開いているあいだは上の jw_cmd_key が数として取っています。 */
     /* 文編集【変更】の行の数字はその行の升（①基点・②文連結切断・③疑似線
      * 文字）で、項目の行の升ではない（測定：func_all textedit_s1_c1〜c3）。 */
-    if (cmd.command == 28 && key >= '1' && key <= '9' && !cmd.typing
+    if (cmd.command == 28 && key >= '0' && key <= '9' && !cmd.typing
         && !cmd.typing_text && jw_cmd_te_digit(&cmd, key - '0')) {
         sync_ui();
         present();

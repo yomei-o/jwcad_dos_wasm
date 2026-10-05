@@ -20,3 +20,10 @@ te2a|SAMPLE0|30 264 left|400 140 right|190 152 right|300 300 left
 te2b|SAMPLE0|30 264 left|400 140 right|190 152 left|300 300 left
 te2c|SAMPLE0|30 264 left|400 140 right|190 152 right|300 300 right
 te3a|SAMPLE0|30 264 left|type 3|190 152 right|300 300 left|350 330 left
+te6c|SAMPLE0|30 264 left|type 6|type 3|type 3|type 2|type 3|type 2|key esc|type 3
+te6d|SAMPLE0|30 264 left|type 6|379 246 left
+te6e|SAMPLE0|30 264 left|type 6|type 3|379 246 left
+te6f|SAMPLE0|30 264 left|type 6|type 3|type 3|190 152 left
+te6g|SAMPLE0|30 264 left|type 6|type 2|379 246 left
+te6h|SAMPLE0|30 264 left|type 6|379 246 right
+te6i|SAMPLE0|30 264 left|type 6|type 3|190 152 left

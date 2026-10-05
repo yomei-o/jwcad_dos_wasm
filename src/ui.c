@@ -4370,6 +4370,19 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     && r->row >= 2) {
                     continue;
                 }
+                if (s->command == 28 && s->top_item == 6 && r->row == 2
+                    && (r->col == 54 || r->col == 65)) {
+                    static const char *const hv[3] = {
+                        " \x96\xb3 ", " \x89\xa1 ", " \x8f" "c "
+                    };
+
+                    jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
+                               (unsigned)r->bg,
+                               r->col == 65 ? hv[s->te6_hv]
+                               : s->te6_layer ? "\x95\xcf\x8dX\x97L"
+                                              : "\x95\xcf\x8dX\x96\xb3");
+                    continue;
+                }
                 /* **文字 ④設定's ten rows come out of the drawing.**  What
                  * src/item.h has there is SAMPLE0's own numbers, and the
                  * panel has to show the ones the drawing carries -- and the

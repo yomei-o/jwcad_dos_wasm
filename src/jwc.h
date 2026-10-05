@@ -423,6 +423,7 @@ int jwc_set_text(Jwc *d, long k, const char *str, unsigned char size);
 int jwc_edit_text(Jwc *d, long k, const char *str);
 int jwc_edit_text_at(Jwc *d, long k, const char *str, int hb, int vb);
 int jwc_move_text(Jwc *d, long k, double px, double py, int copy);
+int jwc_retype_text(Jwc *d, long k, int size, int layer, int hv);
 
 int jwc_add_text(Jwc *d, float x0, float y0, float x1, float y1,
                  const char *str, unsigned char size, unsigned char layer);
