@@ -15135,19 +15135,40 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * A press that finds no text does nothing at all: (170,150) on
          * SAMPLE0, which is inside the drawing but off every string, left the
          * top line exactly as the item came up with. */
-        const long k = jw_cmd_text_at(d, w, sx, sy);
+        long k;
         const char *str;
 
+        /* **項目の行のままの押しは項目を選ぶだけ**：左で ①文字変更（【変更】
+         * 文字選択 の行）、右で ②移動（〈移動〉文字を選んで下さい の行）。
+         * 文字の上を押しても文字は拾わない（測定：tmp/tep.txt te_b・te_c、
+         * SAMPLE0 の (190,152) を左で押しても【変更】の行になるだけ）。 */
+        if (c->top_item == 0 && c->stage != 2) {
+            c->top_item = right ? 2 : 1;
+            c->top_right = 0;
+            return 1;
+        }
+        /* ①文字変更 の段（書き換えた後の段 2 も）以外の拾い方はまだ
+         * 移植していない。外れの言葉だけは同じ（`読取可能データ無`、
+         * 測定：textedit_s0_c2・c3・c7）。 */
+        if (c->top_item == 4 || c->top_item == 5) {
+            return 1;           /* ④設定・⑤位置整理（範囲）はまだ */
+        }
+        k = jw_cmd_text_at(d, w, sx, sy);
+        if (k < 0) {
+            c->missed = 1;
+            return 1;
+        }
+        if (c->top_item != 1 && c->stage != 2) {
+            return 1;
+        }
         /* A press that finds nothing **visible** does nothing: SAMPLE6's
          * `40` is on group 1, which that drawing has turned off, and pressing
          * it leaves the original saying 読取可能データ無 with the item's own
          * line still up.  Whether a text that is visible but not *editable*
          * can be picked is not measured -- none of the fourteen drawings has
          * a layer where the two flags differ. */
-        if (k < 0) {
-            return 0;
-        }
         str = d->texts[k].text ? d->texts[k].text : "";
+        c->top_item = 0;
         c->edit_text = k;
         c->typed_n = (int)strlen(str);
         if (c->typed_n > (int)sizeof c->typed - 1) {

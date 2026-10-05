@@ -1,0 +1,5 @@
+te_a|SAMPLE0|30 264 left|170 150 left|190 152 left
+te_b|SAMPLE0|30 264 left|190 152 left
+te_c|SAMPLE0|30 264 left|400 140 right|190 152 right
+te_d|SAMPLE0|30 264 left|400 140 left|190 152 left|key A|key enter
+te_e|SAMPLE0|30 264 left|400 140 left|key esc|400 140 left|190 152 right
