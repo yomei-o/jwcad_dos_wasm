@@ -4825,11 +4825,13 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     if (c->command == 2 && (item == 4 || item == 5)
         && (c->stage == 0 || c->pressed == 1)) {
         c->ask_kind = 3;
+        c->pressed = 0;         /* 始点は捨てられ、ゴム線も出ない（slash_s1_c4） */
         return 1;
     }
     if (c->command == 3 && (item == 4 || item == 5)
         && (c->stage == 0 || c->pressed == 1)) {
         c->ask_kind = item - 1;
+        c->pressed = 0;
         return 1;
     }
     /* 複線's 「②連続」: one more copy, the same distance again and on the same
@@ -17132,6 +17134,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         return 1;
     }
     if (!take(c, d, w, sx, sy, right, &x, &y)) {
+        if (c->command == 2 || c->command == 3) {
+            c->missed = 1;      /* 読取可能データ無（func_all slash_s0_c1_v・plus_s0_c1_v） */
+            return 1;
+        }
         return 0;
     }
     if (!c->pressed) {

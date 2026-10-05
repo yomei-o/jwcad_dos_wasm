@@ -3366,6 +3366,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\x8e" "n\x93" "_\x8e" "w\x8e" "\xa6" " (L)free (R)Read ");
         }
         jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91" "O\x8d" "\x80");
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 12 && s->arc_ask) {
         /* （ の ②角度指定 の欄（測定：STR=1。打つ字は桁 15 から）。 */
         char one[32];
