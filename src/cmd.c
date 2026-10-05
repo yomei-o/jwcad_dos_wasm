@@ -1226,6 +1226,13 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
     if ((c->command == 2 || c->command == 3) && c->typing && c->ask_kind) {
         return;
     }
+    /* ④平行・⑤垂直 の基準線を聞いているあいだは、始点は保ったまま（decomp
+     * ovl23 0c0d の 0x2c9c7〜0x2ca9a：始点の変数に触らず基準線の読みへ入る）、
+     * ゴム線は出ない（その間は別の読みのループで、終点待ちの描画が動かない）。 */
+    if ((c->command == 2 || c->command == 3)
+        && (c->ask_kind == 3 || c->ask_kind == 4)) {
+        return;
+    }
     if (!c->pressed && !(c->command == 12 && c->arc3 == 3)
         && !(c->command == 9 && c->stage == 2)) {
         return;
@@ -4837,13 +4844,11 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     if (c->command == 2 && (item == 4 || item == 5)
         && (c->stage == 0 || c->pressed == 1)) {
         c->ask_kind = 3;
-        c->pressed = 0;         /* 始点は捨てられ、ゴム線も出ない（slash_s1_c4） */
         return 1;
     }
     if (c->command == 3 && (item == 4 || item == 5)
         && (c->stage == 0 || c->pressed == 1)) {
         c->ask_kind = item - 1;
-        c->pressed = 0;
         return 1;
     }
     /* 複線's 「②連続」: one more copy, the same distance again and on the same
