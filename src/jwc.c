@@ -2174,6 +2174,20 @@ static float ed_length(const Jwc *d, const char *str, unsigned char size,
     return last2 ? P - G : (float)((double)G * -0.5 + P);
 }
 
+/* ed_length を呼ぶ側（cmd.c）向けの入口。b4a2 は紙の大きさ（jwc_retype_text
+ * と同じ PAPER 表・518 の式）から毎回作り直す――jwc_text_length（別の近似、
+ * 本物の SAVE とは 8.720535 対 8.720539 で 4 桁目から違うと書いてある）とは
+ * 別物で、こちらが 18b3:03cf そのもの。 */
+double jwc_ed_text_length(const Jwc *d, const char *str, unsigned char size,
+                          int vertical)
+{
+    static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f, 297.0f };
+    const int pp0 = d->paper >= 0 && d->paper < 5 ? d->paper : 4;
+    const float b4a2 = (float)((double)PAPER[pp0] / 518.0);
+
+    return (double)ed_length(d, str, size, b4a2, vertical);
+}
+
 /* 文編集【変更】の書き換え（ovl15 3ab8:2e67 → 7132 → 08b3 → 1f66）。
  *   1. r1 = 置き直し(旧, -1, 旧の始点)、r2 = 置き直し(r1, -1, r1 の始点)。
  *      基点 P は r1 の始点、cos・sin は 2 回目の座標系のもの

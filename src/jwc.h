@@ -433,6 +433,8 @@ int jwc_add_text(Jwc *d, float x0, float y0, float x1, float y1,
 /* How long that text's baseline comes out, in drawing units -- it follows from
  * the string and the character size.  See jwc.c and RESUME.md 4.16. */
 double jwc_text_length(const Jwc *d, const char *str, unsigned char size);
+double jwc_ed_text_length(const Jwc *d, const char *str, unsigned char size,
+                          int vertical);
 
 /* And a circle: the whole ellipse, which is what `start == end` means. */
 int jwc_add_arc(Jwc *d, float cx, float cy, float r,

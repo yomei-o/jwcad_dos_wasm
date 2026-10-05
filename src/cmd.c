@@ -16657,10 +16657,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * float で積み上げる（RESUME 文編集⑤の記述。gap・unit_mm の
              * 大きさ自体は te5e で合っている掛け算の形をそのまま使い、
              * 積み方だけ毎回の i 掛けから累積に直した＝測定のみ・decomp
-             * 未確認）。27ea（ed_length 相当、jwc_text_length で代用）が
-             * 長さ 0 を返す字は並べにも書き直しにも入れない（decomp 同
-             * 域の「長さ 0 は飛ばす」）。終点は常に y1=y0 の水平（同域の
-             * 「終点は水平」）。 */
+             * 未確認）。27ea（＝ed_length、jwc_ed_text_length で呼ぶ。②移動
+             * ③複写・⑥文字種類変更と同じ 18b3:03cf そのもので、近似の
+             * jwc_text_length ではない――te5b がそちらだと x1 が 1 ulp
+             * ずれ、こちらに変えたら実機と一致した）が長さ 0 を返す字は
+             * 並べにも書き直しにも入れない（decomp 同域の「長さ 0 は
+             * 飛ばす」）。終点は常に y1=y0 の水平（同域の「終点は水平」）。 */
             if (c->te5_gap > 0.0) {
                 long order[512], n = 0, i, j;
                 float cursor = (float)py;
@@ -16669,9 +16671,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 for (k = 0; k < c->n0_texts && k < d->n_texts && n < 512;
                      k++) {
                     if (picked_text(c, d, k)
-                        && jwc_text_length(d, d->texts[k].text
-                                           ? d->texts[k].text : "",
-                                           d->texts[k].size) != 0.0) {
+                        && jwc_ed_text_length(d, d->texts[k].text
+                                              ? d->texts[k].text : "",
+                                              d->texts[k].size,
+                                              (d->texts[k].rest[2] & 0x20)
+                                              != 0) != 0.0) {
                         order[n++] = k;
                     }
                 }
@@ -16688,9 +16692,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                     const JwcText t = d->texts[order[i]];
                     const float nx = (float)px;
                     const float ny = cursor;
-                    const float L = (float)jwc_text_length(d, t.text
-                                                            ? t.text : "",
-                                                            t.size);
+                    const float L = (float)jwc_ed_text_length(d, t.text
+                                                              ? t.text : "",
+                                                              t.size,
+                                                              (t.rest[2]
+                                                               & 0x20) != 0);
                     long m;
 
                     jwc_requeue_text(d, order[i], nx, ny, nx + L, ny);
@@ -16721,9 +16727,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 for (k = 0; k < c->n0_texts && k < d->n_texts && n < 512;
                      k++) {
                     if (picked_text(c, d, k)
-                        && jwc_text_length(d, d->texts[k].text
-                                           ? d->texts[k].text : "",
-                                           d->texts[k].size) != 0.0) {
+                        && jwc_ed_text_length(d, d->texts[k].text
+                                              ? d->texts[k].text : "",
+                                              d->texts[k].size,
+                                              (d->texts[k].rest[2] & 0x20)
+                                              != 0) != 0.0) {
                         if (!n || d->texts[k].y0 > top) {
                             top = d->texts[k].y0;
                         }
@@ -16735,9 +16743,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                     const float nx = (float)px;
                     const float dy = t->y0 - top;
                     const float ny = dy + top;
-                    const float L = (float)jwc_text_length(d, t->text
-                                                            ? t->text : "",
-                                                            t->size);
+                    const float L = (float)jwc_ed_text_length(d, t->text
+                                                              ? t->text : "",
+                                                              t->size,
+                                                              (t->rest[2]
+                                                               & 0x20) != 0);
 
                     t->x0 = nx;
                     t->y0 = ny;
