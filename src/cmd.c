@@ -15582,7 +15582,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 c->missed = 1;  /* `[F3]` の代わりに 読取可能データ無（te2c） */
                 return 1;
             }
-            jwc_move_text(d, c->te_pick, px, py, c->top_item == 3);
+            jwc_move_text(d, c->te_pick, px, py, c->top_item == 3,
+                          c->te_bh, c->te_bv);
             c->te_pick = -1;
             c->te_esc = 1;
             return 1;

@@ -2239,15 +2239,32 @@ int jwc_edit_text_at(Jwc *d, long k, const char *str, int hb, int vb)
     return 1;
 }
 
-/* 文編集 ②移動・③複写：文字の始点（基点 左下）を (px,py) へ。終点は
- * 長さを引き直して置く（書き換えと同じ 1f66 の道。測定：tmp/te3.txt の
- * te2a・te3a、SAMPLE0 の `Ｈ７－Ａ００１` を (300,300) へ）。移動は記録の
- * 場所のまま、複写は末尾に足す。斜めの字と基点が左下以外は測っていない。 */
-int jwc_move_text(Jwc *d, long k, double px, double py, int copy)
+/* 文編集 ②移動・③複写（ovl15 3ab8:33ee＝dis 02df6e〜02f396）：(px,py) へ
+ * 文字基準点（hb/vb、DS:[0x1096]/[0x1098]。盤の ①基点 が cmd.c の te_bh/
+ * te_bv を回すのと同じグローバル）で置き直す。33ee は 02e822〜02e889 で
+ * 08b3 前半と同じ命令列（字幅表 DS:198・B4A2・18b3:03cf＝ed_length）を
+ * そのままインライン展開してから 02e8ee の 1bb4:27ea（＝ed_frame）・2981・
+ * 2a18（＝ed_x/ed_y）に渡しており、①書き換え（jwc_edit_text_at、ed_place
+ * で float ビットまで一致確認済み）と同じ置き直しの機構を使っている。
+ * ここでは「元の向き（co・si）はそのまま、長さだけ ed_length で引き直し、
+ * 引き直した長さをもとに ed_place で hb/vb ぶんずらす」形にして、その同じ
+ * 機構を適用した（33ee 自身がこの 2 回の呼び出しをどう組み合わせているかの
+ * 1 行ずつの突き合わせはまだ）。hb=vb=0（左下）は旧実装と同じ式になるので
+ * 測定済みのまま（tmp/te3.txt te2a・te3a、SAMPLE0 の `Ｈ７－Ａ００１` を
+ * (300,300) へ）。hb/vb が 1・2 のときの実機確認はまだ（decomp 読みのみ・
+ * 実機未確認）。横位置・縦位置の表 DS:[0x10b2]・[0x10be] は ed_place と
+ * 同じく 0 のまま（①書き換えと共通の未実装分）。軸ロック・角度指定・float
+ * の積み方（旧レコードとの差を足し直す）は未実装のまま。
+ *
+ * 複写のレイヤは書込レイヤ（02f02f: `mov al,[0xb310]` は param_10＝複写
+ * フラグ（bp+0x18）が非 0 の分岐の中だけで読まれると確認。移動側
+ * （param_10==0、0x2f346 へ）はこの読みを通らない）。 */
+int jwc_move_text(Jwc *d, long k, double px, double py, int copy, int hb,
+                  int vb)
 {
     JwcText was;
-    EdFrame f;
-    float L, b4a2;
+    EdFrame dirf;
+    float r[4], L, b4a2, h;
     static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f, 297.0f };
     const int pp = d->paper >= 0 && d->paper < 5 ? d->paper : 4;
 
@@ -2255,29 +2272,37 @@ int jwc_move_text(Jwc *d, long k, double px, double py, int copy)
         return 0;
     }
     was = d->texts[k];
-    b4a2 = (float)((double)PAPER[pp] / 518.0);
-    L = ed_length(d, was.text ? was.text : "", was.size, b4a2);
-    f = ed_frame(was.x0, was.y0, was.x1, was.y1);
-    f.ox = (float)px;
-    f.oy = (float)py;
+    {
+        const int sz = was.size <= 10 ? was.size : 0;
+
+        b4a2 = (float)((double)PAPER[pp] / 518.0);
+        h = (float)((double)(float)d->text_h[sz] / b4a2 * 0.1);
+        L = ed_length(d, was.text ? was.text : "", was.size, b4a2);
+    }
+    dirf = ed_frame(was.x0, was.y0, was.x1, was.y1);
+    r[0] = was.x0;
+    r[1] = was.y0;
+    r[2] = ed_x(&dirf, L, 0.0f);
+    r[3] = ed_y(&dirf, L, 0.0f);
+    ed_place(r, 1.0, (float)px, (float)py, hb, vb, h, 0);
     if (copy) {
         JwcText *t;
         char str[256];
 
         /* 足すと入れ物が動くので、字列は先に写しておく。 */
         snprintf(str, sizeof str, "%s", was.text ? was.text : "");
-        if (!jwc_add_text(d, f.ox, f.oy, ed_x(&f, L, 0.0f), ed_y(&f, L, 0.0f),
-                          str, was.size, was.layer)) {
+        if (!jwc_add_text(d, r[0], r[1], r[2], r[3], str, was.size,
+                          d->write_layer)) {
             return 0;
         }
         t = &d->texts[d->n_texts - 1];
         memcpy(t->rest, was.rest, sizeof t->rest);
         return 1;
     }
-    d->texts[k].x0 = f.ox;
-    d->texts[k].y0 = f.oy;
-    d->texts[k].x1 = ed_x(&f, L, 0.0f);
-    d->texts[k].y1 = ed_y(&f, L, 0.0f);
+    d->texts[k].x0 = r[0];
+    d->texts[k].y0 = r[1];
+    d->texts[k].x1 = r[2];
+    d->texts[k].y1 = r[3];
     return 1;
 }
 
