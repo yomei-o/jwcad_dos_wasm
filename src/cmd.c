@@ -6882,6 +6882,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if ((c->command == 2 || c->command == 3) && c->pressed && had_line) {
             measure(c, d, ex, ey);
         }
+        /* 取り消したあとは `確定長さ` の線は無い：終点待ちから [ESC] すると
+         * 素の `始点指示 … [BS]前項`（測定：func_all plus_s0_c2）。 */
+        if (c->command == 2 || c->command == 3) {
+            c->fix_done = 0;
+            c->line_done = 0;
+        }
         return 1;
     }
     /* `始点指示 … [BS]前項` の状態で始点を持っているときの [ESC] は、始点を
