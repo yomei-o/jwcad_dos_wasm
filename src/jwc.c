@@ -2323,6 +2323,39 @@ int jwc_retype_text(Jwc *d, long k, int size, int layer, int hv)
     return 1;
 }
 
+/* 文字を記録の末尾へ動かして座標を置き直す（字列の入れ物も同じ順に
+ * 並べ直す。jwc_edit_text_at と同じ扱い）。 */
+int jwc_requeue_text(Jwc *d, long k, float x0, float y0, float x1, float y1)
+{
+    JwcText was;
+    long off, gone, m;
+    char str[256];
+    JwcText *t;
+
+    if (k < 0 || k >= d->n_texts) {
+        return 0;
+    }
+    was = d->texts[k];
+    snprintf(str, sizeof str, "%s", was.text ? was.text : "");
+    off = was.text ? (long)(was.text - d->text) : 0;
+    gone = (long)strlen(d->text + off) + 1;
+    jwc_remove_text(d, k);
+    memmove(d->text + off, d->text + off + gone,
+            (size_t)(d->text_len - off - gone));
+    d->text_len -= gone;
+    for (m = 0; m < d->n_texts; m++) {
+        if (d->texts[m].text && (long)(d->texts[m].text - d->text) > off) {
+            d->texts[m].text -= gone;
+        }
+    }
+    if (!jwc_add_text(d, x0, y0, x1, y1, str, was.size, was.layer)) {
+        return 0;
+    }
+    t = &d->texts[d->n_texts - 1];
+    memcpy(t->rest, was.rest, sizeof t->rest);
+    return 1;
+}
+
 /* How long a text's baseline is, in drawing units.
  *
  * It follows from the string and the character size, not from anything stored:

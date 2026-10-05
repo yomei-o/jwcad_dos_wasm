@@ -516,6 +516,9 @@ static void sync_ui(void)
     ui.te_plain = cmd.te_plain;
     ui.te6_layer = cmd.te6_layer;
     ui.te6_hv = cmd.te6_hv;
+    ui.te5 = cmd.te5;
+    ui.te5_ask = cmd.te5_ask;
+    ui.te5_gap = cmd.te5_gap;
     ui.real_left = drawing ? 3639 - drawing->n_points : 0;
     ui.chb_inner = cmd.chb_inner;
     ui.box_ctr = cmd.box_ctr;

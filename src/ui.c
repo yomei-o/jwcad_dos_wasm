@@ -2922,6 +2922,69 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             sprintf(one, " \x89\xa1%4.1f \x8f" "c%4.1f ", s->char_w / 10.0, s->char_h / 10.0);
             jw_ui_text(v, 1, 3, 0, 0, one);
         }
+    } else if (s->command == 28 && s->te5 && s->te5_ask) {
+        /* ⑤ ②行間 の欄（steps_table `28 t 5 150 400 r 470 420 t 2`）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, "\x95\xcf\x8dX");
+        jw_ui_text(v, 12, 1, 7, 0, " \x8ds\x8a\xd4");
+        jw_ui_text(v, 17, 1, 7, 0, "(0:\x8c\xbb\x8ds\x8a\xd4  ");
+        jw_ui_text(v, 28, 1, 7, 0, "1\x81`100) =");
+        jw_ui_text(v, 60, 1, 7, 0, "\x90}\x96\xca\x90\xa1\x96@(mm)");
+        if (s->typed_n > 0) {
+            char t[11];
+
+            memcpy(t, s->typed, 10);
+            t[s->typed_n < 10 ? s->typed_n : 10] = 0;
+            jw_ui_text(v, 38, 1, 7, 0, t);
+        }
+        fill(v, 296 + s->typed_n * 8, 7, 303 + s->typed_n * 8, 15, 4);
+    } else if (s->command == 28 && s->te5 && s->stage == 2 && !s->te_sub
+               && s->te5_gap > 0.0) {
+        /* 行間を決めた後の 始点指示 の行（測定：te5e）。 */
+        char one[120];
+
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        snprintf(one, sizeof one, "%s%5.1f%s", "\x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read |\x87@\x8a\xee\x93_(\x8d\xb6\x89\xba)|\x87" "A\x8ds\x8a\xd4(", s->te5_gap, "mm)|\x87" "B\x95\xb6\x8e\x9a\x90\x94\x8ew\x92\xe8(\x96\xb3)|");
+        jw_ui_text(v, 8, 1, 7, 0, one);
+    } else if (s->command == 28 && s->te5 && !s->te_sub) {
+        /* 文編集 ⑤位置整理 の範囲の行（桁は steps_table `28 t 5 150 130 r 460
+         * 170 l 200 300 300 300 400 350` から）。 */
+        if (s->stage == 0) {
+            jw_ui_text(v, 1, 1, 7, 0, "       ");
+            jw_ui_text(v, 8, 1, 7, 0, "\x90\xae\x97\x9d\x94\xcd\x88\xcd  \x8en\x93_\x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
+            jw_ui_text(v, 33, 1, 7, 0, "\x81i\x95\xb6\x8e\x9a\x81j");
+            jw_ui_text(v, 68, 1, 7, 0, "|\x87@ \x91O \x94\xcd \x88\xcd|");
+        } else if (s->stage == 1) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+            jw_ui_text(v, 8, 1, 7, 0, "\x81i\x95\xb6\x8e\x9a\x81j");
+            jw_ui_text(v, 16, 1, 7, 0, "  ");
+            jw_ui_text(v, 18, 1, 7, 0, "\x8fI\x93_\x8ew\x8e\xa6 ");
+            jw_ui_text(v, 27, 1, 7, 0, "\xcf\xb3\xbd(L) ");
+            jw_ui_text(v, 34, 1, 7, 0, " \x94\xcd\x88\xcd\x8am\x92\xe8 ");
+            jw_ui_text(v, 44, 1, 7, 0, "\xcf\xb3\xbd(R) ");
+            jw_ui_text(v, 53, 1, 7, 0, "|");
+            jw_ui_text(v, 54, 1, 7, 0, "\x87@");
+            jw_ui_text(v, 56, 1, 7, 0, "\x83\x8c\x83" "C\x83\x84");
+            jw_ui_text(v, 62, 1, 7, 0, "|");
+            jw_ui_text(v, 63, 1, 7, 0, "\x87" "A");
+            jw_ui_text(v, 65, 1, 7, 0, "\x95\xb6\x8e\x9a\x8e\xed");
+            jw_ui_text(v, 71, 1, 7, 0, "|");
+        } else if (s->stage == 3) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 6, 1, 7, 0, "\x81Q");
+            jw_ui_text(v, 8, 1, 7, 0, "\x90\xae\x97\x9d\x94\xcd\x88\xcd  \x92\xc7\x89\xc1\xa5\x8f\x9c\x8aO\x83" "f\x81[\x83^\x8ew\x8e\xa6   ");
+            jw_ui_text(v, 40, 1, 7, 0, "\x81i\x95\xb6\x8e\x9a\x81j");
+            jw_ui_text(v, 68, 1, 7, 0, "|\x87@\x94\xcd\x88\xcd \x8am\x92\xe8|");
+        } else if (s->stage == 2) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 8, 1, 7, 0, "\x8en\x93_\x8ew\x8e\xa6 (L)free (R)Read |\x87@\x8a\xee\x93_(\x8d\xb6\x89\xba)|\x87" "A\x8ds\x8a\xd4(\x8c\xbb\x88\xca\x92u)|");
+        }
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 28 && s->te_pick >= 0) {
         /* 〈移動〉《複写》の位置指示の行。④ の升の絵は白い枠と、基点（左下）
          * の赤い丸（測定：tmp/te3.txt te2a の段 2、枠 x 596..612・y 4..12、

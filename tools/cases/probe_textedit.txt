@@ -27,3 +27,10 @@ te6f|SAMPLE0|30 264 left|type 6|type 3|type 3|190 152 left
 te6g|SAMPLE0|30 264 left|type 6|type 2|379 246 left
 te6h|SAMPLE0|30 264 left|type 6|379 246 right
 te6i|SAMPLE0|30 264 left|type 6|type 3|190 152 left
+te5a|SAMPLE0|30 264 left|type 5|150 130 left|460 170 right|200 300 left
+te5b|SAMPLE0|30 264 left|type 5|150 400 left|470 420 right|200 300 left
+te5c|SAMPLE0|30 264 left|type 5|150 400 left|470 420 right|type 2
+te5d|SAMPLE0|30 264 left|type 5|150 400 left|470 420 right|type 1
+te5e|SAMPLE0|30 264 left|type 5|150 140 left|255 420 right|type 2|type 10|key enter|200 300 left
+te5f|SAMPLE0|30 264 left|type 5|150 140 left|255 420 right|200 300 left
+te5g|SAMPLE0|30 264 left|type 5|150 140 left|255 420 right|type 2|type 0|key enter|200 300 left

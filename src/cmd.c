@@ -2326,6 +2326,9 @@ static int arc_in_range(const JwCmd *c, const JwcArc *a)
  * the box test until then. */
 static int picked_line(const JwCmd *c, const Jwc *d, long k)
 {
+    if (c->command == 28) {
+        return 0;               /* 文編集 ⑤位置整理 は文字だけ */
+    }
     if (c->sel_line) {
         return k < c->n0_lines && c->sel_line[k];
     }
@@ -2365,6 +2368,9 @@ static int henkei_kind(const JwCmd *c, double ax, double ay,
 
 static int picked_arc(const JwCmd *c, const Jwc *d, long k)
 {
+    if (c->command == 28) {
+        return 0;
+    }
     if (c->sel_arc) {
         return k < c->n0_arcs && c->sel_arc[k];
     }
@@ -5847,6 +5853,22 @@ void jw_cmd_zukei_put(JwCmd *c, const Jwc *d)
  * `28 400 140 t 1 t 2 t 2 t 4 t 1`）。③・⑤ の欄はまだ。 */
 int jw_cmd_te_digit(JwCmd *c, int n)
 {
+    /* ⑤位置整理：追加･除外 の段の ① は 範囲確定 で 始点指示 の段へ
+     * （測定：steps_table）。範囲の段の ①前範囲・①レイヤ・②文字種、始点の段の
+     * ①基点・②行間 はまだ（何もしない）。 */
+    if (c->te5 && !c->te_sub) {
+        if (n == 1 && c->pressed == 2 && c->stage == 3) {
+            c->stage = 2;
+        } else if (n == 1 && c->pressed == 2 && c->stage == 2) {
+            c->te_sub = 1;      /* ①基点：同じ 文字基準点 の盤（kp8） */
+        } else if (n == 2 && c->pressed == 2 && c->stage == 2) {
+            c->te5_ask = 1;     /* ②行間：`変更 行間(0:現行間  1～100) =` */
+            c->typing = 1;
+            c->typed_n = 0;
+            c->typed[0] = 0;
+        }
+        return 1;
+    }
     /* ⑥文字種類変更：② で 変更無⇔有、③ で 無→横→縦→無（測定：steps_table
      * `28 t 6 t 3 t 3 t 3 t 2 t 2`）。升の無い数字は行を描き直して左の盤と
      * 升を下ろす（func_all textedit_s0_c6_v の `30`）。①範囲内変更 はまだ。 */
@@ -5943,6 +5965,13 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     if (!changed && jw_ui_item_has(c->command, item, right)) {
         c->top_item = item;
         c->top_right = right;
+        /* 文編集 ⑤位置整理：`整理範囲  始点マウス指示 （文字）` から範囲。 */
+        if (c->command == 28) {
+            c->te5 = item == 5 && !right;
+            c->pressed = 0;
+            c->stage = 0;
+            c->n_flip = 0;
+        }
         return 1;
     }
     return changed;
@@ -6502,6 +6531,36 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     /* 連続書 の間隔の欄の鍵。 */
+    /* 文編集 ⑤ の ②行間 の欄。0 で現位置に戻す（測定：tmp/te5e.txt te5g）。
+     * 1～100 の外は未測定（取らない）。 */
+    if (c->command == 28 && c->te5_ask) {
+        if (key == 27 || key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (key != 27 && c->typed_n) {
+                const double g = field_eval(c->typed);
+
+                if (g == 0.0 || (g >= 1.0 && g <= 100.0)) {
+                    c->te5_gap = g;
+                }
+            }
+            c->te5_ask = 0;
+            c->typing = 0;
+            c->typed_n = 0;
+            c->typed[0] = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (FIELD_CHAR(key) && c->typed_n < 10) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
     if (c->command == 13 && c->stage == 41) {
         if (key == 27) {
             c->typing = 0;
@@ -15239,7 +15298,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->stage = 3;
         return 1;
     }
-    if (c->command == 28) {
+    if (c->command == 28 && !c->te5) {
         /* 文編集【変更】: press a text and its string comes up in a field on
          * the second row, with a ruler above it (`10----+----20...40`) and
          * `左下 |種 3|Paste` where the menu's ` Get type[tab]` was.  Typing
@@ -16188,8 +16247,100 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * the same 追加･除外 stage the left one does. */
             /* 複写・移動も右で閉じると範囲確定して ①ﾏｳｽ位置 へ（測定：移動を
              * 右で閉じて二点で動かし [ESC] で戻すと、y に float の丸めが残る）。 */
-            c->stage = (right && (c->command == 25 || c->command == 8)) ? 2
+            c->stage = (right && (c->command == 25 || c->command == 8
+                                  || c->command == 28)) ? 2
                      : (right && JW_MOVE_CMD(c->command)) ? 4 : 3;
+            return 1;
+        }
+        /* 文編集 ⑤位置整理 の `始点指示 (L)free (R)Read`：選んだ文字の始点 x を
+         * その点に揃え、y はそのまま（②行間(現位置)）。記録の場所は
+         * 動かない。範囲の始めの行へ戻る（測定：tmp/te5.txt
+         * te5a・te5b）。 */
+        if (c->command == 28 && c->pressed == 2 && c->stage == 2) {
+            double px, py;
+            long k;
+
+            if (!take(c, d, w, sx, sy, right, &px, &py)) {
+                c->missed = 1;
+                return 1;
+            }
+            /* 行間を決めてあるときは、上の字から順に始点を押した所から
+             * 行間（図寸 mm × 倍率）ずつ下へ並べ、記録はその順に末尾へ
+             * （測定：te5e、`Ｈ７－Ａ００１` と `H7.8.31` を 10mm で）。
+             * 縦の位置の float の積み方は 2 字でしか測っていない。 */
+            if (c->te5_gap > 0.0) {
+                long order[512], n = 0, i, j;
+
+                for (k = 0; k < c->n0_texts && k < d->n_texts && n < 512;
+                     k++) {
+                    if (picked_text(c, d, k)) {
+                        order[n++] = k;
+                    }
+                }
+                for (i = 1; i < n; i++) {       /* 上（y の大きい）から */
+                    const long v = order[i];
+
+                    for (j = i; j > 0 && d->texts[order[j - 1]].y0
+                                         < d->texts[v].y0; j--) {
+                        order[j] = order[j - 1];
+                    }
+                    order[j] = v;
+                }
+                for (i = 0; i < n; i++) {
+                    const JwcText t = d->texts[order[i]];
+                    const float nx = (float)px;
+                    const float ny = (float)(py - i * c->te5_gap * d->unit_mm);
+                    long m;
+
+                    jwc_requeue_text(d, order[i], nx,  ny,
+                                     (float)(nx + ((double)t.x1 - t.x0)),
+                                     (float)(ny + ((double)t.y1 - t.y0)));
+                    for (m = i + 1; m < n; m++) {
+                        if (order[m] > order[i]) {
+                            order[m]--;
+                        }
+                    }
+                }
+                c->pressed = 0;
+                c->stage = 0;
+                c->n_flip = 0;
+                return 1;
+            }
+            /* 現位置：いちばん上の字の y はそのまま、ほかの字は上の字から
+             * の差を float に丸めてから足し直す（測定：te5f で `H7.8.31` の
+             * y が 2 ulp 動く）。記録の場所は動かない。 */
+            /* 選んだ字は動かす前に控える（動かすと範囲の判定が変わる）。 */
+            {
+                long sel[512], n = 0, i;
+                float top = 0.0f;
+
+                for (k = 0; k < c->n0_texts && k < d->n_texts && n < 512;
+                     k++) {
+                    if (picked_text(c, d, k)) {
+                        if (!n || d->texts[k].y0 > top) {
+                            top = d->texts[k].y0;
+                        }
+                        sel[n++] = k;
+                    }
+                }
+                for (i = 0; i < n; i++) {
+                    /* 終点は始点と同じだけずらす（長さを引き直すと te5b の
+                     * `作図者` が 1 ulp 違う。ずらすほうは te5a・te5b の
+                     * 3 件とも一致）。 */
+                    JwcText *t = &d->texts[sel[i]];
+                    const float nx = (float)px;
+                    const float dy = t->y0 - top;
+                    const float ny = dy + top;
+
+                    t->x1 = (float)(nx + ((double)t->x1 - t->x0));
+                    t->y1 = (float)(ny + ((double)t->y1 - t->y0));
+                    t->x0 = nx;
+                    t->y0 = ny;
+                }
+            }
+            c->pressed = 0;
+            c->stage = 0;
+            c->n_flip = 0;
             return 1;
         }
         if (c->command == 8 && c->pressed == 2 && c->stage == 2) {
@@ -16214,7 +16365,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             /* 追加･除外: 線・円 with the left button, 文字 with the right. */
             long k, j;
 
-            if (right) {                /* 文字(R) */
+            /* 文編集 ⑤ は文字だけなので左も文字（行が `（文字）`）。 */
+            if (right || c->command == 28) {    /* 文字(R) */
                 k = jw_cmd_text_at(d, w, sx, sy);
                 if (k < 0) {
                     c->missed = 1;
