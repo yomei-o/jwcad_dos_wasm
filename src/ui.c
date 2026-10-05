@@ -4121,6 +4121,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             const int st = s->zukei == 2 && s->with_text ? JW_ZUKEI_RANGE2
                          : s->zukei;
 
+            if (st == JW_ZUKEI_ADD) {
+                /* 追加･除外の段（測定：steps_table `27 d 400 140 300 250 450 330`）。 */
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                jw_ui_text(v, 6, 1, 7, 0, "\x81Q");
+                jw_ui_text(v, 8, 1, 7, 0, "\x90}\x8c`\x94\xcd\x88\xcd  \x92\xc7\x89\xc1\xa5\x8f\x9c\x8aO\x83" "f\x81[\x83^\x8ew\x8e\xa6   ");
+                jw_ui_text(v, 40, 1, 7, 0, "\x90\xfc\x81" "E\x89~(L) ");
+                jw_ui_text(v, 50, 1, 7, 0, "\x95\xb6\x8e\x9a(R)");
+                jw_ui_text(v, 57, 1, 7, 0, " [F1\x81`F10] ");
+                jw_ui_text(v, 68, 1, 7, 0, "|\x87@\x94\xcd\x88\xcd \x8am\x92\xe8|");
+            }
             for (z = JW_ZUKEI; z->stage; z++) {
                 if (z->stage == st) {
                     jw_ui_text(v, z->col, 1, (unsigned)z->fg,
@@ -4872,7 +4882,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * the bottom (`描画中断`, kept in src/item.h as a row-0 marker),
          * and their screens have neither the full stop at row 24 nor the
          * 登録図形がありません line that ③表示's keeps. */
-        if (s->command == 27 && s->again && s->top_item) {
+        if (s->command == 27 && (s->again || s->top_item == 2) && s->top_item) {
             const JwItem *r;
 
             for (r = JW_ITEM; r->command; r++) {

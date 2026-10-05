@@ -29,6 +29,7 @@
  * -- 15 for the angle and 22 for the scale -- and [Enter] ends it. */
 #define JW_ZUKEI_ANG   13       /* ②角  度: `角度 =` and 0度/前回/[F1] */
 #define JW_ZUKEI_MAG   14       /* ①倍率指定X,Y: `.図形倍率 X,Y =` */
+#define JW_ZUKEI_ADD   15       /* 範囲を左で閉じたあとの 追加･除外データ指示（消去③と同じ道） */
 
 typedef struct {
     int stage;                  /* which press, 1 to 8; 0 ends the table */

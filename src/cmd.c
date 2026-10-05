@@ -1089,7 +1089,8 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         }
         return;
     }
-    if (JW_RANGE(c) && !c->zukei && c->pressed == 2
+    if (JW_RANGE(c) && (!c->zukei || (c->command == 27 && c->zukei == JW_ZUKEI_RANGE))
+        && c->pressed == 2
         && c->stage == 3) {
         int qx, qy;
 
@@ -6103,6 +6104,17 @@ static void divide_points(JwCmd *c, Jwc *d);
 int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
+
+    /* 図形 ①登録 の範囲の始点の行での [ESC] は 図形 の最初の行へ戻す
+     * （測定：func_all zukei_plain の最後の [ESC]）。 */
+    if (key == 27 && c->command == 27 && c->zukei == JW_ZUKEI_RANGE
+        && !c->pressed) {
+        c->zukei = 0;
+        c->stage = 0;
+        c->top_item = 0;
+        c->top_right = 0;
+        return 1;
+    }
 
     /* ハッチ枠の [ESC]：取った線を一本ずつ戻す（残数は戻らない）。最後の
      * 一本を戻すと残数も 100 に戻って最初の行（測定：tmp/h6.txt h_e1〜e4）。 */
@@ -12144,7 +12156,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->zukei = JW_ZUKEI_PUT2;
         return 1;
     }
-    if (c->command == 27 && c->zukei == JW_ZUKEI_RANGE && c->pressed == 2) {
+    if (c->command == 27 && c->zukei == JW_ZUKEI_RANGE && c->pressed == 2
+        && c->stage != 3) {
         jw_cmd_at(w, sx, sy, &x, &y);
         c->zukei_bx = x;
         c->zukei_by = y;
@@ -16365,6 +16378,13 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->base_x = px;
             c->base_y = py;
             c->stage = 9;
+            return 1;
+        }
+        /* 図形：升を押さずに図面を押すと、範囲は始めずに 図形範囲 の行
+         * （[ESC] 付き）になるだけ。次の押しから始点（測定：func_all
+         * zukei_plain）。 */
+        if (c->command == 27 && !c->zukei && !c->pressed) {
+            c->zukei = JW_ZUKEI_RANGE;
             return 1;
         }
         if (!c->pressed) {

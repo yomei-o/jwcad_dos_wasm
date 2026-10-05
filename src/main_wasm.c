@@ -475,7 +475,8 @@ static void sync_ui(void)
     ui.zukei_mx = cmd.zukei_mx;
     ui.zukei_my = cmd.zukei_my;
     ui.zukei = cmd.zukei > JW_ZUKEI_BASE ? cmd.zukei
-             : cmd.zukei ? (cmd.pressed == 0 ? 1 : cmd.pressed == 1 ? 2 : 3)
+             : cmd.zukei ? (cmd.pressed == 0 ? 1 : cmd.pressed == 1 ? 2
+                            : cmd.stage == 3 ? JW_ZUKEI_ADD : 3)
              : 0;
     ui.top_item = cmd.top_item;
     ui.band_off = cmd.band_off;
