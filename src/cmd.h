@@ -266,6 +266,14 @@ typedef struct {
     int hatch_n;                /* how many are in the frame */
     int field_cursor;           /* 入力欄のカーソル桁（ui の最後の描画から。-1 は無し） */
     int lc_off;                 /* 線変更 ②レイヤ変更 が【無】（升 ② を押した） */
+    int lc_range;                /* 線変更 ①指定範囲内変更 の道（実機で確認：
+                                   * 升①→範囲（OVL5 共有の箱取り）→絞り込み→
+                                   * 変更内容、RESUME.md 4 参照）。1 で範囲取りに
+                                   * 入っている。 */
+    int lc_narrow;                /* 絞り込み（stage 2 の升）: 0 未選択、
+                                   * 1 指定線種・2 指定線色（どちらも実機で画面は
+                                   * 確認したがフィルタの入力は未実装）、
+                                   * 3 全線変更（実装済み・フィルタなし）。 */
     int meas_hold;              /* 測定：文を置いた直後は数え箱の 文数 を一つ遅らせる（1 なら -1 を保留） */
     int off_typed;              /* 最後に決めた間隔は打った数 */
     int off_pt;                 /* 点押しで間隔を決めた直後（連続の行になる）*/
@@ -748,7 +756,8 @@ typedef struct {
 /* 文編集 ⑤位置整理 も同じ範囲の道具で、取るのは文字だけ（`（文字）`）。 */
 #define JW_RANGE(c) (JW_RANGE_CMD((c)->command) || ((c)->command == 8 && (c)->chb) \
                      || ((c)->command == 28 && (c)->te5) \
-                     || ((c)->command == 13 && (c)->tx_doc))
+                     || ((c)->command == 13 && (c)->tx_doc) \
+                     || ((c)->command == 24 && (c)->lc_range))
 
 /* And which of those put what the range holds somewhere else: 複写 leaves the
  * originals and 移動 does not, but everything up to the distance is the same

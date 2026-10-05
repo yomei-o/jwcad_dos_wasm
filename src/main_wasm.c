@@ -641,7 +641,9 @@ static void sync_ui(void)
     ui.hen_dbl = cmd.hen_dbl;
     ui.hen_dbl_cap = cmd.hen_dbl_cap;
     ui.hen_dbl_edit = cmd.hen_dbl && cmd.typing;
-    ui.hen_dbl_gap = cmd.hen_dbl_gap;    ui.hand = cmd.hand;
+    ui.hen_dbl_gap = cmd.hen_dbl_gap;
+    ui.lc_range = cmd.lc_range;
+    ui.hand = cmd.hand;
     ui.hand_step = cmd.hand_step;
     ui.hand_did = cmd.hand_did;
     ui.hen_env = cmd.hen_env;

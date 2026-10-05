@@ -5883,6 +5883,32 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 8, 1, 7, 0, one);
                 }
             }
+            /* 線変更 ①指定範囲内変更: 絞り込み（段 2）と変更内容（段 4）。
+             * 文字列は実機のスクリーンショットから読み取った（tools/emu.sh、
+             * 2026-10-06。文字列表のオフセットは未特定・目視のみ）。
+             * ①指定線種・②指定線色 のフィルタ入力は未実装なので升は
+             * ③全線変更 までしか効かない（cmd.c linechg_range_apply）。 */
+            if (s->command == 24 && s->lc_range && i == s->stage
+                && (s->stage == 2 || s->stage == 4)) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                if (i == 2) {
+                    jw_ui_text(v, 8, 1, 7, 0,
+                        "\x94\xcd\x88\xcd\x93\xe0\x82\xcc\x95\xcf\x8d\x58\x90\xfc"
+                        "|\x87@\x8e\x77\x92\xe8 \x90\xfc\x8e\xed \x95\xcf\x8d\x58 "
+                        "|\x87" "A\x8e\x77\x92\xe8 \x90\xfc\x90\x46(\xcd\xdf\xdd"
+                        "No.)\x95\xcf\x8d\x58 "
+                        "|\x87" "B\x91\x53\x90\xfc\x95\xcf\x8d\x58|");
+                } else {
+                    jw_ui_text(v, 8, 1, 7, 0,
+                        "\x95\xcf\x8d\x58\x93\xe0\x97\x65"
+                        "|\x87@\x8f\x91\x8d\x9e\x97\x70\x90\xfc\x8e\xed\x82\xc9"
+                        "\x95\xcf\x8d\x58"
+                        "|\x87" "A\x8f\x91\x8d\x9e\x97\x70\x90\xfc\x90\x46\x82\xc9"
+                        "\x95\xcf\x8d\x58"
+                        "|\x87" "B\x8f\x91\x8d\x9e\x97\x70\x83\x8c\x83\x43\x83\x84"
+                        "\x82\xc9\x95\xcf\x8d\x58|");
+                }
+            }
             /* 寸法 ⑤一括 の四つの段。 */
             if (s->command == 14 && s->dim_lot && i == s->stage
                 && s->stage >= 21 && s->stage <= 24) {

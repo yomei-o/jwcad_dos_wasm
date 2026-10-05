@@ -546,6 +546,7 @@ typedef struct {
     int hen_dbl;
     int hen_dbl_cap;
     int hen_dbl_edit;
+    int lc_range;                /* 線変更 ①指定範囲内変更。See JwCmd. */
     int hand;
     int hand_step;
     int hand_did;

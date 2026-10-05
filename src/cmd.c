@@ -4619,6 +4619,7 @@ static void sine_draw(JwCmd *c, Jwc *d);
 static void spline_draw(JwCmd *c, Jwc *d);
 static void bezier_draw(JwCmd *c, Jwc *d);
 static void henkei_double(JwCmd *c, Jwc *d);
+static void linechg_range_apply(JwCmd *c, Jwc *d, int content);
 
 static int cmd_top(JwCmd *c, Jwc *d, int item)
 {
@@ -5589,6 +5590,42 @@ range_items:
      * 別の描画ゲート `*(int*)0xc22==0` が成立していない可能性がある）ため、
      * 実際の見た目は測定のみ・decomp未確認のまま——状態そのものは decomp
      * の式どおりに持つ。 */
+    /* 線変更 ①指定範囲内変更（実機で確認、tools/emu.sh 2026-10-06）：
+     * 升①を押すと範囲取り（OVL5 共有の箱取り、JW_RANGE 経由）に入り、
+     * 範囲を閉じて①範囲確定を押すと「絞り込み」（stage 2）、そこで
+     * ③全線変更 を選ぶと「変更内容」（stage 4）になる。帯の文字は実機の
+     * スクリーンショットから読み取った（文字列表のオフセットは未特定）：
+     *   絞り込み    `範囲内の変更線|①指定 線種 変更|②指定 線色(ﾍﾟﾝNo.)変更|③全線変更|`
+     *   変更内容    `変更内容|①書込用線種に変更|②書込用線色に変更|③書込用レイヤに変更|`
+     * ①指定線種・②指定線色 は実機の画面までは確認したが、その先の
+     * フィルタ入力（線種の一覧・ペン番号の入力）は未実装のまま
+     * （RESUME.md 4 参照）。 */
+    if (c->command == 24 && c->pressed == 0 && c->stage == 0 && !c->lc_range
+        && item == 1) {
+        c->lc_range = 1;
+        c->lc_narrow = 0;
+        return 1;
+    }
+    if (c->command == 24 && c->lc_range && c->stage == 2) {
+        if (item == 3) {
+            c->lc_narrow = 3;
+            c->stage = 4;
+            return 1;
+        }
+        return 0;       /* ①指定線種・②指定線色 のフィルタは未実装 */
+    }
+    if (c->command == 24 && c->lc_range && c->lc_narrow == 3
+        && c->stage == 4) {
+        if (item >= 1 && item <= 3) {
+            linechg_range_apply(c, d, item);
+            c->lc_range = 0;
+            c->lc_narrow = 0;
+            c->pressed = 0;
+            c->stage = 0;
+            return 1;
+        }
+        return 0;
+    }
     if (c->command == 27 && c->pressed == 0 && c->stage == 0 && !c->zukei) {
         if (item == 3) {
             c->zukei_disp = !c->zukei_disp;
@@ -10809,6 +10846,48 @@ static void henkei_double(JwCmd *c, Jwc *d)
             if (i == n - 1 && c->hen_dbl_cap) {
                 add_like(d, l, ax[n], ay[n], bx[n], by[n]);
             }
+        }
+    }
+}
+
+/* 線変更 ①指定範囲内変更→絞り込み③全線変更→変更内容.  実機で確認
+ * （tools/emu.sh、2026-10-06）：範囲を閉じて①範囲確定、③全線変更、
+ * そして①〜③のどれかを押すと、その場で範囲内の線・円弧全部に書込用の
+ * 線種／線色／レイヤのどれか一つを書いて、押した升のまま道が終わる
+ * （確認のダイアログなどは出ない）。線種変更は本物の線変更（直接指し）
+ * と同じ書込設定（d->line_type・d->pen・d->write_layer）を使う――
+ * ①②③の絞り込みで線種・ペン番号を指定するフィルタ（実機の画面までは
+ * 確認したが入力の中身は未実装）がない分、全線変更は範囲の中の全部に
+ * かかる。 */
+static void linechg_range_apply(JwCmd *c, Jwc *d, int content)
+{
+    long k;
+
+    if (!d) {
+        return;
+    }
+    for (k = 0; k < d->n_lines && k < c->n0_lines; k++) {
+        if (!picked_line(c, d, k)) {
+            continue;
+        }
+        if (content == 1) {
+            d->lines[k].type = (unsigned char)d->line_type;
+        } else if (content == 2) {
+            d->lines[k].pen = (unsigned char)d->pen;
+        } else {
+            d->lines[k].layer = (unsigned char)d->write_layer;
+        }
+    }
+    for (k = 0; k < d->n_arcs && k < c->n0_arcs; k++) {
+        if (!picked_arc(c, d, k)) {
+            continue;
+        }
+        if (content == 1) {
+            d->arcs[k].type = (unsigned char)d->line_type;
+        } else if (content == 2) {
+            d->arcs[k].pen = (unsigned char)d->pen;
+        } else {
+            d->arcs[k].layer = (unsigned char)d->write_layer;
         }
     }
 }
@@ -16319,7 +16398,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->stage = 2;
         return 1;
     }
-    if (c->command == 24) {
+    if (c->command == 24 && !c->lc_range) {
         /* 線変更: one press, and the line or the arc under the pointer takes
          * the pen, the line type and the layer being written to.
          *

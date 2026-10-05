@@ -1,4 +1,4 @@
-# çÏê}ÇÃñΩóﬂÇÃëçìñÇΩÇËÅitools/allmatrix.py Ç™çÏÇÈÅBéËÇ≈íºÇ≥Ç»Ç¢Åj
+# ÔøΩÔøΩ}ÔøΩÃñÔøΩÔøΩﬂÇÃëÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩitools/allmatrix.py ÔøΩÔøΩÔøΩÔøΩÔøΩBÔøΩÔøΩ≈íÔøΩÔøΩÔøΩÔøΩ»ÇÔøΩÔøΩj
 copy_plain|SAMPLE0|90 72 left|400 140 left|move 300 250|300 250 left|move 450 330|450 330 left|162 250 left|598 300 right|move 350 350|350 350 left|key esc|move 340 340|key esc|move 330 330
 copy_s0_c1|SAMPLE0|90 72 left|type 1|400 140 left|move 300 250|300 250 left|move 450 330|450 330 left|162 250 left|598 300 right|move 350 350|350 350 left|key esc|move 340 340|key esc|move 330 330
 copy_s0_c1_v|SAMPLE0|90 72 left|type 1|type 30|key enter|400 140 left|move 300 250|300 250 left|move 450 330|450 330 left|162 250 left|598 300 right|move 350 350|350 350 left|key esc|move 340 340|key esc|move 330 330
@@ -671,6 +671,9 @@ linechg_s1_c8|SAMPLE0|30 200 left|400 140 left|type 8|move 300 250|300 250 left|
 linechg_s0_c9|SAMPLE0|30 200 left|type 9|400 140 left|move 300 250|300 250 left|move 450 330|450 330 left|162 250 left|598 300 right|move 350 350|350 350 left|key esc|move 340 340|key esc|move 330 330
 linechg_s0_c9_v|SAMPLE0|30 200 left|type 9|type 30|key enter|400 140 left|move 300 250|300 250 left|move 450 330|450 330 left|162 250 left|598 300 right|move 350 350|350 350 left|key esc|move 340 340|key esc|move 330 330
 linechg_s1_c9|SAMPLE0|30 200 left|400 140 left|type 9|move 300 250|300 250 left|move 450 330|450 330 left|162 250 left|598 300 right|move 350 350|350 350 left|key esc|move 340 340|key esc|move 330 330
+linechg_range_type|SAMPLE0|30 200 left|type 1|200 150 left|450 300 left|type 1|type 3|type 1
+linechg_range_pen|SAMPLE0|30 200 left|type 1|200 150 left|450 300 left|type 1|type 3|type 2
+linechg_range_layer|SAMPLE0|30 200 left|type 1|200 150 left|450 300 left|type 1|type 3|type 3
 erase_plain|SAMPLE0|30 216 left|400 140 left|move 300 250|300 250 left|move 450 330|450 330 left|162 250 left|598 300 right|move 350 350|350 350 left|key esc|move 340 340|key esc|move 330 330
 erase_s0_c1|SAMPLE0|30 216 left|type 1|400 140 left|move 300 250|300 250 left|move 450 330|450 330 left|162 250 left|598 300 right|move 350 350|350 350 left|key esc|move 340 340|key esc|move 330 330
 erase_s0_c1_v|SAMPLE0|30 216 left|type 1|type 30|key enter|400 140 left|move 300 250|300 250 left|move 450 330|450 330 left|162 250 left|598 300 right|move 350 350|350 350 left|key esc|move 340 340|key esc|move 330 330
