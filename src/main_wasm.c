@@ -4693,8 +4693,9 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
              * curve_s1_c5 で矢が (598,300) に）。 */
             /* □ で始点を持ち直したら、数え箱と仮の四角はその場の矢から
              * （測定：box_plain の `横= 5.734`）。 */
-            if (key == 27 && cmd.command == 4 && cmd.pressed == 1 && drawing
-                && mouse_x >= AREA_X0) {
+            if (key == 27 && (cmd.command == 4 || cmd.command == 2
+                              || cmd.command == 3)
+                && cmd.pressed == 1 && drawing && mouse_x >= AREA_X0) {
                 jw_cmd_track(&cmd, drawing, &view, mouse_x, mouse_y);
             }
             if (key == 27 && cmd.command == 23 && cmd.hand

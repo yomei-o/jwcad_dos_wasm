@@ -525,6 +525,7 @@ typedef struct {
     double arc_r_shown;
     int box_drawn;              /* □ で一つ描いた */
     int box_esc_back;
+    int line_esc_back;
     double box_last[2];              /* 直前の押しで作った：帯の 2 行目にも重ねる */
     /* 面取 ④一括処理（丸面 なら ③）：範囲を取っている。段は範囲の命令と同じ
      * （0 始点、1 終点、3 追加･除外、2 `一括処理 |①実行|②中止|③内角面取|`）。 */

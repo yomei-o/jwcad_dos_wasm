@@ -5967,6 +5967,28 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
 
+    /* ＋・／ も同じ：始点を捨てて `確定長さ` の行に戻ったところでもう一度
+     * [ESC] なら、最後の線を黒で消してその始点を持った `◆終点指示` へ
+     * （測定：func_all plus_plain）。 */
+    if (key == 27 && (c->command == 2 || c->command == 3) && c->line_esc_back
+        && !c->pressed && !c->typing) {
+        long k;
+
+        for (k = 0; k < c->undo_lines && d && d->n_lines > 0; k++) {
+            jwc_remove_line(d, d->n_lines - 1);
+        }
+        c->undo_lines = 0;
+        c->line_esc_back = 0;
+        c->line_done = 0;
+        c->fix_mode = 0;
+        c->fix_done = 0;
+        c->pressed = 1;
+        c->stage = 1;
+        return 1;
+    }
+    if (c->command == 2 || c->command == 3) {
+        c->line_esc_back = 0;
+    }
     /* □：始点を捨てて描いたあとの行に戻ったところで、もう一度 [ESC] なら
      * 最後の四角を取り消して、その始点を持った `終点指示` へ戻る（測定：
      * func_all box_plain）。 */
@@ -6922,6 +6944,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->fix_done = 1;
             c->stage = 2;
             c->moved = 0;
+            c->line_esc_back = 1;
             return 1;
         }
         /* （ は終点待ちなら始点待ちへ一段だけ戻る（測定：func_all arc_plain、
