@@ -16657,12 +16657,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * float で積み上げる（RESUME 文編集⑤の記述。gap・unit_mm の
              * 大きさ自体は te5e で合っている掛け算の形をそのまま使い、
              * 積み方だけ毎回の i 掛けから累積に直した＝測定のみ・decomp
-             * 未確認）。27ea（＝ed_length、jwc_ed_text_length で呼ぶ。②移動
-             * ③複写・⑥文字種類変更と同じ 18b3:03cf そのもので、近似の
-             * jwc_text_length ではない――te5b がそちらだと x1 が 1 ulp
-             * ずれ、こちらに変えたら実機と一致した）が長さ 0 を返す字は
-             * 並べにも書き直しにも入れない（decomp 同域の「長さ 0 は
-             * 飛ばす」）。終点は常に y1=y0 の水平（同域の「終点は水平」）。 */
+             * 未確認）。27ea（＝ed_length、長さ 0 の判定だけ jwc_ed_text_length
+             * で呼ぶ）が長さ 0 を返す字は並べにも書き直しにも入れない
+             * （decomp 同域の「長さ 0 は飛ばす」）。**終点を常に y1=y0 で
+             * 水平に「引き直す」のは未確認のまま外した**――SAMPLE0 で
+             * 試せる押し方は水平な字しか選べず（90°の字は範囲に入れると
+             * te5a・te5b のどちらも実機と合わなくなる別件を踏んだため
+             * このセッションでは試せていない）、引き直すと長さの丸めが
+             * 1 ulp 増えて te5b が実機と違ってしまった。終点は元のとおり
+             * 始点と同じだけずらす式に戻してある（水平な字では結果的に
+             * y1=y0 のまま）＝測定のみ・decomp未確認。 */
             if (c->te5_gap > 0.0) {
                 long order[512], n = 0, i, j;
                 float cursor = (float)py;
@@ -16692,14 +16696,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                     const JwcText t = d->texts[order[i]];
                     const float nx = (float)px;
                     const float ny = cursor;
-                    const float L = (float)jwc_ed_text_length(d, t.text
-                                                              ? t.text : "",
-                                                              t.size,
-                                                              (t.rest[2]
-                                                               & 0x20) != 0);
                     long m;
 
-                    jwc_requeue_text(d, order[i], nx, ny, nx + L, ny);
+                    jwc_requeue_text(d, order[i], nx, ny,
+                                     (float)(nx + ((double)t.x1 - t.x0)),
+                                     (float)(ny + ((double)t.y1 - t.y0)));
                     for (m = i + 1; m < n; m++) {
                         if (order[m] > order[i]) {
                             order[m]--;
@@ -16718,8 +16719,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * te5b・te5f・te5g、押した字がそのまま同じ場所に残り末尾には
              * 来ない——末尾へ積み直すのは②行間を決めた側の枝だけだった。
              * jwc_requeue_text を一度ここでも使ってみたが 192.168.11.37 の
-             * 実機と比べて記録順がずれたので外した）。終点は常に水平、
-             * 長さ 0 の字は飛ばす（decomp 同域の記述）。 */
+             * 実機と比べて記録順がずれたので外した）。長さ 0 の字は飛ばす
+             * （decomp 同域の記述）。終点を常に水平に引き直すのは上の枝と
+             * 同じ理由（te5b で 1 ulp 違う）で外したまま、元の「始点と
+             * 同じだけずらす」式に戻してある。 */
             {
                 long sel[512], n = 0, i;
                 float top = 0.0f;
@@ -16739,20 +16742,18 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                     }
                 }
                 for (i = 0; i < n; i++) {
+                    /* 終点は始点と同じだけずらす（長さを引き直すと te5b の
+                     * `jw_software club` が 1 ulp 違う。ずらすほうは
+                     * te5a・te5b・te5f・te5g の 4 件とも一致）。 */
                     JwcText *t = &d->texts[sel[i]];
                     const float nx = (float)px;
                     const float dy = t->y0 - top;
                     const float ny = dy + top;
-                    const float L = (float)jwc_ed_text_length(d, t->text
-                                                              ? t->text : "",
-                                                              t->size,
-                                                              (t->rest[2]
-                                                               & 0x20) != 0);
 
+                    t->x1 = (float)(nx + ((double)t->x1 - t->x0));
+                    t->y1 = (float)(ny + ((double)t->y1 - t->y0));
                     t->x0 = nx;
                     t->y0 = ny;
-                    t->x1 = nx + L;
-                    t->y1 = ny;
                 }
             }
             c->pressed = 0;
