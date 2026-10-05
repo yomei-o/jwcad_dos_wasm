@@ -6428,8 +6428,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (c->command == 13 && key == 27 && !c->typing_text && c->tx_undo && d
         && d->n_texts > 0) {
+        /* 黒で消すだけで描き直さない（枠に穴が残る。測定：func_all
+         * text_s1_c1 の最後の [ESC] で (400..402,139)）。 */
         jwc_remove_text(d, d->n_texts - 1);
-        jwc_ink_clear(d);
         c->tx_undo = 0;
         /* 行は段 2。この命令で書いた文字がまだ残っていれば `[ESC]` の付いた
          * 行、残っていなければ付かない `・文字種類[F3] 基点指示…`（①水平 の
@@ -12467,6 +12468,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 2;
             c->top_item = c->tx_count > 0 ? 0 : 1;
             c->top_right = 0;
+            return 1;
+        }
+        /* 字を打ってある欄での押しは [Enter] と同じに書くだけ（次の欄は
+         * 開かない。測定：func_all text_s1_c1 で `1` を打って (300,250)）。 */
+        if (c->typing_text && c->typed_n > 0) {
+            jw_cmd_key(c, d, 13);
             return 1;
         }
         /* (L)free (R)Read：右は点を読み、無ければ `読取可能データ無` で欄は
