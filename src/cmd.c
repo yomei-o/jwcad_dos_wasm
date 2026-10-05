@@ -131,6 +131,12 @@ static void at_screen(const JwView *w, double x, double y, int *sx, int *sy)
  * （測定：□ ②角度 で 1 字ずつ打って上の行に出るもの。`(` は無視、英字は
  * 欄を閉じる——閉じるほうはまだ移していません）。 */
 #define FIELD_CHAR(k) (((k) >= '0' && (k) <= '9') || (k) == '.' || (k) == '-'                        || (k) == ',' || (k) == '+' || (k) == '*' || (k) == '/')
+/* 入力欄の長さの上限（decomp numin 3ab8 root 0x27a3：欄の開始桁 + 入力済み文字数 > 78 で
+ * 受け付けない）。ui が描いたカーソルの桁（0 起点の x/8。1 起点では +1 = 開始桁 + 文字数）が
+ * 78 以下のあいだ入る。
+ * カーソルがまだ描かれていないときは従来の 10 文字。 */
+#define FIELD_ROOM(c) (((c)->field_cursor >= 0 ? (c)->field_cursor + 1 <= 78 : (c)->typed_n < 10) \
+                       && (c)->typed_n < (int)sizeof (c)->typed - 1)
 
 /* 欄の値。`,` の手前までを式として読みます（測定：`30+10` で 40 度、
  * `100/4/5` で 5 度、`40,30` で 40 度）。**掛け算・割り算を先に**しますが、
@@ -6646,7 +6652,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (FIELD_CHAR(key) && c->typed_n < 10) {
+        if (FIELD_CHAR(key) && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -6685,7 +6691,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (FIELD_CHAR(key) && c->typed_n < 20) {
+        if (FIELD_CHAR(key) && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -6722,7 +6728,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (FIELD_CHAR(key) && c->typed_n < 10) {
+        if (FIELD_CHAR(key) && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -6756,7 +6762,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (FIELD_CHAR(key) && c->typed_n < 10) {
+        if (FIELD_CHAR(key) && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -6805,7 +6811,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (FIELD_CHAR(key) && c->typed_n < 10) {
+        if (FIELD_CHAR(key) && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -6847,7 +6853,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (FIELD_CHAR(key) && c->typed_n < 10) {
+        if (FIELD_CHAR(key) && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -6942,7 +6948,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 }
                 return 1;
             }
-            if (FIELD_CHAR(key) && c->typed_n < 16) {
+            if (FIELD_CHAR(key) && FIELD_ROOM(c)) {
                 c->typed[c->typed_n++] = (char)key;
                 c->typed[c->typed_n] = 0;
             }
@@ -7388,7 +7394,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7425,7 +7431,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7453,7 +7459,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7502,7 +7508,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (FIELD_CHAR(key) && c->typed_n < 16) {
+        if (FIELD_CHAR(key) && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7549,7 +7555,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7614,7 +7620,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (key >= 0x20 && key <= 0xff && c->typed_n < 16) {
+        if (key >= 0x20 && key <= 0xff && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7639,7 +7645,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7668,7 +7674,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7694,7 +7700,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7720,7 +7726,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7746,7 +7752,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7772,7 +7778,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7796,7 +7802,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (key >= '0' && key <= '9' && c->typed_n < 8) {
+        if (key >= '0' && key <= '9' && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7822,7 +7828,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7849,7 +7855,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7892,7 +7898,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7922,7 +7928,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7953,7 +7959,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7974,7 +7980,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)
-            && c->typed_n < 8) {
+            && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -7998,7 +8004,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
-        if (key >= '0' && key <= '9' && c->typed_n < 8) {
+        if (key >= '0' && key <= '9' && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -8027,7 +8033,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (key >= '0' && key <= '9') {
-            if (c->typed_n < 8) {
+            if (FIELD_ROOM(c)) {
                 c->typed[c->typed_n++] = (char)key;
                 c->typed[c->typed_n] = 0;
             }
@@ -8059,7 +8065,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (FIELD_CHAR(key)) {
-            if (c->typed_n < 8) {
+            if (FIELD_ROOM(c)) {
                 c->typed[c->typed_n++] = (char)key;
                 c->typed[c->typed_n] = 0;
             }
@@ -8088,7 +8094,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if FIELD_CHAR(key) {
-            if (c->typed_n < 8) {
+            if (FIELD_ROOM(c)) {
                 c->typed[c->typed_n++] = (char)key;
                 c->typed[c->typed_n] = 0;
             }
@@ -8118,7 +8124,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (((key >= '0' && key <= '9') || key == '.' || key == ','
-             || key == '-') && c->typed_n < 8) {
+             || key == '-') && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -8150,7 +8156,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (((key >= '0' && key <= '9') || key == '.' || key == ','
-             || key == '-') && c->typed_n < 8) {
+             || key == '-') && FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -8182,7 +8188,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         if ((key >= '0' && key <= '9') || key == '.' || key == ','
             || key == '-') {
-            if (c->typed_n < 8) {
+            if (FIELD_ROOM(c)) {
                 c->typed[c->typed_n++] = (char)key;
                 c->typed[c->typed_n] = 0;
             }
@@ -8216,7 +8222,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     if ((key >= '0' && key <= '9') || key == '.') {
-        if (c->typed_n < 8) {
+        if (FIELD_ROOM(c)) {
             c->typed[c->typed_n++] = (char)key;
             c->typed[c->typed_n] = 0;
         }
@@ -15434,7 +15440,6 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * with `[開始線で終了]` after it, then
          * `|①【指示終了】|別図形をマウス指示 (L)開始線 (R)単独円`. */
         long k;
-        int i;
 
         /* 右押し：最初は (R)単独円（円を読む。円を足すのはまだ。無ければ
          * `単独円ではありません`。測定：tmp/h3.txt h_r3）、枠を取り始めてから

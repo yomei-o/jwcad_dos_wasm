@@ -151,10 +151,17 @@ static void band(VGA *v, int x0, int y0, int x1, int y1, unsigned colour)
     frame(v, x0, y0, x1, y1, 7);
 }
 
+static int g_field_cursor = -1;
+
 static void fill(VGA *v, int x0, int y0, int x1, int y1, unsigned colour)
 {
+    /* 入力欄の緑のカーソル（色 4、y 7〜15、幅 8）の桁を覚える。cmd がこの桁で
+     * 入力の上限を決める（decomp numin 0x27a3：開始桁 + 文字数 > 78 で受け付けない）。 */
     int y;
 
+    if (colour == 4 && y0 == 7 && y1 == 15 && x1 - x0 == 7) {
+        g_field_cursor = x0 / 8;
+    }
     for (y = y0; y <= y1; y++) {
         jw_line(v, x0, y, x1, y, colour, ROP_REPLACE, JW_STYLE_SOLID);
     }
@@ -2434,10 +2441,17 @@ static int zukei_list_up(const JwUi *s)
                || s->zukei == JW_ZUKEI_LIST);
 }
 
+int jw_ui_field_cursor(void)
+{
+    return g_field_cursor;
+}
+
 void jw_ui_draw(VGA *v, const JwUi *s)
 {
     char buf[64], name[32];
     int i;
+
+    g_field_cursor = -1;        /* この描画で入力欄が出たときだけ立つ */
 
     v->clip_x0 = 0;
     v->clip_y0 = 0;
@@ -2944,10 +2958,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 27, 1, 7, 0, "(1\x81`100) =");
         jw_ui_text(v, 60, 1, 7, 0, "\x90}\x96\xca\x90\xa1\x96@(mm)");
         if (s->typed_n > 0) {
-            char t[11];
+            char t[96];
 
-            memcpy(t, s->typed, 10);
-            t[s->typed_n < 10 ? s->typed_n : 10] = 0;
+            memcpy(t, s->typed, 95);
+            t[s->typed_n < 95 ? s->typed_n : 95] = 0;
             jw_ui_text(v, 38, 1, 7, 0, t);
         }
         fill(v, 296 + s->typed_n * 8, 7, 303 + s->typed_n * 8, 15, 4);
@@ -2995,10 +3009,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 28, 1, 7, 0, "1\x81`100) =");
         jw_ui_text(v, 60, 1, 7, 0, "\x90}\x96\xca\x90\xa1\x96@(mm)");
         if (s->typed_n > 0) {
-            char t[11];
+            char t[96];
 
-            memcpy(t, s->typed, 10);
-            t[s->typed_n < 10 ? s->typed_n : 10] = 0;
+            memcpy(t, s->typed, 95);
+            t[s->typed_n < 95 ? s->typed_n : 95] = 0;
             jw_ui_text(v, 38, 1, 7, 0, t);
         }
         fill(v, 296 + s->typed_n * 8, 7, 303 + s->typed_n * 8, 15, 4);
@@ -3111,10 +3125,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 20, 1, 7, 0, "=");
         jw_ui_text(v, 60, 1, 7, 0, "\x90}\x90\xa1(mm)");
         if (s->typed_n > 0) {
-            char t[11];
+            char t[96];
 
-            memcpy(t, s->typed, 10);
-            t[s->typed_n < 10 ? s->typed_n : 10] = 0;
+            memcpy(t, s->typed, 95);
+            t[s->typed_n < 95 ? s->typed_n : 95] = 0;
             jw_ui_text(v, 22, 1, 7, 0, t);
         }
         fill(v, 168 + s->typed_n * 8, 7, 175 + s->typed_n * 8, 15, 4);
@@ -3158,10 +3172,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 67, 1, 7, 0, "mm");
         jw_ui_text(v, 69, 1, 7, 0, "]");
         if (s->typed_n > 0) {
-            char t[11];
+            char t[96];
 
-            memcpy(t, s->typed, 10);
-            t[s->typed_n < 10 ? s->typed_n : 10] = 0;
+            memcpy(t, s->typed, 95);
+            t[s->typed_n < 95 ? s->typed_n : 95] = 0;
             jw_ui_text(v, 14, 1, 7, 0, t);
         }
         fill(v, 104 + s->typed_n * 8, 7, 111 + s->typed_n * 8, 15, 4);
@@ -3231,10 +3245,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 56, 2, 7, 0xffff, one);
             jw_ui_text(v, 56, 1, 7, 0, "\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) ");
             if (s->typed_n > 0) {
-                char t[17];
+                char t[96];
 
-                memcpy(t, s->typed, 16);
-                t[s->typed_n < 16 ? s->typed_n : 16] = 0;
+                memcpy(t, s->typed, 95);
+                t[s->typed_n < 95 ? s->typed_n : 95] = 0;
                 jw_ui_text(v, 20, 1, 7, 0, t);
             }
             fill(v, 152 + s->typed_n * 8, 7, 159 + s->typed_n * 8, 15, 4);
@@ -3248,10 +3262,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             sprintf(one, "[%8.3f" "\xdf]", s->ell_ang);
             jw_ui_text(v, 50, 2, 7, 0xffff, one);
             if (s->typed_n > 0) {
-                char t[9];
+                char t[96];
 
-                memcpy(t, s->typed, 8);
-                t[s->typed_n < 8 ? s->typed_n : 8] = 0;
+                memcpy(t, s->typed, 95);
+                t[s->typed_n < 95 ? s->typed_n : 95] = 0;
                 jw_ui_text(v, 15, 1, 7, 0, t);
             }
             fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
@@ -3333,10 +3347,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         }
         jw_ui_text(v, 15, 1, 7, 0, "        ");
         if (s->typed_n > 0) {
-            char t[9];
+            char t[96];
 
-            memcpy(t, s->typed, 8);
-            t[s->typed_n < 8 ? s->typed_n : 8] = 0;
+            memcpy(t, s->typed, 95);
+            t[s->typed_n < 95 ? s->typed_n : 95] = 0;
             jw_ui_text(v, 15, 1, 7, 0, t);
         }
         /* And the cursor -- the same green block the other fields have, in
@@ -3399,10 +3413,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         }
         jw_ui_text(v, 68, 1, 7, 0, one);
         if (s->typed_n > 0) {
-            char t[9];
+            char t[96];
 
-            memcpy(t, s->typed, 8);
-            t[s->typed_n < 8 ? s->typed_n : 8] = 0;
+            memcpy(t, s->typed, 95);
+            t[s->typed_n < 95 ? s->typed_n : 95] = 0;
             jw_ui_text(v, 15, 1, 7, 0, t);
         }
         fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
@@ -3446,10 +3460,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 77, 2, 7, 0xffff, "F1");
         jw_ui_text(v, 56, 1, 7, 0, "\x91" "O\x89" "\xf1" "\x82" "\xc6" "\x93" "\xaf" "\x82" "\xb6" " \xcf" "\xb3" "\xbd" "(R) ");
         if (s->typed_n > 0) {
-            char t[9];
+            char t[96];
 
-            memcpy(t, s->typed, 8);
-            t[s->typed_n < 8 ? s->typed_n : 8] = 0;
+            memcpy(t, s->typed, 95);
+            t[s->typed_n < 95 ? s->typed_n : 95] = 0;
             jw_ui_text(v, 20, 1, 7, 0, t);
         }
         fill(v, 152 + s->typed_n * 8, 7, 159 + s->typed_n * 8, 15, 4);
@@ -4730,7 +4744,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     if (s->command == 14 && s->top_item == 3) {
                         int n;
 
-                        for (n = 0; n < s->typed_n && n < 8; n++) {
+                        for (n = 0; n < s->typed_n && n < 95; n++) {
                             char one[4];
 
                             one[0] = s->typed[n];
@@ -4738,7 +4752,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                             one[3] = 0;
                             jw_ui_text(v, r->col + n, 1, 7, 0, one);
                         }
-                        n = s->typed_n < 8 ? s->typed_n : 8;
+                        n = s->typed_n < 95 ? s->typed_n : 95;
                         x += n * 8;
                     }
                     fill(v, x, 7, x + 7, 15, 4);
@@ -4753,10 +4767,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         /* 文字 ③角度指定 の欄の字（src/item.h の行の上に。桁 15、矢印の
          * 升はその後ろ。測定：text_c3_v で `30` を打った画面）。 */
         if (s->command == 13 && s->text_ang_ask && s->typed_n > 0) {
-            char t[11];
+            char t[96];
 
-            memcpy(t, s->typed, 10);
-            t[s->typed_n < 10 ? s->typed_n : 10] = 0;
+            memcpy(t, s->typed, 95);
+            t[s->typed_n < 95 ? s->typed_n : 95] = 0;
             fill(v, 112, 0, 127 + s->typed_n * 8, 15, 0);
             jw_ui_text(v, 15, 1, 7, 0, t);
             fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
@@ -5269,7 +5283,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     /* **The whole cell, exclusive-or.**  The digit under
                      * it comes out magenta (7 xor 4) and the block is
                      * sixteen rows tall, not the nine 複線's cursor has. */
-                    n = s->typed_n < 16 ? s->typed_n : 16;
+                    n = s->typed_n < 95 ? s->typed_n : 95;
                     for (m = 0; m < 16; m++) {
                         jw_line(v, 136 + n * 8, m, 143 + n * 8, m, 4,
                                 ROP_XOR, JW_STYLE_SOLID);
@@ -5355,7 +5369,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     sprintf(one, "\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) [%3d ]", s->spl_div);
                     jw_ui_text(v, 44, 1, 7, 0, one);
                     jw_ui_text(v, 21, 1, 7, 0, "        ");
-                    for (k = 0; k < s->typed_n && k < 8; k++) {
+                    for (k = 0; k < s->typed_n && k < 95; k++) {
                         char two[4];
 
                         two[0] = s->typed[k];
@@ -5363,7 +5377,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         two[3] = 0;
                         jw_ui_text(v, 21 + k, 1, 7, 0, two);
                     }
-                    k = s->typed_n < 8 ? s->typed_n : 8;
+                    k = s->typed_n < 95 ? s->typed_n : 95;
                     x = (20 + k) * 8;
                     fill(v, x, 7, x + 7, 15, 4);
                 }
@@ -5423,7 +5437,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                             s->ch_r);
                     jw_ui_text(v, 36, 1, 7, 0, one);
                     jw_ui_text(v, 15, 1, 7, 0, "        ");
-                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                    for (n = 0; n < s->typed_n && n < 95; n++) {
                         char two[4];
 
                         two[0] = s->typed[n];
@@ -5431,7 +5445,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         two[3] = 0;
                         jw_ui_text(v, 15 + n, 1, 7, 0, two);
                     }
-                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    n = s->typed_n < 95 ? s->typed_n : 95;
                     x = (14 + n) * 8;
                     fill(v, x, 7, x + 7, 15, 4);
                 }
@@ -5461,7 +5475,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     sprintf(one, "[%9.*fmm]", s->dec_drawing, s->sine_div);
                     jw_ui_text(v, 62, 1, 7, 0, one);
                     jw_ui_text(v, 20, 1, 7, 0, "        ");
-                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                    for (n = 0; n < s->typed_n && n < 95; n++) {
                         char two[4];
 
                         two[0] = s->typed[n];
@@ -5469,7 +5483,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         two[3] = 0;
                         jw_ui_text(v, 20 + n, 1, 7, 0, two);
                     }
-                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    n = s->typed_n < 95 ? s->typed_n : 95;
                     x = (19 + n) * 8;
                     fill(v, x, 7, x + 7, 15, 4);
                 }
@@ -5510,7 +5524,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     sprintf(one, "[%9.*fmm]", s->dec_drawing, val);
                     jw_ui_text(v, 62, 1, 7, 0, one);
                     jw_ui_text(v, at, 1, 7, 0, "        ");
-                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                    for (n = 0; n < s->typed_n && n < 95; n++) {
                         char two[4];
 
                         two[0] = s->typed[n];
@@ -5518,7 +5532,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         two[3] = 0;
                         jw_ui_text(v, at + n, 1, 7, 0, two);
                     }
-                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    n = s->typed_n < 95 ? s->typed_n : 95;
                     x = (at - 1 + n) * 8;
                     fill(v, x, 7, x + 7, 15, 4);
                 }
@@ -5611,7 +5625,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 50, 1, 7, 0, one);
                     jw_ui_text(v, 17, 1, 7, 0, "        ");
                     x = 16 * 8;
-                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                    for (n = 0; n < s->typed_n && n < 95; n++) {
                         char two[4];
 
                         two[0] = s->typed[n];
@@ -5619,7 +5633,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         two[3] = 0;
                         jw_ui_text(v, 17 + n, 1, 7, 0, two);
                     }
-                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    n = s->typed_n < 95 ? s->typed_n : 95;
                     x += n * 8;
                     fill(v, x, 7, x + 7, 15, 4);
                 } else if (i == 36 || i == 37 || i == 40 || i == 41) {
@@ -5648,7 +5662,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 50, 1, 7, 0, one);
                     jw_ui_text(v, 17, 1, 7, 0, "        ");
                     x = 16 * 8;
-                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                    for (n = 0; n < s->typed_n && n < 95; n++) {
                         char two[4];
 
                         two[0] = s->typed[n];
@@ -5656,7 +5670,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         two[3] = 0;
                         jw_ui_text(v, 17 + n, 1, 7, 0, two);
                     }
-                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    n = s->typed_n < 95 ? s->typed_n : 95;
                     x += n * 8;
                     fill(v, x, 7, x + 7, 15, 4);
                 } else if (i == 32 || i == 33) {
@@ -5683,7 +5697,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 50, 1, 7, 0, one);
                     jw_ui_text(v, 17, 1, 7, 0, "        ");
                     x = 16 * 8;
-                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                    for (n = 0; n < s->typed_n && n < 95; n++) {
                         char two[4];
 
                         two[0] = s->typed[n];
@@ -5691,7 +5705,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         two[3] = 0;
                         jw_ui_text(v, 17 + n, 1, 7, 0, two);
                     }
-                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    n = s->typed_n < 95 ? s->typed_n : 95;
                     x += n * 8;
                     fill(v, x, 7, x + 7, 15, 4);
                 } else if (i == 27 || i == 28) {
@@ -5718,7 +5732,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 50, 1, 7, 0, one);
                     jw_ui_text(v, 17, 1, 7, 0, "        ");
                     x = 16 * 8;
-                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                    for (n = 0; n < s->typed_n && n < 95; n++) {
                         char two[4];
 
                         two[0] = s->typed[n];
@@ -5726,7 +5740,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         two[3] = 0;
                         jw_ui_text(v, 17 + n, 1, 7, 0, two);
                     }
-                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    n = s->typed_n < 95 ? s->typed_n : 95;
                     x += n * 8;
                     fill(v, x, 7, x + 7, 15, 4);
                 } else if (i == 22) {
@@ -5741,7 +5755,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 50, 1, 7, 0, one);
                     jw_ui_text(v, 17, 1, 7, 0, "        ");
                     x = 16 * 8;
-                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                    for (n = 0; n < s->typed_n && n < 95; n++) {
                         char two[4];
 
                         two[0] = s->typed[n];
@@ -5749,7 +5763,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         two[3] = 0;
                         jw_ui_text(v, 17 + n, 1, 7, 0, two);
                     }
-                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    n = s->typed_n < 95 ? s->typed_n : 95;
                     x += n * 8;
                     fill(v, x, 7, x + 7, 15, 4);
                 }
@@ -5795,7 +5809,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     sprintf(one, "[%8.3f\xdf]", s->tan_prev);
                     jw_ui_text(v, 50, 2, 7, 0xffffu, one);
                     x = 14 * 8;
-                    for (n = 0; n < s->typed_n && n < 8; n++) {
+                    for (n = 0; n < s->typed_n && n < 95; n++) {
                         char two[4];
 
                         two[0] = s->typed[n];
@@ -5803,7 +5817,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         two[3] = 0;
                         jw_ui_text(v, 15 + n, 1, 7, 0, two);
                     }
-                    n = s->typed_n < 8 ? s->typed_n : 8;
+                    n = s->typed_n < 95 ? s->typed_n : 95;
                     x += n * 8;
                     fill(v, x, 7, x + 7, 15, 4);
                 } else if (i == 13) {
@@ -5847,7 +5861,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     jw_ui_text(v, 69, 1, 7, 0, "]");
                     jw_ui_text(v, 14, 1, 7, 0, "        ");
                     gx = 13 * 8;
-                    for (m = 0; m < s->typed_n && m < 8; m++) {
+                    for (m = 0; m < s->typed_n && m < 95; m++) {
                         char two[4];
 
                         two[0] = s->typed[m];
@@ -5855,7 +5869,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         two[3] = 0;
                         jw_ui_text(v, 14 + m, 1, 7, 0, two);
                     }
-                    m = s->typed_n < 8 ? s->typed_n : 8;
+                    m = s->typed_n < 95 ? s->typed_n : 95;
                     gx += m * 8;
                     fill(v, gx, 7, gx + 7, 15, 4);
                 } else if (i == 4) {
@@ -5918,7 +5932,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 sprintf(one, "[%8.3f\xdf]", s->dim_ck_prev);
                 jw_ui_text(v, 50, 2, 7, 0xffffu, one);
                 x = 14 * 8;
-                for (n = 0; n < s->typed_n && n < 8; n++) {
+                for (n = 0; n < s->typed_n && n < 95; n++) {
                     char two[4];
 
                     two[0] = s->typed[n];
@@ -5926,7 +5940,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     two[3] = 0;
                     jw_ui_text(v, 15 + n, 1, 7, 0, two);
                 }
-                n = s->typed_n < 8 ? s->typed_n : 8;
+                n = s->typed_n < 95 ? s->typed_n : 95;
                 x += n * 8;
                 fill(v, x, 7, x + 7, 15, 4);
             }
@@ -6096,7 +6110,7 @@ no_dot:
                 || (s->command == 21 && i == 2)) {
                 int n;
 
-                for (n = 0; n < s->typed_n && n < 8; n++) {
+                for (n = 0; n < s->typed_n && n < 95; n++) {
                     char one[4];
 
                     one[0] = s->typed[n];
@@ -6107,7 +6121,7 @@ no_dot:
                 /* The cursor, the same green block 複線 has: the lower nine
                  * rows of the cell the next character goes in.  Measured with
                  * `20,30` typed -- x176..183, y7..15, which is column 23. */
-                n = s->typed_n < 8 ? s->typed_n : 8;
+                n = s->typed_n < 95 ? s->typed_n : 95;
                 fill(v, 136 + n * 8, 7, 143 + n * 8, 15, 4);
             }
             if ((s->command == 1 || s->command == 16 || s->command == 17)
@@ -6117,7 +6131,7 @@ no_dot:
                  * its distance. */
                 int n;
 
-                for (n = 0; n < s->typed_n && n < 8; n++) {
+                for (n = 0; n < s->typed_n && n < 95; n++) {
                     char one[4];
 
                     one[0] = s->typed[n];
@@ -6125,7 +6139,7 @@ no_dot:
                     one[3] = 0;
                     jw_ui_text(v, 18 + n, 1, 7, 0, one);
                 }
-                n = s->typed_n < 8 ? s->typed_n : 8;
+                n = s->typed_n < 95 ? s->typed_n : 95;
                 fill(v, 136 + n * 8, 7, 143 + n * 8, 15, 4);
             }
             /* ⑥回転's angle field starts at column 15 instead: `[ESC]  角度 =`
@@ -6134,7 +6148,7 @@ no_dot:
             if ((s->command == 1 || s->command == 16) && i == 14) {
                 int n;
 
-                for (n = 0; n < s->typed_n && n < 8; n++) {
+                for (n = 0; n < s->typed_n && n < 95; n++) {
                     char one[4];
 
                     one[0] = s->typed[n];
@@ -6142,7 +6156,7 @@ no_dot:
                     one[3] = 0;
                     jw_ui_text(v, 15 + n, 1, 7, 0, one);
                 }
-                n = s->typed_n < 8 ? s->typed_n : 8;
+                n = s->typed_n < 95 ? s->typed_n : 95;
                 fill(v, 112 + n * 8, 7, 119 + n * 8, 15, 4);
             }
             /* And the field itself: what has been typed, one character to a
@@ -6151,7 +6165,7 @@ no_dot:
             if (s->command == 5 && i == 1) {
                 int n;
 
-                for (n = 0; n < s->typed_n && n < 8; n++) {
+                for (n = 0; n < s->typed_n && n < 95; n++) {
                     char one[4];
 
                     one[0] = s->typed[n];
@@ -6164,7 +6178,7 @@ no_dot:
                  * with nothing typed (x168..175, y7..15, colour 4) and with
                  * two characters in (x184..191, the same rows), so it is the
                  * cell at column 22 + however many have been typed. */
-                n = s->typed_n < 8 ? s->typed_n : 8;
+                n = s->typed_n < 95 ? s->typed_n : 95;
                 fill(v, 168 + n * 8, 7, 175 + n * 8, 15, 4);
             }
         }

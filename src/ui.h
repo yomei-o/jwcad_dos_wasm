@@ -43,7 +43,7 @@ typedef struct {
     /* 複線's number, as it is being typed: the field at column 22 of the top
      * line.  The command keeps it (src/cmd.h) and the front end copies it in
      * with the rest. */
-    char typed[48];
+    char typed[96];
     int typed_n;
     /* Where the next character goes in that field.  文字 appends, so it is
      * `typed_n` there; 文編集 starts the field with the text it was pointed
@@ -692,6 +692,8 @@ void jw_ui_from(JwUi *s, const Jwc *d);
 
 /* Draw the whole chrome.  The drawing area (122,17)-(638,462) is left alone. */
 void jw_ui_draw(VGA *v, const JwUi *s);
+/* 最後の jw_ui_draw で入力欄の緑のカーソルが出た桁（無ければ -1）。 */
+int jw_ui_field_cursor(void);
 
 /* グループ データ表示, which needs the drawing as well as the state: it is
  * sixteen little views of it.  Drawn over the top of jw_ui_draw's screen. */

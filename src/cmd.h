@@ -63,7 +63,7 @@ typedef struct {
      * clears for it. */
     long pick;
     int typing;
-    char typed[48];
+    char typed[96];            /* 入力欄：画面の桁 78 までで 63 文字（decomp numin）に足りる大きさ */
     int typed_n;
     double gap;                 /* millimetres of paper, as typed */
     /* The line that was pointed at, kept here so that the band it drags and
@@ -264,6 +264,7 @@ typedef struct {
      * 並べて内側だけを引きます。src/cmd.c の hatch_run を見てください。 */
     long hatch_line[JW_HATCH_MAX];
     int hatch_n;                /* how many are in the frame */
+    int field_cursor;           /* 入力欄のカーソル桁（ui の最後の描画から。-1 は無し） */
     int lc_off;                 /* 線変更 ②レイヤ変更 が【無】（升 ② を押した） */
     int meas_hold;              /* 測定：文を置いた直後は数え箱の 文数 を一つ遅らせる（1 なら -1 を保留） */
     int off_typed;              /* 最後に決めた間隔は打った数 */

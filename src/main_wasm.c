@@ -946,6 +946,7 @@ static void present(void)
         ui.n_arcs = drawing->n_arcs + drawing->n_texts - 1;
     }
     jw_ui_draw(&vga, &ui);
+    cmd.field_cursor = jw_ui_field_cursor();
     jw_ui_data(&vga, &ui, drawing);
     /* **A panel that covers the drawing keeps the command under it quiet.**  jw_cmd_after puts back the entities a running command has
      * made since it started -- which, with nothing made yet, is the whole
