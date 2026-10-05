@@ -6901,6 +6901,23 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->moved = 0;
             return 1;
         }
+        /* （ は終点待ちなら始点待ちへ一段だけ戻る（測定：func_all arc_plain、
+         * `（ 終点指示` → `[ESC] （ 始点指示`、次の [ESC] で中心へ）。 */
+        if (c->command == 12 && c->pressed == 2 && !c->arc3) {
+            c->pressed = 1;
+            c->stage = 1;
+            c->moved = 0;
+            return 1;
+        }
+        /* 中心を持っているだけなら、弧を描いたあとの行（`[ESC]・○中心点指示
+         * … 半径=`、段 3）へ。まだ一本も描いていなければいつもの道（測定）。 */
+        if (c->command == 12 && c->pressed == 1 && !c->arc3 && c->arc_drawn) {
+            c->pressed = 0;
+            c->stage = 3;
+            c->num[0] = c->arc_r_shown;     /* 半径= は描いた弧のもの */
+            c->moved = 0;
+            return 1;
+        }
         c->pressed = 0;
         c->escaped = 1;
         c->moved = 0;
@@ -16215,6 +16232,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         measure(c, d, x, y);
         c->pressed = 0;
         c->stage = 3;
+        c->arc_drawn = 1;
+        c->arc_r_shown = c->num[0];
         /* **The record always holds the shorter way round.**  The two angles
          * are not kept in the order they were pressed: the original writes
          * whichever pair makes the anticlockwise sweep the smaller one.
