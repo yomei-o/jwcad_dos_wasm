@@ -269,7 +269,14 @@ typedef struct {
     int meas_hold;              /* 測定：文を置いた直後は数え箱の 文数 を一つ遅らせる（1 なら -1 を保留） */
     int off_typed;              /* 最後に決めた間隔は打った数 */
     int off_pt;                 /* 点押しで間隔を決めた直後（連続の行になる）*/
-    int off_done;               /* 複線：一本複写した後は 連続入力 が 前線と連続(R) になる */
+    /* 複線 の `● 前線と連続(R)`：decomp（ovl7 0x2cc46〜0x2ce00）の条件は
+     * 前の基準線 id が非 0・今の基準線 id が正・前の線の属性(rest[1])が 0xc0
+     * を含まない・基準線同士の交点が画面内、の四つ。off_prev_pick/
+     * off_prev_copy が前回の複写でどの線を基準にどの線を足したかを持ち、
+     * off_done はその四条件から毎回計算し直す（offset_can_continue）。 */
+    int off_done;               /* 複線：前線と連続(R) が今出せるか（四条件） */
+    long off_prev_pick;         /* 前の基準線 id（前回複写した元の線。-1 は無し） */
+    long off_prev_copy;         /* 前回の複写線（R のトリム相手。-1 は無し） */
     double gap_hist[5];         /* 複線 の 間隔 の F1〜F5 */
     int hatch_used;             /* 残数の元：取った本数（[ESC] の取消では戻らない） */
     int hatch_plain;            /* 最初の行の数字で 残数 を消した */

@@ -1597,8 +1597,10 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
         return;
     }
     /* 複線 の 複写方向 の行は、一本置いたあとは `連続入力[<┛]` の代わりに
-     * `● 前線と連続(R)`（測定：func_all offset_s1_c1 の 11 段目）。 */
-    if (q->command == 5 && s->command == 5 && s->off_done && s->off_pt && stage == 2 && q->stage == 2
+     * `● 前線と連続(R)`（測定：func_all offset_s1_c1 の 11 段目）。 off_done
+     * は decomp の四条件（RESUME 6 番）そのもの：打った数か点押しかは
+     * 関係ない（off_pt はもう見ない——その組み合わせは前の版の近似）。 */
+    if (q->command == 5 && s->command == 5 && s->off_done && stage == 2 && q->stage == 2
         && q->row == 1 && q->col == 30) {
         jw_ui_text(v, 30, 1, 7, 0, "\x81\x9b \x95\xa1\x8e\xca\x95\xfb\x8c\xfc\x83}\x83" "E\x83X\x8ew\x8e\xa6(L)   \x81\x9c \x91O\x90\xfc\x82\xc6\x98" "A\x91\xb1(R)");
         return;

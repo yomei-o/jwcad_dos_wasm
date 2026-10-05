@@ -49,6 +49,9 @@ void jw_cmd_pick(JwCmd *c, int command)
     /* コーナー連結 has no line in hand yet. */
     c->pick_a = -1;
     c->pick_b = -1;
+    /* 複線's 前線と連続(R)：まだ一本も複写していないので前の基準線は無い。 */
+    c->off_prev_pick = -1;
+    c->off_prev_copy = -1;
     /* 面取's `③寸法= 30.000`, which is where the original starts. */
     c->gap_chamfer = 30.0;
     /* ２線's `①基準線からの間隔＝ 75.000 , 75.000 (mm)`, likewise. */
@@ -659,6 +662,7 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
 static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
                        double *ax, double *ay, double *bx, double *by,
                        double *side);
+static int offset_can_continue(const JwCmd *c, const Jwc *d, const JwView *w);
 
 /* 図形 ②読込's ⑤仮表示: the figure follows the pointer until a press puts
  * it down.
@@ -6077,15 +6081,90 @@ static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
     return 1;
 }
 
-/* And the press that fixes it. */
-static int offset_line(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
+/* Where two lines, extended as whole lines, cross -- the baseline-to-baseline
+ * check decomp calls out to (ovl7 0x2cd90, far 1bb4:3cd1) and, with the actual
+ * copy lines instead of the baselines, the corner the R press joins.  Parallel
+ * (or coincident) lines have no answer, same as the original leaves them. */
+static int lines_cross(double p0x, double p0y, double p1x, double p1y,
+                       double q0x, double q0y, double q1x, double q1y,
+                       double *ix, double *iy)
+{
+    const double d0x = p1x - p0x, d0y = p1y - p0y;
+    const double d1x = q1x - q0x, d1y = q1y - q0y;
+    const double det = d0x * d1y - d0y * d1x;
+    double t;
+
+    if (det > -1e-9 && det < 1e-9) {
+        return 0;
+    }
+    t = ((q0x - p0x) * d1y - (q0y - p0y) * d1x) / det;
+    *ix = p0x + d0x * t;
+    *iy = p0y + d0y * t;
+    return 1;
+}
+
+/* 複線 の `● 前線と連続(R)`（RESUME 6 番、decomp ovl7 0x2cc46〜0x2ce00）：
+ * 前の基準線 id が非 0・今の基準線 id が正・前の線の属性(rest[1])が 0xc0 を
+ * 含まない・基準線同士の交点（1bb4:3cd1）が得られ画面内、の四つがすべて
+ * 要る。まだ一本も複写していなければ off_prev_pick が -1 で常に出ない。 */
+static int offset_can_continue(const JwCmd *c, const Jwc *d, const JwView *w)
+{
+    double ix, iy;
+    int px, py;
+    const JwcLine *prev, *now;
+
+    if (c->off_prev_pick < 0 || c->off_prev_pick >= d->n_lines) {
+        return 0;                           /* 前の基準線 id が非 0 */
+    }
+    if (c->pick < 0 || c->pick >= d->n_lines) {
+        return 0;                           /* 今の基準線 id が正 */
+    }
+    prev = &d->lines[c->off_prev_pick];
+    now = &d->lines[c->pick];
+    if (prev->rest[1] & 0xc0) {
+        return 0;                           /* 前の線の属性が 0xc0 を含む */
+    }
+    if (!lines_cross(prev->x0, prev->y0, prev->x1, prev->y1,
+                     now->x0, now->y0, now->x1, now->y1, &ix, &iy)) {
+        return 0;                           /* 平行で交点が無い */
+    }
+    at_screen(w, ix, iy, &px, &py);
+    if (px < 0 || px > 639 || py < 0 || py > 479) {
+        return 0;                           /* 交点が画面外 */
+    }
+    return 1;
+}
+
+/* R のトリム：線の端のうち交点に近いほうをそこへ動かす（③複線化 の角つなぎ
+ * と同じ考え方。src/cmd.c の meet_at は原の線から角を計算し直すが、ここは
+ * 複写後の線どうしをそのまま突き合わせる）。 */
+static void trim_to(JwcLine *l, double ix, double iy)
+{
+    const double d0 = (l->x0 - ix) * (l->x0 - ix) + (l->y0 - iy) * (l->y0 - iy);
+    const double d1 = (l->x1 - ix) * (l->x1 - ix) + (l->y1 - iy) * (l->y1 - iy);
+
+    if (d0 <= d1) {
+        l->x0 = (float)ix;
+        l->y0 = (float)iy;
+    } else {
+        l->x1 = (float)ix;
+        l->y1 = (float)iy;
+    }
+}
+
+/* And the press that fixes it.  `r_continue` is R pressed while
+ * offset_can_continue() said yes: besides placing the copy as usual, it
+ * corner-joins (trims) this copy against the previous one
+ * （RESUME 6 番：「R を押すと前の複写線との角つなぎ」）。 */
+static int offset_line(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
+                       int r_continue)
 {
     double ax, ay, bx, by, side[2];
+    long new_idx;
 
     if (!offset_ends(c, w, sx, sy, &ax, &ay, &bx, &by, side)) {
         return 0;
     }
-    c->off_done = c->off_typed;     /* 数値入力の間隔で複写したあとだけ（offset_s1_c1。点押しの間隔では 連続入力 のまま = offset_plain） */
     /* The copy is made with the pen and line type the drawing is *writing*
      * with, not the ones the line it was taken from has.  Measured: the copy
      * comes out colour 7 on SAMPLE0, whose writing pen is 2, and colour 5 on
@@ -6098,10 +6177,25 @@ static int offset_line(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
                       (unsigned char)d->write_layer)) {
         return 0;
     }
+    new_idx = d->n_lines - 1;
     /* rest[1] は元の線のもの（測定：SAMPLE0 の上の辺 0x41 の複線は 0x41）。 */
-    if (c->pick >= 0 && c->pick < d->n_lines - 1) {
-        d->lines[d->n_lines - 1].rest[1] = d->lines[c->pick].rest[1];
+    if (c->pick >= 0 && c->pick < new_idx) {
+        d->lines[new_idx].rest[1] = d->lines[c->pick].rest[1];
     }
+    if (r_continue && c->off_prev_copy >= 0 && c->off_prev_copy < new_idx) {
+        JwcLine *prevc = &d->lines[c->off_prev_copy];
+        JwcLine *newc = &d->lines[new_idx];
+        double ix, iy;
+
+        if (lines_cross(prevc->x0, prevc->y0, prevc->x1, prevc->y1,
+                        newc->x0, newc->y0, newc->x1, newc->y1, &ix, &iy)) {
+            trim_to(prevc, ix, iy);
+            trim_to(newc, ix, iy);
+        }
+    }
+    /* この複写が次の「前の基準線」「前の複写線」になる。 */
+    c->off_prev_pick = c->pick;
+    c->off_prev_copy = new_idx;
     /* 「②連続」 puts another copy the same distance beyond this one, so what
      * it works from is the copy, not the line that was pointed at. */
     c->lx0 = ax; c->ly0 = ay; c->lx1 = bx; c->ly1 = by;
@@ -12370,6 +12464,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->ly1 = d->lines[k].y1;
             c->per_mm = (d->unit_mm > 0.0f ? d->unit_mm : 1.0f)
                       / (d->denom > 0.0 ? d->denom : 1.0);
+            /* 前線と連続(R) が出せるかは、今の一本を選んだこの時点で決まる
+             * （decomp ovl7 0x2cc46〜0x2ce00：四条件）。 */
+            c->off_done = offset_can_continue(c, d, w);
             /* The right button takes the interval last used and goes straight
              * to choosing the side -- `(R)同じ寸法`, as the command's own line
              * says.  No field, no `点指示 or 間隔=`: measured by running 複線
@@ -12392,7 +12489,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 1;
             return 0;
         }
-        return offset_line(c, d, w, sx, sy);
+        return offset_line(c, d, w, sx, sy, right && c->off_done);
     }
     if (c->command == 19 && c->pg3) {
         /* ③座標値による多角形：原点 → 始点 → 押すたびに前の点から辺を一本
