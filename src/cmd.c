@@ -16596,10 +16596,25 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 9;
             return 1;
         }
-        /* 図形：升を押さずに図面を押すと、範囲は始めずに 図形範囲 の行
-         * （[ESC] 付き）になるだけ。次の押しから始点（測定：func_all
-         * zukei_plain）。 */
+        /* 図形：升を押さずに図面を**左**で押すと、範囲は始めずに 図形範囲 の
+         * 行（[ESC] 付き）になるだけ。次の押しから始点（測定：func_all
+         * zukei_plain）。
+         *
+         * **右**で図面を直接押すと ①登録 の範囲にはならない（測定のみ・
+         * decomp 未確認：tools/emu.sh で SAMPLE0 を開いて 図形→図面を右で
+         * 一回押すと、帯は ①~⑧ の一覧のままで `ファイル`/`書込` の見出しが
+         * 消え、代わりに `登録図形がありません（グループ変更）` が出て、
+         * 升も範囲もどちらも始まらない――これは JwUi.again が出す画面と
+         * 1 ピクセル違わず同じ。登録図形がある場合にその場で拾う分岐は
+         * 未実装（zukei_n==0 の配布図面でしか確かめていない）。 */
         if (c->command == 27 && !c->zukei && !c->pressed) {
+            if (right) {
+                if (c->zukei_n == 0) {
+                    c->again = 1;
+                }
+                return 1;
+            }
+            c->again = 0;       /* leaving the idle screen for 範囲 */
             c->zukei = JW_ZUKEI_RANGE;
             return 1;
         }
