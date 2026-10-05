@@ -11609,7 +11609,16 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     const int box_done = c->box_done, circ_done = c->circ_done;
     const int fix_done = c->fix_done;
     const double x0 = c->x0, y0 = c->y0, x1 = c->x1, y1 = c->y1;
+    const int was_moved = c->moved || sx != c->press_x || sy != c->press_y;
     const int r = press_body(c, d, w, sx, sy, right);
+
+    /* 始点を持ったまま読取が外れた押しでは、仮の線と 長= は消えない（測定：
+     * func_all plus_s0_c2 の右押し）。 */
+    if (c->missed && c->pressed == 1 && was_moved
+        && (c->command == 2 || c->command == 3 || c->command == 4
+            || c->command == 11)) {
+        c->moved = 1;
+    }
 
     /* 帯の 2 行目は、作った押しから、言葉（読取可能データ無 など）を書く
      * 押しまで重なっている（測定：circle_plain）。 */
