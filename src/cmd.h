@@ -264,6 +264,10 @@ typedef struct {
      * 並べて内側だけを引きます。src/cmd.c の hatch_run を見てください。 */
     long hatch_line[JW_HATCH_MAX];
     int hatch_n;                /* how many are in the frame */
+    int off_typed;              /* 最後に決めた間隔は打った数 */
+    int off_pt;                 /* 点押しで間隔を決めた直後（連続の行になる）*/
+    int off_done;               /* 複線：一本複写した後は 連続入力 が 前線と連続(R) になる */
+    double gap_hist[5];         /* 複線 の 間隔 の F1〜F5 */
     int hatch_used;             /* 残数の元：取った本数（[ESC] の取消では戻らない） */
     int hatch_plain;            /* 最初の行の数字で 残数 を消した */
     int hatch;                  /* the frame is being taken */

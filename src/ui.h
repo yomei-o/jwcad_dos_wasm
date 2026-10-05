@@ -572,6 +572,9 @@ typedef struct {
      * 100), and the angle and pitch it will fill with. */
     int hatch_n;
     int hatch_used;
+    int off_pt;
+    int off_done;
+    double gap_hist[5];
     int hatch_plain;
     double hatch_angle, hatch_pitch;
     /* 連線: how its directions are being rounded -- 45, 90 or 0 for free.

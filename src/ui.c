@@ -1457,6 +1457,17 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
         jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, num);
         return;
     }
+    /* 複線 の 間隔 の F1〜F5：履歴の値（桁 36+9k から `| %7.2f`）。 */
+    if (q->command == 5 && q->stage == 1 && q->row == 1
+        && (q->col == 36 || q->col == 45 || q->col == 54 || q->col == 63
+            || q->col == 72)) {
+        char one[24];
+        const int k = (q->col - 36) / 9;
+
+        sprintf(one, "| %7.2f", s->gap_hist[k]);
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+        return;
+    }
     /* ハッチ's 残数 counts down from 100 as lines go into the frame, and its
      * angle and pitch are the command's own. */
     if (q->command == 18 && q->row == 2) {
@@ -1562,8 +1573,19 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
  * DOSEMU_BP=+0def:2636,+0def:23c5. */
 static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
+    /* 複線 の 複写方向 の行は、一本置いたあとは `連続入力[<┛]` の代わりに
+     * `● 前線と連続(R)`（測定：func_all offset_s1_c1 の 11 段目）。 */
+    if (q->command == 5 && s->command == 5 && s->off_done && s->off_pt && stage == 2 && q->stage == 2
+        && q->row == 1 && q->col == 30) {
+        jw_ui_text(v, 30, 1, 7, 0, "\x81\x9b \x95\xa1\x8e\xca\x95\xfb\x8c\xfc\x83}\x83" "E\x83X\x8ew\x8e\xa6(L)   \x81\x9c \x91O\x90\xfc\x82\xc6\x98" "A\x91\xb1(R)");
+        return;
+    }
     const int before = top_writes, boxed = box_writes;
 
+    if (q->command == 5 && s->command == 5 && s->missed && q->stage == 1
+        && q->row == 2) {
+        return;                 /* 外れると F1〜F5 の札は消える（offset_plain） */
+    }
     if (q->command == 13 && s->command == 13 && s->tx_plain
         && (q->row == 2 || q->row == 3)) {
         return;                 /* 文字の左の盤を下ろしたあと */
@@ -4203,6 +4225,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * like everything else, so the prompt's own rows 2 and 3 are
              * skipped whenever a cell has been pressed. */
             if ((s->top_item || s->band_off) && p->row != 1) {
+                continue;
+            }
+            /* 複線 の 間隔 の欄で外れると、F1〜F5 の札（行 2）は消えて
+             * `読取可能データ無` だけ（測定：offset_plain の右押し）。 */
+            if (s->command == 5 && s->missed && p->row == 2) {
                 continue;
             }
             if (s->command == 13 && s->tx_plain && p->row != 1) {

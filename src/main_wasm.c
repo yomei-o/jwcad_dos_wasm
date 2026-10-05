@@ -706,6 +706,9 @@ static void sync_ui(void)
     }
     ui.hatch_n = cmd.hatch_n;
     ui.hatch_used = cmd.hatch_used;
+    ui.off_done = cmd.off_done;
+    ui.off_pt = cmd.off_pt;
+    memcpy(ui.gap_hist, cmd.gap_hist, sizeof ui.gap_hist);
     ui.hatch_plain = cmd.hatch_plain;
     ui.hatch_angle = cmd.hatch_angle;
     ui.hatch_pitch = cmd.hatch_pitch;
@@ -4111,6 +4114,11 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         if (was_typing && !cmd.typing && cmd.pressed == 1 && drawing
             && (cmd.command == 2 || cmd.command == 3)) {
             jw_cmd_track(&cmd, drawing, &view, x, y);
+            cmd.moved = 1;
+        }
+        /* 複線 の 点指示 or 間隔 の欄を押しで閉じたら、その場の矢で仮の複写線を
+         * 出す（測定：func_all offset_s1_c1 の (300,250)）。 */
+        if (was_typing && !cmd.typing && cmd.command == 5 && cmd.stage == 2) {
             cmd.moved = 1;
         }
         if (changed) {

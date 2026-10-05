@@ -24,7 +24,9 @@ void jw_cmd_pick(JwCmd *c, int command)
     const double keep_ar = c->arc_r;
     const double keep_ea = c->ell_a, keep_eb = c->ell_b, keep_ee = c->ell_ang;
     const double keep_rg0 = c->rep_gap[0], keep_rg1 = c->rep_gap[1];
+    double keep_gh[5];
 
+    memcpy(keep_gh, c->gap_hist, sizeof keep_gh);
     free(c->hen_end);
     free(c->sel_line);
     free(c->sel_arc);
@@ -36,6 +38,14 @@ void jw_cmd_pick(JwCmd *c, int command)
      * what the original had when src/prompt.h was captured -- the program's
      * state, like the five numbers [F1] to [F5] stand for. */
     c->gap = 1000.0;
+    c->gap_hist[0] = 1000.0;
+    c->gap_hist[1] = 100.0;
+    c->gap_hist[2] = 200.0;
+    c->gap_hist[3] = 300.0;
+    c->gap_hist[4] = 500.0;
+    if (keep_gh[0] != 0.0) {
+        memcpy(c->gap_hist, keep_gh, sizeof keep_gh);   /* 命令を替えても残る */
+    }
     /* コーナー連結 has no line in hand yet. */
     c->pick_a = -1;
     c->pick_b = -1;
@@ -144,6 +154,19 @@ static double field_term(const char **p)
             return v;
         }
     }
+}
+
+/* 複線 の 間隔 の履歴：決めた（打った・取った）間隔を先頭に、前のを後ろへ
+ * 一つずつずらして 5 つまで（測定：tmp/o2.txt o_h2 で 0.02 が先頭、前の
+ * 1000・100・200・300 が続く）。 */
+static void gap_remember(JwCmd *c)
+{
+    int i;
+
+    for (i = 4; i > 0; i--) {
+        c->gap_hist[i] = c->gap_hist[i - 1];
+    }
+    c->gap_hist[0] = c->gap;
 }
 
 static double field_eval(const char *s)
@@ -6034,6 +6057,7 @@ static int offset_line(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
     if (!offset_ends(c, w, sx, sy, &ax, &ay, &bx, &by, side)) {
         return 0;
     }
+    c->off_done = c->off_typed;     /* 数値入力の間隔で複写したあとだけ（offset_s1_c1。点押しの間隔では 連続入力 のまま = offset_plain） */
     /* The copy is made with the pen and line type the drawing is *writing*
      * with, not the ones the line it was taken from has.  Measured: the copy
      * comes out colour 7 on SAMPLE0, whose writing pen is 2, and colour 5 on
@@ -8109,6 +8133,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     if (key == 13 || key == 10) {               /* [Enter] */
         c->typed[c->typed_n] = 0;
         c->gap = field_eval(c->typed);
+        gap_remember(c);
         c->typing = 0;
         c->stage = 2;
         /* The interval is shown twice and to two different numbers of
@@ -12189,6 +12214,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             if (c->typed_n > 0) {
                 c->typed[c->typed_n] = 0;
                 c->gap = field_eval(c->typed);
+                gap_remember(c);
+                c->off_typed = 1;
                 c->num[0] = c->num[1] = c->gap;
                 c->dec[0] = 2;
                 c->dec[1] = d->decimals;
@@ -12206,6 +12233,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             }
             away = ((px - c->lx0) * dy - (py - c->ly0) * dx) / len;
             c->gap = (away < 0.0 ? -away : away) / c->per_mm;
+            gap_remember(c);
+            c->off_pt = 1;              /* 点押しで決めた */
+            c->off_typed = 0;
             c->num[0] = c->num[1] = c->gap;
             c->dec[0] = 2;
             c->dec[1] = d->decimals;
@@ -12252,6 +12282,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             jw_cmd_at(w, sx, sy, &px, &py);
             away = ((px - c->lx0) * dy - (py - c->ly0) * dx) / len;
             c->gap = (away < 0.0 ? -away : away) / c->per_mm;
+            /* ①間隔取得 の道は履歴に入れない（測定：offset_s0_c1） */
             c->num[0] = c->num[1] = c->gap;
             c->dec[0] = 2;
             c->dec[1] = d->decimals;
@@ -12279,6 +12310,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * once with 20 and then pointing at another line with the right
              * button, which writes `[       20.00]` in the band and nothing
              * else. */
+            c->off_pt = 0;
             if (right) {
                 c->num[0] = c->num[1] = c->gap;
                 c->dec[0] = 2;
@@ -12286,6 +12318,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 c->stage = 2;
                 return 0;
             }
+            c->off_pt = 0;
             c->typing = 1;
             c->typed_n = 0;
             c->typed[0] = 0;
