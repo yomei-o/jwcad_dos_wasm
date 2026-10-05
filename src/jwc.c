@@ -2384,12 +2384,12 @@ int jwc_requeue_text(Jwc *d, long k, float x0, float y0, float x1, float y1)
     }
     t = &d->texts[d->n_texts - 1];
     memcpy(t->rest, was.rest, sizeof t->rest);
-    /* 位置整理 が末尾へ動かした新レコードは rest[2]（+0x16）に 3 を立てる
-     * （decomp ovl25 3ab8:393b 域、dis 02e4bb〜02f8f4 の 位置整理 の記述。
-     * 線の複写が rest[2] の bit0・bit1 を落とす（jwc.c 1751 行）のと対に
-     * なる足し方で、どちらの字の押しの測定にも効かない bit なので
-     * 測定のみでは確かめていない＝測定のみ・decomp未確認）。 */
-    t->rest[2] |= 3;
+    /* RESUME.md 文編集⑤の記述は新レコードに rest[2]（+0x16）|= 3 を立てる
+     * としているが、192.168.11.37 の実機で te5e（行間 10mm、2 字）を測ると
+     * rest[2] は 0x02→0x03 ではなく常に押す前の値のまま（複写される was の
+     * 値そのもの）だった。|= 3 を足すと te5e が DIFF になる（T 11・T 12 の
+     * 4 バイト目が 02 のところ 03 になってしまう）と確認したので、足さない
+     * ままにしてある＝実機で否定済み。 */
     return 1;
 }
 

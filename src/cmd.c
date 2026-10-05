@@ -16708,9 +16708,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             }
             /* 現位置：いちばん上の字の y はそのまま、ほかの字は上の字から
              * の差を float に丸めてから足し直す（測定：te5f で `H7.8.31` の
-             * y が 2 ulp 動く）。終点は常に水平、長さ 0 の字は飛ばし、
-             * 動かした字は末尾の新レコードに積み直す（上と同じ decomp
-             * 域の記述）。 */
+             * y が 2 ulp 動く）。**記録の場所は動かない**（測定：te5a・
+             * te5b・te5f・te5g、押した字がそのまま同じ場所に残り末尾には
+             * 来ない——末尾へ積み直すのは②行間を決めた側の枝だけだった。
+             * jwc_requeue_text を一度ここでも使ってみたが 192.168.11.37 の
+             * 実機と比べて記録順がずれたので外した）。終点は常に水平、
+             * 長さ 0 の字は飛ばす（decomp 同域の記述）。 */
             {
                 long sel[512], n = 0, i;
                 float top = 0.0f;
@@ -16728,21 +16731,18 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                     }
                 }
                 for (i = 0; i < n; i++) {
-                    const JwcText t = d->texts[sel[i]];
+                    JwcText *t = &d->texts[sel[i]];
                     const float nx = (float)px;
-                    const float dy = t.y0 - top;
+                    const float dy = t->y0 - top;
                     const float ny = dy + top;
-                    const float L = (float)jwc_text_length(d, t.text
-                                                            ? t.text : "",
-                                                            t.size);
-                    long m;
+                    const float L = (float)jwc_text_length(d, t->text
+                                                            ? t->text : "",
+                                                            t->size);
 
-                    jwc_requeue_text(d, sel[i], nx, ny, nx + L, ny);
-                    for (m = i + 1; m < n; m++) {
-                        if (sel[m] > sel[i]) {
-                            sel[m]--;
-                        }
-                    }
+                    t->x0 = nx;
+                    t->y0 = ny;
+                    t->x1 = nx + L;
+                    t->y1 = ny;
                 }
             }
             c->pressed = 0;
