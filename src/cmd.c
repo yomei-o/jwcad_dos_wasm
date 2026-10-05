@@ -15586,9 +15586,13 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->hatch = 1;
         c->hatch_plain = 0;
         c->hatch_line[c->hatch_n++] = k;
-        if (c->hatch_n > c->hatch_used) {
-            c->hatch_used = c->hatch_n;   /* 取消のあとの取り直しでは増えない（h_e5） */
-        }
+        /* 残数（decomp 02acf2：ax=[bp-2](=100,02ac0eで設定) - [bp-0xba4]、
+         * 文字列 0x367a は `残数 %d`）は hatch_n から毎回作り直されるだけで、
+         * 足すたびにこの場で引き直されます。[ESC] の方は別（下の 残数は
+         * 戻らない を見る）ので、足す側は常にそのまま付け直す――
+         * [ESC] で減らしたあとより少ない本数まで足し戻しても、古い方の
+         * 最大値に張り付かず、足した今の本数に揃います。 */
+        c->hatch_used = c->hatch_n;
         c->stage = c->hatch_n < 3 ? c->hatch_n : 3;
         return 1;
     }
