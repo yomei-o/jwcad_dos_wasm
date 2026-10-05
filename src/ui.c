@@ -7,6 +7,8 @@
 #include "kigou.h"
 #include "view.h"
 
+#define JW_FEP_CLOSE "\x81z"    /* 】 */
+
 #include "prompt.h"
 #include "snap.h"
 #include "snapmsg.h"
@@ -2904,7 +2906,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                        "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
-    } else if (s->command == 28 && s->te_sub == 1) {
+    } else if ((s->command == 28 || s->command == 13) && s->te_sub == 1) {
         /* 文編集【変更】①基点 の盤（測定：steps_table 28 400 140 t 1 …）。 */
         static const char *const hz[3] = { "\x8d\xb6", "\x92\x86", "\x89\x45" };
         static const char *const vt[3] = { "\x89\xba", "\x92\x86", "\x8f\xe3" };
@@ -2985,7 +2987,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                        "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
-    } else if (s->command == 28 && s->te_pick >= 0) {
+    } else if (s->command == 28 && s->te_pick > 0) {
         /* 〈移動〉《複写》の位置指示の行。④ の升の絵は白い枠と、基点（左下）
          * の赤い丸（測定：tmp/te3.txt te2a の段 2、枠 x 596..612・y 4..12、
          * 丸は (596,12) の半径 2 の塗り）。 */
@@ -4433,6 +4435,21 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     && r->row >= 2) {
                     continue;
                 }
+                /* ④設定 の ③ＦＥＰ【off (1)】：桁 61 から、】は 68、| は 70
+                 * （測定：steps_table 13 t 4 t 3 …）。 */
+                if ((s->command == 13 || s->command == 28)
+                    && s->top_item == 4 && s->fep && r->row == 1
+                    && (r->col == 61 || r->col == 63 || r->col == 65)) {
+                    if (r->col == 61) {
+                        char one[16];
+
+                        snprintf(one, sizeof one, "off (%d)", s->fep);
+                        jw_ui_text(v, 61, 1, 7, 0, one);
+                        jw_ui_text(v, 68, 1, 7, 0, JW_FEP_CLOSE);
+                        jw_ui_text(v, 70, 1, 7, 0, "|");
+                    }
+                    continue;
+                }
                 if (s->command == 28 && s->top_item == 6 && r->row == 2
                     && (r->col == 54 || r->col == 65)) {
                     static const char *const hv[3] = {
@@ -4831,7 +4848,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 34, 1, 7, 0, two);
         }
         /* 文編集 ②③⑦ で消した・置いた後の選ぶ行は桁 1 に `[ESC]`。 */
-        if (s->command == 28 && s->te_esc && s->te_pick < 0
+        if (s->command == 28 && s->te_esc && s->te_pick == 0
             && (s->top_item == 2 || s->top_item == 3 || s->top_item == 7)) {
             jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
         }

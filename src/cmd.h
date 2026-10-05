@@ -544,6 +544,7 @@ typedef struct {
     int te_plain;               /* ⑥文字種類変更 の左の盤と升を [ESC] で下ろした */
     int te6_layer, te6_hv;      /* ⑥ の ②レイヤ 変更無/有、③横縦変更 無/横/縦 */
     int te5;                    /* 文編集 ⑤位置整理（文字だけの範囲） */
+    int fep;                    /* ④設定 の ③ＦＥＰ：0 ON・1 off (1)・2 off (2) */
     int te5_ask;                /* ⑤ ②行間 の欄 */
     double te5_gap;             /* ⑤ の行間（図寸 mm）、0 は現位置 */
     double ld_cut;              /* 線切断寸法（図寸 mm） */

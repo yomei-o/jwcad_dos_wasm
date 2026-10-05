@@ -351,8 +351,9 @@ typedef struct {
     int ld_ask;
     int te_sub, te_bh, te_bv, te_panel, te_esc, te_plain, te6_layer, te6_hv, te5;
     int te5_ask;
+    int fep;
     double te5_gap;
-    long te_pick;
+    long te_pick;                /* 選んだ文字 + 1、0 は無し */
     long real_left;             /* 実点の残り（`残 3623`） */
     int box_ctr;
     double rep_gap[2];

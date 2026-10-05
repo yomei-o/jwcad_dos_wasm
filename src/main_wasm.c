@@ -511,13 +511,14 @@ static void sync_ui(void)
     ui.te_bh = cmd.te_bh;
     ui.te_bv = cmd.te_bv;
     ui.te_panel = cmd.te_panel;
-    ui.te_pick = cmd.te_pick;
+    ui.te_pick = cmd.te_pick + 1;      /* 0 は無し（jw_ui_from が 0 にする） */
     ui.te_esc = cmd.te_esc;
     ui.te_plain = cmd.te_plain;
     ui.te6_layer = cmd.te6_layer;
     ui.te6_hv = cmd.te6_hv;
     ui.te5 = cmd.te5;
     ui.te5_ask = cmd.te5_ask;
+    ui.fep = cmd.fep;
     ui.te5_gap = cmd.te5_gap;
     ui.real_left = drawing ? 3639 - drawing->n_points : 0;
     ui.chb_inner = cmd.chb_inner;
@@ -3545,6 +3546,19 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
      * say which cell a press lands in: 文字種類 up to x 236 picks the type,
      * and ペン, 文字幅, 文字高 and 間隔 (up to 308, 396, 484 and 556) open a
      * field on that row.  Rows 9 to 18 are y 128 to 287. */
+    /* 表のあいだは作図範囲の押しは表のものだけ：欄が開いていれば押しは
+     * 欄を閉じるだけ（打った数は捨てて元の値）、表の升の外は何もしない
+     * （測定：func_all text_s0_c4 の (300,250)・(450,330)・(598,300)R）。 */
+    if ((ui.command == 13 || ui.command == 28) && ui.top_item == 4
+        && drawing && x >= AREA_X0 && y >= AREA_Y0 && y <= AREA_Y1
+        && (ui.char_edit || !(x >= 147 && x < 556 && y >= 128 && y < 288))) {
+        ui.char_edit = 0;
+        ui.char_edit_n = 0;
+        mouse_x = x;
+        mouse_y = y;
+        present();
+        return -1;
+    }
     if ((ui.command == 13 || ui.command == 28) && ui.top_item == 4
         && !ui.char_edit && x >= 147 && x < 556 && y >= 128 && y < 288
         && drawing) {
@@ -4529,6 +4543,21 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         present();
         return -1;
     }
+    /* ④設定 の表の [ESC]：表を閉じて命令の行へ（描き直す。測定：func_all
+     * text_s0_c4・textedit_s0_c4）。 */
+    if ((cmd.command == 13 || cmd.command == 28) && cmd.top_item == 4
+        && key == 27) {
+        cmd.top_item = 0;
+        cmd.top_right = 0;
+        if (drawing) {
+            jw_ui_from(&ui, drawing);
+            ui.command = cmd.command;
+            ui.guide = 0;
+        }
+        sync_ui();
+        present();
+        return -1;
+    }
     if (ui.command == 30 && ui.io_stage == JW_IO_INDEX && key == 27) {
         if (ui.ix_del) {
             ui.ix_del = 0;
@@ -4808,6 +4837,36 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* **数字の鍵は上の行の升。** `1` は ① を左で押したのと同じ（測定：
      * □ で `1` → ①寸法 の欄、そのまま 60,40 [Enter] で置く所）。欄が
      * 開いているあいだは上の jw_cmd_key が数として取っています。 */
+    /* 文字・文編集 ④設定 の表の数字：① 変更確定（表を閉じる）、② 基点変更
+     * （文字基準点 の盤、① で表に戻る）、③ ＦＥＰ は ON → off (1) →
+     * off (2) → ON（測定：steps_table `13 t 4 t 3 t 3 t 3 t 3 t 2 t 1 t 1`）。
+     * ほかの数字は何もしない（func_all text_s0_c4_v の `0`）。 */
+    if ((cmd.command == 13 || cmd.command == 28) && cmd.top_item == 4
+        && !ui.char_edit && ((key >= '0' && key <= '9') || key == 13
+                             || key == 10)) {
+        /* [Enter] は ① 変更確定 と同じ（測定：text_s0_c4_v）。 */
+        const int n = (key == 13 || key == 10) ? 1
+                                               : key - '0';
+
+        if (cmd.te_sub == 1) {
+            jw_cmd_te_digit(&cmd, n);
+        } else if (n == 1) {
+            cmd.top_item = 0;
+            cmd.top_right = 0;
+            if (drawing) {
+                jw_ui_from(&ui, drawing);
+                ui.command = cmd.command;
+                ui.guide = 0;
+            }
+        } else if (n == 2) {
+            cmd.te_sub = 1;
+        } else if (n == 3) {
+            cmd.fep = (cmd.fep + 1) % 3;
+        }
+        sync_ui();
+        present();
+        return -1;
+    }
     /* 文編集【変更】の行の数字はその行の升（①基点・②文連結切断・③疑似線
      * 文字）で、項目の行の升ではない（測定：func_all textedit_s1_c1〜c3）。 */
     if (cmd.command == 28 && key >= '0' && key <= '9' && !cmd.typing
