@@ -414,6 +414,13 @@ void jw_ui_pick_kind(JwUi *s, int kind)
         s->file_path = "path=A:" "\x5c" "*.txt";
         s->file_word = " " "\x8d\xc0\x95" "W    ";
         break;
+    case JW_PICK_TEXTIN:
+        /* 文字 ⑤文書 の ②読込・③短文ﾌｧｲﾙ設定（測定：steps_table
+         * `13 t 5 t 2`・`13 t 5 t 3`、どちらも同じ画面）。 */
+        s->file_bar = JW_PICK_NAME_BAR;
+        s->file_path = "path=A:" "\x5c" "*.txt";
+        s->file_word = " " "\x95\xb6\x93\xc7\x8d\x9e" "    ";
+        break;
     case JW_PICK_CHILD:
         s->file_bar = JW_PICK_CHILD_BAR;
         s->file_path = "path=A:" "\x5c" "*.bat";

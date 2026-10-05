@@ -1285,7 +1285,8 @@ static void file_list(int for_save)
  * jw_ui_pick_kind. */
 static void file_pick(int kind)
 {
-    static const char *const EXT[4] = { "JWC", "JWC", "TXT", "BAT" };
+    static const char *const EXT[7] = { "JWC", "JWC", "TXT", "BAT", "DXF",
+                                        "DXF", "TXT" };
 
     file_list_ext(0, EXT[kind]);
     jw_ui_pick_kind(&ui, kind);
@@ -3686,6 +3687,14 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             present();
             return -1;
         }
+        /* 作図範囲の押しは取らない（文字 ⑤文書 の文読込で、押しても画面は
+         * そのまま。測定：func_all text_s0_c5_v）。 */
+        if (x >= AREA_X0 && y >= AREA_Y0) {
+            mouse_x = x;
+            mouse_y = y;
+            present();
+            return -1;
+        }
     }
     if (ui.command == 30 && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
         const int item = jw_ui_top_item(x, y);
@@ -4570,7 +4579,14 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         return -1;
     }
     /* 多角形 が借りたファイル選択の [ESC]：多角形 の行へ戻る（測定）。 */
-    if (ui.io_stage == JW_IO_LOAD && ui.command == 19 && key == 27) {
+    if (ui.io_stage == JW_IO_LOAD && (ui.command == 19 || ui.command == 13)
+        && key == 27) {
+        /* 文字 の文読込からは 文書 の行ではなく 文字 の行へ（測定：
+         * text_s0_c5_v）。 */
+        if (ui.command == 13) {
+            cmd.top_item = 0;
+            cmd.top_right = 0;
+        }
         ui.io_stage = 0;
         ui.pick_bad = 0;
         ui.io_name_n = 0;
@@ -4839,6 +4855,14 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* **数字の鍵は上の行の升。** `1` は ① を左で押したのと同じ（測定：
      * □ で `1` → ①寸法 の欄、そのまま 60,40 [Enter] で置く所）。欄が
      * 開いているあいだは上の jw_cmd_key が数として取っています。 */
+    /* 文字 ⑤文書 の ②読込・③短文ﾌｧｲﾙ設定：`*.txt` の ファイル選択（文読込）。
+     * 選んだあと（読む）はまだ。 */
+    if (cmd.command == 13 && cmd.top_item == 5 && !cmd.tx_doc && !ui.io_stage
+        && (key == '2' || key == '3') && !cmd.typing && !cmd.typing_text) {
+        file_pick(JW_PICK_TEXTIN);
+        present();
+        return -1;
+    }
     /* 文字・文編集 ④設定 の表の数字：① 変更確定（表を閉じる）、② 基点変更
      * （文字基準点 の盤、① で表に戻る）、③ ＦＥＰ は ON → off (1) →
      * off (2) → ON（測定：steps_table `13 t 4 t 3 t 3 t 3 t 3 t 2 t 1 t 1`）。
