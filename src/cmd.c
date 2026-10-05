@@ -16653,13 +16653,25 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             /* 行間を決めてあるときは、上の字から順に始点を押した所から
              * 行間（図寸 mm × 倍率）ずつ下へ並べ、記録はその順に末尾へ
              * （測定：te5e、`Ｈ７－Ａ００１` と `H7.8.31` を 10mm で）。
-             * 縦の位置の float の積み方は 2 字でしか測っていない。 */
+             * cursor は呼ぶたびに掛け直すのではなく `-= 行間/B4A2` を
+             * float で積み上げる（RESUME 文編集⑤の記述。gap・unit_mm の
+             * 大きさ自体は te5e で合っている掛け算の形をそのまま使い、
+             * 積み方だけ毎回の i 掛けから累積に直した＝測定のみ・decomp
+             * 未確認）。27ea（ed_length 相当、jwc_text_length で代用）が
+             * 長さ 0 を返す字は並べにも書き直しにも入れない（decomp 同
+             * 域の「長さ 0 は飛ばす」）。終点は常に y1=y0 の水平（同域の
+             * 「終点は水平」）。 */
             if (c->te5_gap > 0.0) {
                 long order[512], n = 0, i, j;
+                float cursor = (float)py;
+                const float step = (float)(c->te5_gap * d->unit_mm);
 
                 for (k = 0; k < c->n0_texts && k < d->n_texts && n < 512;
                      k++) {
-                    if (picked_text(c, d, k)) {
+                    if (picked_text(c, d, k)
+                        && jwc_text_length(d, d->texts[k].text
+                                           ? d->texts[k].text : "",
+                                           d->texts[k].size) != 0.0) {
                         order[n++] = k;
                     }
                 }
@@ -16675,17 +16687,19 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 for (i = 0; i < n; i++) {
                     const JwcText t = d->texts[order[i]];
                     const float nx = (float)px;
-                    const float ny = (float)(py - i * c->te5_gap * d->unit_mm);
+                    const float ny = cursor;
+                    const float L = (float)jwc_text_length(d, t.text
+                                                            ? t.text : "",
+                                                            t.size);
                     long m;
 
-                    jwc_requeue_text(d, order[i], nx,  ny,
-                                     (float)(nx + ((double)t.x1 - t.x0)),
-                                     (float)(ny + ((double)t.y1 - t.y0)));
+                    jwc_requeue_text(d, order[i], nx, ny, nx + L, ny);
                     for (m = i + 1; m < n; m++) {
                         if (order[m] > order[i]) {
                             order[m]--;
                         }
                     }
+                    cursor -= step;
                 }
                 c->pressed = 0;
                 c->stage = 0;
@@ -16694,15 +16708,19 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             }
             /* 現位置：いちばん上の字の y はそのまま、ほかの字は上の字から
              * の差を float に丸めてから足し直す（測定：te5f で `H7.8.31` の
-             * y が 2 ulp 動く）。記録の場所は動かない。 */
-            /* 選んだ字は動かす前に控える（動かすと範囲の判定が変わる）。 */
+             * y が 2 ulp 動く）。終点は常に水平、長さ 0 の字は飛ばし、
+             * 動かした字は末尾の新レコードに積み直す（上と同じ decomp
+             * 域の記述）。 */
             {
                 long sel[512], n = 0, i;
                 float top = 0.0f;
 
                 for (k = 0; k < c->n0_texts && k < d->n_texts && n < 512;
                      k++) {
-                    if (picked_text(c, d, k)) {
+                    if (picked_text(c, d, k)
+                        && jwc_text_length(d, d->texts[k].text
+                                           ? d->texts[k].text : "",
+                                           d->texts[k].size) != 0.0) {
                         if (!n || d->texts[k].y0 > top) {
                             top = d->texts[k].y0;
                         }
@@ -16710,18 +16728,21 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                     }
                 }
                 for (i = 0; i < n; i++) {
-                    /* 終点は始点と同じだけずらす（長さを引き直すと te5b の
-                     * `作図者` が 1 ulp 違う。ずらすほうは te5a・te5b の
-                     * 3 件とも一致）。 */
-                    JwcText *t = &d->texts[sel[i]];
+                    const JwcText t = d->texts[sel[i]];
                     const float nx = (float)px;
-                    const float dy = t->y0 - top;
+                    const float dy = t.y0 - top;
                     const float ny = dy + top;
+                    const float L = (float)jwc_text_length(d, t.text
+                                                            ? t.text : "",
+                                                            t.size);
+                    long m;
 
-                    t->x1 = (float)(nx + ((double)t->x1 - t->x0));
-                    t->y1 = (float)(ny + ((double)t->y1 - t->y0));
-                    t->x0 = nx;
-                    t->y0 = ny;
+                    jwc_requeue_text(d, sel[i], nx, ny, nx + L, ny);
+                    for (m = i + 1; m < n; m++) {
+                        if (sel[m] > sel[i]) {
+                            sel[m]--;
+                        }
+                    }
                 }
             }
             c->pressed = 0;

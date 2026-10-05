@@ -2384,6 +2384,12 @@ int jwc_requeue_text(Jwc *d, long k, float x0, float y0, float x1, float y1)
     }
     t = &d->texts[d->n_texts - 1];
     memcpy(t->rest, was.rest, sizeof t->rest);
+    /* 位置整理 が末尾へ動かした新レコードは rest[2]（+0x16）に 3 を立てる
+     * （decomp ovl25 3ab8:393b 域、dis 02e4bb〜02f8f4 の 位置整理 の記述。
+     * 線の複写が rest[2] の bit0・bit1 を落とす（jwc.c 1751 行）のと対に
+     * なる足し方で、どちらの字の押しの測定にも効かない bit なので
+     * 測定のみでは確かめていない＝測定のみ・decomp未確認）。 */
+    t->rest[2] |= 3;
     return 1;
 }
 
