@@ -156,14 +156,26 @@ static double field_term(const char **p)
     }
 }
 
-/* 複線 の 間隔 の履歴：決めた（打った・取った）間隔を先頭に、前のを後ろへ
- * 一つずつずらして 5 つまで（測定：tmp/o2.txt o_h2 で 0.02 が先頭、前の
- * 1000・100・200・300 が続く）。 */
+/* 複線 の 間隔 の履歴（decomp：ovl7 0x2ca6f〜0x2cc43）：現在の間隔が
+ * 99999.5 未満なら、履歴に差 0.001 未満の同じ値があればその位置（無ければ
+ * 末尾の 5）から前へ一つずつずらして F1 に入れる。同じ値は重複させず先頭へ
+ * 移す。 */
 static void gap_remember(JwCmd *c)
 {
-    int i;
+    int i, k = 4;
 
-    for (i = 4; i > 0; i--) {
+    if (!(c->gap < 99999.5)) {
+        return;
+    }
+    for (i = 0; i < 5; i++) {
+        const double df = c->gap_hist[i] - c->gap;
+
+        if ((df < 0 ? -df : df) < 0.001) {
+            k = i;
+            break;
+        }
+    }
+    for (i = k; i > 0; i--) {
         c->gap_hist[i] = c->gap_hist[i - 1];
     }
     c->gap_hist[0] = c->gap;
@@ -12355,6 +12367,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * else. */
             c->off_pt = 0;
             if (right) {
+                gap_remember(c);        /* (R) 同じ寸法 も 0x2ca6f の push を通る（decomp 0x2c689） */
                 c->num[0] = c->num[1] = c->gap;
                 c->dec[0] = 2;
                 c->dec[1] = d->decimals;
@@ -15436,42 +15449,30 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         if (c->hatch_closed) {
             return 0;           /* 別図形 is not done */
         }
-        if (c->hatch_n > 0 && k == c->hatch_line[0] && c->hatch_n >= 2) {
-            c->hatch_closed = 1;
-            c->stage = 4;
-            return 1;
-        }
-        for (i = 0; i < c->hatch_n; i++) {
-            if (c->hatch_line[i] == k) {
-                return 0;       /* already in the frame */
+        /* 閉じる（decomp ovl9 3ab8:0081 の 02ba94〜02c606）：最初の線をもう一度
+         * 押し、最後が直線で最初の線と最後の線が平行でなく（1bb4:3cd1 が交点を
+         * 返す）、枠が 3 本以上のとき。通らなければ通常の追加に落ちる。 */
+        if (c->hatch_n >= 3 && k == c->hatch_line[0]) {
+            double ix, iy;
+
+            if (hatch_meet(&d->lines[c->hatch_line[0]],
+                           &d->lines[c->hatch_line[c->hatch_n - 1]], &ix, &iy)) {
+                c->hatch_closed = 1;
+                c->stage = 4;
+                return 1;
             }
         }
         if (c->hatch_n >= JW_HATCH_MAX) {
             return 0;
         }
-        /* 枠の中のどれかの線（最後の線以外）の端に付く線は足さない（測定：
-         * tmp/h4.txt。線 1・線 0 のあとの線 2、線 1・線 2 のあとの線 0 は
-         * 足されず、枠から離れた線 4 などは足される）。端が付く距離は 1 未満。 */
-        if (c->hatch_n >= 2) {
-            const JwcLine *nw = &d->lines[k];
-            int hit = 0;
+        /* 線を足す条件（decomp 02bc17〜02c127）：新しい線と最後の線が平行
+         * （1bb4:3cd1 が 0）なら黙って無視、そうでなければ足す。端点の一致や
+         * 同じ線の再押下を弾く処理は原作に無い。 */
+        if (c->hatch_n >= 1) {
+            double ix, iy;
 
-            for (i = 0; i < c->hatch_n - 1 && !hit; i++) {
-                const JwcLine *o = &d->lines[c->hatch_line[i]];
-                int a, b;
-
-                for (a = 0; a < 2; a++) {
-                    for (b = 0; b < 2; b++) {
-                        const double ox = a ? o->x1 : o->x0, oy = a ? o->y1 : o->y0;
-                        const double nx = b ? nw->x1 : nw->x0, ny = b ? nw->y1 : nw->y0;
-
-                        if ((ox - nx) * (ox - nx) + (oy - ny) * (oy - ny) < 1.0) {
-                            hit = 1;
-                        }
-                    }
-                }
-            }
-            if (hit) {
+            if (!hatch_meet(&d->lines[c->hatch_line[c->hatch_n - 1]],
+                            &d->lines[k], &ix, &iy)) {
                 return 0;
             }
         }
