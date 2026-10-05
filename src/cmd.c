@@ -5574,6 +5574,31 @@ range_items:
         }
         return 1;
     }
+    /* 図形 の帯、升を一つも選んでいない idle の状態（①登録 の範囲も ②読込
+     * の一覧もまだ開いていない）での ③表示・⑥レイヤ：ovl31 メイン
+     * ディスパッチャ（dis 032a6c〜、local_cc==3/6）はどちらも関数を呼ばず、
+     * DS の 1 バイトを直接いじるだけ。式はそのまま:
+     *   local_cc==3: `*(char*)0x1174 += 1; if (1 < v) v = 0;`
+     *     → 0 のとき 1 になり、1 のときは (1<2) なので 0 に戻る。つまり
+     *       0/1 の単純トグル（2 以上には絶対にならない）。
+     *   local_cc==6: `*(char*)0x1175 += 1; if (2 < v) v = 0;`
+     *     → 0→1→2→0 の 3 値サイクル。
+     * どちらも帯の文字列選択（dis 02b94〜02c04、DS:0x712e/0x7146 系）に
+     * 使われていそうだが、tools/probe.sh で 図形→③表示 の升を押しても
+     * row1〜3 の文字列には変化が見えなかった（c->command==27 の idle 中は
+     * 別の描画ゲート `*(int*)0xc22==0` が成立していない可能性がある）ため、
+     * 実際の見た目は測定のみ・decomp未確認のまま——状態そのものは decomp
+     * の式どおりに持つ。 */
+    if (c->command == 27 && c->pressed == 0 && c->stage == 0 && !c->zukei) {
+        if (item == 3) {
+            c->zukei_disp = !c->zukei_disp;
+            return 1;
+        }
+        if (item == 6) {
+            c->zukei_layer = (c->zukei_layer + 1) % 3;
+            return 1;
+        }
+    }
     /* And on ②読込's list, ①選択確定 takes the figure that is picked.  The
      * host has already read it -- that is what zukei_in is -- so if there is
      * nothing in hand the press does nothing. */

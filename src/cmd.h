@@ -434,6 +434,18 @@ typedef struct {
      * on from there -- see src/zukei.h, which holds what the original writes
      * at each step, and JW_ZUKEI_* below. */
     int zukei;
+    /* 図形 の帯の項目 ③表示・⑥レイヤ：升を選ばずに idle のまま押せる、
+     * 関数呼び出しの無い純粋な状態トグル（ovl31 メインディスパッチャ
+     * dis 032a6c〜、local_cc==3/6 の分岐）。
+     *   ③表示 (DS:[0x1174])：`+= 1; if (1 < v) v = 0;` という式は 0→1→0→1…
+     *   という 0/1 トグルに畳み込まれる（2 以上には絶対にならない）。
+     *   ⑥レイヤ (DS:[0x1175])：`+= 1; if (2 < v) v = 0;` は 0→1→2→0 の
+     *   3 値サイクル。
+     * どちらも帯の文字列選択（DS:0x712e 系・0x7146 系、dis 02b94〜02c04）に
+     * 使われているらしいが、どの文字列がどの画面に出るかは実機でまだ
+     * 追えていない（測定のみ・decomp未確認、RESUME.md 項目 7 参照）。 */
+    int zukei_disp;              /* 0x1174 相当：③表示、0/1 トグル */
+    int zukei_layer;             /* 0x1175 相当：⑥レイヤ、0/1/2 サイクル */
     double zukei_bx, zukei_by;  /* the base point, in drawing units */
     char zukei_name[16];        /* ◆図形名入力 */
     int zukei_name_n;
