@@ -64,6 +64,7 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->sides = 5;
     /* 文編集 has no text in hand. */
     c->edit_text = -1;
+    c->te_pick = -1;
     /* 連線's `③丸 面   辺寸法 ` as the original comes up with it. */
     c->edge_mm = 3.0;
     /* 寸法 ④円･角 ③書込角度 の `[  90.000\xdf]`、その欄の前回と同じ。 */
@@ -507,6 +508,14 @@ static void hatch_free(const JwcLine *l, double cx, double cy, int have,
 void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
 {
     double x, y;
+
+    /* 文編集 の位置指示の箱は矢に付く（矢の所が箱の左下）。 */
+    if (c->command == 28 && c->te_pick >= 0) {
+        c->te_mx = sx;
+        c->te_my = sy;
+        c->moved = 1;
+        return;
+    }
 
     /* **曲線 ⑤手書線 は矢が動くたびに引きます。** 始点を取ったあと、
      * 最後に置いた点から **作図ｽﾃｯﾌﾟ（ﾄﾞｯﾄ）以上離れたら**そこまで
@@ -4262,6 +4271,35 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * colour 4 round the base point and the box's top left corner, and the
      * shape of them is not settled -- it is not the same on two texts of the
      * same character type (RESUME 4.22). */
+    /* 〈移動〉《複写》で選んだ文字も、書き換えと同じに画面から消えて、
+     * その場に色 2 の箱が出る（測定：tmp/te3.txt te2a の段 2）。矢を
+     * 動かしたときに箱が付いてくるかは測っていない。 */
+    if (d && c->command == 28 && c->te_pick >= 0 && c->te_pick < d->n_texts) {
+        const JwcText *pt = &d->texts[c->te_pick];
+        const int sz = pt->size <= 10 ? pt->size : 0;
+        const double wide = pt->text ? jwc_text_length(d, pt->text, pt->size)
+                                     : 0.0;
+        const double tall = d->text_h[sz] / 10.0 * d->unit_mm;
+        int px, py, qx, qy;
+
+        v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+        v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+        v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+        v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+        /* 移動は文字を消し、複写は文字を色 2 で描き直す（測定：te3a）。 */
+        jw_view_text(v, d, pt, w, c->top_item == 3 ? 2 : 0);
+        /* 箱は矢の所から、長さと高さを足して画素に切り捨てた所まで（右の辺が
+         * 文字の終点より 1 画素左、上の辺は 6 画素上。測定：te2a の段 2）。 */
+        px = c->te_mx;
+        py = c->te_my;
+        qx = (int)(px + wide * w->scale);
+        qy = (int)(py - tall * w->scale);
+        jw_line(v, px, py, px, qy, 2, 0x18, JW_STYLE_SOLID);
+        jw_line(v, px, qy, qx, qy, 2, 0x18, JW_STYLE_SOLID);
+        jw_line(v, qx, qy, qx, py, 2, 0x18, JW_STYLE_SOLID);
+        jw_line(v, qx, py, px, py, 2, 0x18, JW_STYLE_SOLID);
+        return;
+    }
     if (d && c->command == 28 && c->typing_text
         && c->edit_text >= 0 && c->edit_text < d->n_texts) {
         int px, py, qx, qy;
@@ -5846,6 +5884,8 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
      * over the line the menu item came up with.  See src/ui.c. */
     c->top_item = 0;
     c->top_right = 0;
+    c->te_pick = -1;    /* 文編集：項目を選び直すと選んだ文字も [ESC] も無くなる */
+    c->te_esc = 0;
     /* ④円･角 の桁は別で、押しても [ESC] も帯の値も残ります（測定：①矢印
      * を押したあとも桁 1 の [ESC]、桁 18 の値、桁 62 の 書込角度 がそのまま
      * 書き直されます）。②円周 の ①端部 も同じ扱いにしてあります。 */
@@ -15187,6 +15227,21 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * 文字選択 の行）、右で ②移動（〈移動〉文字を選んで下さい の行）。
          * 文字の上を押しても文字は拾わない（測定：tmp/tep.txt te_b・te_c、
          * SAMPLE0 の (190,152) を左で押しても【変更】の行になるだけ）。 */
+        /* 〈移動〉《複写》の位置指示：(L)free (R)Read で始点（基点 左下）を
+         * 置き、選ぶ行に `[ESC]` を付けて戻る。R で点が無ければ何もしない
+         * （測定：tmp/te3.txt te2a・te2c・te3a）。 */
+        if (c->te_pick >= 0) {
+            double px, py;
+
+            if (!take(c, d, w, sx, sy, right, &px, &py)) {
+                c->missed = 1;  /* `[F3]` の代わりに 読取可能データ無（te2c） */
+                return 1;
+            }
+            jwc_move_text(d, c->te_pick, px, py, c->top_item == 3);
+            c->te_pick = -1;
+            c->te_esc = 1;
+            return 1;
+        }
         /* ①基点 の盤のあいだの押しは ① 確定 と同じで、文字は拾わない
          * （測定：textedit_s1_c1 の (300,250)）。 */
         if (c->te_sub == 1) {
@@ -15215,6 +15270,26 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         k = jw_cmd_text_at(d, w, sx, sy);
         if (k < 0) {
             c->missed = 1;
+            return 1;
+        }
+        /* ⑦文字消去：左でも右でも押した文字を消し、行に `[ESC]`（測定：
+         * te7a・te7b）。 */
+        if (c->top_item == 7) {
+            jwc_remove_text(d, k);
+            c->te_esc = 1;
+            return 1;
+        }
+        if (c->top_item == 2 || c->top_item == 3) {
+            c->te_pick = k;     /* 左でも右でも拾う（測定：te2a・te2b） */
+            /* 移動では矢は文字の始点へ跳ぶ（測定：te2a の段 2、矢が
+             * (172,152)）。複写では跳ばず、箱は押した所から（te3a）。 */
+            if (c->top_item == 2) {
+                at_screen(w, d->texts[k].x0, d->texts[k].y0, &c->te_mx,
+                          &c->te_my);
+            } else {
+                c->te_mx = sx;
+                c->te_my = sy;
+            }
             return 1;
         }
         if (c->top_item != 1 && c->stage != 2) {

@@ -2239,6 +2239,48 @@ int jwc_edit_text_at(Jwc *d, long k, const char *str, int hb, int vb)
     return 1;
 }
 
+/* 文編集 ②移動・③複写：文字の始点（基点 左下）を (px,py) へ。終点は
+ * 長さを引き直して置く（書き換えと同じ 1f66 の道。測定：tmp/te3.txt の
+ * te2a・te3a、SAMPLE0 の `Ｈ７－Ａ００１` を (300,300) へ）。移動は記録の
+ * 場所のまま、複写は末尾に足す。斜めの字と基点が左下以外は測っていない。 */
+int jwc_move_text(Jwc *d, long k, double px, double py, int copy)
+{
+    JwcText was;
+    EdFrame f;
+    float L, b4a2;
+    static const float PAPER[5] = { 1189.0f, 841.0f, 594.0f, 420.0f, 297.0f };
+    const int pp = d->paper >= 0 && d->paper < 5 ? d->paper : 4;
+
+    if (k < 0 || k >= d->n_texts) {
+        return 0;
+    }
+    was = d->texts[k];
+    b4a2 = (float)((double)PAPER[pp] / 518.0);
+    L = ed_length(d, was.text ? was.text : "", was.size, b4a2);
+    f = ed_frame(was.x0, was.y0, was.x1, was.y1);
+    f.ox = (float)px;
+    f.oy = (float)py;
+    if (copy) {
+        JwcText *t;
+        char str[256];
+
+        /* 足すと入れ物が動くので、字列は先に写しておく。 */
+        snprintf(str, sizeof str, "%s", was.text ? was.text : "");
+        if (!jwc_add_text(d, f.ox, f.oy, ed_x(&f, L, 0.0f), ed_y(&f, L, 0.0f),
+                          str, was.size, was.layer)) {
+            return 0;
+        }
+        t = &d->texts[d->n_texts - 1];
+        memcpy(t->rest, was.rest, sizeof t->rest);
+        return 1;
+    }
+    d->texts[k].x0 = f.ox;
+    d->texts[k].y0 = f.oy;
+    d->texts[k].x1 = ed_x(&f, L, 0.0f);
+    d->texts[k].y1 = ed_y(&f, L, 0.0f);
+    return 1;
+}
+
 /* How long a text's baseline is, in drawing units.
  *
  * It follows from the string and the character size, not from anything stored:

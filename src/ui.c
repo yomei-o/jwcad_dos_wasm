@@ -2922,6 +2922,31 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             sprintf(one, " \x89\xa1%4.1f \x8f" "c%4.1f ", s->char_w / 10.0, s->char_h / 10.0);
             jw_ui_text(v, 1, 3, 0, 0, one);
         }
+    } else if (s->command == 28 && s->te_pick >= 0) {
+        /* 〈移動〉《複写》の位置指示の行。④ の升の絵は白い枠と、基点（左下）
+         * の赤い丸（測定：tmp/te3.txt te2a の段 2、枠 x 596..612・y 4..12、
+         * 丸は (596,12) の半径 2 の塗り）。 */
+        int y;
+
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, "\x88\xca\x92u\x8ew\x8e\xa6 (L)free (R)Read |\x87@\x8a\xee\x93_(\x8d\xb6\x89\xba)|\x87" "A\x81y\x94" "C\x88\xd3\x81z\x95\xfb\x8c\xfc|\x87" "B\x8ap\x93x\x8ew\x92\xe8|\x87" "C   |BS");
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        } else {
+            jw_ui_text(v, 18, 2, 7, 0xffff, "[F3]");
+        }
+        fill(v, 596, 4, 612, 4, 7);
+        fill(v, 596, 12, 612, 12, 7);
+        fill(v, 596, 4, 596, 12, 7);
+        fill(v, 612, 4, 612, 12, 7);
+        for (y = 10; y <= 14; y++) {
+            const int r = (y == 10 || y == 14) ? 1 : 2;
+
+            fill(v, 596 - r, y, 596 + r, y, 2);
+        }
     } else if (s->command == 28 && s->te_sub == 2) {
         jw_ui_text(v, 6, 1, 7, 0, JW_DOT);
         jw_ui_text(v, 8, 1, 7, 0, "\x95\xd2\x8fW\x95\xb6\x8e\x9a\x82\xf0\x91I\x82\xf1\x82\xc5\x89\xba\x82\xb3\x82\xa2   \x98" "A\x8c\x8b(\xcf\xb3\xbd-L)  \x90\xd8\x92" "f\x88\xca\x92u\x8ew\x8e\xa6(\xcf\xb3\xbd-R)");
@@ -4724,6 +4749,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
             sprintf(two, "%s%s", hz[s->te_bh], vt[s->te_bv]);
             jw_ui_text(v, 34, 1, 7, 0, two);
+        }
+        /* 文編集 ②③⑦ で消した・置いた後の選ぶ行は桁 1 に `[ESC]`。 */
+        if (s->command == 28 && s->te_esc && s->te_pick < 0
+            && (s->top_item == 2 || s->top_item == 3 || s->top_item == 7)) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
         }
         /* 変形 ④線記号変形 の一覧 —— 記号の名前と罫。
          *

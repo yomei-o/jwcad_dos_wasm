@@ -349,7 +349,8 @@ typedef struct {
     int ch_side;
     int div_real;
     int ld_ask;
-    int te_sub, te_bh, te_bv, te_panel;
+    int te_sub, te_bh, te_bv, te_panel, te_esc;
+    long te_pick;
     long real_left;             /* 実点の残り（`残 3623`） */
     int box_ctr;
     double rep_gap[2];

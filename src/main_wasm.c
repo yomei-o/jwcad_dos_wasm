@@ -511,6 +511,8 @@ static void sync_ui(void)
     ui.te_bh = cmd.te_bh;
     ui.te_bv = cmd.te_bv;
     ui.te_panel = cmd.te_panel;
+    ui.te_pick = cmd.te_pick;
+    ui.te_esc = cmd.te_esc;
     ui.real_left = drawing ? 3639 - drawing->n_points : 0;
     ui.chb_inner = cmd.chb_inner;
     ui.box_ctr = cmd.box_ctr;
@@ -4065,6 +4067,11 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
         mouse_x = x;
         mouse_y = y;
+        /* 文編集 ②移動・③複写 で文字を拾うと矢はその始点へ跳ぶ。 */
+        if (cmd.command == 28 && cmd.te_pick >= 0) {
+            mouse_x = cmd.te_mx;
+            mouse_y = cmd.te_my;
+        }
         /* ＋・／ の欄を押しで閉じたら、始点があればその場の矢で仮の線と盤
          * （測定：func_all plus_s1_c2）。 */
         if (was_typing && !cmd.typing && cmd.pressed == 1 && drawing

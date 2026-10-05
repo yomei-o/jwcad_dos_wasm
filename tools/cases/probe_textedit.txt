@@ -12,3 +12,11 @@ te_k|SAMPLE0|30 264 left|400 140 left|190 152 left|key A|key B|key C|key enter
 te_l|SAMPLE0|30 264 left|400 140 left|type 1|type 2|type 2|type 1|190 152 left|key A|key B|key C|key enter
 te_m|SAMPLE0|30 264 left|400 140 left|type 1|type 2|type 1|190 152 left|key A|key B|key C|key enter
 te_n|SAMPLE0|30 264 left|400 140 left|type 1|type 2|type 1|190 152 left|key A|key enter
+te7a|SAMPLE0|30 264 left|type 7|190 152 left
+te7b|SAMPLE0|30 264 left|type 7|190 152 right
+te6a|SAMPLE0|30 264 left|type 6|190 152 left
+te6b|SAMPLE0|30 264 left|key f3|type 6|190 152 left
+te2a|SAMPLE0|30 264 left|400 140 right|190 152 right|300 300 left
+te2b|SAMPLE0|30 264 left|400 140 right|190 152 left|300 300 left
+te2c|SAMPLE0|30 264 left|400 140 right|190 152 right|300 300 right
+te3a|SAMPLE0|30 264 left|type 3|190 152 right|300 300 left|350 330 left
