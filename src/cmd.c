@@ -6766,6 +6766,16 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->pg3 = 0;             /* [BS]前項 */
         return 1;
     }
+    /* 多角形 ②正多角形：頂点/辺中（中心点の基準）の切り替え。file-linear
+     * 0x2da19（`mov ax,1; sub ax,[0x53f4]; mov [0x53f4],ax`）は key '1'
+     * で呼ばれる（decomp・実測とも確認、RESUME.md 10-e 参照）。本物は
+     * 帯の文字そのものをクリックしても同じトグルに落ちるが、そちらは
+     * 未配線（測定のみ・decomp未確認）。 */
+    if (c->command == 19 && !c->pg3 && c->stage == 5 && !c->typing
+        && key == '1') {
+        c->pg_edge = !c->pg_edge;
+        return 1;
+    }
     /* 円線接 ③接円（３条件）③１点と２線･円・④３線･円 の [ESC]：取りかけなら
      * 最初の段へ、円を作った直後ならその円を取り消して [ESC] の無い行へ
      * （測定：func_all tangent_s0_c3_v で 14 → 13）。 */
@@ -8520,21 +8530,50 @@ static void keep_far(Jwc *d, long k, double cx, double cy, float px, float py)
     }
 }
 
-/* 正多角形: n corners on the circle through the vertex given, starting at it
- * and going counter-clockwise. */
+/* 正多角形: n corners on a circle, starting at (or next to) the vertex given
+ * and going counter-clockwise.
+ *
+ * **頂点 (c->pg_edge==0)**: the point given *is* a corner, so the circle's
+ * radius is the distance to it and the first corner sits right on it
+ * (a0 = atan2(dy,dx), no extra phase).
+ *
+ * **辺中 (c->pg_edge==1, DS:[0x53f4]==1 in the decomp)**: the point given is
+ * the midpoint of an edge, not a corner.  Confirmed on file-linear
+ * `0x2d8c1`-`0x2d916` (ovl22): the half-angle `pi/n` is computed once
+ * (`DS:0xa128`=2*pi read as a double constant, halved, then `cos(pi/n)`
+ * kept in `[bp-0x112]`) and the picked distance is divided by it
+ * (`[bp-0x42] = [bp-0x42] / [bp-0x112]`, file-linear `0x2ddc9`) --
+ * i.e. **R = r / cos(pi/n)**.  The vertex-angle phase (does the first
+ * corner sit at a0+pi/n, a0+3*pi/n, ...?) was the one piece decomp
+ * disassembly alone could not settle (RESUME.md 10-e 追補その3); it is
+ * now settled by measurement (RESUME.md 10-e 追補その4): driving the
+ * real binary with dosv_emu_cpp's `DOSEMU_BP=+22b2:75fe,+22b2:75ec,
+ * +22b2:7658 DOSEMU_BPDBL=2` (cos/sin/atan2) through 多角形→②正多角形→
+ * ①任意寸法, sides=6, centre (300,250), picked point (400,250) (so
+ * a0=atan2(0,100)=0) and the 辺中 toggle, the cos/sin arguments logged
+ * were exactly pi/6, pi/2, 5pi/6, 7pi/6, 3pi/2, 11pi/6 and (wrap) pi/6
+ * again -- i.e. a0 + pi/n + i*(2*pi/n) for i=0..n.  So the phase is a
+ * plain half-step, `a0 + pi/n`, nothing more exotic. */
 static void polygon(JwCmd *c, Jwc *d, double px, double py)
 {
     const double dx = px - c->x0, dy = py - c->y0;
-    const double r = sqrt(dx * dx + dy * dy);
+    double r = sqrt(dx * dx + dy * dy);
     const double a0 = atan2(dy, dx);
     const double step = 2.0 * 3.14159265358979323846 / c->sides;
+    double phase = a0;
     int i;
 
     if (!d || c->sides < 3 || r <= 0.0) {
         return;
     }
+    if (c->pg_edge) {
+        const double half = 3.14159265358979323846 / c->sides;
+
+        r = r / cos(half);
+        phase = a0 + half;
+    }
     for (i = 0; i < c->sides; i++) {
-        const double a = a0 + step * i, b = a0 + step * (i + 1);
+        const double a = phase + step * i, b = phase + step * (i + 1);
 
         if (jwc_add_line(d, (float)(c->x0 + r * cos(a)),
                          (float)(c->y0 + r * sin(a)),

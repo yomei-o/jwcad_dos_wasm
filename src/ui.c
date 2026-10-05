@@ -1510,6 +1510,17 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
         jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
         return;
     }
+    /* 多角形 ②正多角形：頂点/辺中 のトグル語（◇ の右）。本物の帯は
+     * `[0x53f4]` を見て '頂点'(0=既定)／'辺中'(1) のどちらか一方だけを
+     * 出す（10-e 追補その2・その3、RESUME.md）ので、ここも captured の
+     * '頂点' を c->pg_edge==1 のときだけ '辺中' に差し替える。 */
+    if (q->command == 19 && q->stage == 5 && q->col == 11) {
+        const char *one = s->pg_edge ? "\x95" "\xd3" "\x92" "\x86"   /* 辺中 */
+                                      : "\x92" "\xb8" "\x93" "\x5f"; /* 頂点 */
+
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+        return;
+    }
     /* 測定's two lengths and the scale in its own line. */
     if (q->command == 15) {
         char one[160];

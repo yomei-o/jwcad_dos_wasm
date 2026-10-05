@@ -706,6 +706,21 @@ typedef struct {
     /* 正多角形's number of sides -- `正多角形の角数 = ` with `[5]` offered
      * as 前回と同じ. */
     int sides;
+    /* 正多角形's centre-basis toggle, `DS:[0x53f4]` in the decomp: 0=頂点
+     * (the point given is a corner), 1=辺中 (it is the midpoint of an
+     * edge, so the radius is divided by cos(pi/n) and every vertex angle
+     * is shifted by half a step).  Measured with dosv_emu_cpp's
+     * DOSEMU_BP on `22b2:75fe`/`75ec`/`7658` (cos/sin/atan2): with N=6,
+     * centre (300,250), vertex press (400,250) (a0=atan2(0,100)=0), 辺中
+     * mode's cos/sin arguments come back exactly
+     * pi/6, pi/2, 5pi/6, 7pi/6, 3pi/2, 11pi/6, (wrap) pi/6 -- i.e.
+     * a0 + pi/n + i*(2*pi/n) for i=0..n, confirming the phase as well as
+     * the already-decomp-confirmed radius formula (RESUME.md 10-e 追補
+     * その3/その4). Toggled by key '1' while picking the second point
+     * (file-linear 0x2da19, `mov ax,1; sub ax,[0x53f4]; mov [0x53f4],ax`)
+     * -- the band-click toggle described in decomp is not wired here
+     * (測定のみ・decomp未確認：クリックでのトグルは未実装). */
+    int pg_edge;
     /* 分割's count -- `分割 数 = ` with `[2]` offered as 前回と同じ.  The
      * original starts at 2 and remembers what was last typed. */
     int divisions;

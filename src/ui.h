@@ -339,6 +339,7 @@ typedef struct {
     int circ_multi;             /* ○ ③重円の数 */
     int cut_n;                  /* ＜ の線切断の数 */
     int pg3;                    /* 多角形 ③の段 */
+    int pg_edge;                /* 多角形 ②正多角形：頂点(0)/辺中(1) */
     int ch_ask;
     int text_ang_ask;
     int text_rep;

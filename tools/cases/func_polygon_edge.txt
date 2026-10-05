@@ -1,0 +1,12 @@
+# 多角形 ②正多角形：頂点/辺中（中心点の基準）トグル（key '1'）の手で書いた検査。
+# RESUME.md 10-e 追補その4 参照 -- dosv_emu_cpp の DOSEMU_BP で cos/sin/atan2 の
+# 引数列を実測し、a0 + pi/n + i*(2*pi/n) の位相で確定したあと、ここで
+# tools/functest.sh（本物と移植、両方に保存させて JWC のバイト列を突き合わせる）
+# で通して確認した。他の tools/cases/*.txt と違い自動生成ではないので、手で足して良い。
+#
+#   sh tools/funccases.sh tools/cases/func_polygon_edge.txt
+#
+polygon_vertex_c6|SAMPLE0|30 120 left|300 8 left|100 8 left|type 6|key enter|move 300 250|300 250 left|move 400 250|400 250 left
+polygon_edge_c6|SAMPLE0|30 120 left|300 8 left|100 8 left|type 6|key enter|move 300 250|300 250 left|key 1|move 400 250|400 250 left
+polygon_edge_c5|SAMPLE0|30 120 left|300 8 left|100 8 left|type 5|key enter|move 300 250|300 250 left|key 1|move 400 250|400 250 left
+polygon_edge_toggle_back_c5|SAMPLE0|30 120 left|300 8 left|100 8 left|type 5|key enter|move 300 250|300 250 left|key 1|key 1|move 400 250|400 250 left
