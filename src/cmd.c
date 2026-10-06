@@ -13772,6 +13772,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
 
         if (k < 0) {
             c->missed = 1;
+            c->ref_miss++;
             return 0;
         }
         dx = (double)d->lines[k].x1 - (double)d->lines[k].x0;
