@@ -12473,6 +12473,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     c->press_y = sy;
     c->moved = 0;
     c->escaped = 0;
+    /* 多角形 の項目の行（①２点からの距離 … と ①任意寸法 …）：図面の押しは
+     * 項目行の読み（1bb4:2cb4）が返すボタンで、左 = ①、右 = ②。押した点は
+     * 使わない（測定：probe_firstclick pg_R／polygon_plain。decomp は寸法の
+     * 同じ読みと同形で、多角形メインの ovl22 3ab8:4794 の読みは未照合）。 */
+    if (c->command == 19 && !c->pressed && !c->typing && !c->top_item
+        && c->stage == 0) {
+        jw_cmd_top(c, d, right ? 2 : 1, 0);
+        return 1;
+    }
+
     /* **押せば `読取可能データ無` は消えます**（外れた読取のあとの押しで。
      * 矢を動かすだけでは残る——測定）。外れればまた立てます。 */
     c->missed = 0;
