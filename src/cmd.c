@@ -18712,7 +18712,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * バイトは 0x12（（ の弧と同じ）。測定：SAMPLE0 で (400,140)
              * → (300,250) → (450,330) が 中心 (279.959,221.673)、
              * 半径 101.3311、184.9103..90.5424。 */
-            if (!take(c, d, w, sx, sy, right, &x, &y)) {
+            /* ②半円の向きの押しは右でも読まない（測定：arc_s0_c2_v の 598 300 right で弧が入る）。 */
+            if (c->arc3 == 3 && c->arc3_kind == 2) {
+                jw_cmd_at(w, sx, sy, &x, &y);
+            } else if (!take(c, d, w, sx, sy, right, &x, &y)) {
                 c->missed = 1;
                 return 0;
             }
