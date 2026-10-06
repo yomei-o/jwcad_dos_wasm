@@ -8616,6 +8616,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->pressed = 0;
         c->escaped = 1;
         c->moved = 0;
+        if (c->command == 11) {
+            c->circ_multi = 1;      /* 中心を捨てると ③重円 の数も戻る（測定：circle_s1_c3） */
+        }
         return 1;
     }
     if (c->command == 14 && c->dim_val && key >= JW_KEY_F1
