@@ -63,7 +63,15 @@ sh tools/snap.sh   # 長い比較は移植の写し（STEPSHOTS=tmp/snap/tools/s
 - 項目の行の「最初の押し」型・ESC の戻り・Enter など、新しく測った probe は `tools/cases/probe_*.txt`
   （probe_polygon1・probe_pdist*・probe_erasecell・probe_firstclick・probe_divide* ・probe_measure*）。
 
-## 3. いまの状態（2026-10-06）
+## 3. いまの状態（2026-10-07 朝）
+
+10-07 未明〜朝にかけて、nokori.md A 節の方針（コマンド×項目×ESC/BS/数字入力の総当たり）で
+多角形②・複写・移動・消去・ハッチ・線変更・寸法⑧値変・変形①③を監査、見つけたバグはその場で
+decomp／実機突き合わせで直した（escaudit1〜7、`git log --oneline` に commit 多数）。記録の差
+8 件のうち 5 件も同時に片付いた。詳細・残りの監査対象・新しく見つかった罠は **nokori.md と
+notes/traps.md** を見ること——この節（2026-10-06 時点）より新しい。
+
+## 3b. いまの状態（2026-10-06、上のセッションより前）
 
 * 記録 `func_all`：ほぼ全件一致（残り：plus_s0_c3_v ＋③角度、linedel_s1_c1、curve ⑥ ×3、curve ⑦ ×2）。`func_draw`：67/68。
 * 画面 `stepfast`（796 件）：**755 一致**（10-06 朝 490 → 689 → 夜 755）。全件一致の群：ハッチ・複線・文編集・slash・多角形・分割・移動・複写・**測定・線変更・円弧・点・箱・面取・２線**。寸法は c2 の 7 画素、曲線は c5〜c7、図形 ④〜⑨、変形 c4・c5 などが残り（47 件）。
