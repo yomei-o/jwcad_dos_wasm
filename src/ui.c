@@ -530,6 +530,15 @@ int jw_ui_past_cells(int x, int y)
 /* jw_cmd_band のあとに書くもの（命令の帯が上の行を描き直すので、そのあと）。 */
 void jw_ui_band_end(VGA *v, const JwUi *s)
 {
+    /* 図形 の帯の行 2 の札：③表示 を押すごとに `ﾌｧｲﾙ`⇄`図形`（桁 25）、⑥レイヤ を押すごとに
+     * `書込`→`元ﾚｲﾔ`→`ｸﾞﾙｰﾌﾟ`（桁 48）。ovl31 の DS:0x1174・0x1175 の数で選ぶ文字（測定：zukei_s0_c3・c6）。 */
+    if (s->command == 27 && !s->zukei && !s->top_item && !s->zukei_ask && s->stage == 0
+        && (s->zukei_disp || s->zukei_layer)) {
+        static const char *const L2[3] = { "\x20" "\x8f" "\x91" "\x8d" "\x9e" "\x20", "\x8c\xb3\xda\xb2\xd4 ", "\xb8\xde\xd9\xb0\xcc\xdf" };
+
+        jw_ui_text(v, 25, 2, 7, 0xffffu, s->zukei_disp ? "\x90}\x8c`" : "\xcc\xa7\xb2\xd9");
+        jw_ui_text(v, 48, 2, 7, 0xffffu, L2[s->zukei_layer % 3]);
+    }
     /* 面取【辺寸法】：角を作ったあとの行（段 2）でも `②【面寸法】` の 面 は 辺（測定：chamfer_s0_c2）。 */
     if (s->command == 8 && s->ch_side && !s->chb && !s->top_item && (s->stage == 0 || s->stage == 2)) {
         jw_ui_text(v, 45, 1, 7, 0, "\x95\xd3");
