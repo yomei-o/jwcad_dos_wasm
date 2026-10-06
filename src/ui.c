@@ -2881,6 +2881,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     fill(v, 1, 464, 638, 478, 0);
     box(v, 0, 463, 639, 479, 7);
     if (s->ask == JW_ASK_LNAME
+        || (s->command == 15 && s->meas8)       /* 測定 ⑧③指定文字の欄（measure_s0_c8_v） */
         || (s->command == 14 && s->dim_val && s->stage == 8)) {
         /* 図面名 empties the strip altogether -- y 464..479 is black right
          * across, frame and all, while it is asking for the name.  **寸法
@@ -3007,6 +3008,13 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                        "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
+    } else if (s->command == 15 && s->meas8) {
+        /* 測定 ⑧文字列集計 ③指定文字：文字を打つ欄。 */
+        char b[40];
+
+        sprintf(b, "%s %s", "\x8e\x77\x92\xe8\x95\xb6\x8e\x9a", s->ms8_typed);
+        jw_ui_text(v, 27, 1, 7, 0, b);
+        fill(v, 8 * (35 + (int)strlen(s->ms8_typed)), 7, 8 * (35 + (int)strlen(s->ms8_typed)) + 7, 15, 4);
     } else if (s->command == 15 && s->meas9t) {
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
         jw_ui_text(v, 8, 1, 7, 0, "\x8e\x4f\x8e\xce\x96\xca\x90\xcf");
@@ -5303,6 +5311,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * `ｍ (3)桁` under its line and ①距離 leaves row 2 empty; only
          * ⑥単位 and ⑦小数点以下 put it back, and those two are not
          * `top_item` presses (src/main_wasm.c). */
+        if (s->command == 15 && s->top_item == 8 && s->meas8d) {
+            jw_ui_text(v, 17, 2, 0, 7, "\x83\x66\x81\x5b\x83\x5e\x96\xb3");
+            jw_ui_text(v, 38, 2, 0, 7, s->ms8_typed);
+        }
         if (s->command == 15 && s->top_item == 8 && s->missed) {
             jw_ui_text(v, 32, 2, 7, 0,
                        "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"

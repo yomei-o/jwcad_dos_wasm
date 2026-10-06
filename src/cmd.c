@@ -6294,6 +6294,15 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     int changed;
 
     c->meas_noind = 0;
+    /* 測定 ⑧文字列集計 ③指定文字：文字を打つ欄（測定：measure_s0_c8_v の `type 30`。打った先は未実装）。 */
+    if (c->command == 15 && c->stage == 0 && c->top_item == 8 && item == 3 && !c->meas8) {
+        c->meas8 = 1;
+        c->meas8d = 0;
+        c->ms8_n = 0;
+        c->ms8_typed[0] = 0;
+        c->top_item = 0;
+        return 1;
+    }
     /* 測定 ⑨式 ③三斜面積：単位の行（測定：measure_s0_c9_v の `type 30`。取った先は未実装）。 */
     if (c->command == 15 && c->stage == 0 && c->top_item == 9 && item == 3 && !c->meas9t) {
         c->meas9t = 1;
@@ -6861,7 +6870,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 
     /* 測定の最初の行の ESC：単位・桁の帯が消える（測定のみ・decomp 未確認）。 */
     if (key == 27 && c->command == 15 && c->stage == 0 && !c->top_item && !c->meas2 && !c->meas3
-        && !c->meas4 && !c->meas5 && !c->meas9 && !c->meas9t && !c->meas_arc) {
+        && !c->meas4 && !c->meas5 && !c->meas9 && !c->meas9t && !c->meas8 && !c->meas_arc) {
         c->meas_noind = 1;
         return 1;
     }
@@ -7310,6 +7319,31 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->meas_arc = 0;
             c->missed = 0;
             return 1;
+        }
+        return 1;
+    }
+    /* 測定 ⑧文字列集計 ③指定文字の欄：打った文字が欄に入り、ESC で ⑧ の項目の行へ。 */
+    if (c->command == 15 && c->meas8) {
+        if (key == 27) {
+            c->meas8 = 0;
+            c->top_item = 8;
+            return 1;
+        }
+        if (key == 13 || key == 10) {
+            c->meas8 = 0;                   /* 文字が無いので `データ無`（取れた先は未実装） */
+            c->meas8d = 1;
+            c->top_item = 8;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->ms8_n > 0) {
+                c->ms8_typed[--c->ms8_n] = 0;
+            }
+            return 1;
+        }
+        if (key >= 32 && key < 127 && c->ms8_n < 20) {
+            c->ms8_typed[c->ms8_n++] = (char)key;
+            c->ms8_typed[c->ms8_n] = 0;
         }
         return 1;
     }
@@ -13465,6 +13499,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     /* 測定 ⑧文字列集計：図面の押しは指定文字の指示（文字が無ければ `読取可能データ無`。取れた先は未実装）。
      * ⑨式：図面の押しは ① と同じ（左）で三辺の文字の範囲を取る行へ（測定：measure_s0_c8・c9）。 */
     if (c->command == 15 && c->stage == 0 && c->top_item == 8) {
+        c->meas8d = 0;
         c->missed = 1;
         return 0;
     }

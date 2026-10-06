@@ -737,6 +737,9 @@ static void sync_ui(void)
     ui.meas9z = cmd.meas9z;
     ui.meas9t = cmd.meas9t;
     ui.meas9k = cmd.meas9k;
+    ui.meas8 = cmd.meas8;
+    ui.meas8d = cmd.meas8d;
+    memcpy(ui.ms8_typed, cmd.ms8_typed, sizeof ui.ms8_typed);
     ui.meas5r = cmd.meas5r;
     ui.meas_arc = cmd.meas_arc;
     ui.meas4 = cmd.meas4;
