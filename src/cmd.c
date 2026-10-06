@@ -3356,13 +3356,18 @@ static void henkei_by(JwCmd *c, Jwc *d, double dx, double dy)
         for (k = 0; k < c->n0_lines; k++) {
             const JwcLine *l = &d->lines[k];
 
-            if (!in_reach_layer(d, l->layer)
-                || flipped(c, JW_FLIP_LINE, k)) {
+            unsigned char e;
+
+            if (!in_reach_layer(d, l->layer)) {
                 continue;
             }
-            c->hen_end[k] = (unsigned char)
+            e = (unsigned char)
                 ((jw_cmd_in_range(c, l->x0, l->y0, l->x0, l->y0) ? 1 : 0)
                  | (jw_cmd_in_range(c, l->x1, l->y1, l->x1, l->y1) ? 2 : 0));
+            if (flipped(c, JW_FLIP_LINE, k)) {
+                e = e ? 0 : 3;          /* 追加は丸ごと（測定のみ） */
+            }
+            c->hen_end[k] = e;
         }
     }
     for (k = 0; k < c->n0_lines; k++) {
@@ -3777,11 +3782,16 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
              * box: ②数値位置 with 20,30 carries line 5's end clean out of
              * the range and the original still shows it red. */
             const int ends = c->hen_end ? c->hen_end[k] : 0;
-            const int kind = c->hen_end
-                           ? (ends == 3 ? 1 : ends ? 2 : 0)
-                           : henkei_kind(c, l->x0, l->y0, l->x1, l->y1);
+            int kind = c->hen_end
+                       ? (ends == 3 ? 1 : ends ? 2 : 0)
+                       : henkei_kind(c, l->x0, l->y0, l->x1, l->y1);
 
-            if (!kind || (!c->hen_end && flipped(c, JW_FLIP_LINE, k))) {
+            /* 追加（測定のみ・decomp 未確認：henkei_plain の `162 250 left` で、範囲の外の
+             * 左辺の線が丸ごと赤の実線になる）。除外は今までどおり。 */
+            if (!c->hen_end && flipped(c, JW_FLIP_LINE, k)) {
+                kind = kind ? 0 : 1;
+            }
+            if (!kind) {
                 continue;
             }
             /* ③複線化 は伸ばしません。丸ごと入っている線だけが
@@ -6345,6 +6355,14 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
 
+    /* 変形 の最初の行（5 項目）で ① を選ぶ。本物のメイン（decomp ovl11 3ab8:305f、
+     * 02dcbd の読み）は項目を [bp-0x70]、押したボタンを [bp-0xa] で受け、どちらかが 1 なら
+     * ①パラメトリック変形（02dd58）。押した点は使わず、範囲の始点は次の押し。 */
+    if (c->command == 17 && key == '1' && !c->pressed && !c->again
+        && !c->hen_env && !c->hen_dbl && !c->hen_kigou) {
+        c->again = 1;
+        return 1;
+    }
     /* 図形 ①登録 の範囲の始点の行での [ESC] は 図形 の最初の行へ戻す
      * （測定：func_all zukei_plain の最後の [ESC]）。 */
     if (key == 27 && c->command == 27 && c->zukei == JW_ZUKEI_RANGE
@@ -7444,6 +7462,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
          * With nothing in hand it writes nothing at all, and a second one
          * after the first writes nothing either -- both measured, so both are
          * "return 0, nothing changed" here. */
+        /* 変形 の始点の行（①パラメトリック変形 の最初）での [ESC] は、5 項目の最初の行へ
+         * （測定のみ・decomp 未確認：henkei_plain の 2 回目の [ESC]）。 */
+        if (c->command == 17 && !c->pressed && c->again) {
+            c->again = 0;
+            return 1;
+        }
         if (!c->pressed || c->escaped) {
             return 0;
         }
@@ -7465,6 +7489,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             free(c->sel_arc);
             free(c->sel_text);
             c->sel_line = c->sel_arc = c->sel_text = 0;
+            /* 変形 ①は 始点の行（`変形範囲 始点マウス指示 (L)線・円 (R)線・円・文字`）へ戻る
+             * （測定のみ・decomp 未確認：henkei_plain の最初の [ESC]）。 */
+            if (c->command == 17 && !c->hen_env && !c->hen_dbl && !c->hen_kigou) {
+                c->again = 1;
+            }
             return 1;
         }
         /* Only the commands whose "ask again" line has been read off the
@@ -16758,6 +16787,18 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * 升も範囲もどちらも始まらない――これは JwUi.again が出す画面と
          * 1 ピクセル違わず同じ。登録図形がある場合にその場で拾う分岐は
          * 未実装（zukei_n==0 の配布図面でしか確かめていない）。 */
+        /* 変形 の最初の行：左の押し（[bp-0xa]==1）は ①パラメトリック変形、右の押し
+         * （==2）は ②包絡処理変形 を選ぶだけで、押した点は始点にならない（decomp
+         * ovl11 3ab8:305f の 02dd58／02dd6e。画面は henkei_plain の 400 140 left）。 */
+        if (c->command == 17 && !c->pressed && !c->again && !c->hen_env
+            && !c->hen_dbl && !c->hen_kigou) {
+            if (right) {
+                c->hen_env = 1;
+            } else {
+                c->again = 1;
+            }
+            return 1;
+        }
         if (c->command == 27 && !c->zukei && !c->pressed) {
             if (right) {
                 if (c->zukei_n == 0) {
@@ -16770,6 +16811,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 1;
         }
         if (!c->pressed) {
+            c->again = 0;           /* 変形：始点の行を出し終えた */
             c->x0 = x;
             c->y0 = y;
             c->pressed = 1;
