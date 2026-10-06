@@ -594,6 +594,7 @@ typedef struct {
     int meas9t;
     int meas9k;
     int meas8;
+    int dim8_plain;
     int meas8d;
     char ms8_typed[24];
     int meas5r;

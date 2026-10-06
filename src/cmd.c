@@ -6380,6 +6380,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     c->te_esc = 0;
     c->te_plain = 0;
     c->tx_plain = 0;    /* 文字：升を選ぶと左の盤も描き直す（text_s0_c7_v） */
+    c->dim8_plain = 0;
     /* ④円･角 の桁は別で、押しても [ESC] も帯の値も残ります（測定：①矢印
      * を押したあとも桁 1 の [ESC]、桁 18 の値、桁 62 の 書込角度 がそのまま
      * 書き直されます）。②円周 の ①端部 も同じ扱いにしてあります。 */
@@ -6888,6 +6889,10 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
 
+    /* 寸法 ⑧値変で [Enter] を打つと行と左の盤が描き直される（測定：dim_s0_c8_v）。 */
+    if (c->command == 14 && c->stage == 7 && (key == 13 || key == 10)) {
+        c->dim8_plain = 0;
+    }
     /* 測定の最初の行の ESC：単位・桁の帯が消える（測定のみ・decomp 未確認）。 */
     if (key == 27 && c->command == 15 && c->stage == 0 && !c->top_item && !c->meas2 && !c->meas3
         && !c->meas4 && !c->meas5 && !c->meas9 && !c->meas9t && !c->meas8 && !c->meas_arc) {

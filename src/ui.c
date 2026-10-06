@@ -1428,6 +1428,10 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
         jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
         return;
     }
+    /* ⑧値変で升の無い数字を打ったあとは行 2・3 を書かず数え箱に戻る（測定：dim_s0_c8_v）。 */
+    if (q->command == 14 && s->dim8_plain && q->row >= 2 && q->row <= 3) {
+        return;
+    }
     /* 寸法 has its own two rows in the counts box: the pen it writes with
      * and how many texts the drawing had, then the character size.  The count
      * is the one from when the command asked for the 寸法値の始点 -- the
@@ -1435,6 +1439,7 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
     if (q->command == 14 && q->col == 1 && (q->row == 2 || q->row == 3)) {
         char one[160];
         double n[2];
+
 
         if (q->row == 2) {
             n[0] = s->dim_text_pen ? s->dim_text_pen : JW_DIM_PEN;
@@ -1604,6 +1609,10 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
  * DOSEMU_BP=+0def:2636,+0def:23c5. */
 static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
+    /* 寸法 ⑧値変：升の無い数字を打つと左の盤は数え箱に戻る（測定：dim_s0_c8_v の `type 30`）。 */
+    if (q->command == 14 && s->command == 14 && s->dim8_plain && q->stage == 7 && q->row != 1) {
+        return;
+    }
     /* 線変更の押した直後の行 2 `線 変更` は次の鍵で消える（測定：linechg_s1_c4）。 */
     if (q->command == 24 && s->command == 24 && q->stage == 1 && q->row == 2
         && (q->col == 20 || q->col == 22) && !s->lc_msg) {
@@ -4555,6 +4564,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * inside that box: ハッチ puts 残数 at column 70 and leaves the counts
          * alone. */
         for (q = p; !s->band_off && !(s->command == 13 && s->tx_plain)
+                    && !(s->command == 14 && s->dim8_plain)
                     && q->col; q++) {
             /* Not when the band has been turned off: the box is cleared to
              * make room for what the command writes there, and with the
@@ -4742,6 +4752,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 continue;
             }
             if (s->command == 13 && s->tx_plain && p->row != 1) {
+                continue;
+            }
+            if (s->command == 14 && s->stage == 7 && s->dim8_plain && p->row != 1) {
                 continue;
             }
             /* 面取's ① has gone round to another shape: the line is
@@ -5023,6 +5036,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
                 if (s->command == 28 && s->top_item == 6 && s->te_plain
                     && r->row >= 2) {
+                    continue;
+                }
+                if (s->command == 14 && s->top_item == 8 && s->dim8_plain
+                    && r->row >= 2 && r->row <= 3) {
                     continue;
                 }
                 /* 文字の左の盤を下ろしたあとは数え箱の行だけ。 */
@@ -5647,7 +5664,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * for a value, not the two counts. */
             /* 段 7 keeps the 文字 band; **段 8 puts the two counts back**
              * (measured: `33| 14` while the field is up). */
-            if (s->command == 14 && s->dim_val && i == 7) {
+            if (s->command == 14 && s->dim_val && i == 7 && !s->dim8_plain) {
                 own = 1;
             }
             /* [ESC] puts the two counts back: □ and ○ write their sides and

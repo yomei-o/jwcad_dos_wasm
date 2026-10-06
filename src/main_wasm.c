@@ -738,6 +738,7 @@ static void sync_ui(void)
     ui.meas9t = cmd.meas9t;
     ui.meas9k = cmd.meas9k;
     ui.meas8 = cmd.meas8;
+    ui.dim8_plain = cmd.dim8_plain;
     ui.meas8d = cmd.meas8d;
     memcpy(ui.ms8_typed, cmd.ms8_typed, sizeof ui.ms8_typed);
     ui.meas5r = cmd.meas5r;
@@ -1855,11 +1856,11 @@ EMSCRIPTEN_KEEPALIVE const char *jw_cmd_state(void)
     snprintf(buf, sizeof buf,
              "cmd=%d stage=%d pressed=%d typing=%d fix_mode=%d fix_done=%d "
              "fix_len=%d fix_angle=%d ask_kind=%d top_item=%d box_ask=%d "
-             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g chb=%d cham=%d hn=%d h0=%d miss=%d lc=%d/%d zk=%d uitop=%d uistage=%d uiesc=%d noind=%d m5=%d um5=%d m5s=%d nl=%d unl=%d",
+             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g chb=%d cham=%d hn=%d h0=%d miss=%d lc=%d/%d zk=%d uitop=%d uistage=%d uiesc=%d noind=%d m5=%d um5=%d m5s=%d nl=%d unl=%d d8=%d",
              cmd.command, cmd.stage, cmd.pressed, cmd.typing, cmd.fix_mode,
              cmd.fix_done, cmd.fix_len, cmd.fix_angle, cmd.ask_kind,
              cmd.top_item, cmd.box_ask, cmd.box_fix, cmd.circ_fix,
-             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer, cmd.hatch_n, cmd.hatch_line[0], cmd.missed, cmd.lc_range, cmd.lc_narrow, cmd.zukei, ui.top_item, ui.stage, ui.escaped, cmd.meas_noind, cmd.meas5, ui.meas5, cmd.meas5s, drawing ? (int)drawing->n_lines : -1, (int)ui.n_lines);
+             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer, cmd.hatch_n, cmd.hatch_line[0], cmd.missed, cmd.lc_range, cmd.lc_narrow, cmd.zukei, ui.top_item, ui.stage, ui.escaped, cmd.meas_noind, cmd.meas5, ui.meas5, cmd.meas5s, drawing ? (int)drawing->n_lines : -1, (int)ui.n_lines, cmd.dim8_plain);
     return buf;
 }
 EMSCRIPTEN_KEEPALIVE int jw_top_item(int x, int y) { return jw_ui_top_item(x, y); }
@@ -4241,6 +4242,20 @@ static int lc_msg_was;
 
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
+    /* 寸法 ⑧値変で [Enter] を打つと行と左の盤が描き直される（測定：dim_s0_c8_v）。 */
+    if (cmd.command == 14 && cmd.stage == 7 && !cmd.typing && key == 27) {
+        cmd.dim8_plain = 1;             /* [ESC] も升の無い数字と同じに数え箱へ（測定：dim_s0_c8） */
+        cmd.missed = 0;
+        sync_ui();
+        present();
+        return -1;
+    }
+    if (cmd.command == 14 && cmd.stage == 7 && cmd.dim8_plain && (key == 13 || key == 10)) {
+        cmd.dim8_plain = 0;
+        sync_ui();
+        present();
+        return -1;
+    }
     /* 行 2 の `表示範囲 記憶` は**次の鍵で消えます**（測定：[ESC] を
      * 押すと帯だけが消えて、ほかは何も変わりませんでした）。鍵が何も
      * しないときでも画面は書き直します。 */
@@ -5105,6 +5120,14 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         sync_ui();
         present();
         return -1;
+    }
+    /* 寸法 ⑧値変：升の無い数字は左の盤が数え箱に戻る（測定：dim_s0_c8_v の `type 30`）。 */
+    if (!pick && key >= '0' && key <= '9' && cmd.command == 14 && cmd.stage == 7
+        && !cmd.typing && !cmd.typing_text) {
+        cmd.dim8_plain = 1;
+        sync_ui();
+        present();
+        return 0;
     }
     /* 文字：升の無い数字は行を描き直し、左の盤は数え箱に戻る（測定：
      * func_all text_s0_c7 の `7`）。 */
