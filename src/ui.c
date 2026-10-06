@@ -1537,8 +1537,12 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
         char one[160];
         double n;
 
-        if (s->hatch_plain && q->col == 70) {
-            return;             /* 最初の行の数字で 残数 は消える（測定：h_n1） */
+        if (s->hatch_plain && q->col == 70 && s->hatch_n < 2) {
+            /* 最初の行の数字で 残数 は消える（測定：h_n1）。枠を 2 本以上
+             * 持ってからの数字（①自動選択 を試みて外れた digit）は
+             * 残数 を消さない（測定：hatch_n==2 で digit 5 を押しても
+             * 「残数 98」は出たまま）。 */
+            return;
         }
         if (q->col == 70) {
             n = 100 - s->hatch_used;
@@ -4845,9 +4849,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     continue;
                 }
             }
-            /* ハッチ 最初の行の数字は 残数（桁 70）を消す。 */
+            /* ハッチ 最初の行の数字は 残数（桁 70）を消す。枠を 2 本以上
+             * 持ってからの数字（①自動選択 を試みて外れた digit）は
+             * 残数 を消さない（測定：hatch_n==2 で digit 5 を押しても
+             * 「残数 98」は出たまま、stage_text_1 のガードと同じ条件）。 */
             if (s->command == 18 && s->hatch_plain && p->row == 2
-                && p->col == 70) {
+                && p->col == 70 && s->hatch_n < 2) {
                 continue;
             }
             /* **A press on the top row clears the band with it.**  測定

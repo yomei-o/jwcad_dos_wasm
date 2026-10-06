@@ -18,3 +18,26 @@ h_e5|SAMPLE0|30 104 left|400 140 left|162 250 left|key esc|162 250 left
 h_n1|SAMPLE0|30 104 left|type 1
 h_n2|SAMPLE0|30 104 left|400 140 left|type 1
 h_n3|SAMPLE0|30 104 left|400 140 left|162 250 left|type 1
+#
+# 2026-10-07（escaudit4）追記：枠を閉じたあと（段 4〜6）の [ESC]／[Enter]。
+# 本物は tools/probe.sh 18 … で確認、どれも画面に変化なし（no-op）。つまり
+# 現状の移植（stage>=4 で ESC/Enter 用の分岐が無い＝何もしない）はすでに
+# 本物と一致している。functest は状態が動かないので突き合わせに使えず、
+# tools/seqshot.mjs + tools/rawpng.py で画面を見比べて確認した
+# （矩形は 400,140-598,300-400,419-162,300 の 4 辺、最後に 400,140 を
+# もう一度押して閉じる）。
+h_close_esc|SAMPLE0|30 104 left|400 140 left|598 300 left|400 419 left|162 300 left|400 140 left|key esc
+h_close_enter|SAMPLE0|30 104 left|400 140 left|598 300 left|400 419 left|162 300 left|400 140 left|key enter
+h_confirm_esc|SAMPLE0|30 104 left|400 140 left|598 300 left|400 419 left|162 300 left|400 140 left|type 1|key esc
+h_run_esc|SAMPLE0|30 104 left|400 140 left|598 300 left|400 419 left|162 300 left|400 140 left|type 1|type 1|key esc
+#
+# 見つけて直したバグ：枠を 2 本以上持ってから（まだ閉じる前）押した
+# 数字（①自動選択 に外れた digit、まだ未実装）は、本物では行を描き直す
+# だけで `残数` はそのまま出続けるのに、移植は `残数` を消して空白にして
+# いた（src/ui.c の hatch_plain ガードが hatch_n を見ていなかったため）。
+# これも functest では捕まらない画面だけの差——tools/seqshot.mjs +
+# tools/rawpng.py で見比べて見つけた（本物は tools/probe.sh 18 400 140
+# 598 300 t 5 で確認：「残数 98」が出たまま）。
+# src/ui.c の 2 箇所（stage_text_1 の残数ガードと jw_ui_draw の記録の
+# 再生スキップ）に `&& s->hatch_n < 2` を足して直した。
+h_digit_keeps_count|SAMPLE0|30 104 left|400 140 left|598 300 left|type 5

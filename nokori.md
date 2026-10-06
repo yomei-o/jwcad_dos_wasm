@@ -81,6 +81,28 @@ RESUME.md は経緯と手順、**ここは「あと何をやれば完成か」�
     今回の修正とは無関係（regression で再確認しただけ）。
     **残り**：[ESC] 経路の上の未解決点の decomp 確認、③指定範囲（数値指定）経路は
     未監査（下の B 参照、そもそも数値入力自体が実装されていない可能性が高い）。
+  - **済み（10-07、escaudit4）：ハッチ(command=18) を監査、1 件の画面だけの表示バグを
+    見つけて直した**（tools/cases/probe_hatch.txt に追記、本物との突き合わせは
+    functest が効かない画面差なので tools/seqshot.mjs + tools/rawpng.py で見比べた）。
+    枠を 2 本以上持ってから（閉じる前に）①自動選択 に外れた数字キーを押すと、本物は
+    `残数` を出したまま行を描き直すだけなのに、移植は `残数` を消して空白にしていた
+    （src/ui.c の「最初の行の数字で残数は消える」ガードが hatch_n を見ておらず、
+    残数がまだ無い hatch_n<2 だけでなく hatch_n>=2 にも効いていた）。
+    `stage_text_1`（残数/角度/ピッチの生の数字を描く側）と `jw_ui_draw`（item.h の
+    記録再生をスキップする側）の両方に `s->hatch_n < 2` を足して直した。
+    枠を閉じたあと（段 4：①【指示終了】待ち／段 5：①実行 の確認／段 6：実行後）の
+    [ESC]・[Enter] は実機で確認した結果すべて no-op で、移植も分岐が無いので一致
+    （decomp で跡づけられていた「02b14c→02b0ef へ戻るだけ」は見た目を変えない
+    ということで説明がつく、notes/decomp-audit.md 参照）——ここは直すものが無かった。
+    ①自動選択(左回)・②基点変更/③角度/④ピッチ/⑤(1)本線の数値入力・stage 6 の
+    ①同図形ハッチ追加/②他図形ハッチ は、今回の監査の対象外（既存の未実装機能、
+    下の B・RESUME.md 参照）のまま。
+    ついでに regression（tools/funccases.sh func_ops.txt hatch_）で見つけた
+    別件（今回は未修正・ESC とは無関係、今回の fix を外しても同じ差が出ることを
+    確認済み）：hatch_op_rlines は 1 本だけ `rest` の bit 0（0x01）が本物と
+    1 ビット違う（消去の項の「近傍読取の印」と同じ既知の種類の差と見られる）。
+    hatch_op_text（ハッチ中に文字 `ABC`・数字 `12` を typing する手順）は
+    レコードが広い範囲で食い違う——未調査のまま置いてある。
 - [ ] 記録（ファイル）の差 8 件（`MASK=1 python tools/funcfast.py tools/cases/func_all.txt`）
   - linedel_s1_c1（L2）、circle_s0_c2/_v（レコード 59 vs 60）、curve_s0_c6/_v・s0_c7/_v（A2）、curve_s1_c6（59 vs 60）
   - 原本の記録が無いもの 3 件：linechg_range_type/pen/layer（rbatch で原本を取り直す）
