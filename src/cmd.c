@@ -7650,6 +7650,31 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->pg3 = 0;             /* [BS]前項 */
         return 1;
     }
+    /* 多角形 ②正多角形：中心点を持って頂点を聞いている段（stage 5）の
+     * [ESC] は中心点を捨てて `中心点 マウス指示` へ戻るだけ（測定：
+     * tools/steps_table.py 19 t 2 t 1 t 5 e 300 250 esc -- stage 6 の行は
+     * stage 4 と同じ文字列に戻り、`[ESC]` の札も消える）。まだ何も足して
+     * いないので pg2_undo は触らない。 */
+    if (c->command == 19 && !c->pg1 && !c->pg3 && c->stage == 5
+        && !c->typing && key == 27) {
+        c->stage = 4;
+        return 1;
+    }
+    /* 多角形 ②正多角形：確定した直後（stage 6）の [ESC] は、いま置いた
+     * 多角形の線だけを取り消す（測定：同じ道具の 19 t 2 t 1 t 5 e 300 250
+     * 450 250 esc -- 五角形の縁の画素だけ消え、行は `中心点 マウス指示` の
+     * まま。二度目の [ESC] は `[ESC]` の札が無いので何もしない）。本物は
+     * 線を枠の上に直描きし、消すときも黒で塗る（線伸縮・コーナー連結と
+     * 同じ流儀、jwc_ink_settle）。 */
+    if (c->command == 19 && !c->pg1 && !c->pg3 && c->stage == 6
+        && !c->typing && key == 27 && c->pg2_undo_on && d) {
+        jwc_ink_settle(d);
+        while (d->n_lines > c->pg2_undo_from) {
+            jwc_remove_line(d, d->n_lines - 1);
+        }
+        c->pg2_undo_on = 0;
+        return 1;
+    }
     /* 多角形 ②正多角形：頂点/辺中（中心点の基準）の切り替え。file-linear
      * 0x2da19（`mov ax,1; sub ax,[0x53f4]; mov [0x53f4],ax`）は key '1'
      * で呼ばれる（decomp・実測とも確認、RESUME.md 10-e 参照）。本物は
@@ -8501,6 +8526,20 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->stage = 0;
         return 1;
     }
+    /* 多角形 ②正多角形：「正多角形の角数 = 」の欄を打っている途中（でも
+     * 何も打たないままでも）の [ESC] は欄を閉じて `①任意寸法の正多角形|
+     * ②寸法指定の正多角形` の行（stage 1）へ戻る（測定：
+     * tools/steps_table.py 19 t 2 t 1 t 5 esc -- stage 4 の行が stage 1 と
+     * 同じ文字列に戻る）。この下の汎用「取り消し」節（`!c->pressed` で
+     * return 0 する）より先に置く：欄を打っている途中は c->pressed が 0 の
+     * ままなので、そちらに先に捕まると二度と ESC が落ちてこない。 */
+    if (key == 27 && c->command == 19 && c->typing) {
+        c->typing = 0;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        c->stage = 1;
+        return 1;
+    }
     if (key == 27) {
         /* [ESC]: the point in hand goes and the command asks for it again.
          * With nothing in hand it writes nothing at all, and a second one
@@ -9273,7 +9312,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (c->command == 19) {
         /* 正多角形's number of sides.  Three or more; the original's own
-         * `[5]` is what it offers. */
+         * `[5]` is what it offers.  (打っている途中の [ESC] は、この下の
+         * 汎用「取り消し」より前、src/cmd.c の `if (key == 27) { ... }`
+         * （`!c->pressed || c->escaped` で return 0 するところ）の手前に
+         * 置いてある -- ここに置くと command==19 もその汎用節の
+         * `return 0;` に先に捕まって、二度と ESC が落ちてこない。) */
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n && atoi(c->typed) >= 3) {
@@ -17571,7 +17614,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 5;
             return 1;
         }
+        /* 確定直後の [ESC] で戻せるように、この一つ分の線の範囲を覚えておく
+         * （測定：tools/steps_table.py 19 t 2 t 1 t 5 e 300 250 450 250 esc。
+         * src/cmd.h の pg2_undo_on 参照）。 */
+        c->pg2_undo_from = d->n_lines;
         polygon(c, d, px, py);
+        c->pg2_undo_on = 1;
         c->stage = 6;
         return 1;
     }

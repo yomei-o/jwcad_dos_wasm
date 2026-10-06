@@ -788,6 +788,14 @@ typedef struct {
      * -- the band-click toggle described in decomp is not wired here
      * (測定のみ・decomp未確認：クリックでのトグルは未実装). */
     int pg_edge;
+    /* ②正多角形 の確定直後の [ESC]（測定：tools/steps_table.py 19 t 2 t 1
+     * t 5 e 300 250 450 250 esc -- 置いた直後は画面の行の頭に `[ESC]` が出て
+     * （row 1,col 1）、押すと五角形の縁の画素が消え、行はそのまま次の
+     * `中心点 マウス指示` を続ける。二度目の [ESC] は何もしない（`[ESC]`
+     * の札が消えているので）。線伸縮・コーナー連結と同じ「直近 1 回だけ
+     * 戻せる」形）。pg2_undo_on がオンのあいだだけ有効、戻したら消す。 */
+    int pg2_undo_on;
+    long pg2_undo_from;
     /* 分割's count -- `分割 数 = ` with `[2]` offered as 前回と同じ.  The
      * original starts at 2 and remembers what was last typed. */
     int divisions;
