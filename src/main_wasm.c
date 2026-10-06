@@ -4220,7 +4220,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         const int changed = jw_cmd_press(&cmd, drawing, &view, x, y, right);
 
         /* 三点指示の弧：読みが外れた押しは何も変えないので、仮の弧は矢について残る（測定：arc_s0_c1_v） */
-        if (cmd.command == 12 && cmd.arc3 == 3 && cmd.missed) {
+        if (cmd.missed) {
             cmd.moved = was_moved;
         }
 
