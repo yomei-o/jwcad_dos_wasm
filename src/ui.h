@@ -342,6 +342,8 @@ typedef struct {
     int pg3;                    /* 多角形 ③の段 */
     int pg1;                    /* 多角形 ①の段（JwCmd.pg1） */
     int pg1_n;
+    int mv_none;
+    int lay_only;
     double pg1_pd[2];
     int pg_edge;                /* 多角形 ②正多角形：頂点(0)/辺中(1) */
     int ch_ask;

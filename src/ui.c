@@ -1591,6 +1591,12 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
  * DOSEMU_BP=+0def:2636,+0def:23c5. */
 static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
+    /* 複写・移動：何も選ばずに置いたあとの `再移動` の行には [ESC] が付かない（測定：move_s0_c1_v）。 */
+    if ((q->command == 1 || q->command == 16) && s->command == q->command && s->mv_none
+        && q->stage == 9 && q->row == 1 && q->col == 1) {
+        return;
+    }
+
     /* ２線 の待ちの行（`□ 終点 指示はマウス移動 ■ 【 …】`）：R で押したときは
      * `基準線 指示は同位置マウス(L)` が `<始|終>線 指示は同位置マウス(R) 包絡処理` になる
      * （decomp ovl17 0x2dd04〜0x2dd7f の mode 2、画面は double_plain 8 手目）。 */
@@ -6127,6 +6133,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
                 for (r = s->command == 1 ? JW_COPY : JW_MOVE; r->command; r++) {
                     stage_text(v, r, s, st);
+                }
+                if (s->lay_only && i == 1) {
+                    jw_ui_text(v, 60, 2, 0, 7, "\x8f\x91""\x8d\x9e"" \x83\x8c""\x83\x43""\x83\x84"" \x82\xcc""\x82\xdd""\x91\x49""\x91\xf0""");
                 }
             }
             /* 変形 ①パラメトリック変形 walks 複写's road cell for cell, out

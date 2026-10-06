@@ -501,6 +501,8 @@ static void sync_ui(void)
     ui.pg3 = cmd.pg3;
     ui.pg1 = cmd.pg1;
     ui.pg1_n = cmd.pg1_n;
+    ui.mv_none = cmd.mv_none;
+    ui.lay_only = cmd.lay_only;
     ui.pg1_pd[0] = cmd.pg1_pd[0];
     ui.pg1_pd[1] = cmd.pg1_pd[1];
     ui.pg_edge = cmd.pg_edge;

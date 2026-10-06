@@ -3275,7 +3275,20 @@ static void place_by(JwCmd *c, Jwc *d, double dx, double dy)
      * entities with it, so asking the box again after the first press finds
      * nothing left inside it and the next press would move nothing. */
     if (!c->sel_line) {
+        long k;
+        int any = 0;
+
         freeze(c, d);
+        for (k = 0; k < c->n0_lines && c->sel_line; k++) {
+            any |= c->sel_line[k];
+        }
+        for (k = 0; k < c->n0_arcs && c->sel_arc; k++) {
+            any |= c->sel_arc[k];
+        }
+        for (k = 0; k < c->n0_texts && c->sel_text; k++) {
+            any |= c->sel_text[k];
+        }
+        c->mv_none = !any;
     }
     /* 取り消し（[ESC]）のための控え：複写は足した数、移動は量。 */
     c->mv_undo = 1;
@@ -6099,9 +6112,45 @@ int jw_cmd_te_digit(JwCmd *c, int n)
     return 0;
 }
 
+/* 複写・移動 の ①前範囲：最後に閉じた範囲（本物も覚えている。無ければ空の範囲）。 */
+static double prev_range[4];
+static int prev_range_ok;
+
 int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
 {
     int changed;
+
+    /* 範囲の始点を持ったあとの (1)レイヤ は `書込 レイヤ のみ選択` の札を出し入れする
+     * （測定：move_s1_c1 の `type 1`。帯はそのまま）。 */
+    if (JW_MOVE_CMD(c->command) && item == 1 && !right && c->pressed == 1) {
+        c->lay_only = !c->lay_only;
+        c->top_item = 0;
+        c->top_right = 0;
+        return 1;
+    }
+    /* 複写・移動 の始点の行の ①前範囲（測定：move_s0_c1 の `type 1`）：前の範囲を取って
+     * 追加･除外 の段へ。前の範囲が無ければ空の範囲で、そのまま押しで線を足せる。 */
+    if (JW_MOVE_CMD(c->command) && item == 1 && !right && !c->pressed && d
+        && c->stage == 0) {
+        c->top_item = 0;
+        c->top_right = 0;
+        if (prev_range_ok) {
+            c->x0 = prev_range[0];
+            c->y0 = prev_range[1];
+            c->x1 = prev_range[2];
+            c->y1 = prev_range[3];
+        } else {
+            c->x0 = c->x1 = -1e30;
+            c->y0 = c->y1 = -1e30;
+        }
+        c->pressed = 2;
+        c->stage = 3;
+        c->n_flip = 0;
+        c->n0_lines = d->n_lines;
+        c->n0_arcs = d->n_arcs;
+        c->n0_texts = d->n_texts;
+        return 1;
+    }
 
     /* The press belongs to whatever claims it.  A command that has been built
      * this far answers in cmd_top above and the table never sees the press;
@@ -7639,6 +7688,10 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
              * it came up with -- `◇消去範囲 始点指示 |①範囲内消去|…` with a
              * `・` at column 6 -- whether the range was half taken or fixed.
              * Measured on 消去 from both. */
+            /* 何も選ばずに置いたあと（[ESC] の札が無い行）の [ESC] は何も起きない（測定：move_s0_c1_v）。 */
+            if (JW_MOVE_CMD(c->command) && c->mv_none && c->mv_undo && c->stage == 9) {
+                return 0;
+            }
             /* 複写・移動を置いたあとなら、まず最後の一回を取り消します。 */
             if (JW_MOVE_CMD(c->command) && c->mv_undo && d) {
                 place_undo(c, d);
@@ -17085,6 +17138,13 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->x1 = x;
             c->y1 = y;
             c->pressed = 2;
+            if (JW_MOVE_CMD(c->command)) {
+                prev_range[0] = c->x0;
+                prev_range[1] = c->y0;
+                prev_range[2] = c->x1;
+                prev_range[3] = c->y1;
+                prev_range_ok = 1;
+            }
             /* The selection is the entities that exist now; 複写's copies go
              * on the end and are not part of it. */
             c->n0_lines = d->n_lines;
