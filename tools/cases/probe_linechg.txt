@@ -1,0 +1,43 @@
+# 線変更(command=24) の ESC/BS/数値入力 総当たり監査（2026-10-07、escaudit5、nokori.md A節）。
+# 対象は①指定範囲内変更の範囲→絞り込み（段3→2）→変更内容（段4）の段と、
+# ②レイヤ変更【有】⇔【無】の持ち方。本物との突き合わせは tools/functest.sh
+# （JWC バイト列の一致）。直接指し（1 クリックで即適用）・③属性設定・
+# 範囲の始点行の ESC は既存の func_all linechg_plain/s0_c*/s1_c*/range_*
+# ですでに監査済み（RESUME.md「線変更グループ全一致」）——ここはその続き。
+
+# --- ①指定範囲内変更：絞り込み（段2）・変更内容（段4）の [ESC] ---
+# 仮説（複写・移動と同じ「1段ずつ戻る」パターン）を疑ったが、測定の結果
+# **線変更はどちらの段でも範囲ごと丸ごと捨てる**（複写・移動とは別物、
+# 消去と同じ「段がもう無い」パターン）。現状の実装（汎用の「範囲ごと戻す」
+# 節に落ちて pressed=0,stage=0,lc_range は保ったまま）はすでに本物と一致。
+# 根拠：ESC のあとに同じ範囲を再指定せず type 1/3/1 を打っても、本物も
+# 移植も rest の印しか動かず type/pen/lay は変わらない（= 絞り込み・変更
+# 内容のどちらへも戻っておらず、箱の取り直しからやり直しになっている）。
+lc_range_esc_at_narrow|SAMPLE0|30 200 left|type 1|200 150 left|450 300 left|type 1|key esc|type 1|type 3|type 1
+lc_range_esc_at_content|SAMPLE0|30 200 left|type 1|200 150 left|450 300 left|type 1|type 3|key esc|type 3|type 1
+# 比較用：ESC を挟まない通常の確定（本物・移植とも同じ 126 行差）。
+lc_range_apply_type|SAMPLE0|30 200 left|type 1|200 150 left|450 300 left|type 1|type 3|type 1
+
+# --- 見つけて直したバグ：②レイヤ変更【有】⇔【無】は命令をまたいで残る ---
+# c->lc_off は JwCmd の中の変数だが、本物は DGROUP 側の記憶
+# （decomp：ovl26 FUN_4000_0cb6 が読む DS:[0x5e40]）——jw_cmd_pick の
+# memset（命令を選ぶたび、同じ命令の選び直しでも走る）でリセットされる
+# 「命令の中の変数」ではなく、＋/／の長さ・角度などと同じ「選び直しても
+# 残る」側だった。直す前は【無】にしたあと、消去を挟んでから線変更を
+# 選び直す（あるいは線変更をただ選び直す）だけで【有】に戻ってしまい、
+# 直接指しでレイヤが書き換わっていた。本物は【無】のまま（SAMPLE6 の
+# 線 38、測定：pen 1→4 は変わるが lay は 00 のまま）。
+# src/cmd.c の jw_cmd_pick に ask_len などと同じ「keep_」変数を足して
+# 直した。
+lc_off_survives_repick|SAMPLE6|30 200 left|type 2|30 200 left|499 271 left
+lc_off_survives_other_cmd|SAMPLE6|30 200 left|type 2|30 216 left|key esc|30 200 left|499 271 left
+# 比較用：トグルしなければ【有】のまま、レイヤは書き換わる（既存どおり）。
+lc_off_default_on|SAMPLE6|30 200 left|499 271 left
+
+# --- 見つけたが直していない別件（今回とは無関係、decomp 未確認） ---
+# SAMPLE6 で線変更を直接指しで押すと、押した線とは無関係な円弧 A8・A9・
+# A0-5・A11・A14-26 の rest の 1 バイトが本物と移植で違う（②レイヤ変更を
+# 一切触らない素の直接指し 1 回でも出る——lc_off とは無関係、今回の fix
+# の前後どちらでも同じ差）。消去の項の「近傍読取の印」と同じ種類の
+# cosmetic 差と見られるが未確認（測定のみ・decomp 未確認、今回は見送り）。
+lc_plain_pick_arc_bits_diff_known_open|SAMPLE6|30 200 left|499 271 left

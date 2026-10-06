@@ -16,6 +16,7 @@ void jw_cmd_pick(JwCmd *c, int command)
      * 0x0fe0・0x0fe4 に持っている（命令の中の変数ではない）ので、
      * `前回と同じ ﾏｳｽ(R)` は前に打った数です。初めは 1000 と 45。 */
     const int had = c->ask_len > 0.0;   /* まだ一度も作っていなければ 0 */
+    const int keep_lc_off = c->lc_off;
     const double keep_len = c->ask_len, keep_ang = c->ask_ang;
     const double keep_bw = c->box_w, keep_bh = c->box_h;
     const double keep_cr = c->circ_r;
@@ -114,6 +115,13 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->rep_gap[1] = keep_rg1 > 0.0 ? keep_rg1 : 20.0;
     c->ell_b = keep_eb > 0.0 ? keep_eb : 500.0;
     c->ell_ang = keep_ee != 0.0 || keep_ea > 0.0 ? keep_ee : 90.0;
+    /* 線変更 ②レイヤ変更【有】⇔【無】 (c->lc_off) も DGROUP 側の記憶
+     * （decomp：ovl26 FUN_4000_0cb6 が読む DS:[0x5e40]）で、命令の中の
+     * 変数ではない。選び直しても、他の命令を挟んでも【無】のままになる
+     * （測定：tools/functest.sh、SAMPLE6、`30 200 left|type 2|30 216
+     * left|key esc|30 200 left|499 271 left` で本物は layer=00 の
+     * まま——消去を挟んでから線変更を選び直しても戻らない）。 */
+    c->lc_off = keep_lc_off;
 }
 
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y)
