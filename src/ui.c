@@ -5137,6 +5137,20 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
                 /* ⑤寸法値's own line carries the same `[1]` -- the
                  * 小数点以下 setting, in the same columns. */
+                /* 点 ⑤仮点削除 の `現在の数 [n]` は記録の 0 ではなく今の仮点の数（測定：point_s1_c5）。 */
+                if (s->command == 22 && s->top_item == 5 && r->row == 1 && r->col == 8) {
+                    char one[200];
+                    char *at;
+
+                    strncpy(one, r->text, sizeof one - 1);
+                    one[sizeof one - 1] = 0;
+                    at = strstr(one, " [0]");
+                    if (at) {
+                        sprintf(at, " [%d]", JWC_TEMP_MAX - s->temp_left);
+                    }
+                    jw_ui_text(v, r->col, r->row, (unsigned)r->fg, (unsigned)r->bg, one);
+                    continue;
+                }
                 if (s->command == 14 && s->top_item == 5 && r->col == 8) {
                     char one[160];
                     int j;
