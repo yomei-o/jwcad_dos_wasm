@@ -14033,6 +14033,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->ell = 3;
             return 1;
         }
+        if (c->ell == 5 || c->ell == 6) {
+            /* 任意寸法：１点目・２点目の指示（測定：circle_s0_c2。２点目の先は未実装）。 */
+            if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->ell++;
+            return 1;
+        }
         if (c->ell == 3) {
             /* 長軸を押した線と平行に：傾きはその線の向き（0def:2828）。 */
             const long k = pick_line(d, w, sx, sy);
