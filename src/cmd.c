@@ -4026,8 +4026,8 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
 /* Cut a line to the drawing window, Liang-Barsky, in screen pixels.  A
  * horizontal one comes back as (122,y)-(638,y), which is what the two square
  * directions drew before this took slanted ones too. */
-static int guide_cut(const JwView *w, double px, double py,
-                     double dx, double dy, int seg[4])
+static int guide_cut(const JwView *w, double dpx, double dpy,
+                     double ddx, double ddy, int seg[4])
 {
     /* **One row higher than the drawing area.**  ③任意方向's slanted
      * guide reaches y=17 at x=374.9, and the original's topmost dot is
@@ -4037,10 +4037,12 @@ static int guide_cut(const JwView *w, double px, double py,
      * pixels of dots move.  The two square directions are the same
      * either way: a horizontal guide is not cut in y at all and a
      * vertical one only has its endpoint moved back to 17. */
-    const double x0 = w->x0, y0 = w->y0 - 1.0, x1 = w->x1, y1 = w->y1;
-    double t0 = -1e9, t1 = 1e9;
-    const double p[4] = { -dx, dx, -dy, dy };
-    const double q[4] = { px - x0, x1 - px, py - y0, y1 - py };
+    /* 本物は float で計算する：y が .5 のきわで丸めが一画素動く（測定：dim_s0_c3_v、案内線の左端 300.503 が 300） */
+    const float px = (float)dpx, py = (float)dpy, dx = (float)ddx, dy = (float)ddy;
+    const float x0 = (float)w->x0, y0 = (float)w->y0 - 1.0f, x1 = (float)w->x1, y1 = (float)w->y1;
+    float t0 = -1e9f, t1 = 1e9f;
+    const float p[4] = { -dx, dx, -dy, dy };
+    const float q[4] = { px - x0, x1 - px, py - y0, y1 - py };
     int i;
 
     for (i = 0; i < 4; i++) {
@@ -4049,7 +4051,7 @@ static int guide_cut(const JwView *w, double px, double py,
                 return 0;
             }
         } else {
-            const double r = q[i] / p[i];
+            const float r = q[i] / p[i];
 
             if (p[i] < 0.0) {
                 if (r > t1) {
@@ -4075,17 +4077,35 @@ static int guide_cut(const JwView *w, double px, double py,
      * The two square directions take their guides off free presses, so
      * their numbers are whole and either rule gives the same pixel. */
     seg[0] = (int)(px + t0 * dx);
-    seg[1] = (int)(py + t0 * dy + 0.5);
+    seg[1] = (int)(py + t0 * dy + 0.49f);
     seg[2] = (int)(px + t1 * dx);
-    seg[3] = (int)(py + t1 * dy + 0.5);
+    seg[3] = (int)(py + t1 * dy);   /* 右の端は切り捨て、左の端は四捨五入（測定：dim_s0_c3_v、54.856→54、352.768→353） */
+    if (dx != 0.0f && dy != 0.0f) {
+        /* 斜めの案内線で上の窓の縁に当たった端は、**整数にした反対の端から**傾きで延ばして 17 の行まで（測定：dim_s0_c3_v、左端 (122,300) から上端 (612,17)。窓の縁で切った 613.04 ではない）。 */
+        const float ey0 = py + t0 * dy, ey1 = py + t1 * dy;
+        const int ti = ey0 < ey1 ? 0 : 1;
+        const float ety = ti ? ey1 : ey0;
+
+        if (ety <= y0 + 1e-3f) {
+            const int bx = seg[2 * (1 - ti)], by = seg[2 * (1 - ti) + 1];
+
+            seg[2 * ti] = bx + (int)(((float)(int)w->y0 - (float)by) * dx / dy);
+            seg[2 * ti + 1] = (int)w->y0;
+        }
+    }
     /* **Left to right, top to bottom.**  The dashes start at the line's
      * first end, and ②縦方向's direction points up the screen: drawn from
      * the bottom the gaps land on the other rows and 366 pixels move. */
-    if (seg[1] < w->y0) {
-        seg[1] = w->y0;
-    }
-    if (seg[3] < w->y0) {
-        seg[3] = w->y0;
+    {
+        /* 斜めの案内線は上の端が 16 のまま（描くのは 17 から。測定：dim_s0_c3_v）。垂直は 17 に戻す。 */
+        const int ylo = (dx != 0.0f && dy != 0.0f) ? (int)w->y0 - 1 : (int)w->y0;
+
+        if (seg[1] < ylo) {
+            seg[1] = ylo;
+        }
+        if (seg[3] < ylo) {
+            seg[3] = ylo;
+        }
     }
     if (seg[0] > seg[2] || (seg[0] == seg[2] && seg[1] > seg[3])) {
         const int tx = seg[0], ty = seg[1];
@@ -4717,8 +4737,8 @@ void jw_cmd_dim_angle(JwCmd *c, double deg)
     const double rad = deg * 3.14159265358979323846 / 180.0;
 
     c->dim_vert = 0;
-    c->dim_ux = cos(rad);
-    c->dim_uy = sin(rad);
+    c->dim_ux = (float)cos(rad);
+    c->dim_uy = (float)sin(rad);
     c->typing = 0;
     c->typed[0] = 0;
     c->typed_n = 0;
@@ -14176,6 +14196,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * left button.  点種変更 (the right button) is not measured. */
         JwcPoint p;
 
+        /* 右の 点種変更 で点の無い所を押しても何も言わない（測定：dim_s0_c6 の 598 300 right）。 */
+        if (right) {
+            c->missed = 0;
+            return 0;
+        }
         if (!take_point(c, d, w, sx, sy, 1, &x, &y)) {
             c->missed = 1;
             return 0;
