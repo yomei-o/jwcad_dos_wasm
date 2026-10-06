@@ -8055,9 +8055,8 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             if (c->arc3 > 1) {
                 c->arc3--;
                 /* 始点の段に戻ると `[ESC]` も `半径=` も無い行（測定）。 */
-                if (c->arc3 == 1) {
-                    c->arc3_done = 0;
-                }
+                /* 始点だけ取った段から戻るときは、前に描いた弧の `[ESC]`・`半径=` はそのまま
+                 * （測定：arc_s0_c2_v。弧を作った直後の [ESC] は上の取り消しで done が落ちる） */
             } else {
                 c->arc3 = 0;
                 c->arc3_done = 0;
@@ -18717,6 +18716,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 jw_cmd_at(w, sx, sy, &x, &y);
             } else if (!take(c, d, w, sx, sy, right, &x, &y)) {
                 c->missed = 1;
+                c->arc3_done = 0;       /* 読みが外れると前の弧の `半径=` の札は消える（測定：arc_s0_c2） */
                 return 0;
             }
             if (c->arc3 < 3) {
