@@ -3350,6 +3350,22 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
              * 記号例」（D の 15 番）で、本物は位置を押した時点で三角形を
              * 引いてから `粗さ` を聞きます（39 画素）。指示線を取らない
              * 記号では前からそうしていました。 */
+            /* 位置の押しは (L)free (R)Read：右で読めなければ `読取可能データ無`（測定：henkei_s0_c4） */
+            cmd.missed = 0;
+            if (right) {
+                double rx, ry;
+
+                if (!jw_read(drawing, &view, x, y, &rx, &ry)) {
+                    cmd.missed = 1;
+                    mouse_x = x;
+                    mouse_y = y;
+                    sync_ui();
+                    present();
+                    return -1;
+                }
+                px = rx;
+                py = ry;
+            }
             if (jw_kigou_input(sym, 0)) {
                 cmd.kigou_px = px;
                 cmd.kigou_py = py;
