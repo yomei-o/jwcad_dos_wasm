@@ -7691,6 +7691,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         return 1;
     }
+    /* ｻｲﾝ曲線 の座標原点の指示（段 11）の [ESC] は基準線の指示（段 10）へ（測定：curve_s1_c1）。 */
+    if (c->command == 23 && c->sine == 1 && key == 27 && c->stage == 11 && !c->typing) {
+        c->stage = 10;
+        c->missed = 0;
+        return 1;
+    }
     /* 円線接 ②接円 ①１線１円（段 40 線・41 円・42 選ぶ）の [ESC] は一つ前の段へ（測定：tangent_s0_c2）。 */
     if (c->command == 26 && key == 27 && !c->typing && c->tan_circ == 1
         && (c->stage == 41 || c->stage == 42)) {
