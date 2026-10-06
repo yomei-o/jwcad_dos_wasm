@@ -4924,6 +4924,13 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         present();
         return -1;
     }
+    /* 範囲を取る命令の最初の行・追加除外の行で [Enter] は ① と同じ（測定：move_s0_c1_v・
+     * erase_s0_c2_v など。decomp：項目の読み 1bb4:2cb4 は Enter を 0xd で返し、共有の範囲取り
+     * （ovl5）はそれを ①前範囲／①範囲確定 として扱う——範囲取り側の分岐は未照合）。 */
+    if ((key == 13 || key == 10) && JW_RANGE(&cmd) && !cmd.typing && !cmd.typing_text
+        && (cmd.pressed == 0 || cmd.pressed == 2) && !cmd.te5) {
+        key = '1';
+    }
     if (cmd.command && key >= '1' && key <= '9' && !cmd.typing
         && !cmd.typing_text) {
         const int x = jw_ui_top_cell_x(key - '0');

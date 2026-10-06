@@ -6123,6 +6123,9 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     if (c->command == 24 && item == 2) {
         c->lc_off = !c->lc_off;     /* ②レイヤ変更 【有】⇔【無】（linechg_s0_c2） */
     }
+    if (c->command == 19 && c->stage == 0) {
+        c->pg_item = item;
+    }
     c->dim_did = 0;      /* 項目を選び直すと [ESC] は消えます */
     c->dim_lines0 = d ? d->n_lines : 0;
     c->dim_only = 0;
@@ -12519,7 +12522,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
      * 使わない（測定：probe_firstclick pg_R／polygon_plain。decomp は寸法の
      * 同じ読みと同形で、多角形メインの ovl22 3ab8:4794 の読みは未照合）。 */
     if (c->command == 19 && !c->pressed && !c->typing && !c->top_item
-        && c->stage == 0) {
+        && !c->pg_item && c->stage == 0) {
         jw_cmd_top(c, d, right ? 2 : 1, 0);
         return 1;
     }

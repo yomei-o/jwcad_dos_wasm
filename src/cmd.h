@@ -738,6 +738,7 @@ typedef struct {
      * から読む（mode≠0 なら 21f2:34e9。失敗は `読取可能データ無`）。dl_phase は 0=始点、
      * 1=終点、dl_sx/dl_sy は押した画面位置。 */
     int dl_wait, dl_phase, dl_sx, dl_sy;
+    int pg_item;                /* 多角形：項目の行で項目を選んだ（1 以上） */
     int dl_nopre;               /* 読みが外れたあとの押しでは仮の二本が消える（測定のみ） */
     /* 面取's chamfer length, in paper millimetres.  The top line offers it as
      * `③寸法= 30.000` and starts there. */
