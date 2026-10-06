@@ -342,6 +342,14 @@ typedef struct {
     int dim_val;
     long dim_val_k;
     int dim_val_size;
+    /* 段 8 の欄で押している途中：`dim_val_buf` は欄が今見せている文字列
+     * （押した値から始まって、打つ・[BS] するたびその場で書き換わる）、
+     * `dim_val_pos` はカーソル（打った文字数、[BS] で一つ戻る）、
+     * `dim_val_dirty` は一度でも打つ／[BS] したか（0 のままなら [Enter] は
+     * 前の値を保ちます）。測定のみ・decomp 未確認（escaudit6）。 */
+    char dim_val_buf[64];
+    int dim_val_pos;
+    int dim_val_dirty;
     /* ④累寸: 始点は一つで、読むたびにそこからの寸法が増えます。 */
     int dim_prog;
     int dim_prog_n;

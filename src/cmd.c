@@ -8250,6 +8250,40 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->arc_ask = 0;
         return 1;
     }
+    /* 寸法 ⑧値変 の段 8（欄を打っている途中）の [ESC]：打ちかけを捨てて
+     * 書き直さず、段 7（値を待つ行）へ戻ります。この節は下の汎用の
+     * 「範囲ごと戻す」節（`if (!c->pressed || c->escaped) return 0;`）
+     * より前に置くこと -- ⑧値変 はここに入るとき `c->pressed` を立てない
+     * ので、後ろに書くと汎用節に先取りされて ESC が一切落ちてきません
+     * （notes/traps.md 「src/cmd.c の『汎用取り消し』節が ESC を先取り
+     * する」と同じ罠）。測定（escaudit6）：`90 280 left|...|type 8|
+     * 380 108 left|type 99|key esc|key enter` で本物は文字 `250` の
+     * まま変わらず、直す前の移植は `990` に書き換えていた。 */
+    if (key == 27 && c->command == 14 && c->dim_val == 2 && c->stage == 8) {
+        c->typing = 0;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        c->dim_val = 1;
+        c->stage = 7;
+        c->dim_val_buf[0] = 0;
+        c->dim_val_pos = 0;
+        c->dim_val_dirty = 0;
+        return 1;
+    }
+    /* 寸法 ⑧値変 の段 7（値を待つ行）の [BS]：桁 73 の `[BS]前項` のとおり、
+     * 項目の行（段 0）へ戻ります（測定（escaudit6）：`type 8|key bs` の
+     * あとに図面を押すと、本物は ①横方向 の寸法をもう一本ふつうに引き
+     * 直せた——戻らずに値変の「値を待つ」ままだと図面の押しは寸法値の
+     * 拾いにしかならず、新しい寸法は一本も増えないので差で分かる）。
+     * 段 8（欄を打っている最中）はここに来ない（上の [ESC] の節と違い
+     * `!c->typing` の節より前に置く必要はない -- [BS] は c->typing が
+     * 立っていてもいなくても同じ場所で拾える）。 */
+    if (key == 8 && c->command == 14 && c->dim_val == 1 && c->stage == 7
+        && !c->pressed) {
+        c->dim_val = 0;
+        c->stage = 0;
+        return 1;
+    }
     /* `始点指示 … [BS]前項` の [BS]：前の行（①〜⑤ の升）へ戻り、長さ・
      * 角度の固定もやめます（測定）。 */
     if (key == 8 && !c->pressed && !c->typing
@@ -8982,58 +9016,77 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (c->command == 14 && c->dim_val == 2 && c->stage == 8) {
         /* ⑧値変's field: what is in it to start with is the value that
-         * was pressed, and [Enter] writes it back **in place** with the
-         * 変更文字種類 -- measured, text 13 stays text 13. */
+         * was pressed (now kept live in `dim_val_buf`), and [Enter] writes
+         * it back **in place** with the 変更文字種類 -- measured, text 13
+         * stays text 13.
+         *
+         * **The keys overwrite the old value a cell at a time and what
+         * they do not reach stays.**  Measured: `99` typed into `250`
+         * leaves `990` (cell 0/1 overwritten, cell 2's `0` untouched).
+         *
+         * **[[BS]] is not the mirror of typing -- it edits the live
+         * string, not just the typed count.**  Measured (escaudit6):
+         * `99` then one [BS] leaves `90` (not `950`), and a single `9`
+         * then one [BS] leaves `50` (not `250`) -- in both cases the
+         * character immediately *before* the cursor is deleted out of
+         * the whole displayed value and the tail shifts left, same as
+         * an ordinary text field's backspace.  Before this fix [BS] only
+         * shrank the separately-tracked "typed so far" count and kept
+         * appending the untouched tail of the ORIGINAL text, which
+         * reproduced the wrong (longer) string. 測定のみ・decomp 未確認。 */
         if (key == 13 || key == 10) {
-            /* **The keys overwrite the old value a cell at a time and
-             * what they do not reach stays.**  Measured: `99` typed into
-             * `250` leaves `990`, and the baseline does not move because
-             * the string is still three characters long. */
-            c->typed[c->typed_n] = 0;
-            if (c->typed_n) {
-                char both[64];
-                const char *was = d->texts[c->dim_val_k].text;
-                const int had = was ? (int)strlen(was) : 0;
+            if (c->dim_val_dirty) {
+                char out[64];
 
-                strncpy(both, c->typed, sizeof both - 1);
-                both[sizeof both - 1] = 0;
-                if (was && had > c->typed_n) {
-                    strncpy(both + c->typed_n, was + c->typed_n,
-                            sizeof both - 1 - (size_t)c->typed_n);
-                    both[sizeof both - 1] = 0;
-                }
-                /* **And the answer is written the way 寸法設定 writes a
-                 * value**, not as it was typed: `9999` comes back
-                 * `9,999`.  The number is already in whatever unit the
-                 * panel is set to, so it is not divided again. */
-                {
-                    char out[64];
-
-                    jwc_dim_text(out, (long)sizeof out, atof(both), 0,
-                                 c->dim_dec, c->dim_comma_on,
-                                 c->dim_zero_on);
-                    jwc_set_text(d, c->dim_val_k, out,
-                                 (unsigned char)(c->dim_val_size
-                                                 ? c->dim_val_size
-                                                 : d->dim_size));
-                }
+                jwc_dim_text(out, (long)sizeof out, atof(c->dim_val_buf), 0,
+                             c->dim_dec, c->dim_comma_on, c->dim_zero_on);
+                jwc_set_text(d, c->dim_val_k, out,
+                             (unsigned char)(c->dim_val_size
+                                             ? c->dim_val_size
+                                             : d->dim_size));
             }
             c->typing = 0;
             c->dim_val = 1;
             c->stage = 7;
             c->typed[0] = 0;
             c->typed_n = 0;
+            c->dim_val_buf[0] = 0;
+            c->dim_val_pos = 0;
+            c->dim_val_dirty = 0;
             return 1;
         }
         if (key == 8) {
-            if (c->typed_n > 0) {
-                c->typed[--c->typed_n] = 0;
+            if (c->dim_val_pos > 0) {
+                int i = c->dim_val_pos - 1;
+
+                for (; c->dim_val_buf[i]; i++) {
+                    c->dim_val_buf[i] = c->dim_val_buf[i + 1];
+                }
+                c->dim_val_pos--;
+                c->dim_val_dirty = 1;
+                /* `typed`/`typed_n` stay in step for src/ui.c's cursor
+                 * cell -- the overlay chars it shows for the untouched
+                 * tail can go stale after a [BS] shift (cosmetic only,
+                 * screen not re-verified: notes/traps.md). */
+                memcpy(c->typed, c->dim_val_buf, (size_t)c->dim_val_pos);
+                c->typed[c->dim_val_pos] = 0;
+                c->typed_n = c->dim_val_pos;
             }
             return 1;
         }
-        if (key >= 0x20 && key <= 0xff && FIELD_ROOM(c)) {
-            c->typed[c->typed_n++] = (char)key;
-            c->typed[c->typed_n] = 0;
+        if (key >= 0x20 && key <= 0xff
+            && c->dim_val_pos < (int)sizeof c->dim_val_buf - 1) {
+            const int len = (int)strlen(c->dim_val_buf);
+
+            c->dim_val_buf[c->dim_val_pos] = (char)key;
+            if (c->dim_val_pos == len) {
+                c->dim_val_buf[c->dim_val_pos + 1] = 0;
+            }
+            c->dim_val_pos++;
+            c->dim_val_dirty = 1;
+            memcpy(c->typed, c->dim_val_buf, (size_t)c->dim_val_pos);
+            c->typed[c->dim_val_pos] = 0;
+            c->typed_n = c->dim_val_pos;
         }
         return 1;
     }
@@ -14765,6 +14818,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->typing = 1;
             c->typed[0] = 0;
             c->typed_n = 0;
+            /* `dim_val_buf` is the live copy [BS] and digits edit in place
+             * (measured: escaudit6, see cmd.h). */
+            c->dim_val_buf[0] = 0;
+            if (d->texts[k].text) {
+                strncpy(c->dim_val_buf, d->texts[k].text,
+                        sizeof c->dim_val_buf - 1);
+                c->dim_val_buf[sizeof c->dim_val_buf - 1] = 0;
+            }
+            c->dim_val_pos = 0;
+            c->dim_val_dirty = 0;
             return 1;
         }
         if (c->dim_lot && c->stage >= 21 && c->stage <= 24) {
