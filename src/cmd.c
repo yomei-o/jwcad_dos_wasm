@@ -7889,8 +7889,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                     return 1;
                 }
                 if (c->pt_undo < 0 && d->n_points > 0) {
+                    jwc_ink_settle(d);      /* 消した跡は黒の穴になる（測定：point_s0_c1_v） */
+                    jwc_ink_note(d, 1, JW_INK_POINT, &d->points[d->n_points - 1]);
                     d->n_points--;
-                    jwc_ink_clear(d);
                     c->pt_added--;
                     c->pt_undo++;
                     c->pt2_total = (float)(c->pt2_total - c->pt2_step);
@@ -7953,8 +7954,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         if (c->pt_undo < 0 && d->n_points > 0) {
+            jwc_ink_settle(d);
+            jwc_ink_note(d, 1, JW_INK_POINT, &d->points[d->n_points - 1]);
             d->n_points--;
-            jwc_ink_clear(d);
             c->pt_added--;
             c->pt_undo++;
             return 1;
