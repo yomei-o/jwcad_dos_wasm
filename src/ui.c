@@ -3003,6 +3003,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                        "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
+    } else if (s->command == 15 && s->meas5) {
+        /* 測定 ⑤表計算の入口（測定：measure_s0_c5）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 6, 1, 7, 0, "\x81\x45|1)A" "\x8c\x51" "\x81\x7e" "B" "\x8c\x51" "|2)A" "\x8c\x51" "\x81\x80" "B" "\x8c\x51" "|3)A" "\x8c\x51" "+B" "\x8c\x51" "|4)A" "\x8c\x51" "-B" "\x8c\x51" "|5)" "\x94\xcd\x88\xcd\x93\xe0\x8d\x87\x8c\x76" "|6)" "\x8f\xac\x90\x94\x8c\x85" "|7)" "\x8c\x76\x8e\x5a" "|");
+        jw_ui_text(v, 66, 2, 0, 7, "(\x97\x4c\x8c\xf8)");
     } else if (s->command == 15 && s->meas4) {
         /* 測定 ④座標（decomp 0x2efbb〜、測定：measure_s0_c4）。◇原点／◆座標点。 */
         if (s->ms4 == 0) {
@@ -5241,7 +5246,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * `ｍ (3)桁` under its line and ①距離 leaves row 2 empty; only
          * ⑥単位 and ⑦小数点以下 put it back, and those two are not
          * `top_item` presses (src/main_wasm.c). */
-        if (s->command == 15 && !s->top_item) {
+        if (s->command == 15 && !s->top_item && s->meas_noind) {
+            jw_ui_text(v, 53, 2, 7, 0, "            ");
+            jw_ui_text(v, 61, 2, 7, 0, "          ");
+        }
+        if (s->command == 15 && !s->top_item && !s->meas_noind) {
             static const char *const UNIT[3] = {
                 " " "\x82\x8d" " ", " cm ", " mm "
             };

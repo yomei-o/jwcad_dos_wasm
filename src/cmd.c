@@ -5155,6 +5155,14 @@ range_items:
         c->typed_n = 0;
         return 0;
     }
+    /* 測定 ⑤表計算（decomp ovl29 0x2f6ab〜）：入口の帯だけ。 */
+    if (c->command == 15 && c->stage == 0 && !c->meas2 && !c->meas3 && !c->meas4 && !c->meas5 && item == 5) {
+        c->meas5 = 1;
+        return 1;
+    }
+    if (c->command == 15 && c->meas5) {
+        return 1;
+    }
     /* 測定 ④座標：◇原点から（decomp 0x2efbb）。 */
     if (c->command == 15 && c->stage == 0 && !c->meas2 && !c->meas3 && !c->meas4 && item == 4) {
         c->meas4 = 1;
@@ -6260,6 +6268,8 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
 {
     int changed;
 
+    c->meas_noind = 0;
+
     /* 範囲の始点を持ったあとの (1)レイヤ・(2)線種色・(3)文字種 は `書込 … のみ選択` の札を出し入れする
      * （測定：move_s1_c1／erase_s1_c1・c2 の `type N`。帯はそのまま。文字種は消去だけの項目）。 */
     if ((JW_MOVE_CMD(c->command) || c->command == 25 || c->command == 17) && c->pressed == 1
@@ -6818,6 +6828,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
 
+    /* 測定の最初の行の ESC：単位・桁の帯が消える（測定のみ・decomp 未確認）。 */
+    if (key == 27 && c->command == 15 && c->stage == 0 && !c->top_item && !c->meas2 && !c->meas3
+        && !c->meas4 && !c->meas5 && !c->meas_arc) {
+        c->meas_noind = 1;
+        return 1;
+    }
     /* 測定 ①距離 の [ESC]：最後の点を一つ取り消し、累計と最後の脚を残った
      * 点列から数え直す。一点だけになったら `始点指示` の段に戻り、それが
      * 最初の点なら更に [ESC] で測定の最初の行へ（測定：tmp/m2.txt）。 */
@@ -7262,6 +7278,15 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 27) {
             c->meas_arc = 0;
             c->missed = 0;
+            return 1;
+        }
+        return 1;
+    }
+    /* 測定 ⑤表計算の キー：ESC で測定の最初の行へ。 */
+    if (c->command == 15 && c->meas5) {
+        if (key == 27) {
+            c->meas5 = 0;
+            c->top_item = 0;
             return 1;
         }
         return 1;
@@ -13363,6 +13388,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->lc_attr = 1;
         c->top_item = 0;
         c->top_right = 0;
+    }
+    /* 測定 ⑤表計算：帯の項目を選ぶまで図面の押しは何も起こさない（測定：measure_s0_c5）。 */
+    if (c->command == 15 && c->meas5) {
+        return 0;
     }
     /* 測定 ①距離 ③円周：円を拾う（外れは `読取可能データ無`。円が取れた先は未実装）。 */
     if (c->command == 15 && c->meas_arc) {
