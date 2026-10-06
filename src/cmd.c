@@ -8612,6 +8612,17 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->stage = 1;
         return 1;
     }
+    /* 変形 ③複線化 の `[ESC].間隔 =` 欄：打ちかけを捨てて段 4 の一覧へ戻る
+     * だけ（段はすでに 4 なので動かさない）。pressed==2（範囲確定済み）の
+     * ままなので、下の汎用「範囲ごと戻す」節（JW_RANGE(c)）に先に捕まると
+     * 範囲ごと丸ごと捨ててしまう——他のコマンド固有 ESC と同じ理由でこれより
+     * 前に置く（notes/traps.md「汎用取り消し節の先取り」）。 */
+    if (key == 27 && c->command == 17 && c->hen_dbl && c->typing) {
+        c->typing = 0;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 1;
+    }
     if (key == 27) {
         /* [ESC]: the point in hand goes and the command asks for it again.
          * With nothing in hand it writes nothing at all, and a second one
@@ -8686,6 +8697,40 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 return 1;
             }
             if (JW_MOVE_CMD(c->command) && c->stage == 4) {
+                c->stage = 3;
+                return 1;
+            }
+            /* 変形 ①パラメトリック変形：複写・移動と同じ「段を一つずつ戻す」
+             * 規則。根拠は src/henkei.h（実機撮り）の段3〜9・18〜20 すべてに
+             * src/copy.h と同じ文言・同じ段番号で `[ESC]` 札があること
+             * （tools/henkei_table.py の docstring も「道は複写の cell ごと
+             * に同じ」と明記）。段遷移そのものは tools/cmdstate.mjs で内部
+             * 状態として意図どおり動くことを確認済みだが、今夜は
+             * tmp/sroot.lock の競合で tools/functest.sh による実機との
+             * 直接突き合わせが完了できなかった（測定のみ・decomp未確認の
+             * 一段下——probe_henkei.txt にシナリオ済み、次回 functest.sh で
+             * 確認すること）。②包絡処理変形・③複線化・④線記号変形 は
+             * 自分の経路（hen_env・hen_dbl・hen_kigou）を持つので対象外。 */
+            if (c->command == 17 && !c->hen_env && !c->hen_dbl
+                && !c->hen_kigou && c->stage == 7) {
+                c->typing = 0;
+                c->typed[0] = 0;
+                c->typed_n = 0;
+                c->stage = 4;
+                return 1;
+            }
+            if (c->command == 17 && !c->hen_env && !c->hen_dbl
+                && !c->hen_kigou && c->stage == 6) {
+                c->stage = 5;
+                return 1;
+            }
+            if (c->command == 17 && !c->hen_env && !c->hen_dbl
+                && !c->hen_kigou && c->stage == 5) {
+                c->stage = 4;
+                return 1;
+            }
+            if (c->command == 17 && !c->hen_env && !c->hen_dbl
+                && !c->hen_kigou && c->stage == 4) {
                 c->stage = 3;
                 return 1;
             }
