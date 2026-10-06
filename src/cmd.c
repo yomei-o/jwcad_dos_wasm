@@ -4176,7 +4176,7 @@ void jw_cmd_before(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
         v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
         v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
-        for (i = 0; i + 1 < c->spl_n; i++) {
+        for (i = c->spl_n >= 5 ? c->spl_n - 2 : 0; i + 1 < c->spl_n; i++) {
             int ax, ay, bx2, by2;
 
             at_screen(w, c->spl_x[i], c->spl_y[i], &ax, &ay);
@@ -6911,6 +6911,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     /* 寸法 ④①円径 の [ESC]：行はそのままで 書込角度の札だけが消える（測定：dim_s0_c4）。 */
     if (key == 27 && c->command == 14 && c->dim_ck && c->stage == 9) {
         c->dim_ck_gone = 1;
+        return 1;
+    }
+    /* 曲線 ③ｽﾌﾟﾗｲﾝ の [ESC]：最後の点を一つ取り消す（点残数が戻り、折れ線は残った点で描き直す。測定：curve_s0_c3）。 */
+    if (key == 27 && c->command == 23 && c->spl && c->stage >= 31 && c->stage <= 33 && c->spl_n > 0) {
+        c->spl_n--;
+        c->stage = 30 + (c->spl_n > 3 ? 3 : c->spl_n);
         return 1;
     }
     /* 寸法 ⑧値変で [Enter] を打つと行と左の盤が描き直される（測定：dim_s0_c8_v）。 */
