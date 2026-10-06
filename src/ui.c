@@ -3003,6 +3003,26 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                        "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
+    } else if (s->command == 15 && s->meas5 && s->meas5s) {
+        /* 測定 ⑤表計算 ①〜④：A群の範囲（測定：measure_s0_c5_v の `type 30`）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "A" "\x8c\x51\x94\xcd\x88\xcd");
+        if (s->meas5r) {
+            fill(v, 40, 15, 55, 15, 7);     /* 帯の下の白線が桁 6〜7 に一本残る（測定のみ・decomp 未確認） */
+            jw_ui_text(v, 17, 1, 7, 0, "\x92\xc7\x89\xc1\xa5\x8f\x9c\x8a\x4f\x83\x66\x81\x5b\x83\x5e\x8e\x77\x8e\xa6");
+            jw_ui_text(v, 39, 1, 7, 0, "\x81\x69\x95\xb6\x8e\x9a\x81\x6a");
+            jw_ui_text(v, 68, 1, 7, 0, "|1)" "\x94\xcd\x88\xcd" " " "\x8a\x6d\x92\xe8" "|");
+            if (s->missed) {
+                jw_ui_text(v, 32, 2, 7, 0,
+                           "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                           "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                           "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+            }
+        } else {
+            jw_ui_text(v, 17, 1, 7, 0, "\x8e\x6e\x93\x5f\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
+            jw_ui_text(v, 32, 1, 7, 0, "\x81\x69\x95\xb6\x8e\x9a\x81\x6a");
+            jw_ui_text(v, 68, 1, 7, 0, "|1) " "\x91\x4f" " " "\x94\xcd" " " "\x88\xcd" "|");
+        }
     } else if (s->command == 15 && s->meas5) {
         /* 測定 ⑤表計算の入口（測定：measure_s0_c5）。 */
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");

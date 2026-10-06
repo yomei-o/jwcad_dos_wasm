@@ -643,6 +643,8 @@ typedef struct {
     int meas4, ms4;
     double ms4_ox, ms4_oy, ms4_px, ms4_py;
     int meas_arc;               /* 測定 ①距離 ◆の ③円周：円を拾う行（円が取れた先は未実装） */
+    int meas5r;                 /* A群の範囲：前範囲（Enter／①）のあとの追加・除外の行 */
+    int meas5s;                 /* ⑤表計算 1〜4 を選んだ：A群の範囲の始点待ち（測定：measure_s0_c5_v） */
     int meas5;                  /* 測定 ⑤表計算（入口の帯だけ。各項目は未実装） */
     int meas_noind;             /* 測定の最初の行で ESC：単位・桁の帯が消える（測定のみ・decomp 未確認：measure_s0_c5） */
     int er_item;                /* 消去：始点を押したときの項目（[ESC] でその行へ戻る） */

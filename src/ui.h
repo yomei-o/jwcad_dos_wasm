@@ -586,6 +586,8 @@ typedef struct {
     int div2;
     int meas_noind;
     int meas5;
+    int meas5s;
+    int meas5r;
     int meas_arc;
     int meas4, ms4;
     double ms4_x, ms4_y;

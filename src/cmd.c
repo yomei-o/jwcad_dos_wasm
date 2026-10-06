@@ -5161,6 +5161,15 @@ range_items:
         return 1;
     }
     if (c->command == 15 && c->meas5) {
+        if (c->meas5s) {
+            if (item == 1) {
+                c->meas5r = 1;      /* ①前範囲（測定：measure_s0_c5_v の Enter） */
+            }
+            return 1;
+        }
+        if (item >= 1 && item <= 4) {
+            c->meas5s = item;
+        }
         return 1;
     }
     /* 測定 ④座標：◇原点から（decomp 0x2efbb）。 */
@@ -7284,12 +7293,25 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* 測定 ⑤表計算の キー：ESC で測定の最初の行へ。 */
     if (c->command == 15 && c->meas5) {
+        if ((key == 13 || key == 10) && c->meas5s) {
+            c->meas5r = 1;
+            return 1;
+        }
+        c->missed = 0;
         if (key == 27) {
+            if (c->meas5r) {
+                c->meas5r = 0;
+                return 1;
+            }
+            if (c->meas5s) {
+                c->meas5s = 0;
+                return 1;
+            }
             c->meas5 = 0;
             c->top_item = 0;
             return 1;
         }
-        return 1;
+        return (key >= '1' && key <= '9') ? 0 : 1;
     }
     /* 測定 ④座標の キー：ESC は ◇（原点から取り直し）、◇ の ESC は何もしない、BS は ◇ だけで最初の行へ。 */
     if (c->command == 15 && c->meas4) {
@@ -13391,6 +13413,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     }
     /* 測定 ⑤表計算：帯の項目を選ぶまで図面の押しは何も起こさない（測定：measure_s0_c5）。 */
     if (c->command == 15 && c->meas5) {
+        /* A群の追加・除外：文字が無ければ `読取可能データ無`（測定：measure_s0_c5_v。文字が取れた先は未実装） */
+        c->missed = c->meas5r;
         return 0;
     }
     /* 測定 ①距離 ③円周：円を拾う（外れは `読取可能データ無`。円が取れた先は未実装）。 */
