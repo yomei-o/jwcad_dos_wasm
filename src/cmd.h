@@ -643,6 +643,12 @@ typedef struct {
     int meas4, ms4;
     double ms4_ox, ms4_oy, ms4_px, ms4_py;
     int meas_arc;               /* 測定 ①距離 ◆の ③円周：円を拾う行（円が取れた先は未実装） */
+    int meas9k;                 /* ⑨式の範囲の行の種類：0 ヘロン、3 三斜 */
+    int meas9t;                 /* ⑨式 ③三斜面積：単位の行（測定：measure_s0_c9_v） */
+    int meas9z;                 /* ⑨式：一度押したら行 2 の `ヘロンの公式 …` の白い札は戻らない（測定：measure_s0_c9） */
+    int meas9q;                 /* ⑨式 ①ヘロン：範囲の終点まで取った（追加・除外の行） */
+    int meas9p;                 /* ⑨式 ①ヘロン：範囲の始点を押した（終点を待つ） */
+    int meas9;                  /* 測定 ⑨式 ①ヘロン：三辺の文字の範囲を取る行（測定：measure_s0_c9） */
     int meas5r;                 /* A群の範囲：前範囲（Enter／①）のあとの追加・除外の行 */
     int meas5s;                 /* ⑤表計算 1〜4 を選んだ：A群の範囲の始点待ち（測定：measure_s0_c5_v） */
     int meas5;                  /* 測定 ⑤表計算（入口の帯だけ。各項目は未実装） */

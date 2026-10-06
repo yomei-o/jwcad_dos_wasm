@@ -731,6 +731,12 @@ static void sync_ui(void)
     ui.meas_noind = cmd.meas_noind;
     ui.meas5 = cmd.meas5;
     ui.meas5s = cmd.meas5s;
+    ui.meas9 = cmd.meas9;
+    ui.meas9p = cmd.meas9p;
+    ui.meas9q = cmd.meas9q;
+    ui.meas9z = cmd.meas9z;
+    ui.meas9t = cmd.meas9t;
+    ui.meas9k = cmd.meas9k;
     ui.meas5r = cmd.meas5r;
     ui.meas_arc = cmd.meas_arc;
     ui.meas4 = cmd.meas4;

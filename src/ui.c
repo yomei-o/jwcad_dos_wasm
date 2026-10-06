@@ -529,6 +529,10 @@ int jw_ui_past_cells(int x, int y)
  * jw_cmd_after が上から塗るので、ここだけ最後に書きます。 */
 void jw_ui_band_last(VGA *v, const JwUi *s)
 {
+    /* 測定 ⑨式 ①ヘロンの範囲の行：左端 (0,16) の一画素だけ黒（測定のみ・decomp 未確認：measure_s0_c9）。 */
+    if (s->command == 15 && s->meas9 && !s->meas9p) {
+        fill(v, 0, 16, 0, 16, 0);
+    }
     /* 範囲の始点を持ったあとの `書込 レイヤ／線種色／文字種 のみ選択` の札（行 2 の桁 60、白地）。 */
     if (s->range_opt && s->stage == 1
         && (s->command == 1 || s->command == 16 || s->command == 17 || s->command == 25)) {
@@ -3003,6 +3007,39 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                        "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
+    } else if (s->command == 15 && s->meas9t) {
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "\x8e\x4f\x8e\xce\x96\xca\x90\xcf");
+        jw_ui_text(v, 18, 1, 7, 0, "|1)" "\x81\x69\x92\x50\x88\xca\x82\x8d\x81\x6a" "|2)" "\x81\x79\x92\x50\x88\xca" "mm" "\xa4" "\x82\x8d" "\x8e\xa9\x93\xae\x90\xd8\x91\xd6\x81\x7a" "|");
+    } else if (s->command == 15 && s->meas9 && s->meas9q) {
+        jw_ui_text(v, 8, 1, 7, 0, "\x94\xcd\x88\xcd");
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 6, 1, 7, 0, "\x81\x51");
+        jw_ui_text(v, 14, 1, 7, 0, "\x92\xc7\x89\xc1\xa5\x8f\x9c\x8a\x4f\x83\x66\x81\x5b\x83\x5e\x8e\x77\x8e\xa6");
+        jw_ui_text(v, 36, 1, 7, 0, "\x81\x69\x95\xb6\x8e\x9a\x81\x6a");
+        jw_ui_text(v, 68, 1, 7, 0, "|1)" "\x94\xcd\x88\xcd" " " "\x8a\x6d\x92\xe8" "|");
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
+    } else if (s->command == 15 && s->meas9 && s->meas9p) {
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "\x81\x69\x95\xb6\x8e\x9a\x81\x6a");
+        jw_ui_text(v, 18, 1, 7, 0, "\x8f\x49\x93\x5f\x8e\x77\x8e\xa6");
+        jw_ui_text(v, 27, 1, 7, 0, "\xcf\xb3\xbd(L)");
+        jw_ui_text(v, 35, 1, 7, 0, "\x94\xcd\x88\xcd\x8a\x6d\x92\xe8");
+        jw_ui_text(v, 44, 1, 7, 0, "\xcf\xb3\xbd(R)");
+        jw_ui_text(v, 53, 1, 7, 0, "|1)" "\x83\x8c\x83\x43\x83\x84" "|2)" "\x95\xb6\x8e\x9a\x8e\xed" "|");
+    } else if (s->command == 15 && s->meas9) {
+        /* 測定 ⑨式 ①ヘロン：三辺の文字の範囲（測定：measure_s0_c9）。 */
+        jw_ui_text(v, 8, 1, 7, 0, "\x94\xcd\x88\xcd");
+        jw_ui_text(v, 14, 1, 7, 0, "\x8e\x6e\x93\x5f\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
+        jw_ui_text(v, 29, 1, 7, 0, "\x81\x69\x95\xb6\x8e\x9a\x81\x6a");
+        jw_ui_text(v, 68, 1, 7, 0, "|1)" "\x91\x4f\x94\xcd\x88\xcd" "| BS");
+        if (!s->meas9z && s->meas9k == 3) jw_ui_text(v, 18, 2, 0, 7, "\x8e\x4f\x8e\xce\x96\xca\x90\xcf  \x92\xea\x95\xd3\x82\xc6\x8d\x82\x82\xb3\x82\xcc\x82\x51\x90\x94\x92\x6c\x81\x69\x92\x50\x88\xca\x82\x8d\x81\x6a\x82\xf0\x91\x49\x91\xf0");
+        else if (!s->meas9z) jw_ui_text(v, 18, 2, 0, 7, "\x83\x77\x83\x8d\x83\x93\x82\xcc\x8c\xf6\x8e\xae  " "\x82\x52\x90\x94\x92\x6c(\x8e\x4f\x95\xd3\x82\xcc\x92\xb7\x82\xb3" "\xa4" "\x92\x50\x88\xca\x82\x8d" ")" "\x91\x49\x91\xf0");
     } else if (s->command == 15 && s->meas5 && s->meas5s) {
         /* 測定 ⑤表計算 ①〜④：A群の範囲（測定：measure_s0_c5_v の `type 30`）。 */
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
@@ -5266,6 +5303,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * `ｍ (3)桁` under its line and ①距離 leaves row 2 empty; only
          * ⑥単位 and ⑦小数点以下 put it back, and those two are not
          * `top_item` presses (src/main_wasm.c). */
+        if (s->command == 15 && s->top_item == 8 && s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
         if (s->command == 15 && !s->top_item && s->meas_noind) {
             jw_ui_text(v, 53, 2, 7, 0, "            ");
             jw_ui_text(v, 61, 2, 7, 0, "          ");

@@ -1233,6 +1233,18 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         jw_line(v, px, qy, px, py, 4, 0x18, JW_STYLE_SOLID);
         return;
     }
+    /* 測定 ⑨式 ①ヘロン：範囲の終点まで取ったら、範囲の枠が緑で残る（測定：measure_s0_c9）。 */
+    if (c->command == 15 && c->meas9q && c->pressed == 2) {
+        int qx, qy;
+
+        at_screen(w, c->x0, c->y0, &px, &py);
+        at_screen(w, c->x1, c->y1, &qx, &qy);
+        jw_line(v, px, py, qx, py, 4, 0x18, JW_STYLE_SOLID);
+        jw_line(v, qx, py, qx, qy, 4, 0x18, JW_STYLE_SOLID);
+        jw_line(v, qx, qy, px, qy, 4, 0x18, JW_STYLE_SOLID);
+        jw_line(v, px, qy, px, py, 4, 0x18, JW_STYLE_SOLID);
+        return;
+    }
     /* ○ の ①径寸法 で半径が決まっていれば、円が矢に付いてきます。 */
     if (c->command == 11 && c->circ_fix && !c->circ_ask && d) {
         double mx, my;
@@ -1583,7 +1595,7 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
             at_screen(w, X[k + 1], Y[k + 1], &qx1, &qy1);
             jw_line(v, qx0, qy0, qx1, qy1, 2, 0x18, JW_STYLE_SOLID);
         }
-    } else if (c->command == 4 || JW_RANGE(c)) {
+    } else if (c->command == 4 || JW_RANGE(c) || (c->command == 15 && c->meas9p && c->pressed == 1)) {
         /* 窓で切って引く（始点が窓のずっと外にあるとき：拡大のあとなど）。
          * 矢の角は、矢の点を図面へ出して画面へ戻したもの（測定：7.45 倍で
          * 矢が (300,300) のとき、本物の帯の角は (300,299)）。 */
@@ -5155,6 +5167,10 @@ range_items:
         c->typed_n = 0;
         return 0;
     }
+    /* 測定 ⑨式 ③三斜面積：単位の行（測定：measure_s0_c9_v の `type 30`。取った先は未実装）。 */
+    if (c->command == 15 && c->meas9t) {
+        return 1;
+    }
     /* 測定 ⑤表計算（decomp ovl29 0x2f6ab〜）：入口の帯だけ。 */
     if (c->command == 15 && c->stage == 0 && !c->meas2 && !c->meas3 && !c->meas4 && !c->meas5 && item == 5) {
         c->meas5 = 1;
@@ -6278,6 +6294,12 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     int changed;
 
     c->meas_noind = 0;
+    /* 測定 ⑨式 ③三斜面積：単位の行（測定：measure_s0_c9_v の `type 30`。取った先は未実装）。 */
+    if (c->command == 15 && c->stage == 0 && c->top_item == 9 && item == 3 && !c->meas9t) {
+        c->meas9t = 1;
+        c->top_item = 0;
+        return 1;
+    }
 
     /* 範囲の始点を持ったあとの (1)レイヤ・(2)線種色・(3)文字種 は `書込 … のみ選択` の札を出し入れする
      * （測定：move_s1_c1／erase_s1_c1・c2 の `type N`。帯はそのまま。文字種は消去だけの項目）。 */
@@ -6839,7 +6861,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 
     /* 測定の最初の行の ESC：単位・桁の帯が消える（測定のみ・decomp 未確認）。 */
     if (key == 27 && c->command == 15 && c->stage == 0 && !c->top_item && !c->meas2 && !c->meas3
-        && !c->meas4 && !c->meas5 && !c->meas_arc) {
+        && !c->meas4 && !c->meas5 && !c->meas9 && !c->meas9t && !c->meas_arc) {
         c->meas_noind = 1;
         return 1;
     }
@@ -7290,6 +7312,35 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
         return 1;
+    }
+    /* 測定 ⑨式 ③三斜面積の行：ESC で ⑨ の項目の行へ。 */
+    if (c->command == 15 && c->meas9t) {
+        if (key == 27) {
+            c->meas9t = 0;
+            c->meas9k = 0;
+            c->top_item = 9;
+            return 1;
+        }
+        return (key >= '1' && key <= '9') ? 0 : 1;
+    }
+    /* 測定 ⑨式 ①ヘロンの範囲の行：ESC で測定の最初の行へ。 */
+    if (c->command == 15 && c->meas9) {
+        c->missed = 0;
+        if (key == 27) {
+            if (c->meas9q) {
+                c->meas9q = 0;
+                c->meas9p = 0;
+                c->pressed = 0;
+                return 1;
+            }
+            if (c->meas9p) {
+                c->meas9p = 0;
+                c->pressed = 0;
+                return 1;
+            }
+            return 1;               /* 始点の行の ESC は何も起こらない（測定：measure_s0_c9） */
+        }
+        return (key >= '1' && key <= '9') ? 0 : 1;
     }
     /* 測定 ⑤表計算の キー：ESC で測定の最初の行へ。 */
     if (c->command == 15 && c->meas5) {
@@ -13410,6 +13461,41 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->lc_attr = 1;
         c->top_item = 0;
         c->top_right = 0;
+    }
+    /* 測定 ⑧文字列集計：図面の押しは指定文字の指示（文字が無ければ `読取可能データ無`。取れた先は未実装）。
+     * ⑨式：図面の押しは ① と同じ（左）で三辺の文字の範囲を取る行へ（測定：measure_s0_c8・c9）。 */
+    if (c->command == 15 && c->stage == 0 && c->top_item == 8) {
+        c->missed = 1;
+        return 0;
+    }
+    if (c->command == 15 && c->stage == 0 && c->top_item == 9) {
+        c->meas9 = 1;
+        c->meas9k = 0;
+        c->top_item = 0;
+        c->missed = 0;
+        return 0;
+    }
+    if (c->command == 15 && c->meas9t) {
+        c->meas9t = 0;                      /* ③三斜：押しは ① と同じ（左）で範囲へ */
+        c->meas9 = 1;
+        c->meas9k = 3;
+        c->missed = 0;
+        return 0;
+    }
+    if (c->command == 15 && c->meas9) {
+        if (!c->meas9p) {
+            c->meas9p = 1;
+            c->meas9z = 1;
+            c->pressed = 1;
+            jw_cmd_at(w, sx, sy, &c->x0, &c->y0);
+        } else if (!c->meas9q) {
+            c->meas9q = 1;                  /* 終点：範囲を緑で残し、追加･除外の行へ */
+            c->pressed = 2;
+            jw_cmd_at(w, sx, sy, &c->x1, &c->y1);
+        } else {
+            c->missed = 1;                  /* 追加･除外：文字が無ければ `読取可能データ無`（取れた先は未実装） */
+        }
+        return 0;
     }
     /* 測定 ⑤表計算：帯の項目を選ぶまで図面の押しは何も起こさない（測定：measure_s0_c5）。 */
     if (c->command == 15 && c->meas5) {
