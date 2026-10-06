@@ -7678,6 +7678,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->stage = c->stage == 45 ? 44 : 43;
         return 1;
     }
+    /* ②２次曲線 の通過点の指示（段 42）の [ESC] は座標原点の指示（段 41）へ（測定：curve_s1_c2）。 */
+    if (c->command == 23 && c->sine == 3 && key == 27 && (c->stage == 42 || c->stage == 41) && !c->typing) {
+        c->stage = c->stage == 42 ? 41 : 40;
+        c->missed = 0;
+        return 1;
+    }
     /* ｻｲﾝ曲線 の欄の [ESC] は一つ前の欄へ：振幅 → 1サイクルの長さ → 座標原点の指示
      * （測定：curve_s0_c1 の 12・13 手目。分割の欄は未測定）。 */
     if (c->command == 23 && c->sine && key == 27 && (c->stage == 12 || c->stage == 13)) {
