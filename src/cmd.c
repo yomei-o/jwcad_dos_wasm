@@ -5110,6 +5110,17 @@ range_items:
         c->typed_n = 0;
         return 0;
     }
+    /* 分割 ②円分割点・③楕円分割点（decomp ovl20 3ab8:14a1、段 6 が始点＝円弧を拾う行）。項目の行
+     * の ②③ を選ぶと帯が変わる。ここでは円弧を拾う行の外れまで（SAMPLE0 には円弧が無い）。 */
+    if (c->command == 21 && c->stage == 0 && (item == 2 || item == 3)) {
+        c->div2 = item;
+        c->stage = 6;
+        return 1;
+    }
+    if (c->command == 21 && c->stage == 6 && item == 1) {
+        c->div_real = !c->div_real;
+        return 1;
+    }
     /* 分割：最初の行の ① は２点間分割点、その行の ① は【仮点】⇔【実点】。 */
     if (c->command == 21 && item == 1 && c->stage == 0) {
         c->stage = 5;
@@ -7077,6 +7088,18 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         c->moved = 0;
         return 1;
+    }
+    /* 分割 ②③の始点の行：BS は分割の最初の行へ、[ESC] は何も起こさない（decomp 14a1：BS は S0 だけ有効）。 */
+    if (c->command == 21 && c->stage == 6) {
+        if (key == 8) {
+            c->stage = 0;
+            c->div2 = 0;
+            c->missed = 0;
+            return 1;
+        }
+        if (key == 27) {
+            return 0;
+        }
     }
     /* 多角形 ①２点からの距離 の キー。ESC：D→B、C→D、B→A、A は直前の組を消す（n==0 は何も
      * しない）。BS：A 段なら多角形の最初の行へ（線は残す）。decomp 0x2cbe4〜0x2d384。 */
@@ -16724,6 +16747,19 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         /* 最初の行 `|①２点間分割点(L)|②円分割点(R)|…` では、図面の左押しは
          * ① を選ぶだけで点は取らない（測定：func_all divide_s1_c1、押したあと
          * `◇２点間分割点 始点指示 …|①【仮点】| 残 100`）。② は未移植。 */
+        if (c->stage == 6) {
+            /* ②③の始点：円弧を拾う（L/R どちらも）。外れは `読取可能データ無`、近くに線があれば桁が
+             * 一つ左で BEL なし（測定：divide_s0_c2・c3）。円弧が取れた先は未実装。 */
+            const long k = jw_cmd_arc_at(d, w, sx, sy);
+
+            if (k < 0) {
+                c->pt_line = jw_cmd_line_at(d, w, sx, sy) >= 0;
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            return 1;
+        }
         if (c->stage == 0) {
             if (right) {
                 return 0;

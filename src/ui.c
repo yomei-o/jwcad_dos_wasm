@@ -2978,6 +2978,30 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 16, 1, 7, 0, "\x8e\x6e\x93\x5f\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
         jw_ui_text(v, 31, 1, 7, 0, "(L)\x90\xfc\xa5\x89~");
         jw_ui_text(v, 68, 1, 7, 0, "(1) \x91\x4f \x94\xcd \x88\xcd|");
+    } else if (s->command == 21 && s->stage == 6) {
+        /* 分割 ②円分割点・③楕円分割点 の始点の行（decomp 14a1、測定：divide_s0_c2）。 */
+        char b[80];
+        char d[16];
+
+        jw_ui_text(v, 8, 1, 7, 0, s->div2 == 3 ? "\x81\x9e\x91\xc8\x89\x7e\x95\xaa\x8a\x84\x93\x5f\x81\x69\x8d\xb6\x89\xf4\x82\xe8\x81\x6a" : "\x81\x9e\x89\x7e\x95\xaa\x8a\x84\x93\x5f\x81\x69\x8d\xb6\x89\xf4\x82\xe8\x81\x6a");
+        jw_ui_text(v, s->div2 == 3 ? 32 : 30, 1, 7, 0, "\x89\x7e\x8c\xca\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
+        if (s->div_real) {
+            sprintf(d, "%ld", (long)s->real_left);
+            sprintf(b, " |\x87@\x81y\x8e\xc0\x93_\x81z| \x8e" "c %s", d);
+        } else {
+            sprintf(d, "%d", s->temp_left);
+            sprintf(b, " |\x87@\x81y\x89\xbc\x93_\x81z| \x8e" "c %s", d);
+        }
+        jw_ui_text(v, s->div2 == 3 ? 46 : 44, 1, 7, 0, b);
+        jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+        if (s->missed && s->pt_line) {
+            jw_ui_text(v, 32, 2, 7, 0, "\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83" "f\x81[\x83^\x96\xb3");
+        } else if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 22 && s->pt_mode == 2) {
         /* 点 ②距離（decomp 0x2f596〜）。S0 始点、S1 距離の欄、S2 方向点、S3 円弧。 */
         char b[64];

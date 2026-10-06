@@ -727,6 +727,7 @@ static void sync_ui(void)
     ui.pt3 = cmd.pt3;
     ui.pt_line = cmd.pt_line;
     ui.pt_par = cmd.pt_par;
+    ui.div2 = cmd.div2;
     ui.pt2 = cmd.pt2;
     ui.pt2_circ = cmd.pt2_circ;
     ui.pt2_bad = cmd.pt2_bad;

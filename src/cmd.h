@@ -569,6 +569,7 @@ typedef struct {
     int chb, chb_inner;
     int ch_bad;
     int ch_side;
+    int div2;                   /* 分割 ②円分割点=2／③楕円分割点=3 を選んである（段 6 が始点＝円弧を拾う行） */
     int div_real;
     int dl_ask;
     int ld_ask;                 /* 線消 部分消去 の ①線切断寸法 の欄 */
