@@ -1638,6 +1638,34 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
  * DOSEMU_BP=+0def:2636,+0def:23c5. */
 static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
+    /* 面取 ①丸面・Ｌ面・楕円面 にしたあとの対象線の行は、角を作ったあと（段 2）でもその形の行（測定：chamfer_s0_c1）。 */
+    if (q->command == 8 && s->command == 8 && s->chamfer && q->row == 1 && q->col == 8
+        && q->stage == 2 && s->stage == 2 && !s->chb && !s->ch_ask) {
+        static const char *const SHAPE2[3] = {
+            "\x91\xce\x8f\xdb\x90\xfc" "(" "\x82" "`)" "\x83" "}"
+            "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e\xa6" " |" "\x87"
+            "@" "\x81" "y" "\x8a\xdb\x96\xca\x81" "z|" "\x87" "A"
+            "\x94\xbc\x8c" "a= 30.000|" "\x87" "B"
+            "\x88\xea\x8a\x87\x8f\x88\x97\x9d" "|",
+            "\x91\xce\x8f\xdb\x90\xfc" "(" "\x82" "`)" "\x83" "}"
+            "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e\xa6" " |" "\x87"
+            "@" "\x81" "y" "\x82" "k" "\x96\xca\x81" "z|" "\x87"
+            "A(A),(B)" "\x95\xd3" "= 30.000, 30.000|",
+            "\x91\xce\x8f\xdb\x90\xfc" "(" "\x82" "`)" "\x83" "}"
+            "\x83" "E" "\x83" "X" "\x8e" "w" "\x8e\xa6" " |" "\x87"
+            "@" "\x81" "y" "\x91\xc8\x89" "~" "\x96\xca\x81" "z|"
+            "\x87" "A" "\x94\xbc\x8c" "a= 30.000|" "\x87" "B"
+            "\x95\xce\x95\xbd\x97\xa6" "=" "\x8e\xa9\x93\xae" "|",
+        };
+        char out2[200];
+        double n2[2];
+
+        n2[0] = n2[1] = s->gap_chamfer;
+        put_fixed(out2, sizeof out2, SHAPE2[s->chamfer - 1], n2,
+                  s->chamfer == 2 ? 2 : 1, s->dec_drawing);
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, out2);
+        return;
+    }
     /* □・○ の寸法を決めたあとの取り消し：行の [ESC] の札だけが無い（測定：box_s0_c1_v・circle_s0_c1_v）。 */
     if (s->esc_gone && q->row == 1 && q->col == 1 && !strncmp(q->text, "[ESC]", 5)
         && (q->command == 4 || q->command == 11)) {
@@ -3066,11 +3094,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     } else if (s->command == 11 && s->ell == 6) {
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
         jw_ui_text(v, 8, 1, 7, 0, "\x82\x51\x93\x5f\x96\xda \x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6" " (L)free (R)Read");
-    } else if (s->command == 11 && s->ell == 5) {
-        /* ○ ②楕円 の 任意寸法：１点目の指示（測定：circle_s0_c2）。 */
-        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
-        jw_ui_text(v, 8, 1, 7, 0, "\x82\x50\x93\x5f\x96\xda \x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6" " (L)free (R)Read");
-
+    } else if (s->command == 11 && s->ell == 5) {
+        /* ○ ②楕円 の 任意寸法：１点目の指示（測定：circle_s0_c2）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "\x82\x50\x93\x5f\x96\xda \x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6" " (L)free (R)Read");
+
     } else if (s->command == 15 && s->meas8) {
         /* 測定 ⑧文字列集計 ③指定文字：文字を打つ欄。 */
         char b[40];

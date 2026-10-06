@@ -9845,7 +9845,11 @@ static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
     if (sn <= 0.0) {
         return;
     }
-    back = c->ch_side ? want : want / 2.0 / sn;
+    if (c->chamfer == 1) {
+        back = want / tan(half);        /* 丸面：半径 = 寸法、接点は角から r / tan(半分)（測定：chamfer_s0_c1） */
+    } else {
+        back = c->ch_side ? want : want / 2.0 / sn;
+    }
     akx = (float)(cx + back * adx);
     aky = (float)(cy + back * ady);
     bkx = (float)(cx + back * bdx);
@@ -9871,6 +9875,33 @@ static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
      * record. */
     d->lines[d->n_lines - 2].rest[3] = 0;
     d->lines[d->n_lines - 1].rest[3] = 0;
+    if (c->chamfer == 1) {
+        /* 弧の中心は角から二等分線の向きに r / sin(半分)。小さいほうの弧。 */
+        const double wx = adx + bdx, wy = ady + bdy;
+        const double wl = sqrt(wx * wx + wy * wy);
+
+        if (wl > 0.0) {
+            const double dist = (float)(want / sn);
+            const double ccx = (float)(cx + wx / wl * dist);
+            const double ccy = (float)(cy + wy / wl * dist);
+            long sa = poly_angle(ccx, ccy, akx, aky);
+            long sb = poly_angle(ccx, ccy, bkx, bky);
+            const long full = 360L << 16;
+
+            if (((sb - sa) % full + full) % full > (180L << 16)) {
+                const long t = sa;
+
+                sa = sb;
+                sb = t;
+            }
+            if (jwc_add_arc_at(d, (float)ccx, (float)ccy, (float)want, sa, sb,
+                               (unsigned char)d->line_type, (unsigned char)d->pen,
+                               (unsigned char)(d->write_layer), 0xfc)) {
+                c->co_undo_new = 3;
+            }
+        }
+        return;
+    }
     if (jwc_add_line(d, akx, aky, bkx, bky,
                      (unsigned char)d->line_type, (unsigned char)d->pen,
                      (unsigned char)(d->write_layer))) {
