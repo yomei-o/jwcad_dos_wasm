@@ -14303,9 +14303,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * 同じく cos=(float)(dx/L)・sin=(float)(dy/L)、原点は線の始点、
          * u = (float)((y-oy)*sin + (x-ox)*cos)、戻しは (float)(cos*u+ox)。
          * 二点の間を消し、元の線を抜いて**始点側・終点側の順に最後へ**
-         * 足します。種類・ペン・レイヤはそのまま、rest は 0（測定：上の辺を
-         * (300,250) と (450,330) で切ると 161.973〜300 と 450〜598 の 2 本、
-         * 線 29・30、rest 00 00 00）。**線切断（同じ所を再び押す）はまだ**。 */
+         * 足します。種類・ペン・レイヤはそのまま、rest[1]・rest[3] は 0
+         * （測定：上の辺を (300,250) と (450,330) で切ると 161.973〜300 と
+         * 450〜598 の 2 本、線 29・30、rest 00 00 00）。rest[2] は zero に
+         * 揃えず **dot_mark の判定をそのまま残す**こと：切った残りが点扱い
+         * になるほど短ければ（21f2:2750、src/jwc.c の dot_mark）bit 0x10 が
+         * 立ち、jwc_add_line が内部で呼ぶ dot_mark がすでに正しく付けている
+         * （測定：上の辺を (300,250) と (598,300) で切った残り、線 28 の
+         * (161.973,139.943)-(162.000,139.943) は dx=0.027 で本物は rest[2]
+         * に 0x10 が立つ。以前の実装は rest[1..3] を丸ごと 0 にしていて
+         * ここを消していた）。**線切断（同じ所を再び押す）はまだ**。 */
         const long k = c->ld_line;
         float cs, sn, ox, oy, u, ue;
         double dx, dy, len;
@@ -14354,7 +14361,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
 
                 if (jwc_add_line(d, l.x0, l.y0, ax, ay, l.type, l.pen,
                                  l.layer)) {
-                    memset(d->lines[d->n_lines - 1].rest + 1, 0, 3);
+                    d->lines[d->n_lines - 1].rest[1] = 0;
+                    d->lines[d->n_lines - 1].rest[3] = 0;
                 }
             }
             if (b < ue) {
@@ -14363,7 +14371,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
 
                 if (jwc_add_line(d, bx, by, l.x1, l.y1, l.type, l.pen,
                                  l.layer)) {
-                    memset(d->lines[d->n_lines - 1].rest + 1, 0, 3);
+                    d->lines[d->n_lines - 1].rest[1] = 0;
+                    d->lines[d->n_lines - 1].rest[3] = 0;
                 }
             }
         }
