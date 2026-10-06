@@ -281,6 +281,23 @@ static void fix_dir(const JwCmd *c, double *x, double *y)
     *y = (float)((double)cs * 0.0 + (double)sn * u + oy);
 }
 
+/* ＋ で ③角度 を決めたとき：水平・垂直の軸のほかに、その角度の軸が一本増える。いちばん長く
+ * 落ちる軸を取る（測定：plus_s0_c3_v は 30 度で、(-100,-110) では 30 度の軸（-150 度）、
+ * (-288,80) では水平。c5_v の 0 度は元の水平垂直と同じ）。decomp 未照合。 */
+static void axis_rot(const JwCmd *c, double *x, double *y)
+{
+    const double a = (double)(float)c->ask_ang * 0.017453292519943295;
+    const double dx = *x - c->x0, dy = *y - c->y0;
+    const double u1 = dy * sin(a) + dx * cos(a);
+    const double adx = dx < 0 ? -dx : dx, ady = dy < 0 ? -dy : dy;
+
+    if ((u1 < 0 ? -u1 : u1) > (adx > ady ? adx : ady)) {
+        fix_dir(c, x, y);
+    } else {
+        axis(c, x, y);
+    }
+}
+
 /* □ の ①寸法：大きさが決まっているときの四隅。本物はオーバーレイ 23 の
  * 0x2f8e5〜0x3008e で、
  *
@@ -670,6 +687,8 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
     jw_cmd_at(w, sx, sy, &x, &y);
     if (c->command == 2 && c->par_on) {
         plus_par(c, &x, &y);
+    } else if (c->command == 2 && c->fix_angle) {
+        axis_rot(c, &x, &y);   /* ③角度 を決めたら水平垂直ではなくその角度（測定：plus_s0_c3_v） */
     } else if (c->command == 2) {
         axis(c, &x, &y);
     }
@@ -1686,6 +1705,8 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
             jw_cmd_at(w, sx, sy, &x, &y);
             if (c->command == 2 && c->par_on) {
                 plus_par(c, &x, &y);
+            } else if (c->command == 2 && c->fix_angle) {
+                axis_rot(c, &x, &y);   /* ③角度 を決めたら水平垂直ではなくその角度（測定：plus_s0_c3_v） */
             } else if (c->command == 2) {
                 axis(c, &x, &y);
             }
@@ -18333,6 +18354,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     c->stage = 2;
     if (c->command == 2 && c->par_on) {
         plus_par(c, &x, &y);
+    } else if (c->command == 2 && c->fix_angle) {
+        axis_rot(c, &x, &y);   /* ③角度 を決めたら水平垂直ではなくその角度（測定：plus_s0_c3_v） */
     } else if (c->command == 2) {
         axis(c, &x, &y);
     }

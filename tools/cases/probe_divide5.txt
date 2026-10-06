@@ -1,0 +1,5 @@
+d2d_a|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|298 214 left|type 2|key enter
+d2d_b|DIV1|30 152 left|type 2|type 1|310 250 left|310 245 left|298 214 left|type 2|key enter
+d2d_c|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|298 214 left|type 3|key enter
+d3d_a|DIV1|30 152 left|type 3|type 1|550 250 left|550 250 left|498 214 left|type 2|key enter
+d2d_d|DIV1|30 152 left|type 2|type 1|550 250 left|550 250 left|498 214 left|type 2|key enter
