@@ -3579,7 +3579,9 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     }
     if (ui.command == 14 && ui.top_item == 9 && !dim_edit
         && x >= 239 && x <= 501 && y >= 72 && y < 362) {
-        const int row = y / 16 + 1;
+        /* 一つの欄は文字の二行ぶん（上の行を押しても下の行と同じ。測定：dim_s0_c9 の 400 140）。 */
+        const int row0 = y / 16 + 1;
+        const int row = (row0 & 1) ? row0 + 1 : row0;
 
         mouse_x = x;
         mouse_y = y;
@@ -4635,6 +4637,14 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
             dim_typed[dim_typed_n++] = (char)key;
             dim_typed[dim_typed_n] = 0;
         }
+        present();
+        return -1;
+    }
+    /* 寸法 ⑨設定の盤での [ESC] は ①変更確定 と同じ：盤を下ろして寸法の行へ（測定：dim_s0_c9）。 */
+    if (ui.command == 14 && ui.top_item == 9 && key == 27) {
+        cmd.top_item = 0;
+        cmd.top_right = 0;
+        sync_ui();
         present();
         return -1;
     }

@@ -14248,6 +14248,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->stage = 4;
         return 1;
     }
+    /* ⑨設定の盤が出ているあいだ、盤の外の押しは何も言わない（測定：dim_s0_c9 の 598 300 right）。 */
+    if (c->command == 14 && c->top_item == 9) {
+        c->missed = 0;
+        return 0;
+    }
     if (c->command == 14 && c->top_item == 7) {
         /* ⑦矢印: point at a line and the original puts an arrowhead on
          * **the end nearer the press**, two lines of `01 01 00 f5 00 20`.
