@@ -529,6 +529,13 @@ int jw_ui_past_cells(int x, int y)
  * jw_cmd_after が上から塗るので、ここだけ最後に書きます。 */
 void jw_ui_band_last(VGA *v, const JwUi *s)
 {
+    /* 面取 ④一括処理 の追加・除外の行：外した押しは `読取可能データ無`（測定：chamfer_s0_c4）。 */
+    if (s->command == 8 && s->chb && s->stage == 3 && s->missed) {
+        jw_ui_text(v, 32, 2, 7, 0,
+                   "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                   "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                   "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+    }
     /* 測定 ⑨式 ①ヘロンの範囲の行：左端 (0,16) の一画素だけ黒（測定のみ・decomp 未確認：measure_s0_c9）。 */
     if (s->command == 15 && s->meas9 && !s->meas9p) {
         fill(v, 0, 16, 0, 16, 0);

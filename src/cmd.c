@@ -3841,7 +3841,7 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         v->clip_y1 = v->height - 1;
         return;
     }
-    if (c->command == 7 || c->command == 8) {
+    if (c->command == 7 || (c->command == 8 && !c->chb)) {
         if (c->pick_a >= 0 && c->pick_a < d->n_lines) {
             const JwcLine *l = &d->lines[c->pick_a];
             int x0, y0, x1, y1;
@@ -17959,7 +17959,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         return 1;
     }
     /* 線変更 ①指定範囲内変更 の追加・除外の行で右を押しても何も起こらず、札も消える（測定：linechg_s0_c1）。 */
-    if (c->command == 24 && c->lc_range && !c->lc_attr && c->pressed == 2 && right) {
+    if (((c->command == 24 && c->lc_range && !c->lc_attr) || (c->command == 8 && c->chb))
+        && c->pressed == 2 && c->stage == 3 && right) {
         c->missed = 0;
         return 0;
     }
@@ -18387,9 +18388,6 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             /* `①実行(L)|②中止(R)`：図面の左で実行、右で中止（行のとおり。
              * 押しで確かめたのは ① の升だけ）。 */
             return jw_cmd_top(c, d, right ? 2 : 1, 0);
-        }
-        if (c->command == 8 && c->pressed == 2 && c->stage == 3) {
-            return 0;           /* 追加･除外 の押し：未移植 */
         }
         if (c->command == 25 && c->stage == 2 && !right) {
             /* `復活出来ません |①実行(L)|②中止(R)|` で図面を左で押すと、まず
