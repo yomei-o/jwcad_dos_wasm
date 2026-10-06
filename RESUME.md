@@ -52,6 +52,11 @@ sh tools/snap.sh   # 長い比較は移植の写し（STEPSHOTS=tmp/snap/tools/s
   `src/cmd.c`・`ui.c` は CRLF。cp932 の文字列は `\xNN` のまま C に書く（Python の文字列で書くと生バイトになり UTF-8 不正になる）。
   `index.html` はビルドのたびに変わる（`jwcad.wasm` と一緒に commit）。
 
+- **全体の画面比較は `python tools/stepfast.py tools/cases/func_all.txt`（約 75 秒、784 件）。**
+  並列＋node 内比較＋最初の差で止める。出力は stepcheck.py と同じ形で、結果も一致を確認済み。
+  差のあった段の画面は STEPOUT（既定 tmp/stepcheck）に残る。ALL=1 で全段の画素数。
+  stepcheck.py/stepshots.mjs は 1 件を全段書き出したいとき用。段の解釈は tools/stepcore.mjs 共通。
+
 ## 3. いまの状態（2026-10-06）
 
 * 記録 `func_all`：DIFF 7 / ok 約 300（残り：plus_s0_c3_v ＋③角度、linedel_s1_c1、curve ⑥ ×3、curve ⑦ ×2）。`func_draw`：67/68。
