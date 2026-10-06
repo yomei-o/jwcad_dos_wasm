@@ -8596,8 +8596,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         /* □ も同じ：始点だけ持っていて、前に一つ描いていれば描いたあとの
          * 行（`[ESC]・始点指示 … 確定寸法= 前の寸法`、段 2）へ（測定：
          * func_all box_plain）。 */
-        if (c->command == 4 && c->pressed == 1 && c->box_drawn && !c->box_fix
-            && !c->box_rot) {
+        if (c->command == 4 && c->pressed == 1 && c->box_drawn && !c->box_fix) {
             c->pressed = 0;
             c->stage = 2;
             c->box_esc_back = 1;
