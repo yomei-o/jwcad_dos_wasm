@@ -5296,6 +5296,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             && !s->top_item && (s->stage == 0 || s->stage == 2)) {
             jw_ui_text(v, 45, 1, 7, 0, "\x95\xd3");
         }
+        /* ２線 ①間隔 の欄に打った字（桁 15、カーソルはその後ろ。測定：double_s0_c1_v の `type 30`）。 */
+        if (s->command == 9 && s->top_item == 1 && s->typed_n > 0) {
+            char t[96];
+
+            memcpy(t, s->typed, 95);
+            t[s->typed_n < 95 ? s->typed_n : 95] = 0;
+            fill(v, 112, 0, 127 + s->typed_n * 8, 15, 0);
+            jw_ui_text(v, 15, 1, 7, 0, t);
+            fill(v, 112 + s->typed_n * 8, 7, 119 + s->typed_n * 8, 15, 4);
+        }
         /* 文字 ③角度指定 の欄の字（src/item.h の行の上に。桁 15、矢印の
          * 升はその後ろ。測定：text_c3_v で `30` を打った画面）。 */
         if (s->command == 13 && s->text_ang_ask && s->typed_n > 0) {
