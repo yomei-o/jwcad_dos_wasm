@@ -538,6 +538,13 @@ void jw_ui_band_end(VGA *v, const JwUi *s)
 
 void jw_ui_band_last(VGA *v, const JwUi *s)
 {
+    /* □ の 確定寸法 の行（段 2）で読みが外れたとき（測定：box_s0_c2_v）。 */
+    if (s->command == 4 && s->stage == 2 && s->missed) {
+        jw_ui_text(v, 32, 2, 7, 0,
+                   "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                   "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                   "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+    }
     /* 面取 ④一括処理 の追加・除外の行：外した押しは `読取可能データ無`（測定：chamfer_s0_c4）。 */
     if (s->command == 8 && s->chb && s->stage == 3 && s->missed) {
         jw_ui_text(v, 32, 2, 7, 0,
