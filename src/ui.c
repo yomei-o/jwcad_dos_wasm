@@ -6422,8 +6422,10 @@ no_dot:
          * 桁 18 で、これは 0 画素で合っています。 */
         /* ③接円（３条件）の ③１点と２線･円・④３線･円 で読めなかったときは、
          * ほかの命令と同じ桁 32 の形（測定：tangent_s0_c3_v）。 */
+        /* 円弧が一つも無い図面での外れは、ほかの命令と同じ BEL つきの桁 32（測定：tangent_s1_c1〜c3・
+         * s0_c4_v。円弧のある図面の桁 18 は TEST1 での測定）。 */
         if (s->missed && s->command == 26
-            && (s->tan_miss || !s->tan_circ)
+            && (s->tan_miss || (!s->tan_circ && !s->tan_noarc))
             && !(s->tan_tri == 13 || s->tan_tri == 14) ) {
             jw_ui_text(v, 18, 2, 7, 0,
                        s->tan_miss == 2

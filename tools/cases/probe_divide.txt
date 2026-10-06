@@ -1,0 +1,66 @@
+# 分割 ②円分割点 ③楕円分割点 ④２線間の等分割線 の測定（2026-10-06、decomp 読みの裏取り）
+d2_01|TEST3|30 152 left|type 2|344 331 left
+d2_02|TEST3|30 152 left|type 2|344 331 left|344 331 left
+d2_03|TEST3|30 152 left|type 2|344 331 left|344 331 left|322 309 left
+d2_04|TEST3|30 152 left|type 2|344 331 left|344 331 left|322 309 left|type 8
+d2_05|TEST3|30 152 left|type 2|344 331 left|344 331 left|322 309 left|type 8|key enter
+d2_06|TEST3|30 152 left|type 2|type 1|344 331 left|344 331 left|322 309 left|type 8|key enter
+d2_07|TEST3|30 152 left|type 2|344 331 left|500 400 left
+d2_08|TEST3|30 152 left|type 2|344 331 left|key esc
+d2_09|TEST3|30 152 left|type 2|344 331 left|344 331 left|key esc
+d2_10|TEST3|30 152 left|type 2|344 331 left|344 331 left|322 309 left|key esc
+d2_11|TEST3|30 152 left|type 2|344 331 left|344 331 left|322 309 left|type 8|key esc
+d2_12|TEST3|30 152 left|type 2|344 331 left|344 331 left|322 309 left|key bs
+d2_13|TEST3|30 152 left|type 2|344 331 left|344 331 left|344 331 left|type 8|key enter
+d2_13r|TEST3|30 152 left|type 2|type 1|344 331 left|344 331 left|344 331 left|type 8|key enter
+d2_14|TEST3|30 152 left|type 2|344 331 right
+d2_15|TEST3|30 152 left|type 2|344 331 left|344 331 left|322 309 left|type 1|key enter
+d2_16|TEST3|30 152 left|type 2|344 331 left|344 331 left|322 309 left|type 8|key enter|key esc
+d2_17|TEST3|30 152 left|type 2|344 331 left|key bs
+d2_18|TEST3|30 152 left|type 2|344 331 left|344 331 left|key bs
+d2_19|TEST3|30 152 left|type 2|344 331 left|344 331 left|322 309 left|type 8|key bs
+d2_20|TEST3|30 152 left|type 2|type 1|344 331 left|344 331 left|322 309 left|type 8|key enter|key esc
+d2_21|TEST3|30 152 left|type 2|344 331 left|344 331 left|322 309 left|key f1
+d2_22|TEST3|30 152 left|type 2|344 331 left|344 331 left|322 309 left|598 300 right
+d2_23|TEST3|30 152 left|type 2|type 1|344 331 left|344 331 left|322 309 left|type 8|key enter|key esc|key esc
+d2_24|TEST3|30 152 left|type 2|344 331 left|344 331 left|322 309 left|type 8|key enter|344 331 left
+d2_25|TEST3|30 152 left|type 2|344 331 left|322 309 left|344 331 left|type 8|key enter
+d2_25r|TEST3|30 152 left|type 2|type 1|344 331 left|322 309 left|344 331 left|type 8|key enter
+d2_26|TEST3|30 152 left|type 2|type 1|344 331 left|344 331 left|322 309 left|type 8|key enter|344 331 left
+d3_01|SAMPLE6|30 152 left|type 3|378 162 left
+d3_02|SAMPLE6|30 152 left|type 3|378 162 left|378 162 left
+d3_03|SAMPLE6|30 152 left|type 3|378 162 left|378 162 left|386 155 left
+d3_04|SAMPLE6|30 152 left|type 3|378 162 left|378 162 left|386 155 left|type 8|key enter
+d3_05|SAMPLE6|30 152 left|type 3|type 1|378 162 left|378 162 left|386 155 left|type 8|key enter
+d3_06|SAMPLE6|30 152 left|type 2|type 1|378 162 left|378 162 left|386 155 left|type 8|key enter
+d3_07|TEST3|30 152 left|type 3|type 1|344 331 left|344 331 left|322 309 left|type 8|key enter
+d3_08|SAMPLE6|30 152 left|type 3|400 140 left
+d3_09|SAMPLE6|30 152 left|type 3|378 162 left|378 162 left|386 155 left|key f1
+d3_10|SAMPLE6|30 152 left|type 3|type 1|378 162 left|378 162 left|386 155 left|key f1|type 3|key enter
+d4_01|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left
+d4_02|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|type 4
+d4_03|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|type 4|key enter
+d4_04|SAMPLE0|30 152 left|type 4|type 1|400 140 left|162 300 left|type 4|key enter
+d4_05|SAMPLE0|30 152 left|type 4|400 140 left|300 250 left
+d4_06|SAMPLE0|30 152 left|type 4|400 140 left|300 250 left|type 4|key enter
+d4_07|SAMPLE0|30 152 left|type 4|type 1|400 140 left|300 250 left|type 4|key enter
+d4_08|SAMPLE0|30 152 left|type 4|400 140 left|400 140 left
+d4_09|SAMPLE0|30 152 left|type 4|400 140 left|300 250 right
+d4_10|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|key esc
+d4_11|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|type 4|key esc
+d4_12|SAMPLE0|30 152 left|type 4|400 140 left|key bs
+d4_13|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|key bs
+d4_14|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|type 4|key bs
+d4_15|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|type 1|key enter
+d4_16|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|598 300 right
+d4_17|SAMPLE0|30 152 left|type 4|type 1|400 140 left|162 300 left|type 4|key enter|key esc
+d4_18|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|type 4|key enter|400 140 left
+d4_19|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|key f1
+d4_20|SAMPLE0|30 152 left|type 4|400 140 left|key esc
+d4_21|SAMPLE0|30 152 left|type 4|type 1|400 140 left|162 300 left|type 4|key enter|key esc|key esc
+d4_22|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|type 3|key enter
+d4_23|SAMPLE0|30 152 left|type 4|type 1|400 140 left|162 300 left|type 3|key enter
+d4_24|SAMPLE0|30 152 left|type 4|type 1|400 140 left|162 300 left|type 2|key enter
+d4_25|SAMPLE0|30 152 left|type 4|type 1|400 140 left|162 300 left|598 300 right
+d4_26|SAMPLE0|30 152 left|type 4|type 1|400 140 left|300 250 left|type 3|key enter
+d4_27|SAMPLE0|30 152 left|type 4|type 1|324 300 left|162 300 left|type 4|key enter

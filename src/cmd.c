@@ -7022,6 +7022,21 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
     }
+    /* 円線接 ①接線 の最初の行（`[ESC] 接線 |1)円〜円間|…`）の [ESC] は円線接の最初の行へ戻る
+     * （測定：tangent_plain の 11 手目。decomp 未照合）。 */
+    /* 円線接 ③指定点 の円を訊く行（段 3）の [ESC] は指定点の行（段 2）へ（測定：tangent_s0_c1_v）。 */
+    if (c->command == 26 && key == 27 && !c->typing && c->stage == 3 && c->tan_on) {
+        c->stage = 2;
+        c->missed = 0;
+        return 1;
+    }
+    if (c->command == 26 && key == 27 && !c->typing && c->stage == 1 && c->pressed == 1
+        && !c->tan_kind && c->tan_tri == 0) {
+        c->pressed = 0;
+        c->stage = 0;
+        c->missed = 0;
+        return 1;
+    }
     /* 線消 の線切断寸法の欄の鍵。値は 0 以上を取る（使い道の線切断は未移植）。 */
     if (c->command == 10 && c->ld_ask) {
         if (key == 27 || key == 13 || key == 10) {
@@ -14265,6 +14280,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         return 0;
     }
     if (c->command == 26) {
+        c->tan_noarc = d && d->n_arcs == 0;
         /* 円線接: the item's own line offers ①接 線 with the left button and
          * ②接円 with the right, and the first press in the drawing is what
          * chooses -- it is taken for that and nothing else.  Then ③指定点 off
@@ -14281,6 +14297,18 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             tan_start(c, d);
             c->pressed = 1;
             c->stage = 1;
+            return 1;
+        }
+        /* ④角度指定 の角度の欄：図面の押しは 左 = `0 度`、右 = `前回と同じ`（測定：tangent_s1_c4）。 */
+        if (c->tan_on && c->stage == 12) {
+            c->tan_deg = right ? c->tan_prev : 0.0;
+            if (!right) {
+                c->tan_prev = 0.0;
+            }
+            c->typing = 0;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 13;
             return 1;
         }
         if ((c->tan_circ == 3 && c->stage >= 36 && c->stage <= 38)
@@ -16006,6 +16034,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             const long k = jw_cmd_arc_at(d, w, sx, sy);
 
             if (k < 0) {
+                c->tan_miss = pick_line(d, w, sx, sy) >= 0;
                 c->missed = 1;
                 return 0;
             }

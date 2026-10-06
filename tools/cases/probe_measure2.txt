@@ -1,0 +1,87 @@
+# measure 2-8 state machine probes (2026-10-06)
+q2_a|SAMPLE0|90 296 left|type 2|400 140 left|300 250 left
+q2_b|SAMPLE0|90 296 left|type 2|400 140 left|300 250 left|type 2
+q2_c|SAMPLE0|90 296 left|type 2|400 140 left|300 250 left|type 2|300 300 left
+q2_d|SAMPLE0|90 296 left|type 2|400 140 left|300 250 left|key esc
+q2_e|SAMPLE0|90 296 left|type 2|400 140 left|300 250 left|key esc|key esc
+q2_f|SAMPLE0|90 296 left|type 2|400 140 left|300 250 left|key esc|type 2
+q2_g|SAMPLE0|90 296 left|type 2|type 2
+q2_h|SAMPLE0|90 296 left|type 2|type 2|400 140 left|300 250 left
+q2_i|SAMPLE0|90 296 left|type 2|type 2|type 2
+q2_j|SAMPLE0|90 296 left|type 2|type 1
+q2_k|SAMPLE0|90 296 left|type 2|type 1|400 140 left|300 250 left|450 330 left
+q2_l|SAMPLE0|90 296 left|type 2|type 1|400 140 left|300 250 left|key esc
+q2_m|SAMPLE0|90 296 left|type 2|type 1|400 140 left|300 250 left|key esc|key esc
+q2_n|SAMPLE0|90 296 left|type 2|type 1|400 140 left|300 250 left|type 1
+q2_o|SAMPLE0|90 296 left|type 2|400 140 left|400 140 left
+q2_p|SAMPLE0|90 296 left|type 2|key bs
+q2_q|SAMPLE0|90 296 left|type 2|400 140 left|key bs
+q2_r|SAMPLE0|90 296 left|type 2|400 140 left|type 1
+q2_s|SAMPLE0|90 296 left|type 7|type 2|400 140 left|300 250 left
+q2_t|SAMPLE0|90 296 left|type 6|type 2|400 140 left|300 250 left
+q2_u|SAMPLE0|90 296 left|type 2|400 140 left|300 250 left|type 1
+q2_v|SAMPLE0|90 296 left|type 2|400 140 left|300 250 left|450 330 left
+q2_w|SAMPLE0|90 296 left|type 2|400 140 left|300 250 left|type 2|300 300 left|type 2
+q3_a|SAMPLE0|90 296 left|type 3|400 140 left
+q3_b|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|450 330 left
+q3_c|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|450 330 left|type 1
+q3_d|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|450 330 left|type 2
+q3_e|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|450 330 left|type 3
+q3_f|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|450 330 left|key esc
+q3_g|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|450 330 left|key esc|key esc
+q3_h|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|450 330 left|key esc|key esc|key esc
+q3_i|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|450 330 left|400 300 left|type 1
+q3_j|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|450 330 left|type 1|300 400 left
+q3_k|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|450 330 left|type 1|300 400 left|key esc
+q3_l|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|450 330 left|type 3|type 3
+q3_m|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|450 330 left|type 3|400 140 left
+q3_n|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|450 330 left|key bs
+q3_o|SAMPLE0|90 296 left|type 3|400 140 left|key esc
+q3_p|SAMPLE0|90 296 left|type 3|key bs
+q3_q|SAMPLE0|90 296 left|type 3|400 140 left|type 1
+q3_r|SAMPLE0|90 296 left|type 3|400 140 left|300 250 left|type 1
+q4_a|SAMPLE0|90 296 left|type 4|400 140 left
+q4_b|SAMPLE0|90 296 left|type 4|400 140 left|300 250 left
+q4_c|SAMPLE0|90 296 left|type 4|400 140 left|300 250 left|type 1
+q4_d|SAMPLE0|90 296 left|type 4|400 140 left|type 1
+q4_e|SAMPLE0|90 296 left|type 4|400 140 left|300 250 left|type 1|300 300 left
+q4_f|SAMPLE0|90 296 left|type 4|400 140 left|300 250 left|key esc
+q4_g|SAMPLE0|90 296 left|type 4|400 140 left|300 250 left|key esc|key esc
+q4_h|SAMPLE0|90 296 left|type 4|400 140 left|300 250 left|450 330 left
+q4_i|SAMPLE0|90 296 left|type 4|400 140 left|300 250 left|450 330 left|type 1
+q4_j|SAMPLE0|90 296 left|type 4|key bs
+q4_k|SAMPLE0|90 296 left|type 4|400 140 left|key bs
+q4_l|SAMPLE0|90 296 left|type 4|400 140 left|300 250 left|key bs
+q4_m|SAMPLE0|90 296 left|type 4|400 140 left|300 250 left|type 1|type 1
+q4_n|SAMPLE0|90 296 left|type 4|400 140 left|key esc
+q4_o|SAMPLE0|90 296 left|type 4|type 1
+q4_p|SAMPLE0|90 296 left|type 4|400 140 left|300 250 left|type 2
+q5_1|SAMPLE0|90 296 left|type 5|type 1
+q5_2|SAMPLE0|90 296 left|type 5|type 2
+q5_3|SAMPLE0|90 296 left|type 5|type 3
+q5_4|SAMPLE0|90 296 left|type 5|type 4
+q5_5|SAMPLE0|90 296 left|type 5|type 5
+q5_6|SAMPLE0|90 296 left|type 5|type 6
+q5_7|SAMPLE0|90 296 left|type 5|type 7
+q5_8|SAMPLE0|90 296 left|type 5|type 8
+q5_a|SAMPLE0|90 296 left|type 5|400 140 left
+q5_b|SAMPLE0|90 296 left|type 5|key bs
+q5_c|SAMPLE0|90 296 left|type 5|type 6|type 6
+q5_d|SAMPLE0|90 296 left|type 5|type 7
+q5_e|SAMPLE0|90 296 left|type 5|type 7|key esc
+q5_f|SAMPLE0|90 296 left|type 5|type 5
+q5_g|SAMPLE0|90 296 left|type 5|type 1|400 140 left|300 250 left
+q8_1|SAMPLE0|90 296 left|type 8|type 1
+q8_2|SAMPLE0|90 296 left|type 8|type 2
+q8_3|SAMPLE0|90 296 left|type 8|type 3
+q8_4|SAMPLE0|90 296 left|type 8|type 4
+q8_a|SAMPLE0|90 296 left|type 8|type 1|400 140 left
+q8_b|SAMPLE0|90 296 left|type 8|type 3
+q8_c|SAMPLE0|90 296 left|type 8|type 3|400 140 left
+q8_d|SAMPLE0|90 296 left|type 8|key bs
+q8_e|SAMPLE0|90 296 left|type 8|key esc
+q8_f|SAMPLE0|90 296 left|type 8|type 3|key esc
+q8_g|SAMPLE0|90 296 left|type 8|type 9
+q8_h|SAMPLE0|90 296 left|type 8|type 2
+q9_a|SAMPLE0|90 296 left|type 9
+q9_b|SAMPLE0|90 296 left|type 9|key bs

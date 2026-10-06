@@ -1,0 +1,13 @@
+pd_a|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 50|key enter|450 250 left
+pd_b|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type -30|key enter|300 100 left
+pd_c|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 50|key enter|450 250 left|type 2|type 2
+pd_d|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 50|key enter|450 250 left|type 2|type 2|key esc|key esc|key esc
+pd_e|SAMPLE0|30 168 left|type 1|type 2|300 250 left|key enter|450 250 left
+pd_f|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 0|key enter|450 250 left
+pd_g|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 50|key enter|450 250 left|400 140 left|600 300 right|450 300 left
+pd_h|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 50|key enter|300 250 left
+pd_i|SAMPLE0|30 168 left|type 1|type 2|162 250 right|type 50|key enter|450 330 left
+pd_j|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 1|450 330 left|300 250 left|key esc|key esc
+pd_k|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 50|key esc|key esc|key esc
+pd_l|SAMPLE0|30 168 left|type 2|300 250 left|type 50|key enter|450 250 left|type 2|type 2|key esc
+pd_m|SAMPLE0|30 168 left|type 1|type 2|600 250 left|type 1
