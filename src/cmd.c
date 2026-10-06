@@ -7024,6 +7024,28 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* 円線接 ①接線 の最初の行（`[ESC] 接線 |1)円〜円間|…`）の [ESC] は円線接の最初の行へ戻る
      * （測定：tangent_plain の 11 手目。decomp 未照合）。 */
+    /* ②２次曲線 の [ESC]：分割 長さ の欄（段 45）→ 終点指示（段 44）→ 始点指示（段 41）
+     * （測定：curve_s0_c2 の 12・14 手目）。 */
+    if (c->command == 23 && c->sine == 3 && key == 27 && (c->stage == 45 || c->stage == 44)) {
+        c->typing = 0;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        c->stage = c->stage == 45 ? 44 : 43;
+        return 1;
+    }
+    /* ｻｲﾝ曲線 の欄の [ESC] は一つ前の欄へ：振幅 → 1サイクルの長さ → 座標原点の指示
+     * （測定：curve_s0_c1 の 12・13 手目。分割の欄は未測定）。 */
+    if (c->command == 23 && c->sine && key == 27 && (c->stage == 12 || c->stage == 13)) {
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        if (c->stage == 13) {
+            c->stage = 12;
+        } else {
+            c->typing = 0;
+            c->stage = 11;
+        }
+        return 1;
+    }
     /* 円線接 ②接円 ①１線１円（段 40 線・41 円・42 選ぶ）の [ESC] は一つ前の段へ（測定：tangent_s0_c2）。 */
     if (c->command == 26 && key == 27 && !c->typing && c->tan_circ == 1
         && (c->stage == 41 || c->stage == 42)) {
