@@ -1,0 +1,18 @@
+# 複写(command=1)・移動(command=16) の ESC/BS/数値入力 総当たり監査（2026-10-06、nokori.md A節）。
+# 範囲は SAMPLE0 の (150,130)-(245,170)（線 2 本を含む。(162,250)-(598,300) は空で
+# move_s0_c1_v 系の「何も選ばずに置いた ESC は何も起きない」専用）。
+# 本物との突き合わせは tools/functest.sh（JWC バイト列）。すべて src/cmd.c の
+# 「if (JW_RANGE(c)) { ... }」節（複写・移動 は段を一つずつ戻す）に根拠コメントあり。
+cm_move_stage4_esc|SAMPLE0|30 72 left|150 130 left|245 170 right|key esc
+cm_move_stage5_esc|SAMPLE0|30 72 left|150 130 left|245 170 right|70 8 right|key esc
+cm_move_stage6_esc|SAMPLE0|30 72 left|150 130 left|245 170 right|350 350 left|key esc
+cm_move_stage7_esc_typing|SAMPLE0|30 72 left|150 130 left|245 170 right|type 2|type 5|key esc
+cm_move_stage9_esc_once|SAMPLE0|30 72 left|150 130 left|245 170 right|350 350 left|450 450 left|key esc
+cm_move_stage9_esc_twice|SAMPLE0|30 72 left|150 130 left|245 170 right|350 350 left|450 450 left|key esc|key esc
+cm_move_stage3_esc_full_reset|SAMPLE0|30 72 left|150 130 left|245 170 left|key esc
+cm_move_empty_range_esc_noop|SAMPLE0|30 72 left|162 250 left|598 300 right|350 350 left|key esc
+cm_move_distance_bs|SAMPLE0|30 72 left|150 130 left|245 170 right|type 2|type 25|key bs|key enter
+cm_move_distance_empty_enter|SAMPLE0|30 72 left|150 130 left|245 170 right|type 2|key enter
+cm_move_repeat_twice|SAMPLE0|30 72 left|150 130 left|245 170 right|350 350 left|450 450 left|type 2|30 72 left|150 130 left|245 170 right|350 350 left|450 450 left|type 2
+cm_copy_stage9_esc_once|SAMPLE0|90 72 left|150 130 left|245 170 right|350 350 left|450 450 left|key esc
+cm_copy_stage9_esc_twice|SAMPLE0|90 72 left|150 130 left|245 170 right|350 350 left|450 450 left|key esc|key esc

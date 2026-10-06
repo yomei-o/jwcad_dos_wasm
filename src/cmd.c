@@ -8583,7 +8583,43 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             if (JW_MOVE_CMD(c->command) && c->mv_none && c->mv_undo && c->stage == 9) {
                 return 0;
             }
-            /* 複写・移動を置いたあとなら、まず最後の一回を取り消します。 */
+            /* 複写・移動 は段を一つずつ戻す（範囲ごとは捨てない）。段 9
+             * （再配置待ち）はまず最後の一回を取り消してから段 6（置く場所を
+             * 聞く行）へ、段 7（②数値位置 の欄）は打ちかけを捨てて段 4
+             * （①〜⑦ の一覧）へ、段 6 は段 5（基準点を聞く行）へ、段 5 は
+             * 段 4 へ、段 4 は段 3（追加・除外）へ（測定：150,130-245,170 の
+             * 範囲で、複写・移動 の両方）。段 3 の [ESC] だけは下の「範囲ごと
+             * 戻す」に落として始点指示まで戻す（測定：同じ範囲で左閉じ後の
+             * [ESC]）。 */
+            if (JW_MOVE_CMD(c->command) && c->stage == 9) {
+                if (c->mv_undo && d) {
+                    place_undo(c, d);
+                }
+                c->stage = 6;
+                return 1;
+            }
+            if (JW_MOVE_CMD(c->command) && c->stage == 7) {
+                c->typing = 0;
+                c->typed[0] = 0;
+                c->typed_n = 0;
+                c->stage = 4;
+                return 1;
+            }
+            if (JW_MOVE_CMD(c->command) && c->stage == 6) {
+                c->stage = 5;
+                return 1;
+            }
+            if (JW_MOVE_CMD(c->command) && c->stage == 5) {
+                c->stage = 4;
+                return 1;
+            }
+            if (JW_MOVE_CMD(c->command) && c->stage == 4) {
+                c->stage = 3;
+                return 1;
+            }
+            /* 複写・移動を置いたあとなら、まず最後の一回を取り消します。
+             * （段 9・7・6・5・4 は上で先に処理するので、ここまで来るのは
+             * 段 3 の範囲ごと戻すときだけ。） */
             if (JW_MOVE_CMD(c->command) && c->mv_undo && d) {
                 place_undo(c, d);
             }
