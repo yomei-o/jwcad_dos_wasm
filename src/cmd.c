@@ -8312,6 +8312,23 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->dim_arc_val[0] = 0;  /* 帯の角度の値も消える（測定） */
         return 1;
     }
+    /* 寸法 ⑦矢印のあとの [ESC]：矢印は残り、[ESC] の札だけが消えて数え箱が追いつく
+     * （測定：dim_s0_c7 の最初の [ESC]。線数 32 → 34）。 */
+    if (key == 27 && d && c->command == 14 && c->top_item == 7 && c->dim_did && !c->typing) {
+        /* 最後の矢印（2 本）だけが消え、数え箱は消したあとの線数（測定：36 → 34）。 */
+        int i;
+
+        jwc_ink_settle(d);      /* 消した跡は黒の穴になる（本物は全面を描き直さない） */
+        for (i = 0; i < 2 && d->n_lines > 0; i++) {
+            jwc_remove_line(d, d->n_lines - 1);
+        }
+        c->dim_did = 0;
+        c->dim_lines0 = d->n_lines;
+        c->dim7_hold = 0;
+        c->dim7_n = 0;
+        c->undo_lines = c->undo_arcs = c->undo_texts = 0;
+        return 1;
+    }
     /* **取り消し。** 何も持っていないときの [ESC] は、直前の押しで足した
      * ものを消して、その押しの前の段へ戻ります（本物は `＊お待ち下さい＊`
      * のあと描き直す）。一度だけ：控えは使ったら捨てる。 */
@@ -14222,8 +14239,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * 1.354, so the panel's two numbers are the ones).  What a press
          * on an **arc** does is not measured. */
         /* 右押しでは付けない（`読取可能データ無`。測定：func_all dim_s0_c7
-         * で右の枠を右で押しても線は増えない）。 */
-        const long k = right ? -1 : pick_line(d, w, sx, sy);
+         * で右の枠を右で押しても線は増えない）。→ 右でも付く（右の枠の下端に矢印が出る）。 */
+        const long k = pick_line(d, w, sx, sy);
         const double alen = (c->dim_arrow_mm > 0.0 ? c->dim_arrow_mm : 3.0)
                           * d->unit_mm;
         const double rad = c->dim_angle_deg * 3.14159265358979323846
@@ -14233,6 +14250,14 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
 
         if (k < 0) {
             c->missed = 1;
+            if (c->dim7_hold == 1) {
+                c->dim7_hold = 2;
+            } else if (c->dim7_hold == 2) {
+                c->dim7_hold = 0;
+                c->dim7_n = 0;
+                c->dim_lines0 = d->n_lines; /* 数え箱が追いつく */
+                return 1;
+            }
             return 0;
         }
         c->missed = 0;
@@ -14272,6 +14297,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 d->lines[d->n_lines - 1].rest[1] = 0xf5;
                 d->lines[d->n_lines - 1].rest[3] = 0x20;
                 c->dim_did = 1;
+                c->dim7_n++;
+                c->dim7_hold = 1;
             }
         }
         return 1;
