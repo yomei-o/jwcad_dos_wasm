@@ -4129,7 +4129,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         /* ＋・／ の欄を押しで閉じたら、始点があればその場の矢で仮の線と盤
          * （測定：func_all plus_s1_c2）。 */
         if (was_typing && !cmd.typing && cmd.pressed == 1 && drawing
-            && (cmd.command == 2 || cmd.command == 3)) {
+            && (cmd.command == 2 || cmd.command == 3 || cmd.command == 4)) {
             jw_cmd_track(&cmd, drawing, &view, x, y);
             cmd.moved = 1;
         }

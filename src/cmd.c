@@ -7599,6 +7599,10 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->fix_done = 0;
             c->line_done = 0;
         }
+        /* □ も：取り消したあとは「前に描いた」ではなくなる（測定：box_s0_c1 の 2 回目の [ESC]）。 */
+        if (c->command == 4) {
+            c->box_drawn = 0;
+        }
         return 1;
     }
     /* `始点指示 … [BS]前項` の状態で始点を持っているときの [ESC] は、始点を
