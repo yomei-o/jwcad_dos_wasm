@@ -8120,6 +8120,19 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typed_n = 0;
             c->typed[0] = 0;
             if (c->ell == 1) {
+                /* 置いた直後（ell_done）の [ESC] は、その楕円を取り消して
+                 * から ○ の最初の行へ抜ける（（ ①三点指示 の arc3_done と
+                 * 同じ形、上のブロック参照）。測定：func_all circle_s0_c2
+                 * の末尾 `…162 250 left|598 300 right|…esc|…esc|…` --
+                 * 1 個目の [ESC] は２個目の楕円の中心指示だけを捨てて
+                 * 楕円は 1 個のまま、２個目の [ESC]（ell は既に 1 に
+                 * 戻っている）で 1 個目の楕円が消え、そのあとは項目②を
+                 * 選び直すまで押しがすべて無反応になる（ell==0 まで
+                 * 抜けている証拠）。decomp 未確認・測定のみ。 */
+                if (c->ell_done && d && d->n_arcs > 0) {
+                    jwc_ink_settle(d);
+                    jwc_remove_arc(d, d->n_arcs - 1);
+                }
                 c->ell = 0;
                 c->ell_done = 0;
             } else {
