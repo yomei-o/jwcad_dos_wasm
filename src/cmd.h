@@ -733,6 +733,12 @@ typedef struct {
     /* ２線 has both ends and is waiting for the pointer to leave, the way
      * 線切断 does. */
     int pending;
+    /* ２線：始点／終点を押して、矢が動くまで読みを待っている（1=L、2=R）。decomp ovl17 の
+     * 点入力 3ab8:309e（dis 0x2dc1e）は押した位置を anchor にして次のイベントを待ち、離れて
+     * から読む（mode≠0 なら 21f2:34e9。失敗は `読取可能データ無`）。dl_phase は 0=始点、
+     * 1=終点、dl_sx/dl_sy は押した画面位置。 */
+    int dl_wait, dl_phase, dl_sx, dl_sy;
+    int dl_nopre;               /* 読みが外れたあとの押しでは仮の二本が消える（測定のみ） */
     /* 面取's chamfer length, in paper millimetres.  The top line offers it as
      * `③寸法= 30.000` and starts there. */
     double gap_chamfer;

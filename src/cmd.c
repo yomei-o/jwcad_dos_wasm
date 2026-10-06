@@ -537,6 +537,8 @@ static double shown_angle(double x1, double y1, double x2, double y2)
 }
 
 static void two_lines(JwCmd *c, Jwc *d);
+static int take(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
+                int right, double *x, double *y);
 
 /* 連線's direction rounding; the command itself is further down. */
 static void poly_dir(const JwCmd *c, double dx, double dy,
@@ -619,6 +621,34 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
         if (c->pending) {
             c->pending = 0;
             two_lines(c, d);
+        }
+        /* ２線 の読みは、押した位置から矢が離れたときに行う（点入力 3ab8:309e の 0x2e088。
+         * 失敗は -1 で、帯を出し直して `読取可能データ無`、段は動かない）。 */
+        if (c->dl_wait && c->command == 9 && d) {
+            const int btn = c->dl_wait;
+            double px, py;
+
+            c->dl_wait = 0;
+            if (!take(c, d, w, c->dl_sx, c->dl_sy, btn == 2, &px, &py)) {
+                c->stage = c->dl_phase ? 2 : 1;
+                c->dl_nopre = 1;
+                c->missed = 1;
+                c->moved = 1;
+                return;
+            }
+            c->missed = 0;
+            c->dl_nopre = 0;
+            if (!c->dl_phase) {
+                c->x0 = px;
+                c->y0 = py;
+                c->stage = 2;
+            } else {
+                c->x1 = px;
+                c->y1 = py;
+                c->stage = 3;
+                two_lines(c, d);
+            }
+            c->moved = 1;
         }
     }
     if (d && c->command == 11 && c->circ_fix) {
@@ -1210,6 +1240,7 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         return;
     }
     if (!c->moved && !(c->command == 13 && c->typing_text)
+        && !(c->command == 9 && c->dl_wait && c->dl_phase)   /* 押しても仮の二本は残る */
         && !(c->command == 23 && c->poly && c->poly_n >= 1)) {
         return;
     }
@@ -1244,7 +1275,7 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         return;
     }
     if (!c->pressed && !(c->command == 12 && c->arc3 == 3)
-        && !(c->command == 9 && c->stage == 2)) {
+        && !(c->command == 9 && (c->stage == 2 || (c->stage == 3 && c->dl_wait)))) {
         return;
     }
     if (JW_RANGE(c) && c->pressed == 2) {
@@ -1519,8 +1550,9 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         jw_line_clipped(v, px, sy, sx, sy, 2, 0x18, JW_STYLE_SOLID);
         jw_line_clipped(v, sx, py, sx, sy, 2, 0x18, JW_STYLE_SOLID);
         jw_line_clipped(v, px, py, sx, py, 2, 0x18, JW_STYLE_SOLID);
-    } else if (c->command == 9 && c->pick_a >= 0 && c->stage == 2
-               && !c->pending && d) {
+    } else if (c->command == 9 && c->pick_a >= 0 && d && !c->pending
+               && ((c->stage == 2 && !c->dl_wait)
+                   || (c->stage == 3 && c->dl_wait && c->dl_phase && !c->dl_nopre))) {
         /* ２線 の終点を探しているあいだも、仮の二本が矢に付いてくる（色 2。
          * 測定：func_all double_plain で y 270 の x 300..450 が赤）。 */
         JwCmd t = *c;
@@ -4569,6 +4601,10 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
      * originals it is the copy that shows.  Measured with a five-millimetre
      * distance, where 44 pixels of the overlap are white in the original and
      * were red here. */
+    /* ２線 の組は作ったときに一度描くだけ（足しは墨の記録が順に再生する）。描き直すと、あとで消した組の穴が埋まる（double_plain 13 手目）。 */
+    if (c->command == 9) {
+        return;
+    }
     for (k = c->n0_lines; k < d->n_lines; k++) {
         if (jwc_visible(d, d->lines[k].layer)) {
             jw_view_line(v, d, &d->lines[k], w,
@@ -7271,6 +7307,10 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     /* ２線 の取り消し：始点を聞いているとき（何も持っていない）の [ESC] は、
      * 最後の組を抜いてその組の始点を持った終点の段へ（測定：2 組目を引いて
      * [ESC] で始点の段、もう一度 [ESC] で 2 組目が消え `○終点指示 … ●連続`）。 */
+    /* 点入力の待ちでは [ESC] は効かない（0x2dc1e：キーの戻りは捨てる）。 */
+    if (key == 27 && c->command == 9 && c->dl_wait) {
+        return 1;
+    }
     if (key == 27 && d && c->command == 9 && !c->typing && c->pick_a >= 0
         && c->stage == 3 && c->pending) {
         /* 終点を押して矢がまだ離れていないときの [ESC] は、その組を置いて
@@ -7285,15 +7325,16 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         && d->n_lines >= c->dl_undo_n) {
         int i;
 
+        jwc_ink_settle(d);      /* 前の組の足しを確定してから消す（消しは後ろに付く） */
         for (i = 0; i < c->dl_undo_n; i++) {
             jwc_remove_line(d, d->n_lines - 1);
         }
-        jwc_ink_clear(d);
+        /* 全面は描き直さない：消した線の跡は黒の穴になる（decomp 21f2:6859、画面 double_plain 13 手目） */
         c->dl_undo_n = 0;
         c->x0 = c->dl_undo_x;
         c->y0 = c->dl_undo_y;
         c->stage = 2;
-        c->moved = 0;
+        c->moved = 1;       /* 終点の行（T 段）を出し直す */
         return 1;
     }
     /* 線消 で部分消去したあとの [ESC]：抜いた元の線を rest を 0 にして末尾へ
@@ -16179,24 +16220,22 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 1;
             return 1;
         }
-        {
-            double px, py;
-
-            if (!take(c, d, w, sx, sy, right, &px, &py)) {
-                return 1;
-            }
-            if (c->stage != 2) {
-                c->x0 = px;
-                c->y0 = py;
-                c->stage = 2;
-                return 1;
-            }
-            c->x1 = px;
-            c->y1 = py;
-            c->pending = 1;
-            c->stage = 3;
+        /* 押しは位置を置くだけ。読みは矢が離れたとき（jw_cmd_track）。 */
+        if (c->dl_wait) {
+            return 1;               /* 同位置の再押しは 基準線変更(LL)／包絡(RR)：未実装 */
+        }
+        c->dl_wait = right ? 2 : 1;
+        c->dl_sx = sx;
+        c->dl_sy = sy;
+        c->missed = 0;
+        if (c->stage != 2) {
+            c->dl_phase = 0;
+            c->stage = 2;
             return 1;
         }
+        c->dl_phase = 1;
+        c->stage = 3;
+        return 1;
     }
     if (c->command == 8 && c->ch_ask) {
         /* ③寸法= の欄：左は効かず（本物は行を出し直すだけ）、右は前回と同じ。

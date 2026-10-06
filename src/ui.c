@@ -1591,6 +1591,19 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
  * DOSEMU_BP=+0def:2636,+0def:23c5. */
 static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
+    /* ２線 の待ちの行（`□ 終点 指示はマウス移動 ■ 【 …】`）：R で押したときは
+     * `基準線 指示は同位置マウス(L)` が `<始|終>線 指示は同位置マウス(R) 包絡処理` になる
+     * （decomp ovl17 0x2dd04〜0x2dd7f の mode 2、画面は double_plain 8 手目）。 */
+    if (q->command == 9 && s->command == 9 && s->dl_wait == 2 && !q->moved
+        && q->row == 1 && (q->col == 39 || q->col == 43 || q->col == 64 || q->col == 67)
+        && (q->stage == 2 || q->stage == 3)) {
+        if (q->col == 39) {
+            jw_ui_text(v, 39, 1, 7, 0, stage == 2 ? "\x8e""n""\x90""\xfc"" ""\x8e""w""\x8e""\xa6""\x82""\xcd""\x93""\xaf""\x88""\xca""\x92""u""\x83""}""\x83""E""\x83""X(R) ""\x95""\xef""\x97""\x8d""\x8f""\x88""\x97""\x9d"" ""\x81""z"
+                                                : "\x8f""I""\x90""\xfc"" ""\x8e""w""\x8e""\xa6""\x82""\xcd""\x93""\xaf""\x88""\xca""\x92""u""\x83""}""\x83""E""\x83""X(R) ""\x95""\xef""\x97""\x8d""\x8f""\x88""\x97""\x9d"" ""\x81""z");
+        }
+        return;
+    }
+
     /* 点 の行：【実点】のときは `【仮点】` を `【実点】` に、行 2 に `F1～F6   Pen No1`
      * の盤（decomp ovl20 3ab8:45ea の 02f208〜02f28d。[0x4e23]≠0 で DS:0x2b2 `実点`
      * を入れ、DS:0x4db0 の盤を行 2 桁 27 に書く）。 */

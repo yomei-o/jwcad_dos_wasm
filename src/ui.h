@@ -201,6 +201,7 @@ typedef struct {
     /* The menu item was picked while it was already the one in force.  Only
      * 変形 and 図形 do anything with it -- see jw_ui_draw. */
     int again;
+    int dl_wait;                /* JwCmd.dl_wait */
     int ask_kind;
     /* ＋・／ の ②寸法 で長さを固定している（JwCmd.fix_len）。`fix_done` は
      * 固定してから 1 本引いたか、`fix_ang` はその線の角度。 */

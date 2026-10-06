@@ -458,6 +458,7 @@ static void sync_ui(void)
      * so ⑦連線 came up saying free where the original says 45度毎. */
     ui.poly_deg = cmd.poly_deg;
     ui.again = cmd.again;
+    ui.dl_wait = cmd.dl_wait;
     /* The first three steps of 図形 ①登録 are the range being taken, which
      * the selection machinery counts in `pressed`; the rest are its own. */
     memcpy(ui.zukei_name, cmd.zukei_name, sizeof ui.zukei_name);
