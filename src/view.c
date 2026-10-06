@@ -1233,6 +1233,20 @@ void jw_view_ink(VGA *v, const Jwc *d, const JwcInk *e, const JwView *w)
                      e->erase ? 0u : jw_view_text_colour(d, t.size));
         break;
     }
+    case JW_INK_TEMP: {
+        /* 仮点の輪（半径 2、12 画素）。erase のときは黒で塗る。 */
+        const int mx = to_x(w, e->u.p.x);
+        const int my = (int)(w->ay - (e->u.p.y - w->oy) * w->scale);
+        const unsigned mc = e->erase ? 0u : jw_view_pen_colour(2);
+
+        if (inside(w, mx - 2, my - 2) && inside(w, mx + 2, my + 2)) {
+            jw_line(v, mx - 1, my - 2, mx + 1, my - 2, mc, ROP_REPLACE, JW_STYLE_SOLID);
+            jw_line(v, mx - 1, my + 2, mx + 1, my + 2, mc, ROP_REPLACE, JW_STYLE_SOLID);
+            jw_line(v, mx - 2, my - 1, mx - 2, my + 1, mc, ROP_REPLACE, JW_STYLE_SOLID);
+            jw_line(v, mx + 2, my - 1, mx + 2, my + 1, mc, ROP_REPLACE, JW_STYLE_SOLID);
+        }
+        break;
+    }
     default: {
         const int x = to_x(w, e->u.p.x);
         const int y = (int)(w->ay - (e->u.p.y - w->oy) * w->scale);

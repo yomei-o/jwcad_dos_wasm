@@ -1591,6 +1591,27 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
  * DOSEMU_BP=+0def:2636,+0def:23c5. */
 static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
+    /* 点 の行：【実点】のときは `【仮点】` を `【実点】` に、行 2 に `F1～F6   Pen No1`
+     * の盤（decomp ovl20 3ab8:45ea の 02f208〜02f28d。[0x4e23]≠0 で DS:0x2b2 `実点`
+     * を入れ、DS:0x4db0 の盤を行 2 桁 27 に書く）。 */
+    if (q->command == 22 && s->command == 22 && s->pt_real && stage == 1
+        && q->row == 1 && q->col == 8) {
+        char one[200];
+        char *at;
+
+        strncpy(one, q->text, sizeof one - 1);
+        one[sizeof one - 1] = 0;
+        at = strstr(one, "\x89\xbc\x93_");
+        if (at) {
+            at[0] = (char)0x8e;
+            at[1] = (char)0xc0;
+            at[2] = (char)0x93;
+            at[3] = (char)0x5f;
+        }
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, one);
+        jw_ui_text(v, 27, 2, 7, 0xffffu, " F1\x81`F6   Pen No1 ");
+        return;
+    }
     /* 線変更 ②レイヤ変更は【有】⇔【無】（測定：func_all linechg_s0_c2）。 */
     if (q->command == 24 && s->command == 24 && s->lc_off && q->stage == 1
         && q->row == 1 && q->col == 8) {

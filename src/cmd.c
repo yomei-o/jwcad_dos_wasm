@@ -5016,6 +5016,7 @@ range_items:
     /* 点 ①：【仮点】⇔【実点】（行は src/item.h。測定：point_s0_c1）。 */
     if (c->command == 22 && item == 1) {
         c->pt_real = !c->pt_real;
+        c->pt_undo = 0;                 /* 02f3f4 */
         return 0;
     }
     /* ②距離 ③交点 ④円中心 ⑤仮点削除 は**未移植**。切り替えたあとの押しで
@@ -6934,21 +6935,25 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         return 1;
     }
-    /* 点 の [ESC]：この命令で足した実点を後ろから一つずつ取り消す（測定：
-     * point_s0_c1 で 5 つ足して [ESC] 二回で 3 つ）。 */
-    /* 仮点 のときも [ESC] で最後の仮点を一つずつ消す（測定：func_all
-     * point_plain、(350,350) の輪が消え、次の [ESC] でその前のも）。 */
-    if (c->command == 22 && key == 27 && !c->pt_real && d && d->n_temp > 0
-        && !c->typing) {
-        d->n_temp--;
-        return 1;
-    }
-    if (c->command == 22 && key == 27 && c->pt_added > 0 && d
-        && d->n_points > 0) {
-        d->n_points--;
-        jwc_ink_clear(d);
-        c->pt_added--;
-        return 1;
+    /* 点 の [ESC]（decomp ovl20 3ab8:45ea の 02f400〜02f44c）。取り消しの数
+     * [bp-0x48] は符号つきで、仮点を打てると +1（02f507）、実点を打てると -1
+     * （02f575）、①のトグルで 0 になる（02f3f4）。[ESC] は数が正なら仮点を一つ消し
+     * （0x304c8）て -1、負なら実点を一つ消し（1bb4:3c1d）て +1。0 のときは
+     * 読みの引数が 0x2710（[ESC] 無効）で、[ESC] は何も起こさない。 */
+    if (c->command == 22 && key == 27 && !c->typing && d) {
+        if (c->pt_undo > 0 && d->n_temp > 0) {
+            jwc_remove_temp(d);         /* 輪は黒で塗るだけ。線の穴が残る（point_plain） */
+            c->pt_undo--;
+            return 1;
+        }
+        if (c->pt_undo < 0 && d->n_points > 0) {
+            d->n_points--;
+            jwc_ink_clear(d);
+            c->pt_added--;
+            c->pt_undo++;
+            return 1;
+        }
+        return 0;
     }
     /* 文字 ③角度指定 の欄の鍵。 */
     if (c->command == 13 && c->text_ang_ask) {
@@ -16992,6 +16997,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         if (c->pt_mode) {
             return 0;               /* ②〜⑤ は未移植 */
         }
+        /* 押すと 02f1e4 へ戻って帯を組み直す（decomp）。升①の行は残らない。 */
+        c->top_item = 0;
+        c->top_right = 0;
         if (c->pt_real) {
             /* ①【実点】：押した所に記録の点（x, y, レイヤ, ペン 1, 0x00,
              * 0x1d。測定：func_all point_s0_c1 の点 16〜18）。 */
@@ -17009,8 +17017,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             p.rest[3] = 0x1d;
             if (jwc_put_point(d, &p)) {
                 c->pt_added++;
+                c->pt_undo--;               /* 02f575 */
             }
-            c->stage = 1;
+            c->stage = c->pt_undo ? 1 : 0;   /* [ESC] は数が 0 でないときだけ */
             return 1;
         }
         if (!take(c, d, w, sx, sy, right, &x, &y)
@@ -17020,10 +17029,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         d->temp_x[d->n_temp] = (float)x;
         d->temp_y[d->n_temp] = (float)y;
         d->n_temp++;
+        c->pt_undo++;                   /* 02f507 */
         /* It writes its line again afterwards -- [ESC], the dot at column 6 and
          * the whole prompt -- which is stage 1 in src/stage.h.  Picking the
          * item alone does not put [ESC] up; the first press does. */
-        c->stage = 1;
+        c->stage = c->pt_undo ? 1 : 0;
         return 1;
     }
     if (c->command == 12) {

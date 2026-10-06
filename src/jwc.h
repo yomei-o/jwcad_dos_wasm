@@ -62,7 +62,9 @@ typedef struct {
  *
  * 消えるのは画面を丸ごと描き直すとき（見え方が変わったとき）。
  * 帯の `前倍率` を押すと本物も 0 画素に戻ることで測りました。 */
-enum { JW_INK_LINE, JW_INK_ARC, JW_INK_TEXT, JW_INK_POINT };
+/* JW_INK_TEMP は 点 の 仮点（半径 2 の輪）。[ESC] で消すとき本物は輪を黒で塗るだけで、
+ * 重なっていた図面の線に穴が残る（func_all point_plain の (161,248)・(161,252)）。 */
+enum { JW_INK_LINE, JW_INK_ARC, JW_INK_TEXT, JW_INK_POINT, JW_INK_TEMP };
 
 typedef struct {
     unsigned char kind;         /* JW_INK_* */
@@ -249,6 +251,8 @@ typedef struct {
 
 /* 墨の記録をひとつ積みます。`rec` は kind に合った記録を指します。 */
 void jwc_ink_note(Jwc *d, int erase, int kind, const void *rec);
+/* 最後の 仮点 を消す（輪を黒で塗る記録を積む）。 */
+void jwc_remove_temp(Jwc *d);
 
 /* 墨の記録を捨てます（画面を丸ごと描き直すとき）。 */
 void jwc_ink_clear(Jwc *d);

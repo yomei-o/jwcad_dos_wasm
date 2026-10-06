@@ -2682,3 +2682,17 @@ void jwc_extent(const Jwc *d, float *x0, float *y0, float *x1, float *y1)
     }
     *x0 = lo_x; *y0 = lo_y; *x1 = hi_x; *y1 = hi_y;
 }
+
+void jwc_remove_temp(Jwc *d)
+{
+    JwcPoint p;
+
+    if (!d || d->n_temp <= 0) {
+        return;
+    }
+    memset(&p, 0, sizeof p);
+    p.x = d->temp_x[d->n_temp - 1];
+    p.y = d->temp_y[d->n_temp - 1];
+    jwc_ink_note(d, 1, JW_INK_TEMP, &p);
+    d->n_temp--;
+}
