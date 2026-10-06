@@ -8246,6 +8246,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         && c->pick_a < 0 && c->co_undo_n > 0 && d->n_lines >= c->co_undo_new) {
         int i;
 
+        jwc_ink_settle(d);      /* 消した跡は黒の穴になる */
+        if (c->co_undo_arc && d->n_arcs > 0) {
+            jwc_remove_arc(d, d->n_arcs - 1);
+        }
+        c->co_undo_arc = 0;
         for (i = 0; i < c->co_undo_new; i++) {
             jwc_remove_line(d, d->n_lines - 1);
         }
@@ -9863,6 +9868,7 @@ static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
     c->co_undo[1] = d->lines[b];
     c->co_undo_n = 2;
     c->co_undo_new = 2;
+    c->co_undo_arc = 0;
     keep_far(d, first, cx, cy, akx, aky);
     keep_far(d, second, cx, cy, bkx, bky);
     /* 作り直した二本に読取の印は残りません（測定）。 */
@@ -9897,7 +9903,7 @@ static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
             if (jwc_add_arc_at(d, (float)ccx, (float)ccy, (float)want, sa, sb,
                                (unsigned char)d->line_type, (unsigned char)d->pen,
                                (unsigned char)(d->write_layer), 0xfc)) {
-                c->co_undo_new = 3;
+                c->co_undo_arc = 1;
             }
         }
         return;

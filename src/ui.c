@@ -1638,6 +1638,27 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
  * DOSEMU_BP=+0def:2636,+0def:23c5. */
 static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
+    /* 面取【辺寸法】：角を作ったあと（段 2）の行の `②【面寸法】` も 面 → 辺（測定：chamfer_s0_c2）。 */
+    if (q->command == 8 && s->command == 8 && s->ch_side && !s->chamfer && q->row == 1
+        && q->col == 8 && q->stage == 2 && s->stage == 2 && !s->chb && !s->ch_ask) {
+        char out3[200];
+        char *at;
+
+        strncpy(out3, q->text, sizeof out3 - 1);
+        out3[sizeof out3 - 1] = 0;
+        at = strstr(out3, "\x96\xca\x90\xa1\x96\x40");
+        if (at) {
+            at[0] = (char)0x95;
+            at[1] = (char)0xd3;
+        }
+        {
+            JwStage q2 = *q;
+
+            q2.text = out3;
+            stage_text_1(v, &q2, s, stage);
+        }
+        return;
+    }
     /* 面取 ①丸面・Ｌ面・楕円面 にしたあとの対象線の行は、角を作ったあと（段 2）でもその形の行（測定：chamfer_s0_c1）。 */
     if (q->command == 8 && s->command == 8 && s->chamfer && q->row == 1 && q->col == 8
         && q->stage == 2 && s->stage == 2 && !s->chb && !s->ch_ask) {

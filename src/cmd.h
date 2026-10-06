@@ -648,6 +648,7 @@ typedef struct {
     double ell_px[2], ell_py[2];    /* 任意寸法の１点目・２点目 */
     int ref_miss;               /* □ ③平行：基準線の読み外れの数（二度目で数え箱が戻る。測定：box_s1_c3） */
     int ref_hold;               /* □ ③平行：始点を持ったまま基準線を聞いている（測定：box_s1_c3） */
+    int co_undo_arc;            /* 面取 ①丸面 の取り消しで弧も抜く */
     int ell_mouse;              /* ○ ②楕円 を任意寸法（二点）で決めた：軸の平行線の行は見出しが違う（測定：circle_s0_c2） */
     int esc_gone;               /* 寸法を決めた □・○ の取り消しのあとは行に [ESC] の札が無い（測定：box_s0_c1_v・circle_s0_c1_v） */
     int lc_keyed;               /* 線変更：押したあと一つ鍵を打つと `線`／`円` の札が消える（測定：linechg_s1_c4〜c9） */
