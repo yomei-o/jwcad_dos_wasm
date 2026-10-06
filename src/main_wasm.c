@@ -4216,7 +4216,13 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     if (cmd.command && x >= AREA_X0 && x <= AREA_X1
         && y >= AREA_Y0 && y <= AREA_Y1) {
         const int was_typing = cmd.typing;
+        const int was_moved = cmd.moved;
         const int changed = jw_cmd_press(&cmd, drawing, &view, x, y, right);
+
+        /* 三点指示の弧：読みが外れた押しは何も変えないので、仮の弧は矢について残る（測定：arc_s0_c1_v） */
+        if (cmd.command == 12 && cmd.arc3 == 3 && cmd.missed) {
+            cmd.moved = was_moved;
+        }
 
         mouse_x = x;
         mouse_y = y;
