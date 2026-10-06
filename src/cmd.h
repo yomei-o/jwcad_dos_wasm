@@ -643,6 +643,7 @@ typedef struct {
     int meas4, ms4;
     double ms4_ox, ms4_oy, ms4_px, ms4_py;
     int meas_arc;               /* 測定 ①距離 ◆の ③円周：円を拾う行（円が取れた先は未実装） */
+    int lc_keyed;               /* 線変更：押したあと一つ鍵を打つと `線`／`円` の札が消える（測定：linechg_s1_c4〜c9） */
     int dim_ck_gone;            /* 寸法 ④①円径 の 書込角度の札は [ESC] で消える（測定：dim_s0_c4） */
     int dim_arc_quiet;          /* 寸法 ④③角度を選んだ直後は行 2 の `点`・`度` の札がまだ出ない（次の鍵で出る。測定：dim_s0_c4_v） */
     int dim5c, dim5m;           /* 寸法 ⑤寸法値 ③円周：円をマウス指示（dim5m 1 = 線データです、2 = 読取可能データ無）。測定：dim_s0_c5_v */

@@ -4772,6 +4772,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             if (s->command == 14 && s->stage == 7 && s->dim8_plain && p->row != 1) {
                 continue;
             }
+            /* 線変更の押した直後の行 2 `線 変更` は次の鍵でも出ない（測定：linechg_s1_c4〜c9）。 */
+            if (s->command == 24 && s->stage == 1 && p->row == 2 && !s->lc_msg
+                && (p->col == 20 || p->col == 22)) {
+                continue;
+            }
             /* 面取's ① has gone round to another shape: the line is
              * that shape's, not the one the menu item came up with.  Bytes
              * from tools/cycle.sh. */
@@ -6635,7 +6640,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
             /* 線変更 says `線` or `円` there, whichever it took. */
-            if (s->command == 24 && i == 1 && s->hit_kind) {
+            if (s->command == 24 && i == 1 && s->hit_kind && !s->lc_keyed) {
                 jw_ui_text(v, 20, 2, 7, 0xffff,
                            s->hit_kind == 2 ? "\x89" "~" : "\x90" "\xfc");
             }

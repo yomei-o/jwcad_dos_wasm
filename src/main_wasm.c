@@ -741,6 +741,7 @@ static void sync_ui(void)
     ui.dim5c = cmd.dim5c;
     ui.dim_arc_quiet = cmd.dim_arc_quiet;
     ui.dim_ck_gone = cmd.dim_ck_gone;
+    ui.lc_keyed = cmd.lc_keyed;
     ui.dim5m = cmd.dim5m;
     ui.dim8_plain = cmd.dim8_plain;
     ui.meas8d = cmd.meas8d;
@@ -4247,6 +4248,12 @@ static int lc_msg_was;
 
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
+    /* 線変更：押したあとの最初の鍵で `線`／`円` の札が消える（測定：linechg_s1_c4〜c9）。 */
+    if (cmd.command == 24 && cmd.hit_kind && !cmd.lc_keyed) {
+        cmd.lc_keyed = 1;
+        sync_ui();
+        present();
+    }
     /* 寸法 ④③角度を選んだ直後の最初の鍵で、行 2 の札が出る（測定：dim_s0_c4_v の `0`）。 */
     if (cmd.dim_arc_quiet && (key == 13 || key == 10 || key == 27)) {
         cmd.dim_arc_quiet = 0;

@@ -17904,6 +17904,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         /* The word beside the counts is `線` for a line and `円` for an arc
          * (measured: pressing SAMPLE6's arc at (446,189) says 円 変更). */
         c->hit_kind = k >= 0 ? 1 : 2;
+        c->lc_keyed = 0;
         /* **The original paints the old one out and draws the new one over
          * it**, without redrawing anything else: on SAMPLE6's (499,271) its
          * line calls are `(499,302)-(499,240)` in colour 0 and then the same
