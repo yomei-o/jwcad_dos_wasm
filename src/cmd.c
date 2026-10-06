@@ -6151,7 +6151,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     /* 複写・移動 の始点の行の ①前範囲（測定：move_s0_c1 の `type 1`）：前の範囲を取って
      * 追加･除外 の段へ。前の範囲が無ければ空の範囲で、そのまま押しで線を足せる。 */
     if ((JW_MOVE_CMD(c->command) || (c->command == 24 && (c->lc_range || c->top_item == 3))
-         || (c->command == 25 && c->span)
+         || (c->command == 25 && c->span) || (c->command == 17 && c->hen_dbl)
          || (c->command == 27 && c->zukei == JW_ZUKEI_RANGE))
         && item == 1 && !right && !c->pressed && d && c->stage == 0) {
         if (c->command == 24) {
@@ -7952,8 +7952,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         /* 変形 の始点の行（①パラメトリック変形 の最初）での [ESC] は、5 項目の最初の行へ
          * （測定のみ・decomp 未確認：henkei_plain の 2 回目の [ESC]）。 */
-        if (c->command == 17 && !c->pressed && c->again) {
+        if (c->command == 17 && !c->pressed && (c->again || c->hen_dbl)) {
             c->again = 0;
+            c->hen_dbl = 0;             /* ③複線化 の始点の行の [ESC] も 5 項目の最初の行へ（測定：henkei_s0_c3） */
             return 1;
         }
         if (!c->pressed || c->escaped) {
@@ -13020,6 +13021,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     c->press_y = sy;
     c->moved = 0;
     c->escaped = 0;
+    /* 変形 ③複線化 の追加・除外の行は `線・円(L)` だけ：右の押しは何も起こさない（測定：henkei_s0_c3）。 */
+    if (c->command == 17 && c->hen_dbl && c->pressed == 2 && c->stage == 3 && right) {
+        return 0;
+    }
     /* 円線接 ②接円 の小項目の行（①１線１円(L)|②１点１線(R)|…）：図面の押しは項目行の読みが返す
      * ボタンで、左 = ①、右 = ②（測定：tangent_s0_c2。1bb4:2cb4 と同形）。 */
     if (c->command == 26 && c->tan_on && c->stage == 30) {

@@ -4967,6 +4967,15 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* 範囲を取る命令の最初の行・追加除外の行で [Enter] は ① と同じ（測定：move_s0_c1_v・
      * erase_s0_c2_v など。decomp：項目の読み 1bb4:2cb4 は Enter を 0xd で返し、共有の範囲取り
      * （ovl5）はそれを ①前範囲／①範囲確定 として扱う——範囲取り側の分岐は未照合）。 */
+    /* 変形 ③複線化 の始点の行の [Enter] も ①前範囲（測定：henkei_s0_c3_v）。項目の行の升は
+     * 押さない（①パラメトリック変形 の升が押されてしまう）。 */
+    if ((key == 13 || key == 10) && cmd.command == 17 && cmd.hen_dbl && !cmd.pressed
+        && !cmd.typing && !cmd.typing_text && drawing) {
+        jw_cmd_top(&cmd, drawing, 1, 0);
+        sync_ui();
+        present();
+        return -1;
+    }
     if ((key == 13 || key == 10) && (JW_RANGE(&cmd) || (cmd.command == 24 && cmd.top_item == 3)
          || (cmd.command == 25 && cmd.span))
         && !cmd.typing && !cmd.typing_text
