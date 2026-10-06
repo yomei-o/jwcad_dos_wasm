@@ -7123,7 +7123,14 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     /* 連続弧の [ESC]：最後に足した一本を取り消して、その前の端と向きへ
-     * （測定：func_all curve_s0_c6 で 16 → 15 → 14、一本目は残る）。 */
+     * （測定：func_all curve_s0_c6 で 16 → 15 → 14、一本目は残る——これは
+     * 「2 回目の [ESC] まで」しか押していなかったときの話だった）。
+     * ch_n が 0 まで減ったら、それは一本目を足す前（stage 52 のところで
+     * ch_undo[0] に nl/na だけ控えてある）まで戻ったということ。resume
+     * する向き・端は無い（一本目より前には何も無い）ので、連続弧そのもの
+     * から抜ける（測定：func_all curve_s1_c6 の末尾、1 回目の [ESC] で
+     * 二本目が消え、2 回目の [ESC] で一本目も消えて、連続弧の外へ出る。
+     * decomp 未確認・測定のみ）。 */
     if (c->command == 23 && c->chain && key == 27 && c->stage == 53
         && c->ch_n > 0 && d) {
         c->ch_n--;
@@ -7134,6 +7141,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             jwc_remove_line(d, d->n_lines - 1);
         }
         jwc_ink_clear(d);
+        if (c->ch_n == 0) {
+            c->chain = 0;
+            c->stage = 0;
+            return 1;
+        }
         c->ch_px = c->ch_undo[c->ch_n].px;
         c->ch_py = c->ch_undo[c->ch_n].py;
         c->ch_cx = c->ch_undo[c->ch_n].cx;
@@ -15340,6 +15352,17 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 1;
         }
         if (c->stage == 52) {
+            /* 一本目を足す前の状態（線・弧の数）も控える。[ESC] がここまで
+             * 戻ってきたとき（下の ESC 節、ch_n が 0 まで減ったとき）に
+             * 一本目も取り消せるようにするため（測定：func_all
+             * curve_s1_c6 の末尾、2 回目の [ESC] で一本目の弧も消える）。
+             * px/py/cx/cy/tx/ty は使わない（戻った先は「何も持っていない」
+             * で、resume する値が無いので ESC 節側で c->chain ごと抜ける）。 */
+            if (c->ch_n < 128) {
+                c->ch_undo[c->ch_n].nl = d->n_lines;
+                c->ch_undo[c->ch_n].na = d->n_arcs;
+                c->ch_n++;
+            }
             chain_first(c, d, x, y);
             c->stage = 53;
             return 1;
