@@ -1,0 +1,13 @@
+# measure probes batch 3: other drawings
+s1_v|SAMPLE1|90 296 left|type 8|type 1
+s1_5|SAMPLE1|90 296 left|type 5|type 5|130 125 left|620 440 left|type 1
+s2_v|SAMPLE2|90 296 left|type 8|type 1
+s2_5|SAMPLE2|90 296 left|type 5|type 5|130 125 left|620 440 left|type 1
+s3_v|SAMPLE3|90 296 left|type 8|type 1
+s3_5|SAMPLE3|90 296 left|type 5|type 5|130 125 left|620 440 left|type 1
+s4_v|SAMPLE4|90 296 left|type 8|type 1
+s4_5|SAMPLE4|90 296 left|type 5|type 5|130 125 left|620 440 left|type 1
+s5_v|SAMPLE5|90 296 left|type 8|type 1
+s5_5|SAMPLE5|90 296 left|type 5|type 5|130 125 left|620 440 left|type 1
+s6_v|SAMPLE6|90 296 left|type 8|type 1
+s6_5|SAMPLE6|90 296 left|type 5|type 5|130 125 left|620 440 left|type 1

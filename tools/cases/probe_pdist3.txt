@@ -1,0 +1,5 @@
+pg_a|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 99999999|key enter|type 50|key enter|450 250 left
+pg_b|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 90000000|key enter|450 250 left
+pg_c|SAMPLE0|30 168 left|type 2|300 250 left|key enter|450 250 left
+pg_d|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 50|key enter|162 250 right|450 250 left
+pg_e|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 50|key enter|450 250 left|type 2|key bs|type 2|300 250 left|type 50|key esc|key esc

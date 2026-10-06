@@ -726,6 +726,10 @@ static void sync_ui(void)
     ui.pt3 = cmd.pt3;
     ui.pt_line = cmd.pt_line;
     ui.pt_par = cmd.pt_par;
+    ui.pt2 = cmd.pt2;
+    ui.pt2_circ = cmd.pt2_circ;
+    ui.pt2_bad = cmd.pt2_bad;
+    ui.pt2_last = jw_cmd_pt2_last();
     ui.tan_noarc = cmd.tan_noarc;
     ui.pt_undo = cmd.pt_undo;
     memcpy(ui.gap_hist, cmd.gap_hist, sizeof ui.gap_hist);
@@ -1798,16 +1802,16 @@ EMSCRIPTEN_KEEPALIVE long jw_count(int which)
 /* 検査用：いまのコマンドの状態（tools/cmdstate.mjs）。 */
 EMSCRIPTEN_KEEPALIVE const char *jw_cmd_state(void)
 {
-    static char buf[400];
+    static char buf[480];
 
     snprintf(buf, sizeof buf,
              "cmd=%d stage=%d pressed=%d typing=%d fix_mode=%d fix_done=%d "
              "fix_len=%d fix_angle=%d ask_kind=%d top_item=%d box_ask=%d "
-             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g chb=%d cham=%d hn=%d h0=%d miss=%d",
+             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g chb=%d cham=%d hn=%d h0=%d miss=%d lc=%d/%d zk=%d",
              cmd.command, cmd.stage, cmd.pressed, cmd.typing, cmd.fix_mode,
              cmd.fix_done, cmd.fix_len, cmd.fix_angle, cmd.ask_kind,
              cmd.top_item, cmd.box_ask, cmd.box_fix, cmd.circ_fix,
-             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer, cmd.hatch_n, cmd.hatch_line[0], cmd.missed);
+             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer, cmd.hatch_n, cmd.hatch_line[0], cmd.missed, cmd.lc_range, cmd.lc_narrow, cmd.zukei);
     return buf;
 }
 EMSCRIPTEN_KEEPALIVE int jw_top_item(int x, int y) { return jw_ui_top_item(x, y); }
@@ -2413,6 +2417,16 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     if (x >= AREA_X0 && y >= AREA_Y0) {
         band_x = x;
         band_y = y;
+    }
+    /* 点 ②距離の始点の行：行 1 の右（x>580）の押しは [BS]前項（decomp 2cb4：y<[0xa5e] かつ x>580 は 0x14、
+     * 測定：pf_e）。 */
+    if (cmd.command == 22 && cmd.pt_mode == 2 && cmd.pt2 == 0 && y >= 0 && y < 16 && x > 580
+        && drawing) {
+        cmd.missed = 0;
+        jw_cmd_key(&cmd, drawing, 8);
+        sync_ui();
+        present();
+        return -1;
     }
 
     /* [f2] の拾い場。押した文字の数が欄に入ります。**読めるのは
@@ -4174,6 +4188,15 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * 0x6608 の 0x66a0〜0x672c が `[0xc22]` を見てメッセージ行を塗りつぶす。
      * 外れを再び立てるのはそのキーの処理）。以前は [ESC] だけで消していた。 */
     cmd.missed = 0;
+    /* 点 ②距離の欄でも命令の頭文字の鍵は命令を替える（decomp：欄の読み 0xad:16d4 は [0x158] を立てて
+     * 全段から抜ける。測定：probe_pdist2 pf_h の `abc` → c で移動）。 */
+    if (cmd.command == 22 && cmd.pt_mode == 2 && cmd.pt2 == 1 && cmd.typing
+        && ((key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z'))
+        && jw_ui_key_command(key)) {
+        cmd.typing = 0;
+        cmd.typed_n = 0;
+        cmd.pt2 = 0;
+    }
     /* 線記号変形で記号を置いた直後の [ESC]：足したものを消し、抜いた指示線を
      * 末尾に戻す（測定：func_all henkei_s0_c4 で 31|16 → 30|13）。一度だけ。 */
     if (key == 27 && kg_undo && cmd.command == 17 && drawing) {
@@ -4943,7 +4966,8 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* 範囲を取る命令の最初の行・追加除外の行で [Enter] は ① と同じ（測定：move_s0_c1_v・
      * erase_s0_c2_v など。decomp：項目の読み 1bb4:2cb4 は Enter を 0xd で返し、共有の範囲取り
      * （ovl5）はそれを ①前範囲／①範囲確定 として扱う——範囲取り側の分岐は未照合）。 */
-    if ((key == 13 || key == 10) && JW_RANGE(&cmd) && !cmd.typing && !cmd.typing_text
+    if ((key == 13 || key == 10) && (JW_RANGE(&cmd) || (cmd.command == 24 && cmd.top_item == 3))
+        && !cmd.typing && !cmd.typing_text
         && (cmd.pressed == 0 || cmd.pressed == 2) && !cmd.te5) {
         key = '1';
     }

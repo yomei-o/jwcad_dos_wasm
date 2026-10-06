@@ -1,0 +1,50 @@
+# 分割 追加測定その2（2026-10-06）
+d4b_a|SAMPLE0|30 152 left|type 4|200 249 left|324 180 left|type 2|key enter
+d4b_b|SAMPLE0|30 152 left|type 4|200 249 left|324 350 left|type 2|key enter
+d4b_c|SAMPLE0|30 152 left|type 4|500 249 left|324 180 left|type 2|key enter
+d4b_d|SAMPLE0|30 152 left|type 4|500 249 left|324 350 left|type 2|key enter
+d4b_e|SAMPLE0|30 152 left|type 4|324 180 left|200 249 left|type 2|key enter
+d4b_f|SAMPLE0|30 152 left|type 4|500 249 left|324 180 left|type 4|key enter
+d4b_g|SAMPLE0|30 152 left|type 4|232 150 left|300 249 left|type 2|key enter
+d4b_r|SAMPLE0|30 152 left|type 4|400 140 left|598 419 right
+d4b_r2|SAMPLE0|30 152 left|type 4|400 140 left|598 419 right|type 4|key enter
+d4b_r3|SAMPLE0|30 152 left|type 4|324 180 left|598 140 right|type 4|key enter
+d4b_h|SAMPLE0|30 152 left|type 4|200 249 left|324 180 left|type 2|key enter|200 249 left|324 180 left|type 3|key enter
+d4b_i|SAMPLE0|30 152 left|type 4|200 249 left|324 180 left|type 2|key enter|key esc
+d4b_j|SAMPLE0|30 152 left|type 4|200 249 left|324 180 left|type 2|key enter|key bs
+d4b_k|SAMPLE0|30 152 left|type 4|key bs
+d4b_l|SAMPLE0|30 152 left|type 4|key esc
+d4b_m|SAMPLE0|30 152 left|type 4|200 249 left|key bs
+d4b_n|SAMPLE0|30 152 left|type 4|200 249 right
+d4b_o|SAMPLE0|30 152 left|type 4|200 249 left|324 180 left|type 20001|key enter
+d4b_p|SAMPLE0|30 152 left|type 4|200 249 left|324 180 left|type 0|key enter
+d2b_a|DIV1|30 152 left|type 2|key bs
+d2b_b|DIV1|30 152 left|type 2|key esc
+d2b_c|DIV1|30 152 left|type 2|600 100 left
+d2b_d|DIV1|30 152 left|type 2|310 250 left|600 100 left
+d2b_e|DIV1|30 152 left|type 2|310 250 right|310 250 right
+d2b_f|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 right
+d2b_g|DIV1|30 152 left|type 2|type 1|250 350 left|293 375 left|207 375 left|type 4|key enter
+d2b_h|DIV1|30 152 left|type 2|type 1|250 350 left|207 375 left|293 375 left|type 4|key enter
+d2b_i|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|key f1|type 20|key enter
+d2b_j|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|key f1|type 10|key enter
+d2b_k|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|key f1|key f1|type 20|key enter
+d2b_l|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|key f1|key f1|key f1|type 20|key enter
+d2b_m|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|key f1|key f1|key f1|key f1|type 20|key enter
+d2b_n|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|key f1|key f1|key f1|key f1|key f1|type 4|key enter
+d2b_o|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|key f1|type 15|key enter
+d2b_p|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|key f1|key f1|type 15|key enter
+d2b_q|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|key f1|key f1|key f1|type 15|key enter
+d2b_r|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|key f1|key f1|key f1|key f1|type 15|key enter
+d3b_a|DIV1|30 152 left|type 3|key bs
+d3b_b|DIV1|30 152 left|type 3|type 1|552 370 left|552 370 left|485 374 left|type 8|key enter
+d3b_c|DIV1|30 152 left|type 2|type 1|552 370 left|552 370 left|485 374 left|type 8|key enter
+d3b_d|DIV1|30 152 left|type 3|type 1|550 250 left|550 250 left|480 208 left|key f1|type 10|key enter
+d3b_e|DIV1|30 152 left|type 3|type 1|550 250 left|550 250 left|480 208 left|key f1|type 30|key enter
+d3b_f|DIV1|30 152 left|type 3|type 1|550 250 left|550 250 left|480 208 left|key f1|key f1|type 30|key enter
+d3b_g|DIV1|30 152 left|type 3|type 1|550 250 left|550 250 left|480 208 left|key f1|key f1|key f1|type 30|key enter
+d3b_h|DIV1|30 152 left|type 3|type 1|550 250 left|550 250 left|480 208 left|key f1|key f1|key f1|key f1|type 30|key enter
+d3b_i|DIV1|30 152 left|type 3|type 1|250 350 left|293 375 left|207 375 left|type 4|key enter
+d3b_j|DIV1|30 152 left|type 3|550 250 left|550 250 left|480 208 left
+d3b_k|DIV1|30 152 left|type 3|550 250 left|480 208 left|550 250 left|type 8|key enter
+d3b_l|DIV1|30 152 left|type 3|type 1|550 250 left|480 208 left|550 250 left|type 8|key enter

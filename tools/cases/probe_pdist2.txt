@@ -1,2 +1,14 @@
-pe_look|TEST1|30 168 left|type 2|type 1
-pe_look3|TEST3|30 168 left|type 2|type 1
+pe_a|TEST1|30 168 left|type 1|400 150 left|type 2|type 1|400 150 left|257 236 left|type 30|key enter
+pe_b|TEST1|30 168 left|type 1|400 150 left|type 2|type 1|400 150 left|257 236 left|type -30|key enter
+pe_c|TEST1|30 168 left|type 1|400 150 left|type 2|type 1|400 150 left|300 252 left|400 200 left|257 236 left|type 30|key enter|type 2|type 2|key esc
+pe_d|TEST1|30 168 left|type 1|400 150 left|type 2|type 1|400 150 left|257 236 left|key esc|key esc|key esc
+pe_e|TEST1|30 168 left|type 2|type 1|400 150 left|257 236 left|type 30|key enter|type 1|key esc
+pf_a|SAMPLE0|30 168 left|type 1|type 2|key bs
+pf_b|SAMPLE0|30 168 left|type 1|type 2|300 250 left|key bs
+pf_c|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 5|key bs|key bs|key bs
+pf_d|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 50|key enter|key bs
+pf_e|SAMPLE0|30 168 left|type 1|type 2|600 8 left
+pf_f|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 50|key enter|450 250 left|key bs
+pf_g|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 50|key enter|450 250 left|type 1|type 2|type 1
+pf_h|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type abc|key enter|type 1e9|key enter|type 99999999|key enter
+pf_i|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 50|key enter|450 250 left|300 100 left|600 250 right|key enter

@@ -1,0 +1,3 @@
+pj_a|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 40|450 100 left|450 250 left
+pj_b|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 40|450 100 right|450 250 left
+pj_c|SAMPLE0|30 168 left|type 1|type 2|300 250 left|type 40|key enter|450 250 left|type 2|type 2|type 2|key bs|type 2|300 250 left|key enter|450 250 left|type 1|type 2|300 250 left|key enter|450 250 left

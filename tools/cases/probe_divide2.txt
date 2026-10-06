@@ -1,0 +1,38 @@
+d2_01|DIV1|30 152 left|type 2|310 250 left
+d2_02|DIV1|30 152 left|type 2|310 250 left|310 250 left
+d2_03|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left
+d2_04|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 8
+d2_05|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 8|key enter
+d2_06|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|type 8|key enter
+d2_07|DIV1|30 152 left|type 2|310 250 left|100 100 left
+d2_08|DIV1|30 152 left|type 2|310 250 left|key esc
+d2_09|DIV1|30 152 left|type 2|310 250 left|310 250 left|key esc
+d2_10|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|key esc
+d2_11|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 8|key esc
+d2_12|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|key bs
+d2_13|DIV1|30 152 left|type 2|310 250 left|310 250 left|310 250 left|type 8|key enter
+d2_13r|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|310 250 left|type 8|key enter
+d2_14|DIV1|30 152 left|type 2|310 250 right
+d2_15|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 1|key enter
+d2_16|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 8|key enter|key esc
+d2_17|DIV1|30 152 left|type 2|310 250 left|key bs
+d2_18|DIV1|30 152 left|type 2|310 250 left|310 250 left|key bs
+d2_19|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 8|key bs
+d2_20|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|type 8|key enter|key esc
+d2_21|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|key f1
+d2_22|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|598 300 right
+d2_23|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|type 8|key enter|key esc|key esc
+d2_24|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 8|key enter|310 250 left
+d2_25|DIV1|30 152 left|type 2|310 250 left|250 190 left|310 250 left|type 8|key enter
+d2_25r|DIV1|30 152 left|type 2|type 1|310 250 left|250 190 left|310 250 left|type 8|key enter
+d2_26|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|type 8|key enter|310 250 left
+d3_01|DIV1|30 152 left|type 3|550 250 left
+d3_02|DIV1|30 152 left|type 3|550 250 left|550 250 left
+d3_03|DIV1|30 152 left|type 3|550 250 left|550 250 left|480 208 left
+d3_04|DIV1|30 152 left|type 3|550 250 left|550 250 left|480 208 left|type 8|key enter
+d3_05|DIV1|30 152 left|type 3|type 1|550 250 left|550 250 left|480 208 left|type 8|key enter
+d3_06|DIV1|30 152 left|type 2|type 1|550 250 left|550 250 left|480 208 left|type 8|key enter
+d3_07|DIV1|30 152 left|type 3|type 1|310 250 left|310 250 left|250 190 left|type 8|key enter
+d3_08|DIV1|30 152 left|type 3|100 100 left
+d3_09|DIV1|30 152 left|type 3|550 250 left|550 250 left|480 208 left|key f1
+d3_10|DIV1|30 152 left|type 3|type 1|378 162 left|378 162 left|386 155 left|key f1|type 3|key enter

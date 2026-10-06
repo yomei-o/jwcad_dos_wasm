@@ -2949,6 +2949,61 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
         }
+    } else if (s->command == 24 && s->lc_range && s->stage == 0) {
+        /* 線変更 ①指定範囲内変更 を選んだあとの範囲の始点の行（測定：linechg_s0_c1 の `type 1`）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "\x90\xfc\x95\xcf\x8d\x58");
+        jw_ui_text(v, 16, 1, 7, 0, "\x8e\x6e\x93\x5f\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
+        jw_ui_text(v, 31, 1, 7, 0, "(L)\x90\xfc\xa5\x89~");
+        jw_ui_text(v, 68, 1, 7, 0, "(1) \x91\x4f \x94\xcd \x88\xcd|");
+    } else if (s->command == 22 && s->pt_mode == 2) {
+        /* 点 ②距離（decomp 0x2f596〜）。S0 始点、S1 距離の欄、S2 方向点、S3 円弧。 */
+        char b[64];
+
+        if (s->pt2 == 0) {
+            if (s->pt_undo) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            }
+            jw_ui_text(v, 8, 1, 7, 0, "\x8b\x97\x97\xa3");
+            jw_ui_text(v, 14, 1, 7, 0, "\x8e\x6e\x93\x5f\x8e\x77\x8e\xa6 (L)free (R)Read ");
+            jw_ui_text(v, 39, 1, 7, 0, s->pt2_circ ? "|\x87\x40\x81\x79\x89\x7e\x8e\xfc\x8b\x97\x97\xa3\x81\x7a|" : "|\x87\x40\x81\x79\x92\xbc\x90\x69\x8b\x97\x97\xa3\x81\x7a|");
+            if (s->pt_undo) {
+                jw_ui_text(v, 55, 1, 7, 0, "\x87\x41\x98\x41\x91\xb1|");
+            }
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+        } else if (s->pt2 == 1) {
+            char t[96];
+
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 8, 1, 7, 0, "\x8b\x97\x97\xa3 =");
+            memcpy(t, s->typed, 95);
+            t[s->typed_n < 95 ? s->typed_n : 95] = 0;
+            jw_ui_text(v, 15, 1, 7, 0, t);
+            jw_ui_text(v, 50, 1, 7, 0, "\x91\x4f\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R)");
+            sprintf(b, "%10.*f", s->dec_drawing, s->pt2_last);
+            jw_ui_text(v, 69, 1, 7, 0, b);
+            if (s->pt2_circ && s->typed_n == 0) {
+                jw_ui_text(v, 20, 2, 7, 0, "\x89\x7e\x8c\xca\x81\x40(\x8d\xb6\x89\xf4\x82\xe8\x81\x7b\x81\x41\x89\x45\x89\xf4\x82\xe8\x81\x7c)");
+            }
+            fill(v, 8 * (14 + s->typed_n), 7, 8 * (14 + s->typed_n) + 7, 15, 4);
+        } else if (s->pt2 == 2) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 10, 1, 7, 0, "\x95\xfb\x8c\xfc\x82\xf0\x8c\x88\x82\xdf\x82\xe9\x93\x5f\x8e\x77\x8e\xa6 (L)free (R)Read");
+        } else {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 8, 1, 7, 0, "\x89\x7e\x8c\xca\x81\x40\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6 ");
+        }
+        if (s->missed && s->pt2_bad) {
+            jw_ui_text(v, 20, 2, 7, 0, "\x83" "f\x81[\x83^\x82\xaa\x95s\x93K\x93\x96");
+        } else if (s->missed && s->pt_line && s->pt2 == 3) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83" "f\x81[\x83^\x96\xb3");
+        } else if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 22 && s->pt_mode == 3) {
         /* 点 ③交点：対象線（A）／【B】。A は [BS]前項、点を足したあとは [ESC] も付く。 */
         if (s->pt3 || s->pt_undo) {

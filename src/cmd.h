@@ -600,6 +600,11 @@ typedef struct {
     int tan_noarc;              /* 円線接：図面に円弧が一つも無い（外れの言葉の桁が変わる） */
     int pt_par;                 /* 点 ③：二本が平行（計算不可） */
     int pt_line;                /* 点 ④：外れた押しの近くに線があった（言葉の桁が一つ左） */
+    /* 点 ②距離（decomp ovl20 3ab8:45ea の 0x2f596〜0x2fe47）。pt2：0=始点（S0）、1=距離の欄（S1）、
+     * 2=方向を決める点（S2）、3=円弧指示（S3）。pt2_circ：①で切り替える 直進／円周。 */
+    int pt2, pt2_circ, pt2_bad;
+    long pt2_arc;
+    double pt2_x1, pt2_y1, pt2_x2, pt2_y2, pt2_total, pt2_step;
     int pt3, pt3_a;             /* 点 ③交点：0=対象線（A）、1=対象線【B】、A の線番号 */
     int pt_added;               /* 点：足した実点の数（記録のカウント用） */
     int pt_undo;                /* 点：この命令で打った分の符号つきの数（decomp ovl20 3ab8:45ea の [bp-0x48]。仮点 +1、実点 -1、①で 0） */
@@ -816,6 +821,7 @@ typedef struct {
  * The struct must be zeroed before the first call: it owns a little memory --
  * what 複写 and 移動 picked out of a range -- and this frees what was there. */
 void jw_cmd_pick(JwCmd *c, int command);
+double jw_cmd_pt2_last(void);
 
 /* A press inside the drawing area, at a screen pixel.  `right` is the other
  * button, which the original reads as a different answer: 線消 takes a line

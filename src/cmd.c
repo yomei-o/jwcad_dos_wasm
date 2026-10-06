@@ -537,6 +537,7 @@ static double shown_angle(double x1, double y1, double x2, double y2)
 }
 
 static void two_lines(JwCmd *c, Jwc *d);
+static int pt2_make(JwCmd *c, Jwc *d);
 static int take(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
                 int right, double *x, double *y);
 
@@ -5097,6 +5098,17 @@ range_items:
         c->div_real = !c->div_real;
         return 1;
     }
+    /* 点 ②距離の始点の行：① は 直進⇔円周、② は連続（点を作ったあとだけ。decomp 0x2f730・0x2f754）。 */
+    if (c->command == 22 && c->pt_mode == 2 && c->pt2 == 0 && item == 1) {
+        c->pt2_circ = !c->pt2_circ;
+        c->pt_undo = 0;
+        return 1;
+    }
+    if (c->command == 22 && c->pt_mode == 2 && c->pt2 == 0 && item == 2 && c->pt_undo != 0 && d) {
+        c->pt2_total = (float)(c->pt2_total + c->pt2_step);
+        pt2_make(c, d);
+        return 1;
+    }
     /* 点 ①：【仮点】⇔【実点】（行は src/item.h。測定：point_s0_c1）。 */
     if (c->command == 22 && item == 1) {
         c->pt_real = !c->pt_real;
@@ -5111,8 +5123,11 @@ range_items:
     if (c->command == 22 && item >= 2 && item <= 5) {
         c->pt_mode = item;
         c->pt3 = 0;
+        c->pt2 = 0;
+        c->pt2_circ = 0;
+        c->pt2_total = c->pt2_step = 0.0;
         c->pt_undo = 0;                 /* 項目を替えると [ESC] の数は 0（測定：point_s1_c3） */
-        return 0;
+        return item == 2 ? 1 : 0;
     }
     if (c->command == 13 && c->stage == 2 && !c->typing_text && !c->text_ang_ask
         && (item == 2 || item == 3)) {
@@ -6134,8 +6149,12 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     }
     /* 複写・移動 の始点の行の ①前範囲（測定：move_s0_c1 の `type 1`）：前の範囲を取って
      * 追加･除外 の段へ。前の範囲が無ければ空の範囲で、そのまま押しで線を足せる。 */
-    if (JW_MOVE_CMD(c->command) && item == 1 && !right && !c->pressed && d
-        && c->stage == 0) {
+    if ((JW_MOVE_CMD(c->command) || (c->command == 24 && (c->lc_range || c->top_item == 3))
+         || (c->command == 27 && c->zukei == JW_ZUKEI_RANGE))
+        && item == 1 && !right && !c->pressed && d && c->stage == 0) {
+        if (c->command == 24) {
+            c->lc_range = 1;
+        }
         c->top_item = 0;
         c->top_right = 0;
         if (prev_range_ok) {
@@ -6436,6 +6455,124 @@ static int last_char_bytes(const char *s, int n)
 }
 
 static void divide_points(JwCmd *c, Jwc *d);
+
+/* 点 ②距離の前回の距離（本物は DS:0x4e24 のグローバル、初期 1000）。 */
+static double pt2_last_d = 1000.0;
+double jw_cmd_pt2_last(void)
+{
+    return pt2_last_d;
+}
+
+/* 点を一つ足す：仮点は範囲 x∈[-500,1000] y∈[-300,800]、同じ位置の重複・100 個目以降は黙って足さない、
+ * 実点は記録の点（decomp 0x30353／1bb4:35b8、測定：probe_pdist）。足せたら 1。 */
+static int pt_drop(JwCmd *c, Jwc *d, double x, double y)
+{
+    if (c->pt_real) {
+        JwcPoint p;
+
+        memset(&p, 0, sizeof p);
+        p.x = (float)x;
+        p.y = (float)y;
+        p.layer = (unsigned char)d->write_layer;
+        p.rest[0] = (unsigned char)d->write_layer;
+        p.rest[1] = 1;
+        p.rest[3] = 0x1d;
+        if (jwc_put_point(d, &p)) {
+            c->pt_added++;
+            c->pt_undo--;
+            return 1;
+        }
+        return 0;
+    } else {
+        long k;
+        const float fx = (float)x, fy = (float)y;
+
+        if (fx < -500.0f || fx > 1000.0f || fy < -300.0f || fy > 800.0f) {
+            return 0;
+        }
+        for (k = 0; k < d->n_temp; k++) {
+            if (d->temp_x[k] == fx && d->temp_y[k] == fy) {
+                return 0;
+            }
+        }
+        if (d->n_temp >= JWC_TEMP_MAX || d->n_temp >= 100) {
+            return 0;
+        }
+        d->temp_x[d->n_temp] = fx;
+        d->temp_y[d->n_temp] = fy;
+        d->n_temp++;
+        c->pt_undo++;
+        return 1;
+    }
+}
+
+/* 点 ②：いまの合計距離の位置に点を作る（直進は P1→P2 の向き、円周は円弧の上）。 */
+static int pt2_make(JwCmd *c, Jwc *d)
+{
+    const float tot = (float)c->pt2_total;
+
+    c->pt2_bad = 0;
+    if (!c->pt2_circ) {
+        const double dx = (double)(float)c->pt2_x2 - (double)(float)c->pt2_x1;
+        const double dy = (double)(float)c->pt2_y2 - (double)(float)c->pt2_y1;
+        double len;
+        float cs, sn;
+
+        if (fabs(dx) + fabs(dy) < 0.001) {
+            c->pt2_bad = 1;
+            c->missed = 1;
+            return 0;
+        }
+        len = sqrt(dx * dx + dy * dy);
+        cs = (float)(dx / len);
+        sn = (float)(dy / len);
+        return pt_drop(c, d, (float)((double)cs * tot + (float)c->pt2_x1),
+                       (float)((double)sn * tot + (float)c->pt2_y1));
+    }
+    if (c->pt2_arc >= 0 && c->pt2_arc < d->n_arcs) {
+        const JwcArc *a = &d->arcs[c->pt2_arc];
+        const double dx = (double)(float)c->pt2_x1 - a->cx;
+        const double dy = (double)(float)c->pt2_y1 - a->cy;
+        double th;
+
+        if (dx == 0.0 && dy == 0.0 || a->r <= 0.0f) {
+            return 0;
+        }
+        th = atan2(dy, dx) + (double)tot / a->r;
+        return pt_drop(c, d, (float)(cos(th) * a->r + a->cx),
+                       (float)(sin(th) * a->r + a->cy));
+    }
+    return 0;
+}
+
+/* 距離の欄の確定（Enter か、左右どちらの押しでも。空なら前回値）。|値| が 9.0072e7 以上は黙って欄に戻る。 */
+static int pt2_accept(JwCmd *c, Jwc *d)
+{
+    double v = pt2_last_d;
+    double zs;
+    static const double PAPER[5] = { 1189.0, 841.0, 594.0, 420.0, 297.0 };
+
+    if (c->typed_n > 0) {
+        v = field_eval(c->typed);
+    }
+    c->typed_n = 0;
+    c->typed[0] = 0;
+    if (fabs(v) >= 9.0072e7) {
+        return 1;
+    }
+    pt2_last_d = v;
+    zs = PAPER[d->paper >= 0 && d->paper <= 4 ? d->paper : 4] / 518.0 * d->denom;
+    c->pt2_step = (float)(v / (zs > 0.0 ? zs : 1.0));
+    c->pt2_total = c->pt2_step;
+    c->typing = 0;
+    if (!c->pt2_circ) {
+        c->pt2 = 2;
+        return 1;
+    }
+    pt2_make(c, d);
+    c->pt2 = 0;
+    return 1;
+}
 
 /* 多角形 ①：A・B から d1・d2 だけ離れた点 C を出して、A→C と B→C を引く（decomp ovl22
  * 0x2d182 以降。a=d1/s、b=d2/s、p=((a*a-b*b)+L*L)/L*0.5、h=sqrt(a*a-p*p)、矢が AB の左なら +h。
@@ -7219,6 +7356,66 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typed[c->typed_n] = 0;
         }
         return 1;
+    }
+    /* 点 ②距離 の キー（decomp 0x2f596〜）。ESC：S0 は直前の点を消す（n==0 は何もしない）、S1 は
+     * S0（円周は S3）、S2 は S1、S3 は S0。BS：S0 だけ点の最初の行へ。 */
+    if (c->command == 22 && c->pt_mode == 2 && d) {
+        if (key == 27) {
+            if (c->pt2 == 0) {
+                if (c->pt_undo > 0 && d->n_temp > 0) {
+                    jwc_remove_temp(d);
+                    c->pt_undo--;
+                    c->pt2_total = (float)(c->pt2_total - c->pt2_step);
+                    return 1;
+                }
+                if (c->pt_undo < 0 && d->n_points > 0) {
+                    d->n_points--;
+                    jwc_ink_clear(d);
+                    c->pt_added--;
+                    c->pt_undo++;
+                    c->pt2_total = (float)(c->pt2_total - c->pt2_step);
+                    return 1;
+                }
+                return 0;
+            }
+            if (c->pt2 == 1) {
+                c->typing = 0;
+                c->typed_n = 0;
+                c->typed[0] = 0;
+                c->pt2 = c->pt2_circ ? 3 : 0;
+            } else if (c->pt2 == 2) {
+                c->pt2 = 1;
+                c->typing = 1;
+                c->typed_n = 0;
+                c->typed[0] = 0;
+            } else {
+                c->pt2 = 0;
+            }
+            return 1;
+        }
+        if (key == 8 && c->pt2 == 0 && !c->typing) {
+            c->pt_mode = 0;
+            c->pt_undo = 0;
+            c->top_item = 1;            /* 点の最初の行（① の行）に戻る（測定：probe_pdist2 pf_a） */
+            c->top_right = 0;
+            return 1;
+        }
+        if (c->pt2 == 1) {
+            if (key == 13 || key == 10) {
+                return pt2_accept(c, d);
+            }
+            if (key == 8) {
+                if (c->typed_n > 0) {
+                    c->typed[--c->typed_n] = 0;
+                }
+                return 1;
+            }
+            if (FIELD_CHAR(key) && FIELD_ROOM(c)) {
+                c->typed[c->typed_n++] = (char)key;
+                c->typed[c->typed_n] = 0;
+            }
+            return 1;
+        }
     }
     /* 点 の [ESC]（decomp ovl20 3ab8:45ea の 02f400〜02f44c）。取り消しの数
      * [bp-0x48] は符号つきで、仮点を打てると +1（02f507）、実点を打てると -1
@@ -17226,7 +17423,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->x1 = x;
             c->y1 = y;
             c->pressed = 2;
-            if (JW_MOVE_CMD(c->command)) {
+            if (JW_MOVE_CMD(c->command) || c->command == 24 || c->command == 27) {
                 prev_range[0] = c->x0;
                 prev_range[1] = c->y0;
                 prev_range[2] = c->x1;
@@ -17439,6 +17636,64 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * repaints the panel -- read off a press at (300,250) with 点 picked,
          * which leaves the twelve white pixels of a circle of radius two there
          * and nothing else.  Two presses leave two. */
+        if (c->pt_mode == 2) {
+            /* ②距離（decomp 0x2f596〜0x2fe47）。S0 始点、S3 円弧（円周のみ）、S1 距離の欄、S2 方向点。 */
+            c->pt2_bad = 0;
+            if (c->pt2 == 1) {
+                /* 欄に打ってあれば左右どちらの押しも確定（位置は使わない。測定：pj_a/b）。空なら
+                 * 右（前回と同じ）だけ（測定：point_s0_c2 の左押しは何も起きない）。 */
+                if (!c->typed_n && !right) {
+                    return 1;
+                }
+                return pt2_accept(c, d);
+            }
+            if (c->pt2 == 3) {
+                const long k = jw_cmd_arc_at(d, w, sx, sy);
+
+                if (k < 0) {
+                    c->pt_line = jw_cmd_line_at(d, w, sx, sy) >= 0;
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                if ((float)d->arcs[k].cx == (float)c->pt2_x1 && (float)d->arcs[k].cy == (float)c->pt2_y1) {
+                    c->pt2_bad = 1;
+                    c->missed = 1;
+                    return 0;
+                }
+                c->pt2_arc = k;
+                c->pt2 = 1;
+                c->typing = 1;
+                c->typed[0] = 0;
+                c->typed_n = 0;
+                return 1;
+            }
+            if (!take(c, d, w, sx, sy, right, &x, &y)) {
+                c->pt_line = 0;
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            if (c->pt2 == 2) {
+                c->pt2_x2 = x;
+                c->pt2_y2 = y;
+                pt2_make(c, d);
+                c->pt2 = 0;
+                return 1;
+            }
+            c->pt_undo = 0;
+            c->pt2_x1 = x;
+            c->pt2_y1 = y;
+            if (c->pt2_circ) {
+                c->pt2 = 3;
+            } else {
+                c->pt2 = 1;
+                c->typing = 1;
+                c->typed[0] = 0;
+                c->typed_n = 0;
+            }
+            return 1;
+        }
         if (c->pt_mode == 3) {
             /* ③交点：対象線 A を拾い、対象線 B を拾うと二本の延長の交点に点を足して A に戻る
              * （測定：point_s0_c3 の 162 250 で枠の左上の角）。外れは `読取可能データ無`。 */
