@@ -8046,8 +8046,8 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 27 && c->arc3 == 1 && c->arc3_done && d && d->n_arcs > 0) {
             /* 弧を作った直後の [ESC] はその弧を取り消し、始点の行（`[ESC]`
              * も `半径=` も無い）に残る（測定：func_steps arc_s0_c1_esc）。 */
+            jwc_ink_settle(d);          /* 消した跡は黒の穴になる（測定：arc_s0_c1_v の (161,250)） */
             jwc_remove_arc(d, d->n_arcs - 1);
-            jwc_ink_clear(d);
             c->arc3_done = 0;
             return 1;
         }
