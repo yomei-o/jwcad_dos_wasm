@@ -2990,7 +2990,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 16, 1, 7, 0, "\x90\xe2");
                 jw_ui_text(v, 18, 1, 7, 0, "\x91\xce\x81z|");
             }
-            jw_ui_text(v, 62, 2, 7, 0xffff, "\x91O\x89\xf1 0.000,0.000mm");
+            /* 読取が外れて `読取可能データ無` が出ているあいだ、行 2 の右の 前回 の欄は消える（polygon_s0_c3） */
+            if (!s->missed) {
+                jw_ui_text(v, 62, 2, 7, 0xffff, "\x91O\x89\xf1 0.000,0.000mm");
+            }
             jw_ui_text(v, 23, 1, 7, 0, "\x8d\xc0\x95W");
             jw_ui_text(v, 28, 1, 7, 0, "X,Y");
             jw_ui_text(v, 31, 1, 7, 0, "=");
@@ -3000,6 +3003,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 72, 1, 7, 0, "| ");
             jw_ui_text(v, 74, 1, 7, 0, "\x8c\xb4\x93_");
             jw_ui_text(v, 78, 1, 7, 0, "\x95\xcf");
+            fill(v, 264, 7, 271, 15, 4);       /* 座標 X,Y= の欄のカーソル（polygon_s0_c3） */
         }
         if (s->missed) {
             jw_ui_text(v, 32, 2, 7, 0,

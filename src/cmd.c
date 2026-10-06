@@ -4785,6 +4785,9 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         && !c->pressed) {
         c->pg3 = 1;
         c->pg3_n = 0;
+        if (d && !c->n0_ink) {
+            c->n0_ink = d->n_ink + 1;      /* この命令の跡の始まり（jw_cmd_after が枠の上に再生） */
+        }
         return 1;
     }
     /* □ ③平行：`基準線　マウス指示 |①指定解除|`（測定：STR）。その中の ①
@@ -6920,8 +6923,8 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (c->pg3 == 3 && c->pg3_n > 0 && d && d->n_lines > 0) {
             const JwcLine l = d->lines[d->n_lines - 1];
 
-            jwc_remove_line(d, d->n_lines - 1);
-            jwc_ink_clear(d);
+            jwc_ink_settle(d);
+            jwc_remove_line(d, d->n_lines - 1);    /* 全面は描き直さない：枠との交点に穴が残る */
             c->pg3_x = l.x0;
             c->pg3_y = l.y0;
             c->pg3_n--;

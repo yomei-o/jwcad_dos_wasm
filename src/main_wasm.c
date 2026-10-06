@@ -4862,7 +4862,11 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * 出ない（c2_v・c3_v）ので入れていない。 */
     if ((key == 13 || key == 10)
         && ((cmd.command == 12 && cmd.arc3)
-            || (cmd.command == 28 && cmd.top_item == 7))
+            || (cmd.command == 28 && cmd.top_item == 7)
+            /* □ ③平行・多角形 ①の A/B 点も点の読みを待つ行：[Enter] は同じ所の押し
+             * （測定：box_s0_c5_v・polygon_s0_c1_v）。 */
+            || (cmd.command == 4 && cmd.box_refask)
+            || (cmd.command == 19 && (cmd.pg1 == 1 || cmd.pg1 == 2)))
         && !cmd.typing && !cmd.typing_text && drawing) {
         /* 取る点は矢ではなく**画面の (400,200)**：矢を作図範囲に入れても、
          * メニューに戻しても、図面を替えても、先に押してからでも同じ
