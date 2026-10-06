@@ -2996,7 +2996,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
         jw_ui_text(v, 8, 1, 7, 0, "\x81\x9b \x89\x7e\x82\xf0\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
         if (s->missed && s->pt_line) {
-            jw_ui_text(v, 32, 2, 7, 0, "\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83" "f\x81[\x83^\x96\xb3");
+            /* 線を押したときは何も出ない（測定のみ・decomp 未確認：measure_s1_c3） */
         } else if (s->missed) {
             jw_ui_text(v, 32, 2, 7, 0,
                        "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"

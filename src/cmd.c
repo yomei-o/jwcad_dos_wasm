@@ -6822,7 +6822,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
      * 点列から数え直す。一点だけになったら `始点指示` の段に戻り、それが
      * 最初の点なら更に [ESC] で測定の最初の行へ（測定：tmp/m2.txt）。 */
     if (key == 27 && c->command == 15 && c->stage == 1 && c->meas_n > 0
-        && d && !c->meas_put) {
+        && d && !c->meas_put && !c->meas_arc) {
         const double mm = d->unit_mm > 0.0f ? d->denom / d->unit_mm : 1.0;
         int k;
 
