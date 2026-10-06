@@ -625,8 +625,10 @@ typedef struct {
      * decomp ovl22 ディスパッチャ item==1 枝（file-linear 0x2cbe4〜0x2d384）。pg1_n は直前に
      * 引いた本数（A 段の [ESC] で消す）。pg1_pd は寸法の前回値（既定 1000、1000）。 */
     int pg1, pg1_n;
+    int er_item;                /* 消去：始点を押したときの項目（[ESC] でその行へ戻る） */
+    int er_pt;                  /* 消去：項目を選んだあとの始点（終点の行が `終点指示 (L)free (R)Read` になる） */
     int mv_none;                /* 複写・移動：何も選んでいないまま置いた（[ESC] の札が出ない） */
-    int lay_only;               /* 範囲の始点を持ったあとの (1)レイヤ：書込レイヤのみ選択（表示のみ。選択への効きは未実装） */
+    int range_opt;              /* 範囲の始点を持ったあとの (1)レイヤ／(2)線種色／(3)文字種：`書込 … のみ選択` の札（表示のみ。選択への効きは未実装） */
     double pg1_ax, pg1_ay, pg1_bx, pg1_by;
     double pg1_pd[2];
     double pg3_x, pg3_y;

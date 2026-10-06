@@ -1,0 +1,28 @@
+# 分割 追加測定その3（2026-10-06）
+d4c_a|SAMPLE0|30 152 left|type 4|300 401 left|432 410 left|type 2|key enter
+d4c_b|SAMPLE0|30 152 left|type 4|520 401 left|432 410 left|type 2|key enter
+d4c_c|SAMPLE0|30 152 left|type 4|432 410 left|300 401 left|type 2|key enter
+d4c_d|SAMPLE0|30 152 left|type 4|432 410 left|520 401 left|type 2|key enter
+d4c_e|SAMPLE0|30 152 left|type 4|400 140 left|598 300 left|type 4|key enter
+d4c_f|SAMPLE0|30 152 left|type 4|400 140 left|300 401 left
+d4c_g|SAMPLE0|30 152 left|type 4|400 140 left|162 419 right|type 2|key enter
+d4c_h|SAMPLE0|30 152 left|type 4|162 300 left|598 140 right|type 2|key enter
+d4c_i|SAMPLE0|30 152 left|type 4|400 140 left|598 140 right
+d4c_j|SAMPLE0|30 152 left|type 4|400 140 left|162 419 right|key f1
+d4c_k|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|type 10001|key enter
+d4c_l|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|type 0|key enter
+d4c_m|SAMPLE0|30 152 left|type 4|400 140 left|162 300 left|type 4|key enter|400 140 left|162 300 left|type 4|key enter
+d4c_n|SAMPLE0|30 152 left|type 4|400 140 left|162 419 right|key f1|type 30|key enter
+d4c_o|SAMPLE0|30 152 left|type 4|400 140 left|162 419 right|key f1|key f1|type 30|key enter
+d2c_a|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 100|key enter
+d2c_b|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 101|key enter
+d2c_c|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 102|key enter
+d2c_d|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 100|key enter|310 250 left|310 250 left|250 190 left|type 2|key enter
+d2c_e|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 5|key enter|310 250 left|310 250 left|250 190 left|type 5|key enter
+d2c_f|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 0|key enter
+d2c_g|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 8|key enter|310 250 left|310 250 left|250 190 left|type 4|key enter
+d2c_h|DIV1|30 152 left|type 2|type 1|310 250 left|310 250 left|250 190 left|type 8|key enter|310 250 left|310 250 left|250 190 left|type 4|key enter
+d2c_i|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 8|key enter|type 1|310 250 left|310 250 left|250 190 left|type 8|key enter
+d2c_j|DIV1|30 152 left|type 2|310 250 left|310 250 left|250 190 left|type 8|key enter|type 1|key esc
+d3c_a|DIV1|30 152 left|type 3|type 1|550 250 left|550 250 left|480 208 left|type 8|key enter|key esc
+d3c_b|DIV1|30 152 left|type 3|type 1|310 250 left|310 250 left|250 190 left|key f1|type 20|key enter

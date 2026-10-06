@@ -1,0 +1,13 @@
+# measure 5 on SAMPLE2 (batch 5)
+t5_1|SAMPLE2|90 296 left|type 5|type 1|130 125 left|620 440 left|type 1|130 125 left|620 440 left|type 1|300 300 left
+t5_2|SAMPLE2|90 296 left|type 5|type 2|130 125 left|620 440 left|type 1|130 125 left|620 440 left|type 1|300 300 left
+t5_3|SAMPLE2|90 296 left|type 5|type 3|130 125 left|620 440 left|type 1|130 125 left|620 440 left|type 1|300 300 left
+t5_4|SAMPLE2|90 296 left|type 5|type 4|130 125 left|620 440 left|type 1|130 125 left|620 440 left|type 1|300 300 left
+t5_6|SAMPLE2|90 296 left|type 5|type 6|type 1|130 125 left|620 440 left|type 1|130 125 left|620 440 left|type 1|300 300 left
+t5_7|SAMPLE2|90 296 left|type 5|type 7|type 6|type 1|130 125 left|620 440 left|type 1|130 125 left|620 440 left|type 1|300 300 left
+t5_e1|SAMPLE2|90 296 left|type 5|type 1|130 125 left|620 440 left|type 1|key esc
+t5_e2|SAMPLE2|90 296 left|type 5|type 1|130 125 left|620 440 left|type 1|130 125 left|620 440 left|type 1|key esc
+t5_e3|SAMPLE2|90 296 left|type 5|type 1|130 125 left|620 440 left|type 1|130 125 left|620 440 left|type 1|key esc|key esc
+t5_f|SAMPLE2|90 296 left|type 5|type 5|130 125 left|620 440 left|type 1|300 300 left
+t5_g|SAMPLE2|90 296 left|type 5|type 5|130 125 left|620 440 left|type 1|300 300 right
+t5_h|SAMPLE2|90 296 left|type 5|type 5|130 125 left|620 440 left|type 1|300 300 left|type 5

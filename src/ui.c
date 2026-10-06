@@ -529,6 +529,13 @@ int jw_ui_past_cells(int x, int y)
  * jw_cmd_after が上から塗るので、ここだけ最後に書きます。 */
 void jw_ui_band_last(VGA *v, const JwUi *s)
 {
+    /* 範囲の始点を持ったあとの `書込 レイヤ／線種色／文字種 のみ選択` の札（行 2 の桁 60、白地）。 */
+    if (s->range_opt && s->stage == 1
+        && (s->command == 1 || s->command == 16 || s->command == 17 || s->command == 25)) {
+        jw_ui_text(v, 60, 2, 0, 7, s->range_opt == 1 ? "\x8f\x91\x8d\x9e \x83\x8c\x83\x43\x83\x84 \x82\xcc\x82\xdd\x91\x49\x91\xf0"
+                                   : s->range_opt == 2 ? "\x8f\x91\x8d\x9e \x90\xfc\x8e\xed\x90\x46 \x82\xcc\x82\xdd\x91\x49\x91\xf0"
+                                   : "\x8f\x91\x8d\x9e \x95\xb6\x8e\x9a\x8e\xed \x82\xcc\x82\xdd\x91\x49\x91\xf0");
+    }
     /* ハッチ 最初の右押し：`単独円ではありません`（行 2、桁 17 から。
      * `サーチ`・`.` が桁 18・17。測定：steps_table `18 r 400 140`）。 */
     if (s->command == 18 && s->missed == 2) {
@@ -1591,6 +1598,21 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
  * DOSEMU_BP=+0def:2636,+0def:23c5. */
 static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
+    /* 消去：項目（①範囲内・②範囲外）を選んでから始点を押すと、終点の行は `終点指示 (L)free (R)Read`
+     * （右の ①レイヤ…の升はそのまま。測定：probe_erasecell、erase_s0_c1/c2）。 */
+    /* 項目を選んでから範囲を取ると、追加・除外の行の `[ESC]` のあとに `＿` が付かない（測定：erase_s0_c1）。 */
+    if (q->command == 25 && s->command == 25 && s->er_pt && q->stage == 3 && q->row == 1
+        && q->col == 6) {
+        return;
+    }
+    if (q->command == 25 && s->command == 25 && s->er_pt && q->stage == 1 && q->row == 1
+        && (q->col == 8 || q->col == 18 || q->col == 20 || q->col == 29 || q->col == 36 || q->col == 46)) {
+        if (q->col == 8) {
+            jw_ui_text(v, 8, 1, 7, 0, "\x8f\x49\x93\x5f\x8e\x77\x8e\xa6 (L)free (R)Read");
+        }
+        return;
+    }
+
     /* 複写・移動：何も選ばずに置いたあとの `再移動` の行には [ESC] が付かない（測定：move_s0_c1_v）。 */
     if ((q->command == 1 || q->command == 16) && s->command == q->command && s->mv_none
         && q->stage == 9 && q->row == 1 && q->col == 1) {
@@ -6206,9 +6228,6 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
                 for (r = s->command == 1 ? JW_COPY : JW_MOVE; r->command; r++) {
                     stage_text(v, r, s, st);
-                }
-                if (s->lay_only && i == 1) {
-                    jw_ui_text(v, 60, 2, 0, 7, "\x8f\x91""\x8d\x9e"" \x83\x8c""\x83\x43""\x83\x84"" \x82\xcc""\x82\xdd""\x91\x49""\x91\xf0""");
                 }
             }
             /* 変形 ①パラメトリック変形 walks 複写's road cell for cell, out

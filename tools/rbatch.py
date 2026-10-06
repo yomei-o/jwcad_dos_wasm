@@ -24,7 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 HOST = 'yomei@192.168.6.14'
 KEY = os.path.expanduser('~/.claude/keys/ort_build_key')
-REMOTE = 'C:/jwrun'
+REMOTE = os.environ.get('JWRUN', 'C:/jwrun')    # 並行して回すときは別の場所（C:/jwrun3 など）を JWRUN で
 BOOT = '40000000'
 WAIT = '26000000'
 PAR = int(os.environ.get('PAR', '18'))
@@ -127,13 +127,13 @@ def main():
                 open(p, 'wb').write(data.encode('latin-1'))
                 t.add(p, 'jobs/%s/%s' % (fkey, fn))
     ssh = ['ssh', '-i', KEY, HOST]
-    run(ssh + ['cd /d C:\\jwrun && if exist jobs rmdir /s /q jobs'])
+    run(ssh + ['cd /d ' + REMOTE.replace('/', '\\') + ' && if exist jobs rmdir /s /q jobs'])
     run(['scp', '-q', '-i', KEY, tgz, HOST + ':' + REMOTE + '/jobs.tgz'])
     run(['scp', '-q', '-i', KEY, os.path.join(HERE, 'remote/run.py'),
          HOST + ':' + REMOTE + '/run.py'])
-    run(ssh + ['cd /d C:\\jwrun && tar xzf jobs.tgz && '
+    run(ssh + ['cd /d ' + REMOTE.replace('/', '\\') + ' && tar xzf jobs.tgz && '
                '"C:\\Program Files\\Python312\\python.exe" run.py jobs %d' % PAR])
-    run(ssh + ['cd /d C:\\jwrun && tar czf out.tgz --exclude=script.txt '
+    run(ssh + ['cd /d ' + REMOTE.replace('/', '\\') + ' && tar czf out.tgz --exclude=script.txt '
                '--exclude=drawing.txt jobs'])
     out = os.path.join(stage, 'out.tgz')
     run(['scp', '-q', '-i', KEY, HOST + ':' + REMOTE + '/out.tgz', out])

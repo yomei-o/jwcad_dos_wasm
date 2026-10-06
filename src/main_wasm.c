@@ -501,8 +501,9 @@ static void sync_ui(void)
     ui.pg3 = cmd.pg3;
     ui.pg1 = cmd.pg1;
     ui.pg1_n = cmd.pg1_n;
+    ui.er_pt = cmd.er_pt;
     ui.mv_none = cmd.mv_none;
-    ui.lay_only = cmd.lay_only;
+    ui.range_opt = cmd.range_opt;
     ui.pg1_pd[0] = cmd.pg1_pd[0];
     ui.pg1_pd[1] = cmd.pg1_pd[1];
     ui.pg_edge = cmd.pg_edge;
@@ -1807,11 +1808,11 @@ EMSCRIPTEN_KEEPALIVE const char *jw_cmd_state(void)
     snprintf(buf, sizeof buf,
              "cmd=%d stage=%d pressed=%d typing=%d fix_mode=%d fix_done=%d "
              "fix_len=%d fix_angle=%d ask_kind=%d top_item=%d box_ask=%d "
-             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g chb=%d cham=%d hn=%d h0=%d miss=%d lc=%d/%d zk=%d",
+             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g chb=%d cham=%d hn=%d h0=%d miss=%d lc=%d/%d zk=%d uitop=%d uistage=%d uiesc=%d",
              cmd.command, cmd.stage, cmd.pressed, cmd.typing, cmd.fix_mode,
              cmd.fix_done, cmd.fix_len, cmd.fix_angle, cmd.ask_kind,
              cmd.top_item, cmd.box_ask, cmd.box_fix, cmd.circ_fix,
-             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer, cmd.hatch_n, cmd.hatch_line[0], cmd.missed, cmd.lc_range, cmd.lc_narrow, cmd.zukei);
+             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer, cmd.hatch_n, cmd.hatch_line[0], cmd.missed, cmd.lc_range, cmd.lc_narrow, cmd.zukei, ui.top_item, ui.stage, ui.escaped);
     return buf;
 }
 EMSCRIPTEN_KEEPALIVE int jw_top_item(int x, int y) { return jw_ui_top_item(x, y); }
@@ -4966,7 +4967,8 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* 範囲を取る命令の最初の行・追加除外の行で [Enter] は ① と同じ（測定：move_s0_c1_v・
      * erase_s0_c2_v など。decomp：項目の読み 1bb4:2cb4 は Enter を 0xd で返し、共有の範囲取り
      * （ovl5）はそれを ①前範囲／①範囲確定 として扱う——範囲取り側の分岐は未照合）。 */
-    if ((key == 13 || key == 10) && (JW_RANGE(&cmd) || (cmd.command == 24 && cmd.top_item == 3))
+    if ((key == 13 || key == 10) && (JW_RANGE(&cmd) || (cmd.command == 24 && cmd.top_item == 3)
+         || (cmd.command == 25 && cmd.span))
         && !cmd.typing && !cmd.typing_text
         && (cmd.pressed == 0 || cmd.pressed == 2) && !cmd.te5) {
         key = '1';

@@ -6139,10 +6139,11 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
 {
     int changed;
 
-    /* 範囲の始点を持ったあとの (1)レイヤ は `書込 レイヤ のみ選択` の札を出し入れする
-     * （測定：move_s1_c1 の `type 1`。帯はそのまま）。 */
-    if (JW_MOVE_CMD(c->command) && item == 1 && !right && c->pressed == 1) {
-        c->lay_only = !c->lay_only;
+    /* 範囲の始点を持ったあとの (1)レイヤ・(2)線種色・(3)文字種 は `書込 … のみ選択` の札を出し入れする
+     * （測定：move_s1_c1／erase_s1_c1・c2 の `type N`。帯はそのまま。文字種は消去だけの項目）。 */
+    if ((JW_MOVE_CMD(c->command) || c->command == 25 || c->command == 17) && c->pressed == 1
+        && !right && item >= 1 && item <= (c->command == 25 ? 3 : 2)) {
+        c->range_opt = c->range_opt == item ? 0 : item;
         c->top_item = 0;
         c->top_right = 0;
         return 1;
@@ -6150,6 +6151,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     /* 複写・移動 の始点の行の ①前範囲（測定：move_s0_c1 の `type 1`）：前の範囲を取って
      * 追加･除外 の段へ。前の範囲が無ければ空の範囲で、そのまま押しで線を足せる。 */
     if ((JW_MOVE_CMD(c->command) || (c->command == 24 && (c->lc_range || c->top_item == 3))
+         || (c->command == 25 && c->span)
          || (c->command == 27 && c->zukei == JW_ZUKEI_RANGE))
         && item == 1 && !right && !c->pressed && d && c->stage == 0) {
         if (c->command == 24) {
@@ -7939,6 +7941,15 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
          * With nothing in hand it writes nothing at all, and a second one
          * after the first writes nothing either -- both measured, so both are
          * "return 0, nothing changed" here. */
+        /* 消去：項目を選んだ始点の行（`消去 始点マウス指示 …`）の [ESC] は、消去の最初の行へ
+         * （測定：erase_s0_c1 の 2 回目の [ESC]）。 */
+        if (c->command == 25 && !c->pressed && (c->top_item || c->span)) {
+            c->span = 0;
+            c->top_item = 0;
+            c->top_right = 0;
+            c->er_pt = 0;
+            return 1;
+        }
         /* 変形 の始点の行（①パラメトリック変形 の最初）での [ESC] は、5 項目の最初の行へ
          * （測定のみ・decomp 未確認：henkei_plain の 2 回目の [ESC]）。 */
         if (c->command == 17 && !c->pressed && c->again) {
@@ -7970,6 +7981,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             free(c->sel_arc);
             free(c->sel_text);
             c->sel_line = c->sel_arc = c->sel_text = 0;
+            /* 消去：項目を選んでから範囲を取っていたら、[ESC] はその項目の始点の行へ（測定：erase_s0_c1）。 */
+            if (c->command == 25 && c->er_item) {
+                c->top_item = c->er_item;
+                c->er_pt = 0;
+            }
             /* 変形 ①は 始点の行（`変形範囲 始点マウス指示 (L)線・円 (R)線・円・文字`）へ戻る
              * （測定のみ・decomp 未確認：henkei_plain の最初の [ESC]）。 */
             if (c->command == 17 && !c->hen_env && !c->hen_dbl && !c->hen_kigou) {
@@ -17411,6 +17427,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 1;
             /* 消去 ①②の升で出た行（src/item.h）は始点の押しで範囲の行に
              * 替わる（測定：erase_range_out の始点の押しで `終点指示` の行）。 */
+            c->er_pt = c->command == 25 && c->top_item != 0;
+            c->er_item = c->er_pt ? c->top_item : 0;
             if (c->command == 25 || c->command == 8) {
                 c->top_item = 0;
                 c->top_right = 0;
