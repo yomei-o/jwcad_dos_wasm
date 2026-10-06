@@ -19112,6 +19112,13 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->x0 = c->circ_hx;
             c->y0 = c->circ_hy;
             c->circ_hold = 0;
+            {
+                double qx, qy;
+
+                jw_cmd_at(w, sx, sy, &qx, &qy);     /* 仮の円は押した所の矢まで出る（測定：circle_s1_c1） */
+                measure(c, d, qx, qy);
+                c->moved = 1;
+            }
         }
         return 1;
     }
