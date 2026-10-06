@@ -14,6 +14,8 @@ The step words are tools/probe.sh's:
     d       a throwaway press at (600,450)
     t TEXT  typed, one character at a time
     e       [Enter]
+    esc     [ESC]
+    bs      [BS]
     X Y     a press there
 
 Each step gets a stage number in the order it happens, starting at 1.  What a
@@ -76,6 +78,12 @@ def build(n, steps):
             out += ['key enter', 'wait %d' % ENTER]
             clock += ENTER
             at.append((clock, '[Enter]', ENTER))
+            i += 1
+            continue
+        if s in ('esc', 'bs'):
+            out += ['key ' + s, 'wait %d' % ENTER]
+            clock += ENTER
+            at.append((clock, '[ESC]' if s == 'esc' else '[BS]', ENTER))
             i += 1
             continue
         out += ['mouse %s %s' % (steps[i], steps[i + 1]), 'wait 3000000',
