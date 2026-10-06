@@ -448,8 +448,19 @@ static void measure(JwCmd *c, const Jwc *d, double x, double y)
         /* 中心から押したなら幅は倍（測定：横= 114.672）。 */
         const double k = c->box_ctr ? 2.0 : 1.0;
 
-        c->num[0] = (dx < 0 ? -dx : dx) * mm * k;
-        c->num[1] = (dy < 0 ? -dy : dy) * mm * k;
+        double mx = dx, my = dy;
+
+        /* 傾けた □ の 横・縦 は傾けた枠の向きの成分（測定：box_s0_c2_v、30 度で 81.139 / 25.952）。 */
+        if (c->box_rot || c->box_ref) {
+            const double r = (double)(float)c->box_ang * 0.017453292519943295;
+            const double cs = c->box_ref ? c->par_cs : (double)(float)cos(r);
+            const double sn = c->box_ref ? c->par_sn : (double)(float)sin(r);
+
+            mx = dy * sn + dx * cs;
+            my = dy * cs - dx * sn;
+        }
+        c->num[0] = (mx < 0 ? -mx : mx) * mm * k;
+        c->num[1] = (my < 0 ? -my : my) * mm * k;
     } else if (c->command == 11) {
         /* ②基点変 で ○ なら二点が直径（測定：半径= 42.618 直径= 85.236）。 */
         c->num[0] = sqrt(dx * dx + dy * dy) * mm / (c->circ_dia ? 2.0 : 1.0);
