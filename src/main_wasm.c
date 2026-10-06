@@ -4331,6 +4331,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* 線記号変形で記号を置いた直後の [ESC]：足したものを消し、抜いた指示線を
      * 末尾に戻す（測定：func_all henkei_s0_c4 で 31|16 → 30|13）。一度だけ。 */
     if (key == 27 && kg_undo && cmd.command == 17 && drawing) {
+        jwc_ink_settle(drawing);        /* 消した跡は黒の穴になる（測定：henkei_s0_c4 の ESC） */
         while (drawing->n_lines > kg_nl) {
             jwc_remove_line(drawing, drawing->n_lines - 1);
         }
