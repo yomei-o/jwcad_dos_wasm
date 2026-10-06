@@ -630,6 +630,8 @@ typedef struct {
      * decomp ovl22 ディスパッチャ item==1 枝（file-linear 0x2cbe4〜0x2d384）。pg1_n は直前に
      * 引いた本数（A 段の [ESC] で消す）。pg1_pd は寸法の前回値（既定 1000、1000）。 */
     int pg1, pg1_n;
+    int lc_msg;                 /* 線変更：押した直後の行 2 の `線 変更`（次の鍵で消える） */
+    int lc_attr;                /* 線変更 ③属性設定 の範囲を取っている */
     int er_item;                /* 消去：始点を押したときの項目（[ESC] でその行へ戻る） */
     int er_pt;                  /* 消去：項目を選んだあとの始点（終点の行が `終点指示 (L)free (R)Read` になる） */
     int mv_none;                /* 複写・移動：何も選んでいないまま置いた（[ESC] の札が出ない） */

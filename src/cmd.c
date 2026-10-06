@@ -6196,6 +6196,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
          || (c->command == 27 && c->zukei == JW_ZUKEI_RANGE))
         && item == 1 && !right && !c->pressed && d && c->stage == 0) {
         if (c->command == 24) {
+            c->lc_attr = c->lc_attr || c->top_item == 3;
             c->lc_range = 1;
         }
         c->top_item = 0;
@@ -8122,6 +8123,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
          * "return 0, nothing changed" here. */
         /* 消去：項目を選んだ始点の行（`消去 始点マウス指示 …`）の [ESC] は、消去の最初の行へ
          * （測定：erase_s0_c1 の 2 回目の [ESC]）。 */
+        if (c->command == 24 && !c->pressed && c->top_item == 3) {
+            c->top_item = 0;            /* 設定範囲 の始点の行の [ESC] は線変更の最初の行へ */
+            c->top_right = 0;
+            return 1;
+        }
         if (c->command == 25 && !c->pressed && (c->top_item || c->span)) {
             c->span = 0;
             c->top_item = 0;
@@ -8161,6 +8167,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             free(c->sel_arc);
             free(c->sel_text);
             c->sel_line = c->sel_arc = c->sel_text = 0;
+            /* 線変更 ③属性設定：[ESC] は 設定範囲 の始点の行（③を選んだ行）へ（測定：linechg_s0_c3）。 */
+            if (c->command == 24 && c->lc_attr) {
+                c->lc_range = 0;
+                c->lc_attr = 0;
+                c->top_item = 3;
+            }
             /* 消去：項目を選んでから範囲を取っていたら、[ESC] はその項目の始点の行へ（測定：erase_s0_c1）。 */
             if (c->command == 25 && c->er_item) {
                 c->top_item = c->er_item;
@@ -13205,6 +13217,15 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     if (c->command == 14 && c->top_item == 3 && !c->pressed && c->typing) {
         jw_cmd_dim_angle(c, right ? 45.0 : 0.0);
         return 1;
+    }
+    c->lc_msg = c->command == 24;
+    /* 線変更 ③属性設定 を選んだあとの押しは、範囲の始点（測定：linechg_s0_c3 の 400 140 left。
+     * `<線・円> 終点指示 マウス(L) 範囲確定 マウス(R) |1)レイヤ|2)線種色|`）。 */
+    if (c->command == 24 && !c->lc_range && c->top_item == 3 && !c->pressed && !c->typing) {
+        c->lc_range = 1;
+        c->lc_attr = 1;
+        c->top_item = 0;
+        c->top_right = 0;
     }
     /* 変形 ③複線化 の追加・除外の行は `線・円(L)` だけ：右の押しは何も起こさない（測定：henkei_s0_c3）。 */
     if (c->command == 17 && c->hen_dbl && c->pressed == 2 && c->stage == 3 && right) {

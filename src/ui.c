@@ -1598,6 +1598,17 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
  * DOSEMU_BP=+0def:2636,+0def:23c5. */
 static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
+    /* 線変更の押した直後の行 2 `線 変更` は次の鍵で消える（測定：linechg_s1_c4）。 */
+    if (q->command == 24 && s->command == 24 && q->stage == 1 && q->row == 2
+        && (q->col == 20 || q->col == 22) && !s->lc_msg) {
+        return;
+    }
+
+    /* 線変更 の範囲を取り始めたら、1 本線・円変更 の最初の行は出さない（範囲の行が出る。linechg_s0_c3）。 */
+    if (q->command == 24 && s->command == 24 && s->lc_range && q->stage == 1) {
+        return;
+    }
+
     /* 消去：項目（①範囲内・②範囲外）を選んでから始点を押すと、終点の行は `終点指示 (L)free (R)Read`
      * （右の ①レイヤ…の升はそのまま。測定：probe_erasecell、erase_s0_c1/c2）。 */
     /* 項目を選んでから範囲を取ると、追加・除外の行の `[ESC]` のあとに `＿` が付かない（測定：erase_s0_c1）。 */
@@ -6129,6 +6140,38 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     sprintf(one, "%s%8.2f%s%s", "\x95\xa1\x90\xfc\x89\xbb |\x87@ \x8e\xc0\x8ds(L)|\x87" "A \x92\x86\x8e~(R)|\x87" "B\x8a\xd4\x8au", s->hen_dbl_gap,
                             "(mm)|\x87" "C\x97\xaf\x90\xfc\x81y", s->hen_dbl_cap ? "\x97L\x81z|(\x89~\x95s\x89\xc2)" : "\x96\x9d\x81z|");
                     jw_ui_text(v, 8, 1, 7, 0, one);
+                }
+            }
+            /* 線変更 の範囲の始点を押したあと：変形・複写と同じ左ボタンの行（測定：linechg_s0_c3）。 */
+            if (s->command == 24 && s->lc_range && i == 1 && s->stage == 1) {
+                const JwStage *r;
+
+                for (r = JW_HENKEI; r->command; r++) {
+                    if (r->stage == 11) {
+                        jw_ui_text(v, r->col, r->row, (unsigned)r->fg, (unsigned)r->bg, r->text);
+                    }
+                }
+            }
+            /* 線変更 の追加・除外の行：移動の段 3 と同じ並びで、見出しだけ `設定範囲`（測定：linechg_s0_c3）。 */
+            if (s->command == 24 && s->lc_range && i == 3 && s->stage == 3) {
+                const JwStage *r;
+
+                for (r = JW_MOVE; r->command; r++) {
+                    if (r->stage == 3) {
+                        if (r->col == 8) {
+                            char one[160];
+
+                            strncpy(one, r->text, sizeof one - 1);
+                            one[sizeof one - 1] = 0;
+                            one[0] = (char)0x90;
+                            one[1] = (char)0xdd;
+                            one[2] = (char)0x92;
+                            one[3] = (char)0xe8;
+                            jw_ui_text(v, r->col, r->row, (unsigned)r->fg, (unsigned)r->bg, one);
+                        } else {
+                            jw_ui_text(v, r->col, r->row, (unsigned)r->fg, (unsigned)r->bg, r->text);
+                        }
+                    }
                 }
             }
             /* 線変更 ①指定範囲内変更: 絞り込み（段 2）と変更内容（段 4）。

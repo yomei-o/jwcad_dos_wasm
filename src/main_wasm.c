@@ -728,6 +728,7 @@ static void sync_ui(void)
     ui.pt_line = cmd.pt_line;
     ui.pt_par = cmd.pt_par;
     ui.div2 = cmd.div2;
+    ui.lc_msg = cmd.lc_msg;
     ui.div4 = cmd.div4;
     ui.div4_same = cmd.div4_same;
     ui.div4_made = cmd.div4_made;
@@ -4193,6 +4194,8 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
 /* A key.  The one-letter keys down the menu pick a command, which is all the
  * original does with them here; anything else is ignored for now. */
+static int lc_msg_was;
+
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
     /* 行 2 の `表示範囲 記憶` は**次の鍵で消えます**（測定：[ESC] を
@@ -4207,6 +4210,8 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * 0x6608 の 0x66a0〜0x672c が `[0xc22]` を見てメッセージ行を塗りつぶす。
      * 外れを再び立てるのはそのキーの処理）。以前は [ESC] だけで消していた。 */
     cmd.missed = 0;
+    lc_msg_was = cmd.lc_msg;
+    cmd.lc_msg = 0;             /* 線変更の `線 変更` は次の鍵で消える（測定：linechg_s1_c4） */
     /* 点 ②距離の欄でも命令の頭文字の鍵は命令を替える（decomp：欄の読み 0xad:16d4 は [0x158] を立てて
      * 全段から抜ける。測定：probe_pdist2 pf_h の `abc` → c で移動）。 */
     if (cmd.command == 22 && cmd.pt_mode == 2 && cmd.pt2 == 1 && cmd.typing
@@ -5071,7 +5076,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     if (!pick) {
         /* [ESC] は何もしない命令でも `読取可能データ無` を消すので書き直す
          * （測定：func_all chamfer_s0_c2_v の最後の [ESC]）。 */
-        if (key == 27) {
+        if (key == 27 || lc_msg_was) {
             sync_ui();
             present();
         }
