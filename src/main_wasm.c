@@ -3457,9 +3457,18 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     }
     if (ui.command == 17 && !ui.top_item && !cmd.pressed && !dxf_mode
         && y >= 0 && y <= 15 && x / 8 + 1 >= 9 && x / 8 + 1 <= 31) {
+        /* ①パラメトリック変形 のセルを押すのは数字キー `1` と同じ――ここで
+         * `cmd.again` を立てないと、次に作図領域を押したとき src/cmd.c の
+         * 「変形の最初の行」節（command==17 && !pressed && !again && ...）に
+         * また引っかかって、せっかく選んだモードではなく **もう一度
+         * L/R でモードを選ぶ押し**として扱われてしまう（測定：
+         * henkei_table.py の `head+para+first_r+...` と同じ手順を
+         * functest.sh で比べると、このセルを押したあとの右押しが
+         * 範囲の始点にならず ②包絡処理変形 に化けていた）。 */
         cmd.hen_dbl = 0;
         cmd.hen_env = 0;
         cmd.hen_kigou = 0;
+        cmd.again = 1;
         mouse_x = x;
         mouse_y = y;
         sync_ui();
