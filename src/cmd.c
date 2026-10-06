@@ -8435,6 +8435,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (c->command == 4) {
             c->box_drawn = 0;
         }
+        if ((c->command == 4 && c->box_fix) || (c->command == 11 && c->circ_fix)) {
+            c->esc_gone = 1;
+        }
         return 1;
     }
     /* `始点指示 … [BS]前項` の状態で始点を持っているときの [ESC] は、始点を
@@ -13557,6 +13560,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     c->moved = 0;
     c->escaped = 0;
     c->dim_ck_gone = 0;
+    c->esc_gone = 0;
     /* 寸法 ③任意方向 の角度の欄：図面の押しも `0 度 ﾏｳｽ(L)`／`前回と同じ ﾏｳｽ(R)` と同じ（左 = 0 度、
      * 右 = 前回の角度。測定：dim_s0_c3 の 400 140 left。前回は 45 度のまま）。 */
     if (c->command == 14 && c->top_item == 3 && !c->pressed && c->typing) {

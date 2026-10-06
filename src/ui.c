@@ -1631,6 +1631,11 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
  * DOSEMU_BP=+0def:2636,+0def:23c5. */
 static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
+    /* □・○ の寸法を決めたあとの取り消し：行の [ESC] の札だけが無い（測定：box_s0_c1_v・circle_s0_c1_v）。 */
+    if (s->esc_gone && q->row == 1 && q->col == 1 && !strncmp(q->text, "[ESC]", 5)
+        && (q->command == 4 || q->command == 11)) {
+        return;
+    }
     /* 寸法 ⑧値変：升の無い数字を打つと左の盤は数え箱に戻る（測定：dim_s0_c8_v の `type 30`）。 */
     if (q->command == 14 && s->command == 14 && s->dim8_plain && q->stage == 7 && q->row != 1) {
         return;
