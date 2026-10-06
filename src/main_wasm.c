@@ -427,11 +427,15 @@ static void sync_ui(void)
     /* □ の ①寸法 の欄を開いても数え箱は描き直さない：開く前が 横=・縦= の
      * 箱（置いているか、始点を持っていた）ならそのまま（測定：始点の
      * あと ① で `横= 0.000 縦= 0.000`）。 */
-    if ((cmd.command != 4 && cmd.command != 11) || !(cmd.command == 4 ? cmd.box_ask : cmd.circ_ask)) {
+    if ((cmd.command != 4 && cmd.command != 11) || !(cmd.command == 4 ? (cmd.box_ask || cmd.box_refask) : cmd.circ_ask)) {
         box_keep = 0;
     }
     ui.keep_box_counts = cmd.command == 4 && cmd.box_ask
                          && (cmd.box_fix || box_keep);
+    /* □ ③平行 の基準線を聞く行でも数え箱は ` 横= / 縦=` のまま（測定：box_s1_c3）。 */
+    if (cmd.command == 4 && cmd.box_refask && box_keep) {
+        ui.keep_box_counts = 1;
+    }
     /* ○ も：始点（中心）を持って ①径寸法 の欄を開いても、数え箱は ` 半径= / 直径=` のまま（測定：circle_s1_c1）。 */
     if (cmd.command == 11 && cmd.circ_ask && box_keep) {
         ui.keep_box_counts = 1;
