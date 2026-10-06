@@ -7035,9 +7035,15 @@ no_dot:
             jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
         }
         if (g && s->kigou_sym <= g->n && !s->kigou_input
-            && !s->kigou_mag_ask) {
+            && !s->kigou_mag_ask && !s->missed) {
             jw_ui_text(v, 18, 2, 7, 0xffffu,
                        g->sym[s->kigou_sym - 1].name);
+        }
+        if (s->missed && !s->kigou_input && !s->kigou_mag_ask) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
     }
     /* 文字入力の盤（制御コード 20000 の記号）。文字 (13) の盤と

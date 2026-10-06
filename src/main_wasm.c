@@ -3293,6 +3293,8 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         } else if (sym && cmd.kigou_line < 0) {
             const long k = jw_cmd_line_at(drawing, &view, x, y);
 
+            /* 指示線が取れなければ `読取可能データ無`（記号名の札は消える。測定：henkei_s0_c4） */
+            cmd.missed = k < 0;
             if (k >= 0) {
                 cmd.kigou_line = k;
                 cmd.kigou_line2 = -1;
