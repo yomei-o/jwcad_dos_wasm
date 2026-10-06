@@ -14041,12 +14041,59 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 return 0;
             }
             c->missed = 0;
+            c->ell_px[c->ell - 5] = x;
+            c->ell_py[c->ell - 5] = y;
             c->ell++;
             if (c->ell == 7) {
                 c->ell = 3;         /* ２点目のあとは 軸の平行線 の指示へ */
                 c->ell_mouse = 1;
             }
             return 1;
+        }
+        if (c->ell == 3 && c->ell_mouse) {
+            /* 任意寸法：押した線の向きを一つの軸とし、中心から二点を通る楕円（測定：circle_s0_c2。
+             * 軸の長さは二点を (u,v) に写して x^2/A^2 + y^2/B^2 = 1 を解く。長いほうが長径）。 */
+            const long k = pick_line(d, w, sx, sy);
+            double th, ux, uy, x1, y1, x2, y2, p, q, r2, s2, den, wA, wB, A, B, long_a, short_b, tilt;
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            th = (double)ang16(d->lines[k].x0, d->lines[k].y0, d->lines[k].x1, d->lines[k].y1)
+                 * 1.52587890625e-05 * 3.14159265358979323846 / 180.0;
+            ux = cos(th);
+            uy = sin(th);
+            x1 = (c->ell_px[0] - c->ell_cx) * ux + (c->ell_py[0] - c->ell_cy) * uy;
+            y1 = -(c->ell_px[0] - c->ell_cx) * uy + (c->ell_py[0] - c->ell_cy) * ux;
+            x2 = (c->ell_px[1] - c->ell_cx) * ux + (c->ell_py[1] - c->ell_cy) * uy;
+            y2 = -(c->ell_px[1] - c->ell_cx) * uy + (c->ell_py[1] - c->ell_cy) * ux;
+            p = x1 * x1;
+            q = y1 * y1;
+            r2 = x2 * x2;
+            s2 = y2 * y2;
+            /* p*wA + q*wB = 1、r2*wA + s2*wB = 1（wA = 1/A^2、wB = 1/B^2） */
+            den = p * s2 - q * r2;
+            if (den == 0.0) {
+                c->missed = 1;
+                return 0;
+            }
+            wA = (s2 - q) / den;
+            wB = (p - r2) / den;
+            if (wA <= 0.0 || wB <= 0.0) {
+                c->missed = 1;
+                return 0;
+            }
+            A = 1.0 / sqrt(wA);
+            B = 1.0 / sqrt(wB);
+            long_a = A >= B ? A : B;
+            short_b = A >= B ? B : A;
+            tilt = A >= B ? th * 180.0 / 3.14159265358979323846 : th * 180.0 / 3.14159265358979323846 + 90.0;
+            c->ell_a = long_a * jwc_zukei_scale(d);
+            c->ell_b = short_b * jwc_zukei_scale(d);
+            c->ell_mouse = 0;
+            return ellipse_put(c, d, tilt);
         }
         if (c->ell == 3) {
             /* 長軸を押した線と平行に：傾きはその線の向き（0def:2828）。 */

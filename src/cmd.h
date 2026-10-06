@@ -645,6 +645,7 @@ typedef struct {
     int meas_arc;               /* 測定 ①距離 ◆の ③円周：円を拾う行（円が取れた先は未実装） */
     int spl_miss;
     int spl_vis;                /* 曲線 ③ｽﾌﾟﾗｲﾝ：読みが外れたあとは、それまでの折れ線は描き直されない（測定：curve_s0_c3・s1_c3） */
+    double ell_px[2], ell_py[2];    /* 任意寸法の１点目・２点目 */
     int ell_mouse;              /* ○ ②楕円 を任意寸法（二点）で決めた：軸の平行線の行は見出しが違う（測定：circle_s0_c2） */
     int esc_gone;               /* 寸法を決めた □・○ の取り消しのあとは行に [ESC] の札が無い（測定：box_s0_c1_v・circle_s0_c1_v） */
     int lc_keyed;               /* 線変更：押したあと一つ鍵を打つと `線`／`円` の札が消える（測定：linechg_s1_c4〜c9） */
