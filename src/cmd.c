@@ -13200,6 +13200,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     c->press_y = sy;
     c->moved = 0;
     c->escaped = 0;
+    /* 寸法 ③任意方向 の角度の欄：図面の押しも `0 度 ﾏｳｽ(L)`／`前回と同じ ﾏｳｽ(R)` と同じ（左 = 0 度、
+     * 右 = 前回の角度。測定：dim_s0_c3 の 400 140 left。前回は 45 度のまま）。 */
+    if (c->command == 14 && c->top_item == 3 && !c->pressed && c->typing) {
+        jw_cmd_dim_angle(c, right ? 45.0 : 0.0);
+        return 1;
+    }
     /* 変形 ③複線化 の追加・除外の行は `線・円(L)` だけ：右の押しは何も起こさない（測定：henkei_s0_c3）。 */
     if (c->command == 17 && c->hen_dbl && c->pressed == 2 && c->stage == 3 && right) {
         return 0;

@@ -2425,6 +2425,18 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         band_x = x;
         band_y = y;
     }
+    /* 寸法 ④円・角 の最初の行（①円径(L)|②円周(R)|③角度）：図面の押しは項目の読みが返すボタンで、
+     * 左 = ①、右 = ②（測定：dim_s0_c4 の 400 140 left。1bb4:2cb4 と同形）。 */
+    if (cmd.command == 14 && ui.top_item == 4 && !dxf_mode && !cmd.dim_ck && !cmd.dim_arc
+        && !cmd.typing && x >= AREA_X0 && x <= AREA_X1 && y >= AREA_Y0 && y <= AREA_Y1) {
+        const int r = jw_click(right ? 160 : 70, 8, 0);
+
+        mouse_x = x;            /* 矢は押した所のまま（項目の升へは動かない） */
+        mouse_y = y;
+        sync_ui();
+        present();
+        return r;
+    }
     /* 点 ②距離の始点の行：行 1 の右（x>580）の押しは [BS]前項（decomp 2cb4：y<[0xa5e] かつ x>580 は 0x14、
      * 測定：pf_e）。 */
     if (cmd.command == 22 && cmd.pt_mode == 2 && cmd.pt2 == 0 && y >= 0 && y < 16 && x > 580
@@ -4982,7 +4994,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         present();
         return -1;
     }
-    if ((key == 13 || key == 10) && (JW_RANGE(&cmd) || (cmd.command == 24 && cmd.top_item == 3)
+    if ((key == 13 || key == 10) && cmd.command != 17 && (JW_RANGE(&cmd) || (cmd.command == 24 && cmd.top_item == 3)
          || (cmd.command == 25 && cmd.span))
         && !cmd.typing && !cmd.typing_text
         && (cmd.pressed == 0 || cmd.pressed == 2) && !cmd.te5) {
