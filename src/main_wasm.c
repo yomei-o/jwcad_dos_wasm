@@ -728,6 +728,11 @@ static void sync_ui(void)
     ui.pt_line = cmd.pt_line;
     ui.pt_par = cmd.pt_par;
     ui.div2 = cmd.div2;
+    ui.meas2 = cmd.meas2;
+    ui.ms2 = cmd.ms2;
+    ui.ms2_mode = cmd.ms2_mode;
+    ui.ms2_res = cmd.ms2_res;
+    ui.ms2_deg = cmd.ms2_deg;
     ui.lc_msg = cmd.lc_msg;
     ui.div4 = cmd.div4;
     ui.div4_same = cmd.div4_same;

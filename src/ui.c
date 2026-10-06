@@ -2989,6 +2989,34 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 16, 1, 7, 0, "\x8e\x6e\x93\x5f\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
         jw_ui_text(v, 31, 1, 7, 0, "(L)\x90\xfc\xa5\x89~");
         jw_ui_text(v, 68, 1, 7, 0, "(1) \x91\x4f \x94\xcd \x88\xcd|");
+    } else if (s->command == 15 && s->meas2) {
+        /* 測定 ②角度（decomp ovl29、測定：measure_s0_c2）。◇原点指示／◆角度点。 */
+        if (s->ms2 == 0) {
+            jw_ui_text(v, 6, 1, 7, 0, "\x81\x45\x8a\x70\x93\x78 \x81\x9e\x8c\xb4\x93\x5f\x8e\x77\x8e\xa6 (L)free (R)Read |1)\x81\x79\x82\x77\x8e\xb2\x8a\xee\x8f\x80\x81\x7a\x81\x5e\x82\x51\x93\x5f\x8a\xd4|2) ");
+            jw_ui_text(v, 67, 1, 7, 0, s->ms2_res ? "\x95\x5c\x8e\xa6" : " \x93\x78 ");
+            jw_ui_text(v, 72, 1, 7, 0, "|");
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+            if (s->ms2_res) {
+                char b[40];
+                char t8[32];
+
+                sprintf(b, " %s", (snprintf(t8, sizeof t8, "%.3f", s->ms2_deg), strcat(t8, "\xdf")));
+                jw_ui_text(v, 64, 2, 0, 7, b);
+            }
+        } else {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 8, 1, 7, 0, "\x82\x77\x8e\xb2\x8a\xee\x8f\x80");
+            jw_ui_text(v, 17, 1, 7, 0, "\x81\x9f\x8a\x70\x93\x78\x93\x5f");
+            jw_ui_text(v, 26, 1, 7, 0, "\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
+            jw_ui_text(v, 37, 1, 7, 0, "(L)free");
+            jw_ui_text(v, 45, 1, 7, 0, "(R)Read");
+        }
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 21 && s->stage == 7) {
         /* 分割 ④２線間の等分割線（decomp 01f5、測定：divide_s0_c4）。A／B／分割数。 */
         char b[40];

@@ -632,6 +632,9 @@ typedef struct {
     int pg1, pg1_n;
     int lc_msg;                 /* 線変更：押した直後の行 2 の `線 変更`（次の鍵で消える） */
     int lc_attr;                /* 線変更 ③属性設定 の範囲を取っている */
+    /* 測定 ②角度（decomp ovl29 0x3278a〜）：ms2 0=◇原点、1=◆角度点。ms2_res は結果あり（②が 表示）。 */
+    int meas2, ms2, ms2_mode, ms2_res;
+    double ms2_ox, ms2_oy, ms2_deg;
     int er_item;                /* 消去：始点を押したときの項目（[ESC] でその行へ戻る） */
     int er_pt;                  /* 消去：項目を選んだあとの始点（終点の行が `終点指示 (L)free (R)Read` になる） */
     int mv_none;                /* 複写・移動：何も選んでいないまま置いた（[ESC] の札が出ない） */

@@ -584,6 +584,8 @@ typedef struct {
     int pt_real;                /* 点：【実点】 */
     int pt_mode, pt3, pt_undo, pt_line, pt_par, tan_noarc;
     int div2;
+    int meas2, ms2, ms2_mode, ms2_res;
+    double ms2_deg;
     int lc_msg;
     int div4, div4_same, div4_made, div4_n;
     int div4_prev;

@@ -5111,6 +5111,21 @@ range_items:
         c->typed_n = 0;
         return 0;
     }
+    /* 測定 ②角度の最初の行（decomp ovl29 0x3278a）：◇原点指示。 */
+    if (c->command == 15 && c->stage == 0 && !c->meas2 && item == 2) {
+        c->meas2 = 1;
+        c->ms2 = 0;
+        c->ms2_mode = 0;
+        c->ms2_res = 0;
+        return 1;
+    }
+    if (c->command == 15 && c->meas2 && c->ms2 == 0) {
+        if (item == 1) {
+            c->ms2_mode = !c->ms2_mode;     /* Ｘ軸基準⇔２点間（結果は消さない） */
+            return 1;
+        }
+        return 1;
+    }
     /* 分割 ④２線間の等分割線（段 7）。 */
     if (c->command == 21 && c->stage == 0 && item == 4) {
         c->div4 = 1;
@@ -7176,6 +7191,22 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         c->moved = 0;
         return 1;
+    }
+    /* 測定 ②角度の キー：◆で ESC は ◇ へ、◇で BS は測定の最初の行へ（ESC は何もしない）。 */
+    if (c->command == 15 && c->meas2) {
+        if (key == 27) {
+            if (c->ms2 == 1) {
+                c->ms2 = 0;
+                return 1;
+            }
+            return 0;
+        }
+        if (key == 8 && c->ms2 == 0) {
+            c->meas2 = 0;
+            c->ms2_res = 0;
+            c->top_item = 0;
+            return 1;
+        }
     }
     /* 分割 ④（段 7）：ESC は 欄→B→A、A は作った線を戻す。BS は A だけで最初の行へ。欄は数。 */
     if (c->command == 21 && c->stage == 7 && d) {
@@ -13226,6 +13257,32 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->lc_attr = 1;
         c->top_item = 0;
         c->top_right = 0;
+    }
+    /* 測定 ②角度：◇で原点（結果は消える）、◆で角度点（原点と同じ点は無視）。Ｘ軸基準だけ
+     * （２点間は未実装）。θ=atan2(dy,dx) で (-180,180]（測定：measure_s0_c2）。 */
+    if (c->command == 15 && c->meas2 && !c->ms2_mode) {
+        double qx, qy;
+
+        if (!take_point(c, d, w, sx, sy, right, &qx, &qy)) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        if (c->ms2 == 0) {
+            c->ms2_ox = qx;
+            c->ms2_oy = qy;
+            c->ms2_res = 0;
+            c->ms2 = 1;
+            return 1;
+        }
+        if ((float)qx == (float)c->ms2_ox && (float)qy == (float)c->ms2_oy) {
+            return 1;
+        }
+        c->ms2_deg = atan2((double)(float)qy - (float)c->ms2_oy, (double)(float)qx - (float)c->ms2_ox)
+                     * 180.0 / 3.14159265358979323846;
+        c->ms2_res = 1;
+        c->ms2 = 0;
+        return 1;
     }
     /* 変形 ③複線化 の追加・除外の行は `線・円(L)` だけ：右の押しは何も起こさない（測定：henkei_s0_c3）。 */
     if (c->command == 17 && c->hen_dbl && c->pressed == 2 && c->stage == 3 && right) {
