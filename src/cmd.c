@@ -7024,6 +7024,29 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* 円線接 ①接線 の最初の行（`[ESC] 接線 |1)円〜円間|…`）の [ESC] は円線接の最初の行へ戻る
      * （測定：tangent_plain の 11 手目。decomp 未照合）。 */
+    /* 円線接 ②接円 ①１線１円（段 40 線・41 円・42 選ぶ）の [ESC] は一つ前の段へ（測定：tangent_s0_c2）。 */
+    if (c->command == 26 && key == 27 && !c->typing && c->tan_circ == 1
+        && (c->stage == 41 || c->stage == 42)) {
+        c->stage--;
+        c->missed = 0;
+        return 1;
+    }
+    /* 円線接 ④角度指定 の円を訊く行（段 13）の [ESC] は角度の欄（段 12）へ（測定：tangent_s1_c4）。 */
+    if (c->command == 26 && key == 27 && !c->typing && c->tan_on && c->stage == 13) {
+        c->stage = 12;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        c->missed = 0;
+        return 1;
+    }
+    /* 円線接 ④接楕円 の平行四辺形内接（段 64〜67：第１〜第４の辺）の [ESC] は一つ前の辺へ
+     * （測定：tangent_s0_c4_v の第４の辺での [ESC]）。 */
+    if (c->command == 26 && key == 27 && !c->typing && c->stage >= 65 && c->stage <= 67) {
+        c->stage--;
+        c->missed = 0;
+        return 1;
+    }
     /* 円線接 ③指定点 の円を訊く行（段 3）の [ESC] は指定点の行（段 2）へ（測定：tangent_s0_c1_v）。 */
     if (c->command == 26 && key == 27 && !c->typing && c->stage == 3 && c->tan_on) {
         c->stage = 2;
@@ -12762,6 +12785,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     c->press_y = sy;
     c->moved = 0;
     c->escaped = 0;
+    /* 円線接 ②接円 の小項目の行（①１線１円(L)|②１点１線(R)|…）：図面の押しは項目行の読みが返す
+     * ボタンで、左 = ①、右 = ②（測定：tangent_s0_c2。1bb4:2cb4 と同形）。 */
+    if (c->command == 26 && c->tan_on && c->stage == 30) {
+        jw_cmd_top(c, d, right ? 2 : 1, 0);
+        return 1;
+    }
     /* 多角形 の項目の行（①２点からの距離 … と ①任意寸法 …）：図面の押しは
      * 項目行の読み（1bb4:2cb4）が返すボタンで、左 = ①、右 = ②。押した点は
      * 使わない（測定：probe_firstclick pg_R／polygon_plain。decomp は寸法の
