@@ -114,3 +114,5 @@ sh tools/snap.sh   # 長い比較は移植の写し（STEPSHOTS=tmp/snap/tools/s
 | [notes/validation.md](notes/validation.md) | 本物との突き合わせの結果（0 画素差の表、メニューの枝、PDF） |
 | [notes/analysis.md](notes/analysis.md)・[tools.md](notes/tools.md)・[jwc-format.md](notes/jwc-format.md) | 実行ファイルの解析・解析の道具・`.JWC` の形 |
 | `notes/draw.md` `edit.md` `dim.md` `ui.md` | 作図・編集・寸法・画面の解析メモ（`notes/INDEX.md` に目次） |
+
+> **残りの作業は `nokori.md` に書く**（ここは経緯と手順）。
