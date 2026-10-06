@@ -9,6 +9,16 @@ RESUME.md は経緯と手順、**ここは「あと何をやれば完成か」�
 - [ ] 各作図コマンドで ESC・BS・値入力が効くかを機械的に洗い出す（今のシナリオは各項目 1 回ずつ＋ESC 数手だけ）
   - 2 段目以降の項目の組み合わせ、同じコマンドの連続使用、入力欄の途中の BS/ESC は未照合が多い
   - 方法：コマンド × 項目 × (ESC / BS / 数字+Enter / 空 Enter) の総当たりシナリオを tools/cases に足し、原本と比べる
+  - **済み（10-06 夜）：多角形 ②正多角形（任意寸法）を監査、3 件の未実装 ESC を直した**
+    （tools/cases/probe_polygon2.txt に 5 シナリオ、tools/steps_table.py に `esc`/`bs` 手を追加）。
+    ①角数入力欄を打っている途中の [ESC]（stage1 へ戻る）、②中心点を持って頂点待ちの [ESC]（中心点を
+    捨てて戻る）、③確定直後の [ESC]（置いた多角形だけ 1 回だけ undo、二度目は無反応）。
+    罠：②③は command==19 の最後の方（jw_cmd_key 後半）に書くと、`if (key == 27) { … if
+    (!c->pressed || c->escaped) return 0; … }` という汎用の「取り消し」節（command 2/3/4/11/12
+    以外は無視して return 0 するだけの節）に **先に** 捕まって二度と ESC が落ちてこない
+    （notes/traps.md 参照）。他のコマンドを同じ方法で監査するときも同じ罠に注意。
+    **残り**：多角形は③座標値による多角形(pg3)・①２点からの距離(pg1)は未監査。他の約 28 命令も未着手
+    （優先：複写・移動・消去・線変更など使用頻度の高いもの）。
 - [ ] 記録（ファイル）の差 8 件（`MASK=1 python tools/funcfast.py tools/cases/func_all.txt`）
   - linedel_s1_c1（L2）、circle_s0_c2/_v（レコード 59 vs 60）、curve_s0_c6/_v・s0_c7/_v（A2）、curve_s1_c6（59 vs 60）
   - 原本の記録が無いもの 3 件：linechg_range_type/pen/layer（rbatch で原本を取り直す）

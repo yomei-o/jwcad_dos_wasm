@@ -1,0 +1,9 @@
+# 多角形 ②正多角形（任意寸法）の ESC/BS 総当たり監査（2026-10-06、nokori.md A節）。
+# probe_polygon1.txt が①２点からの距離(pg1)用なのに対し、これは②正多角形(pg2)用。
+# 本物との突き合わせは tools/functest.sh（JWC バイト列）、tools/steps_table.py で行の文字列も確認済み。
+# すべて src/cmd.c の該当箇所に decomp/測定の根拠コメントあり（RESUME.md 参照）。
+pg2_sides_esc|SAMPLE0|30 120 left|type 2|type 1|type 5|key esc|type 1|type 6|key enter|300 250 left|450 250 left
+pg2_sides_bs|SAMPLE0|30 120 left|type 2|type 1|type 5|key bs|type 6|key enter|300 250 left|450 250 left
+pg2_vertex_esc|SAMPLE0|30 120 left|type 2|type 1|type 5|key enter|300 250 left|key esc|300 250 left|450 250 left
+pg2_confirm_esc|SAMPLE0|30 120 left|type 2|type 1|type 5|key enter|300 250 left|450 250 left|key esc|key esc|350 350 left|470 350 left
+pg2_repeat_esc|SAMPLE0|30 120 left|type 2|type 1|type 5|key enter|300 250 left|450 250 left|350 350 left|470 350 left|key esc
