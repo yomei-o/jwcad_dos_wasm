@@ -4906,7 +4906,8 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         return 1;
     }
     if (c->command == 4 && item == 3 && !c->box_fix) {
-        c->pressed = 0;         /* 始点を持っていても（未測定：放す） */
+        c->ref_hold = c->pressed == 1 && c->stage == 1;     /* 始点は持ったまま（測定：box_s1_c3） */
+        c->pressed = 0;
         c->stage = 0;
         c->box_refask = 1;
         return 1;
@@ -13788,6 +13789,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->box_rot = 1;
         c->box_mode = 1;
         c->box_fix = 0;
+        if (c->ref_hold) {
+            c->ref_hold = 0;
+            double qx, qy;
+
+            c->pressed = 1;     /* 持っていた始点から終点指示へ。仮の枠は押した所の矢まで出る */
+            c->stage = 1;
+            jw_cmd_at(w, sx, sy, &qx, &qy);
+            measure(c, d, qx, qy);
+            c->moved = 1;
+        }
         return 1;
     }
     /* 図形 ①登録, once the range is fixed: the press is the figure's own
