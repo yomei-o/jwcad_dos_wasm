@@ -6183,7 +6183,7 @@ static int offset_can_continue(const JwCmd *c, const Jwc *d, const JwView *w)
     }
     prev = &d->lines[c->off_prev_pick];
     now = &d->lines[c->pick];
-    if (prev->rest[1] & 0xc0) {
+    if (prev->rest[2] & 0xc0) {   /* レコードのバイト +0x14 は rest[2]（r[20]）。rest[1] は +0x13 */
         return 0;                           /* 前の線の属性が 0xc0 を含む */
     }
     if (!lines_cross(prev->x0, prev->y0, prev->x1, prev->y1,
@@ -7124,6 +7124,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     /* 複線 の [ESC]：向きを聞いているとき（段 2）は `点指示 or 間隔=` の欄に
      * 戻り、欄からは段 0 の `線指示 …` へ（測定：offset_plain の 11・13 段目）。 */
     if (key == 27 && c->command == 5 && !c->typing && c->stage == 2) {
+        c->off_label_gone = 0;      /* 欄を開き直す（構築し直す）ので札は戻る */
         c->typing = 1;
         c->typed_n = 0;
         c->typed[0] = 0;
@@ -12532,6 +12533,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * のあとも `点指示 or 間隔=`）。 */
             if (!take_point(c, d, w, sx, sy, right, &px, &py)) {
                 c->missed = 1;
+                c->off_label_gone = 1;      /* 札は外れで消え、欄を開き直すまで戻らない（decomp 0x2c71c：[0xc22] が立っていると札を書かない） */
                 return 0;
             }
             away = ((px - c->lx0) * dy - (py - c->ly0) * dx) / len;
@@ -12626,6 +12628,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 return 0;
             }
             c->off_pt = 0;
+            c->off_label_gone = 0;
             c->typing = 1;
             c->typed_n = 0;
             c->typed[0] = 0;

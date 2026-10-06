@@ -711,6 +711,7 @@ static void sync_ui(void)
     ui.hatch_used = cmd.hatch_used;
     ui.off_done = cmd.off_done;
     ui.off_pt = cmd.off_pt;
+    ui.off_label_gone = cmd.off_label_gone;
     ui.meas_hold = cmd.meas_hold;
     ui.lc_off = cmd.lc_off;
     memcpy(ui.gap_hist, cmd.gap_hist, sizeof ui.gap_hist);
@@ -4155,11 +4156,10 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         ui.offset_msg = 0;
         present();
     }
-    /* [ESC] は `読取可能データ無` を消します（行を書き直すので。測定：
-     * 複写・移動・消去 などで外れた読取のあとの [ESC]）。 */
-    if (key == 27) {
-        cmd.missed = 0;
-    }
+    /* `読取可能データ無` は**次の入力イベント**で消えます（decomp：入力待ち root
+     * 0x6608 の 0x66a0〜0x672c が `[0xc22]` を見てメッセージ行を塗りつぶす。
+     * 外れを再び立てるのはそのキーの処理）。以前は [ESC] だけで消していた。 */
+    cmd.missed = 0;
     /* 線記号変形で記号を置いた直後の [ESC]：足したものを消し、抜いた指示線を
      * 末尾に戻す（測定：func_all henkei_s0_c4 で 31|16 → 30|13）。一度だけ。 */
     if (key == 27 && kg_undo && cmd.command == 17 && drawing) {

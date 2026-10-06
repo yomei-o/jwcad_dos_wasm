@@ -576,6 +576,7 @@ typedef struct {
     int hatch_used;
     int lc_off;
     int meas_hold;
+    int off_label_gone;
     int off_pt;
     int off_done;
     double gap_hist[5];

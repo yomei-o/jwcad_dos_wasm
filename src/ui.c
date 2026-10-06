@@ -1618,7 +1618,7 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
     }
     const int before = top_writes, boxed = box_writes;
 
-    if (q->command == 5 && s->command == 5 && s->missed && q->stage == 1
+    if (q->command == 5 && s->command == 5 && (s->missed || s->off_label_gone) && q->stage == 1
         && q->row == 2) {
         return;                 /* 外れると F1〜F5 の札は消える（offset_plain） */
     }
@@ -4295,7 +4295,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             }
             /* 複線 の 間隔 の欄で外れると、F1〜F5 の札（行 2）は消えて
              * `読取可能データ無` だけ（測定：offset_plain の右押し）。 */
-            if (s->command == 5 && s->missed && p->row == 2) {
+            if (s->command == 5 && (s->missed || s->off_label_gone) && p->row == 2) {
                 continue;
             }
             if (s->command == 13 && s->tx_plain && p->row != 1) {
