@@ -8289,6 +8289,15 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->moved = 0;
         return 1;
     }
+    /* ２線 の終点指示（段 2）の [ESC] は始点指示（段 1）へ戻り、始点を捨てる（測定：double_s0_c1）。 */
+    if (key == 27 && c->command == 9 && !c->typing && c->stage == 2 && !c->dl_wait
+        && !c->pending && c->pick_a >= 0) {
+        c->stage = 1;
+        c->pick_a = -1;
+        c->missed = 0;
+        c->moved = 0;
+        return 1;
+    }
     if (key == 27 && d && c->command == 9 && !c->typing && c->pick_a >= 0
         && c->stage == 3 && !c->pending && c->dl_undo_n > 0
         && d->n_lines >= c->dl_undo_n) {
