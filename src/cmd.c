@@ -4595,6 +4595,15 @@ void jw_cmd_after(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         }
         return;
     }
+    /* 多角形：この命令が足した線・消した線の跡を、枠の上にも順に再生する（本物は線を枠の上に
+     * 直に描き、消すときも黒で塗るので、枠との交点に穴が残る。polygon_plain の [ESC]）。 */
+    if (c->command == 19 && c->n0_ink > 0 && !d->ink_over
+        && c->n0_ink - 1 <= d->n_ink) {
+        for (k = c->n0_ink - 1; k < d->n_ink; k++) {
+            jw_view_ink(v, d, &d->ink[k], w);
+        }
+        return;
+    }
     /* Anything made since the range was fixed -- 複写's copies -- goes back on
      * top.  The original draws a new entity over the finished screen rather
      * than redrawing everything, so where a copy crosses one of the reddened
@@ -4758,6 +4767,19 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         return 1;
     }
     /* □ の ②角度：`角度 =` の欄（＋ と同じ形の欄）。 */
+    /* 多角形 ①２点からの距離：A 点から（decomp ovl22 0x2cbe4）。 */
+    if (c->command == 19 && item == 1 && !c->pg1 && c->stage == 0
+        && !c->pressed) {
+        c->pg1 = 1;
+        c->pg1_n = 0;
+        if (d && !c->n0_ink) {
+            c->n0_ink = d->n_ink + 1;      /* この命令の跡の始まり（jw_cmd_after が枠の上に再生） */
+        }
+        if (c->pg1_pd[0] <= 0.0) {
+            c->pg1_pd[0] = c->pg1_pd[1] = 1000.0;
+        }
+        return 1;
+    }
     /* 多角形 ③座標値による多角形（測定：STR）。 */
     if (c->command == 19 && item == 3 && !c->pg3 && c->stage == 0
         && !c->pressed) {
@@ -6359,6 +6381,44 @@ static int last_char_bytes(const char *s, int n)
 
 static void divide_points(JwCmd *c, Jwc *d);
 
+/* 多角形 ①：A・B から d1・d2 だけ離れた点 C を出して、A→C と B→C を引く（decomp ovl22
+ * 0x2d182 以降。a=d1/s、b=d2/s、p=((a*a-b*b)+L*L)/L*0.5、h=sqrt(a*a-p*p)、矢が AB の左なら +h。
+ * s は紙 mm あたりの図面量の逆数）。 */
+static void pg1_make(JwCmd *c, Jwc *d, double mx, double my);
+
+/* 寸法の欄の確定：`d1` か `d1,d2`（一つなら d2=d1）、空なら前回値。0<d<=999999 で
+ * d1+d2 が AB の紙 mm より大きいときだけ受ける（decomp 0x2cebe〜0x2d182）。 */
+static int pg1_accept(JwCmd *c, const Jwc *d, int use_prev)
+{
+    double d1 = c->pg1_pd[0], d2 = c->pg1_pd[1];
+    const double per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
+    const double dx = c->pg1_bx - c->pg1_ax, dy = c->pg1_by - c->pg1_ay;
+    const double ab = sqrt(dx * dx + dy * dy) / per;
+
+    if (!use_prev && c->typed_n > 0) {
+        const char *t = c->typed;
+        char *e;
+
+        d1 = strtod(t, &e);
+        if (*e == ',' || *e == ';') {
+            d2 = strtod(e + 1, 0);
+        } else {
+            d2 = d1;
+        }
+    }
+    c->typed_n = 0;
+    c->typed[0] = 0;
+    if (!(d1 > 0.0 && d1 <= 999999.0 && d2 > 0.0 && d2 <= 999999.0
+          && d1 + d2 > ab)) {
+        return 1;
+    }
+    c->pg1_pd[0] = d1;
+    c->pg1_pd[1] = d2;
+    c->typing = 0;
+    c->pg1 = 4;
+    return 1;
+}
+
 int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
@@ -6801,6 +6861,58 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         c->moved = 0;
         return 1;
+    }
+    /* 多角形 ①２点からの距離 の キー。ESC：D→B、C→D、B→A、A は直前の組を消す（n==0 は何も
+     * しない）。BS：A 段なら多角形の最初の行へ（線は残す）。decomp 0x2cbe4〜0x2d384。 */
+    if (c->command == 19 && c->pg1 && d) {
+        if (key == 27) {
+            if (c->pg1 == 1) {
+                if (c->pg1_n > 0) {
+                    jwc_ink_settle(d);
+                    while (c->pg1_n > 0 && d->n_lines > 0) {
+                        jwc_remove_line(d, d->n_lines - 1);
+                        c->pg1_n--;
+                    }
+                    return 1;
+                }
+                return 0;
+            }
+            if (c->pg1 == 3) {
+                c->typing = 0;
+                c->typed_n = 0;
+                c->typed[0] = 0;
+                c->pg1 = 2;
+            } else if (c->pg1 == 4) {
+                c->pg1 = 3;
+                c->typing = 1;
+                c->typed_n = 0;
+                c->typed[0] = 0;
+            } else {
+                c->pg1 = 1;
+            }
+            return 1;
+        }
+        if (c->pg1 == 1 && key == 8) {
+            c->pg1 = 0;
+            c->pg_item = 0;
+            return 1;
+        }
+        if (c->pg1 == 3) {
+            if (key == 13 || key == 10) {
+                return pg1_accept(c, d, 0);
+            }
+            if (key == 8) {
+                if (c->typed_n > 0) {
+                    c->typed[--c->typed_n] = 0;
+                }
+                return 1;
+            }
+            if ((FIELD_CHAR(key) || key == ';') && FIELD_ROOM(c)) {
+                c->typed[c->typed_n++] = (char)key;
+                c->typed[c->typed_n] = 0;
+            }
+            return 1;
+        }
     }
     /* 多角形 ③ の [ESC]：辺があれば最後の一本を消してその始点へ（何度でも。
      * 測定：三本引いて [ESC] 二回で一本に）。辺が無ければ一つ前の段へ。 */
@@ -10133,6 +10245,56 @@ static float envf_y(const EnvFrame *f, float u)
     return (float)((double)f->cs * 0.0 + (double)f->sn * u + f->oy);
 }
 
+/* 多角形 ① の C 点（decomp 0x2d182 以降）。EnvFrame を使うのでここに置く。 */
+static void pg1_make(JwCmd *c, Jwc *d, double mx, double my)
+{
+    /* 浮動小数の丸めは decomp（0x2d182 以降）のとおり：a・b・L・p・h は float、積は double。
+     * 座標系は ②包絡処理変形 と同じ 1bb4:27ea（原点 A、u は A→B、v は左）。 */
+    const float sc = jwc_zukei_scale(d);
+    const float a = (float)((float)c->pg1_pd[0] / sc);
+    const float b = (float)((float)c->pg1_pd[1] / sc);
+    JwcLine ab;
+    EnvFrame f;
+    float len, p, a2, h, v, cx, cy;
+    int i;
+
+    memset(&ab, 0, sizeof ab);
+    ab.x0 = (float)c->pg1_ax;
+    ab.y0 = (float)c->pg1_ay;
+    ab.x1 = (float)c->pg1_bx;
+    ab.y1 = (float)c->pg1_by;
+    envf_set(&f, &ab);
+    len = envf_u(&f, ab.x1, ab.y1);
+    if (len == 0.0f) {
+        return;
+    }
+    a2 = (float)((double)a * (double)a);
+    p = (float)((((double)a * a - (double)b * b) + (double)len * len) / len * 0.5);
+    {
+        const double hh = (double)a2 - (double)p * (double)p;
+
+        h = (float)sqrt(hh > 0.0 ? hh : 0.0);
+    }
+    v = envf_v(&f, (float)mx, (float)my);
+    if (v < 0.0f) {
+        h = -h;
+    }
+    cx = (float)((double)f.cs * p - (double)f.sn * h + f.ox);
+    cy = (float)((double)f.cs * h + (double)f.sn * p + f.oy);
+    c->pg1_n = 0;
+    for (i = 0; i < 2; i++) {
+        const float sx = i ? ab.x1 : ab.x0;
+        const float sy = i ? ab.y1 : ab.y0;
+
+        if (jwc_add_line(d, sx, sy, cx, cy,
+                         (unsigned char)d->line_type, (unsigned char)d->pen,
+                         (unsigned char)d->write_layer)) {
+            d->lines[d->n_lines - 1].rest[1] = 6;
+            c->pg1_n++;
+        }
+    }
+}
+
 /* 1bb4:3cd1。**線 a（無限に伸ばしたもの）と線分 b** の交点。全部 float。
  * 返り値: 0 = 平行か重なっている（*x,*y は 0 か 10）、1 = 交わる、
  * -1 = b の外で交わる、-2 = b の端が a の上で、b が a の右にある。 */
@@ -12724,6 +12886,40 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;
         }
         return offset_line(c, d, w, sx, sy, right && c->off_done);
+    }
+    if (c->command == 19 && c->pg1) {
+        /* 多角形 ①：A・B は L=free／R=Read（34e9）、寸法の欄の右押しは前回値、C は押した
+         * 位置が方向（decomp ovl22 0x2cbe4〜0x2d384）。 */
+        if (c->pg1 == 3) {
+            return right ? pg1_accept(c, d, 1) : 1;
+        }
+        if (c->pg1 == 4) {
+            jw_cmd_at(w, sx, sy, &x, &y);
+            pg1_make(c, d, x, y);
+            c->pg1 = 1;
+            return 1;
+        }
+        if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
+            c->missed = 1;
+            return 0;
+        }
+        if (c->pg1 == 1) {
+            c->pg1_ax = x;
+            c->pg1_ay = y;
+            c->pg1_n = 0;
+            c->pg1 = 2;
+            return 1;
+        }
+        if ((float)x == (float)c->pg1_ax && (float)y == (float)c->pg1_ay) {
+            return 1;
+        }
+        c->pg1_bx = x;
+        c->pg1_by = y;
+        c->pg1 = 3;
+        c->typing = 1;
+        c->typed_n = 0;
+        c->typed[0] = 0;
+        return 1;
     }
     if (c->command == 19 && c->pg3) {
         /* ③座標値による多角形：原点 → 始点 → 押すたびに前の点から辺を一本

@@ -499,6 +499,10 @@ static void sync_ui(void)
     ui.circ_multi = cmd.circ_multi;
     ui.cut_n = cmd.cut_n;
     ui.pg3 = cmd.pg3;
+    ui.pg1 = cmd.pg1;
+    ui.pg1_n = cmd.pg1_n;
+    ui.pg1_pd[0] = cmd.pg1_pd[0];
+    ui.pg1_pd[1] = cmd.pg1_pd[1];
     ui.pg_edge = cmd.pg_edge;
     ui.ch_ask = cmd.ch_ask;
     ui.text_ang_ask = cmd.text_ang_ask;

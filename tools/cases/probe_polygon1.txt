@@ -1,0 +1,9 @@
+pg1_a|SAMPLE0|30 120 left|type 1|300 250 left|450 250 left|type 200,250|key enter|200 100 left
+pg1_b|SAMPLE0|30 120 left|type 1|300 250 left|450 250 left|type 200|key enter|200 400 left
+pg1_c|SAMPLE0|30 120 left|type 1|300 250 left|450 250 left|key enter|200 100 left|move 210 110
+pg1_r|SAMPLE0|30 120 left|type 1|300 250 left|450 250 left|598 300 right|200 400 left
+pg1_bad|SAMPLE0|30 120 left|type 1|300 250 left|450 250 left|type 10,10|key enter|type 100,100|key enter|200 100 left
+pg1_esc|SAMPLE0|30 120 left|type 1|300 250 left|450 250 left|type 200,250|key enter|key esc|key esc|key esc|key esc
+pg1_two|SAMPLE0|30 120 left|type 1|300 250 left|450 250 left|type 200,250|key enter|200 100 left|300 300 left|450 330 left|key esc|key esc|key bs
+pg1_same|SAMPLE0|30 120 left|type 1|300 250 left|300 250 left|move 310 250|450 250 left|key esc|key esc|key esc|key esc
+pg1_cs|SAMPLE0|30 120 left|type 1|300 250 left|450 250 left|type 200,250|key enter|key esc|key esc|key bs

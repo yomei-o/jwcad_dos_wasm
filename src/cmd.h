@@ -612,6 +612,12 @@ typedef struct {
     double cut_px[20], cut_py[20];
     /* 多角形 ③座標値による多角形：1 原点、2 始点、3 次の点（辺を足す）。 */
     int pg3, pg3_n;
+    /* 多角形 ①２点からの距離（二辺）：1=A点、2=B点、3=寸法（d1,d2 の欄）、4=２線を書く方向。
+     * decomp ovl22 ディスパッチャ item==1 枝（file-linear 0x2cbe4〜0x2d384）。pg1_n は直前に
+     * 引いた本数（A 段の [ESC] で消す）。pg1_pd は寸法の前回値（既定 1000、1000）。 */
+    int pg1, pg1_n;
+    double pg1_ax, pg1_ay, pg1_bx, pg1_by;
+    double pg1_pd[2];
     double pg3_x, pg3_y;
     int ch_ask;                 /* 面取 ③寸法= の欄 */
     /* □ ③平行：1 なら `基準線　マウス指示`、box_ref なら傾きは基準線から。 */

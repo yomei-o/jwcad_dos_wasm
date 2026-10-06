@@ -2943,6 +2943,39 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
         }
+    } else if (s->command == 19 && s->pg1) {
+        /* 多角形 ①２点からの距離（decomp ovl22 0x2cbe4〜）。A：[BS]前項、B 以降：[ESC]。 */
+        if (s->pg1 == 1) {
+            if (s->pg1_n > 0) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            }
+            jw_ui_text(v, 8, 1, 7, 0, "\x82\x51\x93\x5f\x82\xa9\x82\xe7\x82\xcc\x8b\x97\x97\xa3 \x82\x60\x93\x5f\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6 (L)free (R)Read ");
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+        } else if (s->pg1 == 2) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+            jw_ui_text(v, 8, 1, 7, 0, "\x82\x61\x93\x5f\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6 (L)free (R)Read ");
+        } else if (s->pg1 == 3) {
+            char t[96], b[64];
+
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC] ");
+            jw_ui_text(v, 7, 1, 7, 0, "\x90\xa1\x96\x40 = ");
+            memcpy(t, s->typed, 95);
+            t[s->typed_n < 95 ? s->typed_n : 95] = 0;
+            jw_ui_text(v, 14, 1, 7, 0, t);
+            sprintf(b, "[%10.3f,%10.3f]", s->pg1_pd[0], s->pg1_pd[1]);
+            jw_ui_text(v, 34, 1, 7, 0, "\x91\x4f\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) ");
+            jw_ui_text(v, 52, 1, 7, 0, b);
+            fill(v, 8 * (13 + s->typed_n), 7, 8 * (13 + s->typed_n) + 7, 15, 4);
+        } else {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+            jw_ui_text(v, 8, 1, 7, 0, "\x82\x51\x93\x5f\x82\xa9\x82\xe7\x82\xcc\x8b\x97\x97\xa3 \x82\x51\x90\xfc\x82\xf0\x8f\x91\x82\xad\x95\xfb\x8c\xfc\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6 ");
+        }
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 19 && s->pg3) {
         /* 多角形 ③座標値による多角形（測定：STR=1）。 */
         if (s->pg3 == 1) {
