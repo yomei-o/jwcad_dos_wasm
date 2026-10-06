@@ -5118,6 +5118,20 @@ range_items:
     /* 測定 ①距離 を測っているあいだの ①表示：結果を文字で書く。行は
      * `%s[F%d]  ◇結果表示   小数点位置%s%s`（ovl29 0x2b2e0）、左の盤は
      * ` ﾍﾟﾝ%d 残文%5d `（0x2b23e）。測定：tools/cases/probe_measure.txt。 */
+    /* 測定 ①距離 の ◆ の行の升は 1)表示 2)ｸﾘｱｰ 3)円周：② は始点（◇）からやり直し（測定：measure_s1_c2）。 */
+    if (c->command == 15 && c->stage == 1 && !c->meas_put && (item == 2 || item == 3)) {
+        if (item == 2) {
+            c->stage = 0;
+            c->meas_n = 0;
+            c->meas_total = 0.0;
+            c->meas_last = 0.0;
+            c->top_item = 1;
+            c->top_right = 0;
+        } else {
+            c->meas_arc = 1;                /* ③円周：円をマウス指示 */
+        }
+        return 1;
+    }
     if (c->command == 15 && c->stage == 1 && item == 1 && !c->meas_put) {
         c->meas_put = 1;
         return 1;
@@ -7241,6 +7255,15 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->pick_a = c->pick_b = -1;
         }
         c->moved = 0;
+        return 1;
+    }
+    /* 測定 ①距離 ③円周の行：ESC は ◆ へ戻る。 */
+    if (c->command == 15 && c->meas_arc) {
+        if (key == 27) {
+            c->meas_arc = 0;
+            c->missed = 0;
+            return 1;
+        }
         return 1;
     }
     /* 測定 ④座標の キー：ESC は ◇（原点から取り直し）、◇ の ESC は何もしない、BS は ◇ だけで最初の行へ。 */
@@ -13340,6 +13363,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->lc_attr = 1;
         c->top_item = 0;
         c->top_right = 0;
+    }
+    /* 測定 ①距離 ③円周：円を拾う（外れは `読取可能データ無`。円が取れた先は未実装）。 */
+    if (c->command == 15 && c->meas_arc) {
+        if (jw_cmd_arc_at(d, w, sx, sy) < 0) {
+            c->pt_line = jw_cmd_line_at(d, w, sx, sy) >= 0;
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        return 1;
     }
     /* 測定 ④座標：◇で原点、◆で座標点（原点からの相対 X,Y。(0,0) は beep）。 */
     if (c->command == 15 && c->meas4) {

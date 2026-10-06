@@ -1266,11 +1266,13 @@ static void put_metres(char *out, size_t cap, const char *text, double m,
                 text++;
             }
             n = (size_t)sprintf(num, "%.*f", dec, m);
-            while (n > 0 && num[n - 1] == '0') {
-                n--;
-            }
-            if (n > 0 && num[n - 1] == '.') {
-                n--;
+            if (strchr(num, '.')) {
+                while (n > 0 && num[n - 1] == '0') {
+                    n--;
+                }
+                if (n > 0 && num[n - 1] == '.') {
+                    n--;
+                }
             }
             num[n] = 0;
             o += (size_t)sprintf(out + o, "%s", num);
@@ -2989,6 +2991,18 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 16, 1, 7, 0, "\x8e\x6e\x93\x5f\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
         jw_ui_text(v, 31, 1, 7, 0, "(L)\x90\xfc\xa5\x89~");
         jw_ui_text(v, 68, 1, 7, 0, "(1) \x91\x4f \x94\xcd \x88\xcd|");
+    } else if (s->command == 15 && s->meas_arc) {
+        /* 測定 ①距離 ③円周（測定：measure_s1_c3）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "\x81\x9b \x89\x7e\x82\xf0\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
+        if (s->missed && s->pt_line) {
+            jw_ui_text(v, 32, 2, 7, 0, "\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83" "f\x81[\x83^\x96\xb3");
+        } else if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 15 && s->meas4) {
         /* 測定 ④座標（decomp 0x2efbb〜、測定：measure_s0_c4）。◇原点／◆座標点。 */
         if (s->ms4 == 0) {
