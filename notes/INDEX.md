@@ -17,3 +17,4 @@ RESUME.md にあった「次にやること」の中身——**機能ごとに�
 * [番地・画面・表・ファイル形式](reference-addresses.md)
 * [本物との突き合わせの結果](validation.md)
 * [解析の道具](tools.md) ・ [.JWC の形](jwc-format.md)
+- [agent-specs-2026-10-06.md](agent-specs-2026-10-06.md) — 10-06 に decomp から起こした仕様（実装済み／測定・分割の未実装分）
