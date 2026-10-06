@@ -596,7 +596,9 @@ typedef struct {
     int hand_psx[256], hand_psy[256];
     int box_ctr;                /* □ ④基点変：始点が四角の中心 */               /* ○ ②基点変：○（二点が直径） */
     int pt_real;                /* 点 ①【実点】 */
-    int pt_mode;                /* 点 ②〜⑤（未移植） */
+    int pt_mode;                /* 点 ②〜⑤（③交点だけ移植） */
+    int pt_line;                /* 点 ④：外れた押しの近くに線があった（言葉の桁が一つ左） */
+    int pt3, pt3_a;             /* 点 ③交点：0=対象線（A）、1=対象線【B】、A の線番号 */
     int pt_added;               /* 点：足した実点の数（記録のカウント用） */
     int pt_undo;                /* 点：この命令で打った分の符号つきの数（decomp ovl20 3ab8:45ea の [bp-0x48]。仮点 +1、実点 -1、①で 0） */
     int tx_count;               /* 文字：この命令で書いて残っている数 */

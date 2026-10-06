@@ -2949,6 +2949,22 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
         }
+    } else if (s->command == 22 && s->pt_mode == 3) {
+        /* 点 ③交点：対象線（A）／【B】。A は [BS]前項、点を足したあとは [ESC] も付く。 */
+        if (s->pt3 || s->pt_undo) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        }
+        jw_ui_text(v, 8, 1, 7, 0, s->pt3 ? "\x81\x9f\x8c\xf0\x93\x5f" : "\x81\x9e\x8c\xf0\x93\x5f");
+        jw_ui_text(v, 17, 1, 7, 0, s->pt3 ? "\x91\xce\x8f\xdb\x90\xfc\x81\x79\x82\x61\x81\x7a\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6" : "\x91\xce\x8f\xdb\x90\xfc\x81\x69\x82\x60\x81\x6a\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
+        if (!s->pt3) {
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+        }
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 19 && s->pg1) {
         /* 多角形 ①２点からの距離（decomp ovl22 0x2cbe4〜）。A：[BS]前項、B 以降：[ESC]。 */
         if (s->pg1 == 1) {
@@ -6420,6 +6436,11 @@ no_dot:
             if ((s->command == 14 && (s->dim_ck || s->dim_arc))
                 || (s->command == 18 && s->missed == 2)) {
                 ;               /* jw_ui_band_last で、図面のあとに */
+            } else if (s->command == 22 && (s->pt_mode == 5 || (s->pt_mode == 4 && s->pt_line))) {
+                /* 点 ④円中心（近くに線があって円弧が無い押し）は BEL なしで桁 32 から、⑤仮点削除
+                 * はいつも桁 20 から（測定：point_s0_c4・c5）。 */
+                jw_ui_text(v, s->pt_mode == 5 ? 20 : 32, 2, 7, 0,
+                           "\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83" "f\x81[\x83^\x96\xb3");
             } else {
                 jw_ui_text(v, 32, 2, 7, 0,
                            "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"

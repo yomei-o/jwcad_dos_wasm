@@ -581,6 +581,7 @@ typedef struct {
     int hatch_n;
     int hatch_used;
     int pt_real;                /* 点：【実点】 */
+    int pt_mode, pt3, pt_undo, pt_line;
     int lc_off;
     int meas_hold;
     int off_label_gone;

@@ -5101,6 +5101,8 @@ range_items:
     if (c->command == 22 && item == 1) {
         c->pt_real = !c->pt_real;
         c->pt_undo = 0;                 /* 02f3f4 */
+        c->pt_mode = 0;
+        c->pt3 = 0;
         return 0;
     }
     /* ②距離 ③交点 ④円中心 ⑤仮点削除 は**未移植**。切り替えたあとの押しで
@@ -5108,6 +5110,8 @@ range_items:
      * 足さない）ので、押しは何もしないでおく。 */
     if (c->command == 22 && item >= 2 && item <= 5) {
         c->pt_mode = item;
+        c->pt3 = 0;
+        c->pt_undo = 0;                 /* 項目を替えると [ESC] の数は 0（測定：point_s1_c3） */
         return 0;
     }
     if (c->command == 13 && c->stage == 2 && !c->typing_text && !c->text_ang_ask
@@ -7162,6 +7166,10 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
      * （0x304c8）て -1、負なら実点を一つ消し（1bb4:3c1d）て +1。0 のときは
      * 読みの引数が 0x2710（[ESC] 無効）で、[ESC] は何も起こさない。 */
     if (c->command == 22 && key == 27 && !c->typing && d) {
+        if (c->pt_mode == 3 && c->pt3) {
+            c->pt3 = 0;                 /* 対象線【B】→（A）。A は捨てる */
+            return 1;
+        }
         if (c->pt_undo > 0 && d->n_temp > 0) {
             jwc_remove_temp(d);         /* 輪は黒で塗るだけ。線の穴が残る（point_plain） */
             c->pt_undo--;
@@ -17351,8 +17359,125 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * repaints the panel -- read off a press at (300,250) with 点 picked,
          * which leaves the twelve white pixels of a circle of radius two there
          * and nothing else.  Two presses leave two. */
+        if (c->pt_mode == 3) {
+            /* ③交点：対象線 A を拾い、対象線 B を拾うと二本の延長の交点に点を足して A に戻る
+             * （測定：point_s0_c3 の 162 250 で枠の左上の角）。外れは `読取可能データ無`。 */
+            const long k = pick_line(d, w, sx, sy);
+            double ix, iy;
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            if (!c->pt3) {
+                c->pt3_a = k;
+                c->pt3 = 1;
+                return 1;
+            }
+            if (!cross_at(&d->lines[c->pt3_a], &d->lines[k], &ix, &iy)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->pt3 = 0;
+            x = ix;
+            y = iy;
+            if (c->pt_real) {
+                JwcPoint p;
+
+                memset(&p, 0, sizeof p);
+                p.x = (float)x;
+                p.y = (float)y;
+                p.layer = (unsigned char)d->write_layer;
+                p.rest[0] = (unsigned char)d->write_layer;
+                p.rest[1] = 1;
+                p.rest[3] = 0x1d;
+                if (jwc_put_point(d, &p)) {
+                    c->pt_added++;
+                    c->pt_undo--;
+                }
+            } else if (d->n_temp < JWC_TEMP_MAX) {
+                d->temp_x[d->n_temp] = (float)x;
+                d->temp_y[d->n_temp] = (float)y;
+                d->n_temp++;
+                c->pt_undo++;
+            }
+            return 1;
+        }
+        if (c->pt_mode == 4) {
+            /* ④円中心：円弧を拾って、その中心に点を足す。外れは `読取可能データ無`（SAMPLE0 は
+             * 円弧が無いので外れだけ測定：point_s0_c4）。近くに線があると言葉の桁が一つ左。 */
+            const long k = jw_cmd_arc_at(d, w, sx, sy);
+
+            if (k < 0) {
+                c->pt_line = jw_cmd_line_at(d, w, sx, sy) >= 0;
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            x = d->arcs[k].cx;
+            y = d->arcs[k].cy;
+            if (c->pt_real) {
+                JwcPoint p;
+
+                memset(&p, 0, sizeof p);
+                p.x = (float)x;
+                p.y = (float)y;
+                p.layer = (unsigned char)d->write_layer;
+                p.rest[0] = (unsigned char)d->write_layer;
+                p.rest[1] = 1;
+                p.rest[3] = 0x1d;
+                if (jwc_put_point(d, &p)) {
+                    c->pt_added++;
+                    c->pt_undo--;
+                }
+            } else if (d->n_temp < JWC_TEMP_MAX) {
+                d->temp_x[d->n_temp] = (float)x;
+                d->temp_y[d->n_temp] = (float)y;
+                d->n_temp++;
+                c->pt_undo++;
+            }
+            return 1;
+        }
+        if (c->pt_mode == 5) {
+            /* ⑤仮点削除：押した所の仮点を消す。無ければ `読取可能データ無`（測定：point_s0_c5。
+             * 仮点がある場合の拾い幅は未測定：輪の中心から 4 画素以内にしてある）。 */
+            long k, best = -1;
+            int bd = 5;
+
+            for (k = 0; k < d->n_temp; k++) {
+                int tx, ty;
+                int dd;
+
+                at_screen(w, d->temp_x[k], d->temp_y[k], &tx, &ty);
+                dd = (tx > sx ? tx - sx : sx - tx) + (ty > sy ? ty - sy : sy - ty);
+                if (dd < bd) {
+                    bd = dd;
+                    best = k;
+                }
+            }
+            if (best < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            {
+                JwcPoint p;
+
+                memset(&p, 0, sizeof p);
+                p.x = d->temp_x[best];
+                p.y = d->temp_y[best];
+                jwc_ink_note(d, 1, JW_INK_TEMP, &p);
+                for (k = best; k + 1 < d->n_temp; k++) {
+                    d->temp_x[k] = d->temp_x[k + 1];
+                    d->temp_y[k] = d->temp_y[k + 1];
+                }
+                d->n_temp--;
+            }
+            return 1;
+        }
         if (c->pt_mode) {
-            return 0;               /* ②〜⑤ は未移植 */
+            return 0;               /* ② は未移植 */
         }
         /* 押すと 02f1e4 へ戻って帯を組み直す（decomp）。升①の行は残らない。 */
         c->top_item = 0;

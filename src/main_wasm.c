@@ -722,6 +722,10 @@ static void sync_ui(void)
     ui.meas_hold = cmd.meas_hold;
     ui.lc_off = cmd.lc_off;
     ui.pt_real = cmd.pt_real;
+    ui.pt_mode = cmd.pt_mode;
+    ui.pt3 = cmd.pt3;
+    ui.pt_line = cmd.pt_line;
+    ui.pt_undo = cmd.pt_undo;
     memcpy(ui.gap_hist, cmd.gap_hist, sizeof ui.gap_hist);
     ui.hatch_plain = cmd.hatch_plain;
     ui.hatch_angle = cmd.hatch_angle;
