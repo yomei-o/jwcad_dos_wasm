@@ -3017,6 +3017,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                        "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
+    } else if (s->command == 14 && s->dim5c) {
+        /* 寸法 ⑤③円周（測定：dim_s0_c5_v）。 */
+        jw_ui_text(v, 6, 1, 7, 0, "\x81\x45\x89\x7e\x8e\xfc \x89\x7e\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
+        jw_ui_text(v, 73, 1, 7, 0, "[BS]" "\x91\x4f\x8d\x80");
+        if (s->dim5m == 1) {
+            jw_ui_text(v, 20, 2, 7, 0, "\x90\xfc\x83\x66\x81\x5b\x83\x5e\x82\xc5\x82\xb7");
+        } else if (s->dim5m == 2) {
+            jw_ui_text(v, 20, 2, 7, 0, "\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83\x66\x81\x5b\x83\x5e\x96\xb3");
+        }
     } else if (s->command == 15 && s->meas8) {
         /* 測定 ⑧文字列集計 ③指定文字：文字を打つ欄。 */
         char b[40];

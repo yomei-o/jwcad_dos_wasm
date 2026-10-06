@@ -738,6 +738,8 @@ static void sync_ui(void)
     ui.meas9t = cmd.meas9t;
     ui.meas9k = cmd.meas9k;
     ui.meas8 = cmd.meas8;
+    ui.dim5c = cmd.dim5c;
+    ui.dim5m = cmd.dim5m;
     ui.dim8_plain = cmd.dim8_plain;
     ui.meas8d = cmd.meas8d;
     memcpy(ui.ms8_typed, cmd.ms8_typed, sizeof ui.ms8_typed);
@@ -4652,6 +4654,15 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
             dim_typed[dim_typed_n++] = (char)key;
             dim_typed[dim_typed_n] = 0;
         }
+        present();
+        return -1;
+    }
+    /* 寸法 ⑤寸法値の項目の行での [ESC] は寸法の最初のメニューへ戻る（測定：dim_s0_c5）。 */
+    if (ui.command == 14 && ui.top_item == 5 && cmd.stage == 0 && !cmd.typing && key == 27) {
+        cmd.top_item = 0;
+        cmd.top_right = 0;
+        cmd.missed = 0;
+        sync_ui();
         present();
         return -1;
     }

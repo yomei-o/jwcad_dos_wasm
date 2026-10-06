@@ -6314,6 +6314,13 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     int changed;
 
     c->meas_noind = 0;
+    /* 寸法 ⑤寸法値 ③円周：円をマウス指示（測定：dim_s0_c5_v の `type 30`。円が取れた先は未実装）。 */
+    if (c->command == 14 && c->stage == 0 && c->top_item == 5 && item == 3 && !c->dim5c) {
+        c->dim5c = 1;
+        c->dim5m = 0;
+        c->top_item = 0;
+        return 1;
+    }
     /* 測定 ⑧文字列集計 ③指定文字：文字を打つ欄（測定：measure_s0_c8_v の `type 30`。打った先は未実装）。 */
     if (c->command == 15 && c->stage == 0 && c->top_item == 8 && item == 3 && !c->meas8) {
         c->meas8 = 1;
@@ -6889,6 +6896,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
 
+    /* 寸法 ⑤③円周の行：ESC で ⑤ の項目の行へ。ほかの鍵は何もしない。 */
+    if (c->command == 14 && c->dim5c) {
+        c->dim5m = 0;               /* [ESC] は札を消すだけで行はそのまま（測定：dim_s0_c5_v） */
+        return 1;
+    }
     /* 寸法 ⑧値変で [Enter] を打つと行と左の盤が描き直される（測定：dim_s0_c8_v）。 */
     if (c->command == 14 && c->stage == 7 && (key == 13 || key == 10)) {
         c->dim8_plain = 0;
@@ -14252,6 +14264,17 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->top_item = 0;    /* from here the road is 寸法値終点指示 */
         c->stage = 4;
         return 1;
+    }
+    /* 寸法 ⑤③円周：押した所に円が無ければ、線なら `線データです`、何も無ければ `読取可能データ無`。 */
+    if (c->command == 14 && c->dim5c) {
+        if (jw_cmd_arc_at(d, w, sx, sy) >= 0) {
+            c->dim5m = 0;
+        } else if (jw_cmd_line_at(d, w, sx, sy) >= 0) {
+            c->dim5m = 1;
+        } else {
+            c->dim5m = 2;
+        }
+        return 0;
     }
     /* ⑨設定の盤が出ているあいだ、盤の外の押しは何も言わない（測定：dim_s0_c9 の 598 300 right）。 */
     if (c->command == 14 && c->top_item == 9) {

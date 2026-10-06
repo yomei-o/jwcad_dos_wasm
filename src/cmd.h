@@ -643,6 +643,7 @@ typedef struct {
     int meas4, ms4;
     double ms4_ox, ms4_oy, ms4_px, ms4_py;
     int meas_arc;               /* 測定 ①距離 ◆の ③円周：円を拾う行（円が取れた先は未実装） */
+    int dim5c, dim5m;           /* 寸法 ⑤寸法値 ③円周：円をマウス指示（dim5m 1 = 線データです、2 = 読取可能データ無）。測定：dim_s0_c5_v */
     int dim7_hold, dim7_n;      /* 寸法 ⑦矢印：数え箱の線数が二度の外しの押しまで追いつかない（測定：dim_s0_c7） */
     int dim8_plain;             /* 寸法 ⑧値変：升の無い数字で左の盤が数え箱に戻る（測定：dim_s0_c8_v） */
     int meas8d;                 /* ⑧③指定文字を [Enter] で決めた：行 2 に `データ無` と打った文字 */
