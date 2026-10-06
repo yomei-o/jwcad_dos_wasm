@@ -5878,10 +5878,11 @@ range_items:
      * ①指定線種・②指定線色 は実機の画面までは確認したが、その先の
      * フィルタ入力（線種の一覧・ペン番号の入力）は未実装のまま
      * （RESUME.md 4 参照）。 */
-    if (c->command == 24 && c->pressed == 0 && c->stage == 0 && !c->lc_range
+    if (c->command == 24 && c->pressed == 0 && c->stage <= 1 && !c->lc_range
         && item == 1) {
         c->lc_range = 1;
         c->lc_narrow = 0;
+        c->stage = 0;           /* 線を拾ったあとでも範囲の始点の行へ（測定：linechg_s1_c1） */
         return 1;
     }
     if (c->command == 24 && c->lc_range && c->stage == 2) {
