@@ -14063,8 +14063,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->missed = 0;
             th = (double)ang16(d->lines[k].x0, d->lines[k].y0, d->lines[k].x1, d->lines[k].y1)
                  * 1.52587890625e-05 * 3.14159265358979323846 / 180.0;
-            ux = cos(th);
-            uy = sin(th);
+            {
+                /* 本物の正弦・余弦は 16.16 固定小数で、90 度の正弦は 65535（draw.c の注）。 */
+                long ct = (long)(cos(th) * 65536.0), st = (long)(sin(th) * 65536.0);
+
+                if (st == 65536L) {
+                    st = 65535L;
+                }
+                ux = (double)ct / 65536.0;
+                uy = (double)st / 65536.0;
+            }
             x1 = (c->ell_px[0] - c->ell_cx) * ux + (c->ell_py[0] - c->ell_cy) * uy;
             y1 = -(c->ell_px[0] - c->ell_cx) * uy + (c->ell_py[0] - c->ell_cy) * ux;
             x2 = (c->ell_px[1] - c->ell_cx) * ux + (c->ell_py[1] - c->ell_cy) * uy;
