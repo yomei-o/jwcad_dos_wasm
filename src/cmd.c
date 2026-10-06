@@ -17366,6 +17366,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             double ix, iy;
 
             if (k < 0) {
+                c->pt_par = 0;
                 c->missed = 1;
                 return 0;
             }
@@ -17376,9 +17377,13 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 return 1;
             }
             if (!cross_at(&d->lines[c->pt3_a], &d->lines[k], &ix, &iy)) {
+                /* 平行：`計算不可` を出して A に戻る（測定：point_s1_c3 の 598 300 right） */
+                c->pt_par = 1;
+                c->pt3 = 0;
                 c->missed = 1;
                 return 0;
             }
+            c->pt_par = 0;
             c->pt3 = 0;
             x = ix;
             y = iy;

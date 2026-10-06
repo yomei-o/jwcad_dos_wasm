@@ -2959,7 +2959,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         if (!s->pt3) {
             jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
         }
-        if (s->missed) {
+        if (s->missed && s->pt_par) {
+            jw_ui_text(v, 18, 2, 7, 0, "\x8c\x76\x8e\x5a\x95\x73\x89\xc2");
+        } else if (s->missed) {
             jw_ui_text(v, 32, 2, 7, 0,
                        "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
@@ -6446,6 +6448,10 @@ no_dot:
                            "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
                            "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                            "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+                /* 点【実点】の `F1～F6 Pen No1` の盤は言葉の上に重なる（point_s0_c1 の R の外れ）。 */
+                if (s->command == 22 && s->pt_real && s->stage == 1) {
+                    jw_ui_text(v, 27, 2, 7, 0xffffu, " F1\x81`F6   Pen No1 ");
+                }
             }
         }
         /* ＜ の `残切断点 20` は線切断のたびに減ります（桁 77。測定）。 */
