@@ -14019,10 +14019,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 1;
         }
         if (c->ell == 2) {
-            /* `前回と同じ ﾏｳｽ(R)`。`任意寸法ﾏｳｽ(L)`（１点目・２点目）はまだ。 */
+            /* `前回と同じ ﾏｳｽ(R)`。`任意寸法ﾏｳｽ(L)` は 1 点目の指示へ（測定：circle_s0_c2。
+             * 1 点目の先は未実装）。 */
             if (!right) {
-                return 0;
+                c->typing = 0;
+                c->typed[0] = 0;
+                c->typed_n = 0;
+                c->ell = 5;
+                return 1;
             }
+            c->ell = 3;
             c->typing = 0;
             c->ell = 3;
             return 1;

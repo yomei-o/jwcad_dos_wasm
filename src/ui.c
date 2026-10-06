@@ -3053,6 +3053,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         } else if (s->dim5m == 2) {
             jw_ui_text(v, 20, 2, 7, 0, "\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83\x66\x81\x5b\x83\x5e\x96\xb3");
         }
+    } else if (s->command == 11 && s->ell == 5) {
+        /* ○ ②楕円 の 任意寸法：１点目の指示（測定：circle_s0_c2）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "\x82\x50\x93\x5f\x96\xda \x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6" " (L)free (R)Read");
+
     } else if (s->command == 15 && s->meas8) {
         /* 測定 ⑧文字列集計 ③指定文字：文字を打つ欄。 */
         char b[40];
