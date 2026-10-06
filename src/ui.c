@@ -3010,7 +3010,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 8, 1, 7, 0, "\x90\xfc\x95\xcf\x8d\x58");
         jw_ui_text(v, 16, 1, 7, 0, "\x8e\x6e\x93\x5f\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
         jw_ui_text(v, 31, 1, 7, 0, "(L)\x90\xfc\xa5\x89~");
-        jw_ui_text(v, 68, 1, 7, 0, "(1) \x91\x4f \x94\xcd \x88\xcd|");
+        jw_ui_text(v, 68, 1, 7, 0, "|1) \x91\x4f \x94\xcd \x88\xcd|");
     } else if (s->command == 15 && s->meas_arc) {
         /* 測定 ①距離 ③円周（測定：measure_s1_c3）。 */
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
@@ -6399,7 +6399,16 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 }
             }
             /* 線変更 の追加・除外の行：移動の段 3 と同じ並びで、見出しだけ `設定範囲`（測定：linechg_s0_c3）。 */
-            if (s->command == 24 && s->lc_range && i == 3 && s->stage == 3) {
+            /* ①指定範囲内変更 の追加・除外の行は見出しが `線変更` で `文字(R)` が無い（測定：linechg_s0_c1）。 */
+            if (s->command == 24 && s->lc_range && !s->lc_attr && i == 3 && s->stage == 3) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                jw_ui_text(v, 6, 1, 7, 0, "\x81\x51");
+                jw_ui_text(v, 8, 1, 7, 0, "\x90\xfc\x95\xcf\x8d\x58");
+                jw_ui_text(v, 16, 1, 7, 0, "\x92\xc7\x89\xc1\xa5\x8f\x9c\x8a\x4f\x83\x66\x81\x5b\x83\x5e\x8e\x77\x8e\xa6");
+                jw_ui_text(v, 38, 1, 7, 0, "\x90\xfc\x81\x45\x89\x7e" "(L)");
+                jw_ui_text(v, 49, 1, 7, 0, "[F1" "\x81\x60" "F10]");
+                jw_ui_text(v, 68, 1, 7, 0, "|1)" "\x94\xcd\x88\xcd" " " "\x8a\x6d\x92\xe8" "|");
+            } else if (s->command == 24 && s->lc_range && i == 3 && s->stage == 3) {
                 const JwStage *r;
 
                 for (r = JW_MOVE; r->command; r++) {

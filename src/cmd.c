@@ -8477,6 +8477,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->hen_dbl = 0;             /* ③複線化 の始点の行の [ESC] も 5 項目の最初の行へ（測定：henkei_s0_c3） */
             return 1;
         }
+        /* 線変更 ①指定範囲内変更：始点の行での [ESC] は最初の行 `1本線・円変更 マウス指示` へ（測定：linechg_s0_c1）。 */
+        if (c->command == 24 && c->lc_range && !c->lc_attr && !c->pressed) {
+            c->lc_range = 0;
+            return 1;
+        }
         if (!c->pressed || c->escaped) {
             return 0;
         }
@@ -17948,6 +17953,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         }
         c->stage = 1;
         return 1;
+    }
+    /* 線変更 ①指定範囲内変更 の追加・除外の行で右を押しても何も起こらず、札も消える（測定：linechg_s0_c1）。 */
+    if (c->command == 24 && c->lc_range && !c->lc_attr && c->pressed == 2 && right) {
+        c->missed = 0;
+        return 0;
     }
     if (JW_RANGE(c)) {
         /* 消去: the first press takes a corner of the range and the second,

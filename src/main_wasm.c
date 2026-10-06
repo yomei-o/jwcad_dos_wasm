@@ -742,6 +742,7 @@ static void sync_ui(void)
     ui.dim_arc_quiet = cmd.dim_arc_quiet;
     ui.dim_ck_gone = cmd.dim_ck_gone;
     ui.lc_keyed = cmd.lc_keyed;
+    ui.lc_attr = cmd.lc_attr;
     ui.dim5m = cmd.dim5m;
     ui.dim8_plain = cmd.dim8_plain;
     ui.meas8d = cmd.meas8d;
