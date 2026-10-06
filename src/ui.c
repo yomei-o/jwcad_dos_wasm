@@ -574,6 +574,9 @@ void jw_ui_band_last(VGA *v, const JwUi *s)
     /* ①円径 の 書込角度 と値も同じです。外した押しのあとは帯に何も
      * 残りません（測定：サーチが桁 17..30 を消し、書込角度 も値も
      * 書き直されません）。 */
+    if (s->dim_ck && s->stage == 9 && s->dim_ck_gone) {
+        return;
+    }
     if (s->dim_ck && s->stage == 9) {
         char one[24];
 
@@ -585,6 +588,9 @@ void jw_ui_band_last(VGA *v, const JwUi *s)
         return;
     }
     if (!s->dim_arc || s->stage != 11) {
+        return;
+    }
+    if (s->dim_arc == 2 && s->dim_arc_quiet) {
         return;
     }
     if (s->dim_arc_end) {

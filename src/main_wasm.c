@@ -739,6 +739,8 @@ static void sync_ui(void)
     ui.meas9k = cmd.meas9k;
     ui.meas8 = cmd.meas8;
     ui.dim5c = cmd.dim5c;
+    ui.dim_arc_quiet = cmd.dim_arc_quiet;
+    ui.dim_ck_gone = cmd.dim_ck_gone;
     ui.dim5m = cmd.dim5m;
     ui.dim8_plain = cmd.dim8_plain;
     ui.meas8d = cmd.meas8d;
@@ -3497,6 +3499,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         cmd.top_item = 0;
         cmd.top_right = 0;
         cmd.dim_arc = 2;
+        cmd.dim_arc_quiet = 1;
         cmd.dim_arc_val[0] = 0;
         cmd.dim_did = 0;
         cmd.stage = 11;
@@ -4244,6 +4247,12 @@ static int lc_msg_was;
 
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
+    /* 寸法 ④③角度を選んだ直後の最初の鍵で、行 2 の札が出る（測定：dim_s0_c4_v の `0`）。 */
+    if (cmd.dim_arc_quiet && (key == 13 || key == 10 || key == 27)) {
+        cmd.dim_arc_quiet = 0;
+        sync_ui();
+        present();
+    }
     /* 寸法 ⑧値変で [Enter] を打つと行と左の盤が描き直される（測定：dim_s0_c8_v）。 */
     if (cmd.command == 14 && cmd.stage == 7 && !cmd.typing && key == 27) {
         cmd.dim8_plain = 1;             /* [ESC] も升の無い数字と同じに数え箱へ（測定：dim_s0_c8） */

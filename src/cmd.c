@@ -6901,6 +6901,17 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->dim5m = 0;               /* [ESC] は札を消すだけで行はそのまま（測定：dim_s0_c5_v） */
         return 1;
     }
+    /* 寸法 ④③角度：原点を聞く行での [ESC] は行そのままで `点`・`度` の札だけが消える（測定：dim_s0_c4_v）。 */
+    if (key == 27 && c->command == 14 && c->dim_arc == 2 && c->stage == 11 && !c->dim_did
+        && !c->typing) {
+        c->dim_arc_quiet = 1;
+        return 1;
+    }
+    /* 寸法 ④①円径 の [ESC]：行はそのままで 書込角度の札だけが消える（測定：dim_s0_c4）。 */
+    if (key == 27 && c->command == 14 && c->dim_ck && c->stage == 9) {
+        c->dim_ck_gone = 1;
+        return 1;
+    }
     /* 寸法 ⑧値変で [Enter] を打つと行と左の盤が描き直される（測定：dim_s0_c8_v）。 */
     if (c->command == 14 && c->stage == 7 && (key == 13 || key == 10)) {
         c->dim8_plain = 0;
@@ -8347,6 +8358,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->dim_did = 0;
         c->dim_texts = d->n_texts;
         c->dim_arc_val[0] = 0;  /* 帯の角度の値も消える（測定） */
+
         return 1;
     }
     /* 寸法 ⑦矢印のあとの [ESC]：矢印は残り、[ESC] の札だけが消えて数え箱が追いつく
@@ -13535,6 +13547,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     c->press_y = sy;
     c->moved = 0;
     c->escaped = 0;
+    c->dim_ck_gone = 0;
     /* 寸法 ③任意方向 の角度の欄：図面の押しも `0 度 ﾏｳｽ(L)`／`前回と同じ ﾏｳｽ(R)` と同じ（左 = 0 度、
      * 右 = 前回の角度。測定：dim_s0_c3 の 400 140 left。前回は 45 度のまま）。 */
     if (c->command == 14 && c->top_item == 3 && !c->pressed && c->typing) {

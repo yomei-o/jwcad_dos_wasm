@@ -595,6 +595,8 @@ typedef struct {
     int meas9k;
     int meas8;
     int dim5c, dim5m;
+    int dim_arc_quiet;
+    int dim_ck_gone;
     int dim8_plain;
     int meas8d;
     char ms8_typed[24];
