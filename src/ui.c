@@ -5040,6 +5040,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
              * Clearing took the table from 201 branches out to 131. */
             fill(v, 0, 0, 639, 15, 0);
             top_clear();
+            /* 線変更：押したあとの ②レイヤ変更 の升の行にも [ESC] が残る（測定：linechg_s1_c2）。 */
+            if (s->command == 24 && s->top_item == 2 && s->hit_kind) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            }
             for (r = JW_ITEM; r->command; r++) {
                 if (r->command != s->command || r->item != s->top_item
                     || r->right != s->top_right) {

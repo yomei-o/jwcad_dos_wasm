@@ -8512,6 +8512,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 c->lc_range = 0;
                 c->lc_attr = 0;
                 c->top_item = 3;
+                if (c->hit_kind) {
+                    c->stage = 1;       /* 線を拾ったあとなら、次の [ESC] で出る最初の行は [ESC] 付き（測定：linechg_s1_c3） */
+                }
             }
             /* 消去：項目を選んでから範囲を取っていたら、[ESC] はその項目の始点の行へ（測定：erase_s0_c1）。 */
             if (c->command == 25 && c->er_item) {
