@@ -427,11 +427,15 @@ static void sync_ui(void)
     /* □ の ①寸法 の欄を開いても数え箱は描き直さない：開く前が 横=・縦= の
      * 箱（置いているか、始点を持っていた）ならそのまま（測定：始点の
      * あと ① で `横= 0.000 縦= 0.000`）。 */
-    if (cmd.command != 4 || !cmd.box_ask) {
+    if ((cmd.command != 4 && cmd.command != 11) || !(cmd.command == 4 ? cmd.box_ask : cmd.circ_ask)) {
         box_keep = 0;
     }
     ui.keep_box_counts = cmd.command == 4 && cmd.box_ask
                          && (cmd.box_fix || box_keep);
+    /* ○ も：始点（中心）を持って ①径寸法 の欄を開いても、数え箱は ` 半径= / 直径=` のまま（測定：circle_s1_c1）。 */
+    if (cmd.command == 11 && cmd.circ_ask && box_keep) {
+        ui.keep_box_counts = 1;
+    }
     ui.typed_n = cmd.typed_n;
     memcpy(ui.typed, cmd.typed, sizeof ui.typed);
     ui.num[0] = cmd.num[0];
@@ -4091,7 +4095,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         /* 項目を押しても帯の `読取可能データ無` は消えます（測定：
          * 円線接 ④２線 で外したあと ①接円半径 を押すと帯は空）。 */
         cmd.missed = 0;
-        box_keep = cmd.command == 4 && ui.stage == 1;
+        box_keep = (cmd.command == 4 || cmd.command == 11) && ui.stage == 1;
         if (jw_cmd_top(&cmd, drawing, jw_ui_top_item(x, y), right)) {
             jw_ui_from(&ui, drawing);       /* the counts move with it */
             ui.command = cmd.command;

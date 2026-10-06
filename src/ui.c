@@ -2353,7 +2353,7 @@ static void counts(VGA *v, const JwUi *s)
         const JwStage *r;
 
         for (r = JW_STAGE; r->command; r++) {
-            if (r->command == 4 && r->stage == 1
+            if (r->command == s->command && r->stage == 1
                 && (r->row == 2 || r->row == 3) && r->col <= 15) {
                 stage_text_1(v, r, s, 1);
             }
