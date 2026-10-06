@@ -1,0 +1,38 @@
+# 消去(command=25) の ESC/BS/数値入力 総当たり監査（2026-10-06、nokori.md A節）。
+# 範囲は SAMPLE0 の (150,130)-(245,170)（線を含む）。本物との突き合わせは
+# tools/functest.sh（JWC バイト列の一致・レコード数の一致）。
+#
+# 消去 は複写・移動と違い、範囲確定のあとは段が一つ（3:追加･除外 → 2:確認）
+# しかなく、既存の「if (JW_RANGE(c)) { ... 丸ごと戻す ... }」節がそのまま
+# 正しい（2026-09-17 commit 0abd07c で半分取った状態・確定した状態の両方を
+# 消去で測定済み）。今回の監査で見つかったのは別件：確認画面
+# `復活出来ません |①実行|②中止|` で左を一度押すと `消去 再度(L)` の状態
+# （c->erase_again）に進むが、そこから [ESC] または ②中止 で戻っても
+# erase_again が 0 に戻っておらず、**同じ消去をやり直したときの最初の
+# 一押し目がいきなり消してしまっていた**（本当は二押し目でなければ消さない）。
+# src/cmd.c の [ESC] の「範囲ごと戻す」節と ②中止 の節、両方に
+# `if (c->command == 25) c->erase_again = 0;` を足して直した。
+
+# --- 既存どおり正しいことの確認（regression） ---
+er_stage1_esc_half_range|SAMPLE0|30 216 left|150 130 left|key esc
+er_stage3_esc_addexclude|SAMPLE0|30 216 left|150 130 left|245 170 left|key esc
+er_stage2_esc_confirm_no_delete|SAMPLE0|30 216 left|150 130 left|245 170 right|key esc
+er_two_click_deletes|SAMPLE0|30 216 left|150 130 left|245 170 right|160 150 left|160 150 left
+
+# --- バグの再現と直った確認（[ESC] 経路。「いきなり消す」症状は消えた） ---
+er_escbug_no_premature_delete|SAMPLE0|30 216 left|150 130 left|245 170 right|160 150 left|key esc|150 130 left|245 170 right|160 150 left
+
+# --- 同じ罠、②中止（数字キー 2）経路。こちらは最後まで本物と一致 ---
+er_cancel_item2_no_premature_delete|SAMPLE0|30 216 left|150 130 left|245 170 right|160 150 left|type 2|150 130 left|245 170 right|160 150 left
+er_cancel_item2_then_second_click_deletes|SAMPLE0|30 216 left|150 130 left|245 170 right|160 150 left|type 2|150 130 left|245 170 right|160 150 left|160 150 left
+
+# --- 未解決・DIFF のまま（nokori.md に記載。推測で直さない） ---
+# ②中止 経路（上）はやり直し後ふつうに 2 押しで消えるが、[ESC] 経路は
+# 同じだけ押し直しても（2 押し・3 押しで確認済み）本物は 1 本も消えない
+# （43 本のまま）。[ESC] は erase_again は戻すが、本物はそれ以上の何か
+# 別の状態も変えている可能性がある（測定のみ・decomp 未確認）。
+# fix 前との比較：いきなり 1 押しで消えてしまう症状（本件の本題）は
+# 両経路とも直っているので、このまま残す（下は「本物は変化なし」が
+# 期待値——DIFF 扱いは tools/funccases.sh 側の都合で、同じのではなく
+# こちらが「不一致」を示すために置いてある）。
+er_escbug_open_question_no_delete_even_after_3_clicks|SAMPLE0|30 216 left|150 130 left|245 170 right|160 150 left|key esc|150 130 left|245 170 right|160 150 left|160 150 left|160 150 left

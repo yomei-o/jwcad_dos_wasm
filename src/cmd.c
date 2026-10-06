@@ -6123,6 +6123,11 @@ range_items:
     if (item == 2) {            /* ②中止 -- the picked entities go back */
         c->pressed = 0;
         c->stage = 0;
+        /* 消去：`消去 再度(L)` まで進んでいたら、ここでもその積みを捨てる
+         * （[ESC] と同じ理由。上の [ESC] 節のコメント参照）。 */
+        if (c->command == 25) {
+            c->erase_again = 0;
+        }
         return 1;
     }
     if (item != 1) {            /* the bar between them does nothing */
@@ -8645,6 +8650,19 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             if (c->command == 25 && c->er_item) {
                 c->top_item = c->er_item;
                 c->er_pt = 0;
+            }
+            /* 消去：`復活出来ません |①実行|②中止|` で一度左を押して
+             * `消去 再度(L)` まで進んだあとの [ESC] は、段 0 の始点の行へ
+             * 戻るだけでなく「再度」の積みも捨てる。捨てないと、同じ
+             * 消去を ESC で中断してから範囲を取り直したとき、次の左の
+             * 一押し目が（本当は二押し目でなければ消さないのに）いきなり
+             * 消してしまう（測定：tools/cases/probe_erase.txt
+             * er_escbug_no_premature_delete。本物は 150,130-245,170 を
+             * 閉じて 1 回左を押しただけでは 43 本のまま、[ESC] を挟んで
+             * 同じ範囲を取り直し 1 回左を押しても依然 43 本。直す前の
+             * 移植はここで 3 本消して 40 本になっていた）。 */
+            if (c->command == 25) {
+                c->erase_again = 0;
             }
             /* 変形 ①は 始点の行（`変形範囲 始点マウス指示 (L)線・円 (R)線・円・文字`）へ戻る
              * （測定のみ・decomp 未確認：henkei_plain の最初の [ESC]）。 */
