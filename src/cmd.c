@@ -4938,6 +4938,7 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
     if (c->command == 11 && item == 2 && !c->circ_fix && !c->ell
         && c->stage == 0 && !c->pressed) {
         c->ell = 1;
+        c->ell_mouse = 0;
         c->ell_done = 0;
         return 1;
     }
@@ -14041,6 +14042,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             }
             c->missed = 0;
             c->ell++;
+            if (c->ell == 7) {
+                c->ell = 3;         /* ２点目のあとは 軸の平行線 の指示へ */
+                c->ell_mouse = 1;
+            }
             return 1;
         }
         if (c->ell == 3) {

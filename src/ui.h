@@ -599,6 +599,7 @@ typedef struct {
     int dim_ck_gone;
     int lc_keyed;
     int esc_gone;
+    int ell_mouse;
     int lc_attr;
     int dim8_plain;
     int meas8d;

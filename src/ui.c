@@ -3053,6 +3053,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         } else if (s->dim5m == 2) {
             jw_ui_text(v, 20, 2, 7, 0, "\x93\xc7\x8e\xe6\x89\xc2\x94\x5c\x83\x66\x81\x5b\x83\x5e\x96\xb3");
         }
+    } else if (s->command == 11 && s->ell == 3 && s->ell_mouse) {
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 9, 1, 7, 0, "\x8e\xb2\x82\xcc\x95\xbd\x8d\x73\x90\xfc\x82\xf0\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6" " |1)" "\x8a\x70\x93\x78\x8e\x77\x92\xe8" "|");
     } else if (s->command == 11 && s->ell == 6) {
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
         jw_ui_text(v, 8, 1, 7, 0, "\x82\x51\x93\x5f\x96\xda \x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6" " (L)free (R)Read");
