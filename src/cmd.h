@@ -569,6 +569,10 @@ typedef struct {
     int chb, chb_inner;
     int ch_bad;
     int ch_side;
+    /* 分割 ④２線間の等分割線（decomp ovl20 3ab8:01f5）：1=線(A)、2=線【B】か点、3=分割数の欄。 */
+    int div4, div4_bpt, div4_same, div4_made, div4_n;
+    long div4_a, div4_b;
+    double div4_px, div4_py;
     int div2;                   /* 分割 ②円分割点=2／③楕円分割点=3 を選んである（段 6 が始点＝円弧を拾う行） */
     int div_real;
     int dl_ask;
@@ -824,6 +828,7 @@ typedef struct {
  * The struct must be zeroed before the first call: it owns a little memory --
  * what 複写 and 移動 picked out of a range -- and this frees what was there. */
 void jw_cmd_pick(JwCmd *c, int command);
+int jw_cmd_div4_prev(void);
 double jw_cmd_pt2_last(void);
 
 /* A press inside the drawing area, at a screen pixel.  `right` is the other

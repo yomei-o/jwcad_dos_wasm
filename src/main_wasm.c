@@ -728,6 +728,11 @@ static void sync_ui(void)
     ui.pt_line = cmd.pt_line;
     ui.pt_par = cmd.pt_par;
     ui.div2 = cmd.div2;
+    ui.div4 = cmd.div4;
+    ui.div4_same = cmd.div4_same;
+    ui.div4_made = cmd.div4_made;
+    ui.div4_n = cmd.div4_n;
+    ui.div4_prev = jw_cmd_div4_prev();
     ui.pt2 = cmd.pt2;
     ui.pt2_circ = cmd.pt2_circ;
     ui.pt2_bad = cmd.pt2_bad;

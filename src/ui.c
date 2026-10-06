@@ -2978,6 +2978,47 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 16, 1, 7, 0, "\x8e\x6e\x93\x5f\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
         jw_ui_text(v, 31, 1, 7, 0, "(L)\x90\xfc\xa5\x89~");
         jw_ui_text(v, 68, 1, 7, 0, "(1) \x91\x4f \x94\xcd \x88\xcd|");
+    } else if (s->command == 21 && s->stage == 7) {
+        /* 分割 ④２線間の等分割線（decomp 01f5、測定：divide_s0_c4）。A／B／分割数。 */
+        char b[40];
+
+        if (s->div4 == 1) {
+            if (s->div4_made) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            }
+            jw_ui_text(v, 8, 1, 7, 0, "\x90\xfc\x81\x69\x82\x60\x81\x6a\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6 (\x82\x51\x90\xfc\x8a\xd4\x82\xcc\x93\x99\x95\xaa\x8a\x84\x90\xfc)");
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+        } else if (s->div4 == 2) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 8, 1, 7, 0, "\x90\xfc\x81\x79\x82\x61\x81\x7a\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
+            jw_ui_text(v, 27, 1, 7, 0, "(L)");
+            jw_ui_text(v, 36, 1, 7, 0, "\x93\x5f\x8e\x77\x8e\xa6(R)");
+        } else {
+            char t[96];
+
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 8, 1, 7, 0, "\x95\xaa\x8a\x84 \x90\x94 =");
+            memcpy(t, s->typed, 95);
+            t[s->typed_n < 95 ? s->typed_n : 95] = 0;
+            jw_ui_text(v, 18, 1, 7, 0, t);
+            jw_ui_text(v, 37, 1, 7, 0, "\x91\x4f\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R)");
+            sprintf(b, "[%d]", s->div4_prev);
+            jw_ui_text(v, 55, 1, 7, 0, b);
+            fill(v, 8 * (17 + s->typed_n), 7, 8 * (17 + s->typed_n) + 7, 15, 4);
+        }
+        if (s->div4_made && s->div4 == 1 && !s->missed) {
+            sprintf(b, "%4d", s->div4_n + 1);
+            jw_ui_text(v, 72, 2, 7, 0, b);
+            jw_ui_text(v, 76, 2, 7, 0, "\x95\xaa\x8a\x84");
+        }
+        if (s->missed && s->div4_same) {
+            jw_ui_text(v, 20, 2, 7, 0, "\x07\x93\xaf\x88\xea\x90\xfc");
+        } else if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 21 && s->stage == 6) {
         /* 分割 ②円分割点・③楕円分割点 の始点の行（decomp 14a1、測定：divide_s0_c2）。 */
         char b[80];

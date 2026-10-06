@@ -555,6 +555,7 @@ static double shown_angle(double x1, double y1, double x2, double y2)
 
 static void two_lines(JwCmd *c, Jwc *d);
 static int pt2_make(JwCmd *c, Jwc *d);
+static int cross_at(const JwcLine *a, const JwcLine *b, double *x, double *y);
 static int take(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
                 int right, double *x, double *y);
 
@@ -5110,6 +5111,14 @@ range_items:
         c->typed_n = 0;
         return 0;
     }
+    /* 分割 ④２線間の等分割線（段 7）。 */
+    if (c->command == 21 && c->stage == 0 && item == 4) {
+        c->div4 = 1;
+        c->div4_made = 0;
+        c->div4_n = 0;
+        c->stage = 7;
+        return 1;
+    }
     /* 分割 ②円分割点・③楕円分割点（decomp ovl20 3ab8:14a1、段 6 が始点＝円弧を拾う行）。項目の行
      * の ②③ を選ぶと帯が変わる。ここでは円弧を拾う行の外れまで（SAMPLE0 には円弧が無い）。 */
     if (c->command == 21 && c->stage == 0 && (item == 2 || item == 3)) {
@@ -6497,6 +6506,84 @@ double jw_cmd_pt2_last(void)
     return pt2_last_d;
 }
 
+/* 分割 ④の前回の分割数（本物の記憶は①②③と別で、初期値 10）。 */
+static int div4_prev_n = 10;
+int jw_cmd_div4_prev(void)
+{
+    return div4_prev_n;
+}
+
+/* 分割 ④：N-1 本の線を作る。A・B の線の端を、二線の交点から遠い端どうし・近い端どうしに
+ * 組み、i/N ずつ内分した線を引く（測定：probe_divide の 5 例で一致、組み方は推測。B が点なら
+ * 両端がその点で、A に平行な線になる）。 */
+static void div4_make(JwCmd *c, Jwc *d, int n)
+{
+    const JwcLine A = d->lines[c->div4_a];
+    double ix = 0.0, iy = 0.0, a0x, a0y, a1x, a1y, b0x, b0y, b1x, b1y;
+    int i;
+
+    c->div4_n = 0;
+    if (c->div4_bpt) {
+        b0x = b1x = c->div4_px;
+        b0y = b1y = c->div4_py;
+        if (!cross_at(&A, &A, &ix, &iy)) {
+            ix = A.x0;
+            iy = A.y0;
+        }
+        ix = A.x0;
+        iy = A.y0;
+        /* 点が相手のとき：A の両端を並べ替えない（0→1）。 */
+        a0x = A.x0; a0y = A.y0; a1x = A.x1; a1y = A.y1;
+    } else {
+        const JwcLine B = d->lines[c->div4_b];
+        double da0, da1, db0, db1;
+
+        if (!cross_at(&A, &B, &ix, &iy)) {
+            ix = (A.x0 + A.x1) / 2.0;
+            iy = (A.y0 + A.y1) / 2.0;
+        }
+        da0 = hypot(A.x0 - ix, A.y0 - iy);
+        da1 = hypot(A.x1 - ix, A.y1 - iy);
+        db0 = hypot(B.x0 - ix, B.y0 - iy);
+        db1 = hypot(B.x1 - ix, B.y1 - iy);
+        if (da0 >= da1) { a0x = A.x0; a0y = A.y0; a1x = A.x1; a1y = A.y1; }
+        else            { a0x = A.x1; a0y = A.y1; a1x = A.x0; a1y = A.y0; }
+        if (db0 >= db1) { b0x = B.x0; b0y = B.y0; b1x = B.x1; b1y = B.y1; }
+        else            { b0x = B.x1; b0y = B.y1; b1x = B.x0; b1y = B.y0; }
+    }
+    for (i = 1; i < n; i++) {
+        const double t = (double)i / (double)n;
+
+        if (jwc_add_line(d, (float)(a0x + (b0x - a0x) * t), (float)(a0y + (b0y - a0y) * t),
+                         (float)(a1x + (b1x - a1x) * t), (float)(a1y + (b1y - a1y) * t),
+                         (unsigned char)d->line_type, (unsigned char)d->pen,
+                         (unsigned char)d->write_layer)) {
+            d->lines[d->n_lines - 1].rest[1] = 0xf4;
+            c->div4_n++;
+        }
+    }
+    c->div4_made = c->div4_n > 0;
+}
+
+static int div4_accept(JwCmd *c, Jwc *d)
+{
+    int n = div4_prev_n;
+
+    if (c->typed_n > 0) {
+        n = (int)field_eval(c->typed);
+    }
+    c->typed_n = 0;
+    c->typed[0] = 0;
+    if (n < 2 || n > 10000) {
+        return 1;
+    }
+    div4_prev_n = n;
+    c->typing = 0;
+    div4_make(c, d, n);
+    c->div4 = 1;
+    return 1;
+}
+
 /* 点を一つ足す：仮点は範囲 x∈[-500,1000] y∈[-300,800]、同じ位置の重複・100 個目以降は黙って足さない、
  * 実点は記録の点（decomp 0x30353／1bb4:35b8、測定：probe_pdist）。足せたら 1。 */
 static int pt_drop(JwCmd *c, Jwc *d, double x, double y)
@@ -7088,6 +7175,54 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         c->moved = 0;
         return 1;
+    }
+    /* 分割 ④（段 7）：ESC は 欄→B→A、A は作った線を戻す。BS は A だけで最初の行へ。欄は数。 */
+    if (c->command == 21 && c->stage == 7 && d) {
+        if (key == 27) {
+            if (c->div4 == 3) {
+                c->typing = 0;
+                c->typed_n = 0;
+                c->typed[0] = 0;
+                c->div4 = 2;
+                return 1;
+            }
+            if (c->div4 == 2) {
+                c->div4 = 1;
+                return 1;
+            }
+            if (c->div4_made && c->div4_n > 0) {
+                jwc_ink_settle(d);
+                while (c->div4_n > 0 && d->n_lines > 0) {
+                    jwc_remove_line(d, d->n_lines - 1);
+                    c->div4_n--;
+                }
+                c->div4_made = 0;
+                return 1;
+            }
+            return 0;
+        }
+        if (key == 8 && c->div4 == 1) {
+            c->stage = 0;
+            c->div4 = 0;
+            c->missed = 0;
+            return 1;
+        }
+        if (c->div4 == 3) {
+            if (key == 13 || key == 10) {
+                return div4_accept(c, d);
+            }
+            if (key == 8) {
+                if (c->typed_n > 0) {
+                    c->typed[--c->typed_n] = 0;
+                }
+                return 1;
+            }
+            if (FIELD_CHAR(key) && FIELD_ROOM(c)) {
+                c->typed[c->typed_n++] = (char)key;
+                c->typed[c->typed_n] = 0;
+            }
+            return 1;
+        }
     }
     /* 分割 ②③の始点の行：BS は分割の最初の行へ、[ESC] は何も起こさない（decomp 14a1：BS は S0 だけ有効）。 */
     if (c->command == 21 && c->stage == 6) {
@@ -16747,6 +16882,61 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         /* 最初の行 `|①２点間分割点(L)|②円分割点(R)|…` では、図面の左押しは
          * ① を選ぶだけで点は取らない（測定：func_all divide_s1_c1、押したあと
          * `◇２点間分割点 始点指示 …|①【仮点】| 残 100`）。② は未移植。 */
+        if (c->stage == 7) {
+            /* ④：A は左で線を拾う（右は外れ扱い）、B は左で線（A と同じは 同一線）、右で点を読む、
+             * 分割数の欄の右押しは前回値（測定：divide_s0_c4。decomp 01f5）。 */
+            c->div4_same = 0;
+            if (c->div4 == 3) {
+                if (!right) {
+                    return 1;
+                }
+                c->typed_n = 0;
+                c->typed[0] = 0;
+                return div4_accept(c, d);
+            }
+            if (c->div4 == 1) {
+                const long k = right ? -1 : pick_line(d, w, sx, sy);
+
+                if (k < 0) {
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                c->div4_a = k;
+                c->div4 = 2;
+                return 1;
+            }
+            if (right) {
+                if (!take(c, d, w, sx, sy, 1, &px, &py)) {
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                c->div4_bpt = 1;
+                c->div4_px = px;
+                c->div4_py = py;
+            } else {
+                const long k = pick_line(d, w, sx, sy);
+
+                if (k < 0) {
+                    c->missed = 1;
+                    return 0;
+                }
+                if (k == c->div4_a) {
+                    c->div4_same = 1;
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                c->div4_bpt = 0;
+                c->div4_b = k;
+            }
+            c->div4 = 3;
+            c->typing = 1;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            return 1;
+        }
         if (c->stage == 6) {
             /* ②③の始点：円弧を拾う（L/R どちらも）。外れは `読取可能データ無`、近くに線があれば桁が
              * 一つ左で BEL なし（測定：divide_s0_c2・c3）。円弧が取れた先は未実装。 */
