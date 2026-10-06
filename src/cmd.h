@@ -635,6 +635,10 @@ typedef struct {
     /* 測定 ②角度（decomp ovl29 0x3278a〜）：ms2 0=◇原点、1=◆角度点。ms2_res は結果あり（②が 表示）。 */
     int meas2, ms2, ms2_mode, ms2_res;
     double ms2_ox, ms2_oy, ms2_deg;
+    /* 測定 ③面積（decomp ovl29 0x2d978〜0x2efb8）：点列から三角形 (P1,P[n-1],P[n]) を足していく。
+     * ms3_tri は各三角形の符号つき面積（mm²）。累計は合計の絶対値、面積は最後の三角形の絶対値。 */
+    int meas3, ms3_n;
+    double ms3_x[32], ms3_y[32], ms3_tri[32];
     int er_item;                /* 消去：始点を押したときの項目（[ESC] でその行へ戻る） */
     int er_pt;                  /* 消去：項目を選んだあとの始点（終点の行が `終点指示 (L)free (R)Read` になる） */
     int mv_none;                /* 複写・移動：何も選んでいないまま置いた（[ESC] の札が出ない） */

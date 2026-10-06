@@ -860,6 +860,36 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
 {
     int px, py;
 
+    /* 測定 ③面積：点を結んだ輪郭が赤で残る。n>=3 で P1-P2…P[n-1]-P[n] が実線、n>=2 で P[n]→P1 が
+     * 点線（4 画素点・4 画素休み。測定：measure_s0_c3。矢には付いてこない）。 */
+    if (c->command == 15 && c->meas3 && c->ms3_n >= 2) {
+        int k, ax, ay, bx, by;
+
+        v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+        v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+        v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+        v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+        if (c->ms3_n >= 3) {
+            for (k = 1; k < c->ms3_n; k++) {
+                at_screen(w, c->ms3_x[k], c->ms3_y[k], &ax, &ay);
+                at_screen(w, c->ms3_x[k + 1], c->ms3_y[k + 1], &bx, &by);
+                jw_line_clipped(v, ax, ay, bx, by, 2, 0x18, JW_STYLE_SOLID);
+            }
+        }
+        at_screen(w, c->ms3_x[1], c->ms3_y[1], &ax, &ay);
+        at_screen(w, c->ms3_x[c->ms3_n], c->ms3_y[c->ms3_n], &bx, &by);
+        /* 点線は P1 から Pn へ（丸めが合う）。位相は点の数で変わる（測定のみ・規則は未解明：4 画素点灯の
+         * 始まりが 点 2 で idx2、3 点以上で idx6（5 点まで確認）。decomp の線種レジスタの引き継ぎらしいが未読）。 */
+        {
+            static const int PH[8] = { 2, 2, 2, 6, 6, 6, 6, 6 };
+            const int ph = PH[c->ms3_n < 8 ? c->ms3_n : 7];
+            const int pat = (((0xf0 << (8 - ph)) | (0xf0 >> ph)) & 0xff);
+
+            jw_line_clipped(v, ax, ay, bx, by, 2, 0x18, (pat << 8) | pat);
+        }
+        return;
+    }
+
     /* **寸法 ⑤一括 の緑の点線は出していません。** 始線を取ったところから
      * 矢の先へ色 4 の点が 4 画素おきに並びます（測定：始線 を (400,140) で
      * 取って矢を (324,250) に置くと (399,140) から (325,248) まで）。
@@ -5111,6 +5141,18 @@ range_items:
         c->typed_n = 0;
         return 0;
     }
+    /* 測定 ③面積：◇始点指示から（decomp 0x2d978）。◆の升：① 表示（未実装）、② ｸﾘｱｰ、③ 弧（未実装）。 */
+    if (c->command == 15 && c->stage == 0 && !c->meas2 && !c->meas3 && item == 3) {
+        c->meas3 = 1;
+        c->ms3_n = 0;
+        return 1;
+    }
+    if (c->command == 15 && c->meas3) {
+        if (item == 2 && c->ms3_n > 0) {
+            c->ms3_n = 0;               /* ｸﾘｱｰ：◇へ */
+        }
+        return 1;
+    }
     /* 測定 ②角度の最初の行（decomp ovl29 0x3278a）：◇原点指示。 */
     if (c->command == 15 && c->stage == 0 && !c->meas2 && item == 2) {
         c->meas2 = 1;
@@ -7190,6 +7232,22 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->pick_a = c->pick_b = -1;
         }
         c->moved = 0;
+        return 1;
+    }
+    /* 測定 ③面積の キー：ESC は点を一つ戻す（n==1 は ◇ へ、◇ は何もしない）、BS は ◇ だけで最初の行へ。 */
+    if (c->command == 15 && c->meas3) {
+        if (key == 27) {
+            if (c->ms3_n > 0) {
+                c->ms3_n--;
+                return 1;
+            }
+            return 0;
+        }
+        if (key == 8 && c->ms3_n == 0) {
+            c->meas3 = 0;
+            c->top_item = 0;
+            return 1;
+        }
         return 1;
     }
     /* 測定 ②角度の キー：◆で ESC は ◇ へ、◇で BS は測定の最初の行へ（ESC は何もしない）。 */
@@ -13257,6 +13315,36 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->lc_attr = 1;
         c->top_item = 0;
         c->top_right = 0;
+    }
+    /* 測定 ③面積：点を足す。同じ点か 31 点目は足さない（beep）。n>=3 で三角形 (P1,P[n-1],P[n]) を足す
+     * （cross=(x[n-1]-x1)(y[n]-y1)-(x[n]-x1)(y[n-1]-y1)、面積=cross*s²*0.5。測定：measure_s0_c3）。 */
+    if (c->command == 15 && c->meas3) {
+        double qx, qy;
+
+        if (!take_point(c, d, w, sx, sy, right, &qx, &qy)) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        if (c->ms3_n > 0 && (float)qx == (float)c->ms3_x[c->ms3_n]
+            && (float)qy == (float)c->ms3_y[c->ms3_n]) {
+            return 1;
+        }
+        if (c->ms3_n >= 30) {
+            return 1;
+        }
+        c->ms3_n++;
+        c->ms3_x[c->ms3_n] = (float)qx;
+        c->ms3_y[c->ms3_n] = (float)qy;
+        if (c->ms3_n >= 3) {
+            const int n = c->ms3_n;
+            const double sc = (double)jwc_zukei_scale(d);
+            const double cross = (c->ms3_x[n - 1] - c->ms3_x[1]) * (c->ms3_y[n] - c->ms3_y[1])
+                               - (c->ms3_x[n] - c->ms3_x[1]) * (c->ms3_y[n - 1] - c->ms3_y[1]);
+
+            c->ms3_tri[n] = cross * sc * sc * 0.5;
+        }
+        return 1;
     }
     /* 測定 ②角度：◇で原点（結果は消える）、◆で角度点（原点と同じ点は無視）。Ｘ軸基準だけ
      * （２点間は未実装）。θ=atan2(dy,dx) で (-180,180]（測定：measure_s0_c2）。 */

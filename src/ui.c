@@ -2989,6 +2989,47 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 16, 1, 7, 0, "\x8e\x6e\x93\x5f\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
         jw_ui_text(v, 31, 1, 7, 0, "(L)\x90\xfc\xa5\x89~");
         jw_ui_text(v, 68, 1, 7, 0, "(1) \x91\x4f \x94\xcd \x88\xcd|");
+    } else if (s->command == 15 && s->meas3) {
+        /* 測定 ③面積（decomp 0x2d978〜、測定：measure_s0_c3）。◇始点指示／◆次点指示。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        if (s->ms3_n == 0) {
+            jw_ui_text(v, 6, 1, 7, 0, "\x81\x45\x96\xca \x90\xcf    \x81\x9e \x8e\x6e\x93\x5f\x8e\x77\x8e\xa6 (L)free (R)Read");
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+        } else {
+            char b[64];
+            static const char *const UN[3] = { "m2", "cm2", "mm2" };
+            static const double MUL[3] = { 1e-6, 1e-2, 1.0 };
+
+            jw_ui_text(v, 6, 1, 7, 0, "\x81\x45\x96\xca \x90\xcf \x81\x9f\x8e\x9f\x93\x5f\x8e\x77\x8e\xa6 (L)free (R)Read \x81\x69\x82\x72\x81\x81""1/1\x81\x6a|1)\x95\x5c \x8e\xa6|2)\xb8\xd8\xb1\xb0|3) \x8c\xca |");
+            if (s->ms3_n >= 2) {
+                char n1[32], n2[32];
+                size_t l;
+                int pass;
+
+                for (pass = 0; pass < 2; pass++) {
+                    char *t = pass ? n2 : n1;
+
+                    sprintf(t, "%.*f", s->meas_dec, (pass ? s->ms3_last : s->ms3_tot) * MUL[s->meas_unit % 3]);
+                    l = strlen(t);
+                    while (l > 0 && t[l - 1] == '0' && strchr(t, '.')) {
+                        t[--l] = 0;
+                    }
+                    if (l > 0 && t[l - 1] == '.') {
+                        t[--l] = 0;
+                    }
+                }
+                sprintf(b, "%s %s %s", "\x96\xca \x90\xcf \x97\xdd\x8c\x76 =", n1, UN[s->meas_unit % 3]);
+                jw_ui_text(v, 20, 3, 7, 0, b);
+                sprintf(b, "%s %s %s", "\x96\xca \x90\xcf =", n2, UN[s->meas_unit % 3]);
+                jw_ui_text(v, 50, 3, 7, 0, b);
+            }
+        }
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 15 && s->meas2) {
         /* 測定 ②角度（decomp ovl29、測定：measure_s0_c2）。◇原点指示／◆角度点。 */
         if (s->ms2 == 0) {

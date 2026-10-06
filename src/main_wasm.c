@@ -728,6 +728,19 @@ static void sync_ui(void)
     ui.pt_line = cmd.pt_line;
     ui.pt_par = cmd.pt_par;
     ui.div2 = cmd.div2;
+    ui.meas3 = cmd.meas3;
+    ui.ms3_n = cmd.ms3_n;
+    {
+        double tot = 0.0, last = 0.0;
+        int k;
+
+        for (k = 3; k <= cmd.ms3_n && k < 32; k++) {
+            tot += cmd.ms3_tri[k];
+            last = cmd.ms3_tri[k];
+        }
+        ui.ms3_tot = tot < 0.0 ? -tot : tot;
+        ui.ms3_last = last < 0.0 ? -last : last;
+    }
     ui.meas2 = cmd.meas2;
     ui.ms2 = cmd.ms2;
     ui.ms2_mode = cmd.ms2_mode;
