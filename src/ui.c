@@ -2989,6 +2989,48 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         jw_ui_text(v, 16, 1, 7, 0, "\x8e\x6e\x93\x5f\x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6");
         jw_ui_text(v, 31, 1, 7, 0, "(L)\x90\xfc\xa5\x89~");
         jw_ui_text(v, 68, 1, 7, 0, "(1) \x91\x4f \x94\xcd \x88\xcd|");
+    } else if (s->command == 15 && s->meas4) {
+        /* 測定 ④座標（decomp 0x2efbb〜、測定：measure_s0_c4）。◇原点／◆座標点。 */
+        if (s->ms4 == 0) {
+            jw_ui_text(v, 6, 1, 7, 0, "\x81\x45\x8d\xc0 \x95\x57  \x81\x9e\x8c\xb4\x93\x5f  \x83\x7d\x83\x45\x83\x58\x8e\x77\x8e\xa6 (L)free (R)Read");
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+        } else {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            jw_ui_text(v, 6, 1, 7, 0, "\x81\x45\x8d\xc0 \x95\x57  \x81\x9f\x8d\xc0\x95\x57\x93\x5f\x8e\x77\x8e\xa6(L)free (R)Read");
+            jw_ui_text(v, 43, 1, 7, 0, "\x81\x69\x82\x72\x81\x81""1/1\x81\x6a");
+            jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
+            if (s->ms4 >= 2) {
+                char b[64], t[2][32];
+                static const char *const UN[3] = { "\x82\x8d", "cm", "mm" };
+                static const double MUL[3] = { 1.0, 100.0, 1000.0 };
+                int pass;
+
+                jw_ui_text(v, 56, 1, 7, 0, "|1)\x95\x5c \x8e\xa6|");
+                for (pass = 0; pass < 2; pass++) {
+                    size_t l;
+                    char *q = t[pass];
+
+                    sprintf(q, "%.*f", s->meas_dec, (pass ? s->ms4_y : s->ms4_x) * MUL[s->meas_unit % 3]);
+                    l = strlen(q);
+                    while (l > 0 && q[l - 1] == '0' && strchr(q, '.')) {
+                        q[--l] = 0;
+                    }
+                    if (l > 0 && q[l - 1] == '.') {
+                        q[--l] = 0;
+                    }
+                }
+                sprintf(b, "%s %s %s", "\x8d\xc0 \x95\x57 \x82\x77=", t[0], UN[s->meas_unit % 3]);
+                jw_ui_text(v, 20, 3, 7, 0, b);
+                sprintf(b, "%s %s %s", "\x82\x78=", t[1], UN[s->meas_unit % 3]);
+                jw_ui_text(v, 50, 3, 7, 0, b);
+            }
+        }
+        if (s->missed) {
+            jw_ui_text(v, 32, 2, 7, 0,
+                       "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
+                       "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
+                       "\x5b" "\x83" "\x5e" "\x96" "\xb3");
+        }
     } else if (s->command == 15 && s->meas3) {
         /* 測定 ③面積（decomp 0x2d978〜、測定：measure_s0_c3）。◇始点指示／◆次点指示。 */
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");

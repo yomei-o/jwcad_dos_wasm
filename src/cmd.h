@@ -639,6 +639,9 @@ typedef struct {
      * ms3_tri は各三角形の符号つき面積（mm²）。累計は合計の絶対値、面積は最後の三角形の絶対値。 */
     int meas3, ms3_n;
     double ms3_x[32], ms3_y[32], ms3_tri[32];
+    /* 測定 ④座標（decomp ovl29 0x2efbb〜）：ms4 0=◇原点、1=原点を取った（◆）、2 以上は座標点を取った。 */
+    int meas4, ms4;
+    double ms4_ox, ms4_oy, ms4_px, ms4_py;
     int er_item;                /* 消去：始点を押したときの項目（[ESC] でその行へ戻る） */
     int er_pt;                  /* 消去：項目を選んだあとの始点（終点の行が `終点指示 (L)free (R)Read` になる） */
     int mv_none;                /* 複写・移動：何も選んでいないまま置いた（[ESC] の札が出ない） */

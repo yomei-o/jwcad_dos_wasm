@@ -728,6 +728,14 @@ static void sync_ui(void)
     ui.pt_line = cmd.pt_line;
     ui.pt_par = cmd.pt_par;
     ui.div2 = cmd.div2;
+    ui.meas4 = cmd.meas4;
+    ui.ms4 = cmd.ms4;
+    {
+        const double sc = drawing ? (double)jwc_zukei_scale(drawing) : 1.0;
+
+        ui.ms4_x = (cmd.ms4_px - cmd.ms4_ox) * sc / 1000.0;
+        ui.ms4_y = (cmd.ms4_py - cmd.ms4_oy) * sc / 1000.0;
+    }
     ui.meas3 = cmd.meas3;
     ui.ms3_n = cmd.ms3_n;
     {

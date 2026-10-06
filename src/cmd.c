@@ -5141,6 +5141,15 @@ range_items:
         c->typed_n = 0;
         return 0;
     }
+    /* 測定 ④座標：◇原点から（decomp 0x2efbb）。 */
+    if (c->command == 15 && c->stage == 0 && !c->meas2 && !c->meas3 && !c->meas4 && item == 4) {
+        c->meas4 = 1;
+        c->ms4 = 0;
+        return 1;
+    }
+    if (c->command == 15 && c->meas4) {
+        return 1;
+    }
     /* 測定 ③面積：◇始点指示から（decomp 0x2d978）。◆の升：① 表示（未実装）、② ｸﾘｱｰ、③ 弧（未実装）。 */
     if (c->command == 15 && c->stage == 0 && !c->meas2 && !c->meas3 && item == 3) {
         c->meas3 = 1;
@@ -7232,6 +7241,22 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->pick_a = c->pick_b = -1;
         }
         c->moved = 0;
+        return 1;
+    }
+    /* 測定 ④座標の キー：ESC は ◇（原点から取り直し）、◇ の ESC は何もしない、BS は ◇ だけで最初の行へ。 */
+    if (c->command == 15 && c->meas4) {
+        if (key == 27) {
+            if (c->ms4 > 0) {
+                c->ms4 = 0;
+                return 1;
+            }
+            return 0;
+        }
+        if (key == 8 && c->ms4 == 0) {
+            c->meas4 = 0;
+            c->top_item = 0;
+            return 1;
+        }
         return 1;
     }
     /* 測定 ③面積の キー：ESC は点を一つ戻す（n==1 は ◇ へ、◇ は何もしない）、BS は ◇ だけで最初の行へ。 */
@@ -13315,6 +13340,29 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->lc_attr = 1;
         c->top_item = 0;
         c->top_right = 0;
+    }
+    /* 測定 ④座標：◇で原点、◆で座標点（原点からの相対 X,Y。(0,0) は beep）。 */
+    if (c->command == 15 && c->meas4) {
+        double qx, qy;
+
+        if (!take_point(c, d, w, sx, sy, right, &qx, &qy)) {
+            c->missed = 1;
+            return 0;
+        }
+        c->missed = 0;
+        if (c->ms4 == 0) {
+            c->ms4_ox = (float)qx;
+            c->ms4_oy = (float)qy;
+            c->ms4 = 1;
+            return 1;
+        }
+        if ((float)qx == (float)c->ms4_ox && (float)qy == (float)c->ms4_oy) {
+            return 1;
+        }
+        c->ms4_px = (float)qx;
+        c->ms4_py = (float)qy;
+        c->ms4 = 2;
+        return 1;
     }
     /* 測定 ③面積：点を足す。同じ点か 31 点目は足さない（beep）。n>=3 で三角形 (P1,P[n-1],P[n]) を足す
      * （cross=(x[n-1]-x1)(y[n]-y1)-(x[n]-x1)(y[n-1]-y1)、面積=cross*s²*0.5。測定：measure_s0_c3）。 */
