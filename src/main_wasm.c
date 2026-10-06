@@ -1099,6 +1099,7 @@ static void present(void)
     if (ui.zoom_stage == 2) {
         jw_ui_zoom_band(&vga, zoom_x, zoom_y, mouse_x, mouse_y);
     }
+    jw_ui_band_end(&vga, &ui);
     jw_ui_range_notch(&vga);
     jw_ui_cursor(&vga, mouse_x, mouse_y);
     vga_render(&vga, pixels);
@@ -1866,7 +1867,7 @@ EMSCRIPTEN_KEEPALIVE const char *jw_cmd_state(void)
              cmd.command, cmd.stage, cmd.pressed, cmd.typing, cmd.fix_mode,
              cmd.fix_done, cmd.fix_len, cmd.fix_angle, cmd.ask_kind,
              cmd.top_item, cmd.box_ask, cmd.box_fix, cmd.circ_fix,
-             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer, cmd.hatch_n, cmd.hatch_line[0], cmd.missed, cmd.lc_range, cmd.lc_narrow, cmd.zukei, ui.top_item, ui.stage, ui.escaped, cmd.meas_noind, cmd.meas5, ui.meas5, cmd.meas5s, drawing ? (int)drawing->n_lines : -1, (int)ui.n_lines, cmd.dim8_plain);
+             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer, cmd.hatch_n, cmd.hatch_line[0], cmd.missed, cmd.lc_range, cmd.lc_narrow, cmd.zukei, ui.top_item, ui.stage, ui.escaped, cmd.meas_noind, cmd.meas5, ui.meas5, cmd.meas5s, drawing ? (int)drawing->n_lines : -1, (int)ui.n_lines, cmd.ch_side | (cmd.ch_ask << 1) | (cmd.chb << 2));
     return buf;
 }
 EMSCRIPTEN_KEEPALIVE int jw_top_item(int x, int y) { return jw_ui_top_item(x, y); }

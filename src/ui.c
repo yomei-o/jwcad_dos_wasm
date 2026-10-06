@@ -527,6 +527,15 @@ int jw_ui_past_cells(int x, int y)
  * 桁 17 の値も 端部 の桁も円弧に乗ります（測定：値の右端 x=167 の y=31 が
  * 原作では白のまま、こちらでは円弧の水色でした）。段の中で書くと
  * jw_cmd_after が上から塗るので、ここだけ最後に書きます。 */
+/* jw_cmd_band のあとに書くもの（命令の帯が上の行を描き直すので、そのあと）。 */
+void jw_ui_band_end(VGA *v, const JwUi *s)
+{
+    /* 面取【辺寸法】：角を作ったあとの行（段 2）でも `②【面寸法】` の 面 は 辺（測定：chamfer_s0_c2）。 */
+    if (s->command == 8 && s->ch_side && !s->chb && !s->top_item && (s->stage == 0 || s->stage == 2)) {
+        jw_ui_text(v, 45, 1, 7, 0, "\x95\xd3");
+    }
+}
+
 void jw_ui_band_last(VGA *v, const JwUi *s)
 {
     /* 面取 ④一括処理 の追加・除外の行：外した押しは `読取可能データ無`（測定：chamfer_s0_c4）。 */
