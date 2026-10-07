@@ -532,11 +532,12 @@ void jw_ui_band_end(VGA *v, const JwUi *s)
 {
     /* 図形 の帯の行 2 の札：③表示 を押すごとに `ﾌｧｲﾙ`⇄`図形`（桁 25）、⑥レイヤ を押すごとに
      * `書込`→`元ﾚｲﾔ`→`ｸﾞﾙｰﾌﾟ`（桁 48）。ovl31 の DS:0x1174・0x1175 の数で選ぶ文字（測定：zukei_s0_c3・c6）。 */
-    if (s->command == 27 && !s->zukei && !s->top_item && !s->zukei_ask && s->stage == 0
+    if (s->command == 27 && !s->zukei && !s->top_item && !s->zukei_ask && s->stage == 0 && !s->zukei_plain
         && (s->zukei_disp || s->zukei_layer)) {
-        static const char *const L2[3] = { "\x20" "\x8f" "\x91" "\x8d" "\x9e" "\x20", "\x8c\xb3\xda\xb2\xd4 ", "\xb8\xde\xd9\xb0\xcc\xdf" };
+        static const char *const L2[3] = { "\x20" "\x8f" "\x91" "\x8d" "\x9e" "\x20", "\x8c\xb3\xda\xb2\xd4", "\xb8\xde\xd9\xb0\xcc\xdf" };
 
         jw_ui_text(v, 25, 2, 7, 0xffffu, s->zukei_disp ? "\x90}\x8c`" : "\xcc\xa7\xb2\xd9");
+        fill(v, 376, 17, 423, 31, 0);   /* 表の 6 桁の白枠の残りを消す（測定：zukei_s0_c6） */
         jw_ui_text(v, 48, 2, 7, 0xffffu, L2[s->zukei_layer % 3]);
     }
     if (s->command == 8 && s->ch_same == 1 && s->stage == 1) {
@@ -4891,6 +4892,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 continue;
             }
             if (s->command == 13 && s->tx_plain && p->row != 1) {
+                continue;
+            }
+            if (s->command == 27 && s->zukei_plain && p->row == 2) {
                 continue;
             }
             if (s->command == 14 && s->stage == 7 && s->dim8_plain && p->row != 1) {

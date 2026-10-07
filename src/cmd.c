@@ -5971,10 +5971,12 @@ range_items:
     if (c->command == 27 && c->pressed == 0 && c->stage == 0 && !c->zukei) {
         if (item == 3) {
             c->zukei_disp = !c->zukei_disp;
+            c->zukei_plain = 0;
             return 1;
         }
         if (item == 6) {
             c->zukei_layer = (c->zukei_layer + 1) % 3;
+            c->zukei_plain = 0;
             return 1;
         }
     }
@@ -8122,6 +8124,16 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     if (c->command == 28 && key == 8 && c->top_item && !c->typing && !c->typing_text && !c->te_sub
         && c->stage == 0 && !c->te5) {
         c->top_item = 0;
+        return 1;
+    }
+    if (c->command == 27 && c->zukei_plain && (key == 13 || key == 10 || key == 27)) {
+        c->zukei_plain = 0;         /* [Enter]・[ESC] で札が戻る（測定のみ：zukei_s0_c6_v・c1_v） */
+        return 1;
+    }
+    /* 図形 の最初の行の升の無い数字（0・9）は行 2 の札を消す（測定のみ：zukei_s0_c6_v）。 */
+    if (c->command == 27 && c->stage == 0 && !c->typing && !c->top_item && !c->zukei
+        && (key == '0' || key == '9')) {
+        c->zukei_plain = 1;
         return 1;
     }
     /* ⑦連線 の始点の行の [ESC] は行 2 の `45度毎 マウス` の札を消すだけ（測定のみ・decomp 未確認：
