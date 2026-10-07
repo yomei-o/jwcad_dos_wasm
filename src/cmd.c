@@ -8298,7 +8298,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* 図形 の最初の行の升の無い数字（0・9）は行 2 の札を消す（測定のみ：zukei_s0_c6_v）。 */
     if (c->command == 27 && c->stage == 0 && !c->typing && !c->top_item && !c->zukei
-        && key == '0') {
+        && (key == '0' || key == 8)) {
         c->zukei_plain = 1;
         return 1;
     }
