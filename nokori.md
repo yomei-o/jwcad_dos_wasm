@@ -9,6 +9,9 @@ RESUME.md は経緯と手順、**ここは「あと何をやれば完成か」�
 **残りの差 37 件**は 図形・オプション・入出力・文字・寸法 など未実装の板（想定内）と、円線接 e（多段の項目選択）、
 線変更 w、円 E_92（円を置いた直後の読み外れ後の ESC）、2線 W_90（始点行の Enter）、文字 A、円弧 N、b_4。
 第 2 弾の探索 tools/cases/fuzz_esc2.txt（SEED=7 DEPTH=6、85 件。複写の ③ 置き・円線接・線変更・文字・寸法 などに 40 件前後の差が残る）も本物と照合済み。
+項目の歩き回り（コマンド×項目×小項目 の総当たり）：`tools/cases/probe_item_walk.txt`（e r w a F N E、448 件、差は 文編集④の設定 など数件）と
+`probe_item_walk2.txt`（その他の作図コマンド、約 1000 件）、`probe_option_walk.txt`（オプション 90 件）。
+`python tools/rbatch.py <一覧>` で原本を走らせ（1 件 5〜10 秒。ビルド機 192.168.6.14）、`python tools/stepfast.py <一覧>` で比べる。
 **tmp の掃除**：tmp\origcache・tmp\emucache・tmp\stepcheck は NTFS 圧縮済み（`compact /c /s:<dir> /i /q`）。
 新しく大きなキャッシュ用ディレクトリを作ったら同じ圧縮を掛けること（19.7GB→2.5GB になった）。
 
