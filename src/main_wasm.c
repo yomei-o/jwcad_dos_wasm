@@ -5173,7 +5173,8 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
          || (cmd.command == 25 && cmd.span))
         && !cmd.typing && !cmd.typing_text
         && (cmd.pressed == 0 || cmd.pressed == 2) && !cmd.te5
-        && !(JW_MOVE_CMD(cmd.command) && cmd.stage >= 4)) {      /* 複写・移動 の 位置を聞く段などでは [Enter] は何もしない（測定：escfz_c_2） */
+        && !(JW_MOVE_CMD(cmd.command) && cmd.stage >= 4)
+        && !(cmd.command == 27 && cmd.top_item == 4)) {      /* 複写・移動 の 位置を聞く段などでは [Enter] は何もしない（測定：escfz_c_2） */
         key = '1';
     }
     /* 図形 の最初の行の [9] は何もしない（測定のみ：zukei_s0_c9。<他図面> の升は鍵では選べない）。 */

@@ -18929,7 +18929,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         }
         if (c->command == 27 && !c->zukei && !c->pressed && c->top_item == 4) {
             /* ④グループ変更：枠の升を押すとその升が選ばれる（測定：zukei_s0_c4）。 */
-            if (sx >= 144 && sx < 624 && sy >= 56 && sy < 376) {
+            if (!c->zukei_drive && sx >= 144 && sx < 624 && sy >= 56 && sy < 376) {
                 c->zukei_cell = (sy - 56) / 32 * 5 + (sx - 144) / 96;
             }
             return 1;
