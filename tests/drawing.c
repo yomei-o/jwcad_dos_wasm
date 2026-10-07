@@ -279,6 +279,10 @@ int main(int argc, char **argv)
                 t.rotate = c.rotate;
                 t.scaling = c.scaling;
                 t.mscale = c.mscale;
+                t.attr_group = c.attr_group;
+                t.attr_layer = c.attr_layer;
+                t.attr_pen = c.attr_pen;
+                t.attr_type = c.attr_type;
                 t.rot_deg = c.rot_deg;
                 t.dim_value = c.dim_value;
                 t.dim_texts = c.dim_texts;
@@ -410,6 +414,10 @@ int main(int argc, char **argv)
         s.rotate = c.rotate;
         s.scaling = c.scaling;
         s.mscale = c.mscale;
+        s.attr_group = c.attr_group;
+        s.attr_layer = c.attr_layer;
+        s.attr_pen = c.attr_pen;
+        s.attr_type = c.attr_type;
         s.rot_deg = c.rot_deg;
         s.dim_value = c.dim_value;
         s.dim_texts = c.dim_texts;

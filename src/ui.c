@@ -7056,6 +7056,93 @@ no_dot:
                 n = s->typed_n < 95 ? s->typed_n : 95;
                 fill(v, 112 + n * 8, 7, 119 + n * 8, 15, 4);
             }
+            /* 複写・移動 の行 2 の状態文言：既定は `変更無し`（src/copy.h・
+             * src/move.h の段 4 に既に静的な行があり、その段に達して
+             * いる間は毎フレーム再描画される——下記と同じ `i == 4` の
+             * タイミング）。ここでは attr_group/attr_layer/attr_pen/
+             * attr_type のどれかが立っているときだけ `書込用 …に変更` で
+             * 上書きする。②グループ・③レイヤは互いを打ち消し、④線色・
+             * ⑤線種はどちらとも独立に「・」でつながる（measured：
+             * 192.168.11.37、tools/steps_table.py 1 ... t7 に続けて t2〜t5
+             * を組み合わせたときの表示、src/cmd.h の attr_group 等の
+             * コメント参照）。この文言は段 26（⑦属性変更 の中）だけでなく
+             * 段 4（①〜⑦ の一覧）に戻った後も、選択を残したまま出続ける
+             * （measured：t7 t3 t1 t7 で「書込用レイヤに変更」が消えない）
+             * ので、段 4 自身を描く `i == 4` のタイミングで毎回描き直す。
+             * 右端は常に列 80 で終わる（バイト数＝桁数と数えて逆算）。 */
+            if ((s->command == 1 || s->command == 16) && i == 4
+                && (s->attr_group || s->attr_layer || s->attr_pen
+                    || s->attr_type)) {
+                static const unsigned char KAKIKOMI[] =
+                    { 0x8f, 0x91, 0x8d, 0x9e, 0x97, 0x70, 0x20, 0 };
+                static const unsigned char GROUP_[] =
+                    { 0x83, 0x4f, 0x83, 0x8b, 0x81, 0x5b, 0x83, 0x76, 0 };
+                static const unsigned char LAYER_[] =
+                    { 0x83, 0x8c, 0x83, 0x43, 0x83, 0x84, 0 };
+                static const unsigned char PEN_[] =
+                    { 0x90, 0xfc, 0x90, 0x46, 0 };
+                static const unsigned char TYPE_[] =
+                    { 0x90, 0xfc, 0x8e, 0xed, 0 };
+                static const unsigned char DOT_[] = { 0xa5, 0 };
+                static const unsigned char NI_HENKOU[] =
+                    { 0x20, 0x82, 0xc9, 0x95, 0xcf, 0x8d, 0x58, 0 };
+                char buf[64];
+                int n = 0, any_part = 0;
+                const unsigned char *parts[3];
+                int nparts = 0, pi;
+
+                if (s->attr_group) {
+                    parts[nparts++] = GROUP_;
+                } else if (s->attr_layer) {
+                    parts[nparts++] = LAYER_;
+                }
+                if (s->attr_pen) {
+                    parts[nparts++] = PEN_;
+                }
+                if (s->attr_type) {
+                    parts[nparts++] = TYPE_;
+                }
+#define ATTR_APPEND(bytes) do { \
+                        const unsigned char *q = (bytes); \
+                        while (*q && n < (int)sizeof(buf) - 1) { \
+                            buf[n++] = (char)*q++; \
+                        } \
+                    } while (0)
+                ATTR_APPEND(KAKIKOMI);
+                for (pi = 0; pi < nparts; pi++) {
+                    if (any_part) {
+                        ATTR_APPEND(DOT_);
+                    }
+                    ATTR_APPEND(parts[pi]);
+                    any_part = 1;
+                }
+                ATTR_APPEND(NI_HENKOU);
+#undef ATTR_APPEND
+                buf[n] = 0;
+                jw_ui_text(v, 80 - n, 2, 7, 0xffffu, buf);
+            }
+            /* 移動 ⑦ﾚｲﾔ移動 (段 27) の帯そのもの：`データを・|①書込グループ
+             * [N]に移動|②書込レイヤ[N]-(M)に移動|③中止|`、N=書込グループ
+             * 番号（d->write_layer の上位ニブル）、M=書込レイヤ番号（下位
+             * ニブル）——src/move.h の静的な表では [N]・[N]-(M) が動けない
+             * ので、ここで組み立てる（measured：192.168.11.37、
+             * tools/steps_table.py 16 ... t7 の表示、[0] は既定の書込レイヤ
+             * が 0 のときの値）。 */
+            if (s->command == 16 && i == 27) {
+                char buf[96];
+
+                snprintf(buf, sizeof buf,
+                         "\x83" "f\x81" "[\x83" "^\x82" "\xf0" "\xa4"
+                         "|\x87" "@\x8f" "\x91" "\x8d" "\x9e" "\x83" "O"
+                         "\x83" "\x8b" "\x81" "[\x83" "v[%d]\x82" "\xc9"
+                         "\x88" "\xda" "\x93" "\xae" " |\x87" "A\x8f" "\x91"
+                         "\x8d" "\x9e" "\x83" "\x8c" "\x83" "C\x83" "\x84"
+                         "[%d]-(%d)\x82" "\xc9" "\x88" "\xda" "\x93" "\xae"
+                         " |\x87" "B\x92" "\x86" "\x8e" "~|",
+                         s->group, s->group, s->layer & 0x0f);
+                jw_ui_text(v, 8, 1, 7, 0, buf);
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            }
             /* And the field itself: what has been typed, one character to a
              * cell from column 22, each of them clearing the two cells after
              * it the way the original writes them. */

@@ -193,6 +193,24 @@ typedef struct {
      * which is what settles the scale.  5 once a copy is down. */
     int mscale;
     double msc_bx, msc_by, msc_px, msc_py;
+    /* 複写/移動 ⑦: 複写は「ﾚｲﾔ(群)/ﾚｲﾔ・線色・線種」を選んでからその場で
+     * まとめて書き込む属性変更（段 26、src/copy.h の「⑦属性変更」）。
+     * ②グループ と ③レイヤ は layer バイトの同じ場所を取り合う排他な
+     * トグル（measured：192.168.11.37、tools/steps_table.py 1 ... t7 の
+     * あと t2→t3 で表示が「書込用グループに変更」から「書込用レイヤに
+     * 変更」へ丸ごと置き換わり、二つ同時には出ない）。④線色・⑤線種は
+     * それぞれ独立なトグルで②③のどちらとも自由に組み合わさる（同じ
+     * 実機で t2 t4・t3 t4 t5 のどちらも「・」でつないで両方出る）。
+     * ①確定を押しても 0 に戻らない——再び⑦を開くと前回の選択のまま
+     * （measured：t7 t3 t1 t7 で「書込用レイヤに変更」が残る）。
+     * **内部表現（ニブル単位かどうか）は画面文言からの類推で、decomp は
+     * 未確認。** 移動（command==16）の⑦は全く別の機能（「⑦ﾚｲﾔ移動」、
+     * 段 27）で、書込グループ／書込レイヤへその場で移動する一発動作
+     * （トグルではない）——src/move.h 参照。 */
+    int attr_group;
+    int attr_layer;
+    int attr_pen;
+    int attr_type;
     /* Where the next key goes in `typed`.  文字 always appends, so it is
      * `typed_n` there; 文編集 starts the field with the text it was pointed
      * at and the cursor at the **front** -- typing `ABC` on 「Ｈ７－Ａ００１」

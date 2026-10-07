@@ -76,6 +76,10 @@ typedef struct {
     int scaling;
     /* 複写 ④ﾏｳｽ倍率, the same way. */
     int mscale;
+    /* 複写・移動 ⑦ の②③④⑤（attr_group/attr_layer/attr_pen/attr_type の
+     * 写し）：段 26・27 の行 2 の状態文言（`変更無し`／`書込用…に変更`）を
+     * 描くのに使う。src/cmd.h の同名フィールドのコメント参照。 */
+    int attr_group, attr_layer, attr_pen, attr_type;
     /* Where the pointer is.  The menu row it rests on is drawn inverted
      * whether or not anything has been pressed -- see menu_hover. */
     int mouse_x, mouse_y;

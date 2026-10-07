@@ -4887,6 +4887,7 @@ static void spline_draw(JwCmd *c, Jwc *d);
 static void bezier_draw(JwCmd *c, Jwc *d);
 static void henkei_double(JwCmd *c, Jwc *d);
 static void linechg_range_apply(JwCmd *c, Jwc *d, int content);
+static void attr_apply(JwCmd *c, Jwc *d);
 
 static int cmd_top(JwCmd *c, Jwc *d, int item)
 {
@@ -6345,6 +6346,80 @@ range_items:
             c->typed_n = 0;
             c->typed[0] = 0;
             return 1;
+        }
+        if (c->stage == 4 && item == 7) {
+            /* ⑦: 複写 は「属性変更」(段 26、トグル式)、移動 は「ﾚｲﾔ移動」
+             * (段 27、その場で一発の書込グループ/書込レイヤ移動) ——別の
+             * 機能（measured：192.168.11.37、steps_table.py 1 と 16 の
+             * 両方で t7 したときの帯の文言が違う。src/copy.h・src/move.h
+             * に帯そのものは既にある）。 */
+            c->stage = JW_MOVING(c) ? 27 : 26;
+            return 1;
+        }
+        if (!JW_MOVING(c) && c->stage == 26) {
+            /* 複写 ⑦属性変更 の中——帯は `|①確定|②グループ|③レイヤ|④線色|
+             * ⑤線種|`。②③は layer バイトを取り合う排他なトグル、④⑤は
+             * それぞれ独立なトグル（上の attr_group 等のコメント参照）。 */
+            if (item == 1) {
+                attr_apply(c, d);
+                c->stage = 4;
+                return 1;
+            }
+            if (item == 2) {
+                c->attr_group = !c->attr_group;
+                if (c->attr_group) {
+                    c->attr_layer = 0;
+                }
+                return 1;
+            }
+            if (item == 3) {
+                c->attr_layer = !c->attr_layer;
+                if (c->attr_layer) {
+                    c->attr_group = 0;
+                }
+                return 1;
+            }
+            if (item == 4) {
+                c->attr_pen = !c->attr_pen;
+                return 1;
+            }
+            if (item == 5) {
+                c->attr_type = !c->attr_type;
+                return 1;
+            }
+            return 0;
+        }
+        if (JW_MOVING(c) && c->stage == 27) {
+            /* 移動 ⑦ﾚｲﾔ移動 の中——帯は `データを・|①書込グループ[N]に
+             * 移動|②書込レイヤ[N]-(M)に移動|③中止|`。トグルではなく押した
+             * 瞬間に適用して段 8（同形処理/他図形処理 の仕上がり段、他の
+             * 置き方と同じ着地）へ進む（measured：192.168.11.37、
+             * steps_table.py 16 ... t7 t1 が段 8 の `①同形処理|②他図形処理`
+             * と同じ画面へ着地）。**ESC による取り消し（place_undo 相当）
+             * は未対応のまま**——幾何の変形ではなく属性の書き換えなので
+             * mv_undo の仕組みにまだ乗せていない（測定のみ・今回は
+             * ここまで）。 */
+            if (item == 1) {
+                c->attr_group = 1;
+                c->attr_layer = 0;
+                attr_apply(c, d);
+                c->attr_group = 0;
+                c->stage = 8;
+                return 1;
+            }
+            if (item == 2) {
+                c->attr_layer = 1;
+                c->attr_group = 0;
+                attr_apply(c, d);
+                c->attr_layer = 0;
+                c->stage = 8;
+                return 1;
+            }
+            if (item == 3) {
+                c->stage = 4;
+                return 1;
+            }
+            return 0;
         }
         return 0;
     }
@@ -9475,6 +9550,15 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 c->typed_n = 0;
                 c->scaling = c->stage == 18 ? 1 : 0;
                 c->stage = c->stage == 18 ? 17 : 4;
+                return 1;
+            }
+            /* ⑦の中（段 26 複写・27 移動）の [ESC] は段 4 へ戻るだけ——
+             * attr_group/attr_layer/attr_pen/attr_type は触らない
+             * （measured：192.168.11.37、t7 t3 esc のあと t7 で
+             * 「書込用レイヤに変更」が残ったまま出る。①確定 のあとの
+             * 再入場でも同じく残るので、ESC だけ特別扱いしない）。 */
+            if (JW_MOVE_CMD(c->command) && (c->stage == 26 || c->stage == 27)) {
+                c->stage = 4;
                 return 1;
             }
             if (JW_MOVE_CMD(c->command) && c->stage == 6) {
@@ -13368,6 +13452,77 @@ static void linechg_range_apply(JwCmd *c, Jwc *d, int content)
             d->arcs[k].pen = (unsigned char)d->pen;
         } else {
             d->arcs[k].layer = (unsigned char)d->write_layer;
+        }
+    }
+}
+
+/* 複写・移動 ⑦ の①確定（複写）／①②（移動）が書き込むところ。対象は
+ * その命令が取った範囲（c->sel_line/arc/text、c->n0_* まで）そのもので、
+ * 複写でも複製は作らない——属性だけその場で変わる（measured：
+ * 192.168.11.37、範囲を閉じて直ちに t7 するだけで複写・移動どちらも
+ * 線・円の本数が変わらないまま段が進む。①ﾏｳｽ位置 等を一度も経由しない）。
+ *
+ * attr_group／attr_layer は src/main_wasm.c のｸﾞﾙｰﾌﾟ/レイヤ押しが
+ * 使っているのと同じ分け方（layer バイトの上位ニブル＝グループ、
+ * 全体＝レイヤ）を、画面の文言（②③が互いを打ち消し合う、④⑤はどちらとも
+ * 独立に組み合わさる——上の attr_group のコメント参照）から類推して
+ * 割り当てた。**この割り当て自体は decomp 未確認・測定のみ**：
+ * ②グループ＝上位ニブルだけ書換、③レイヤ＝バイト全体を書換
+ * （linechg_range_apply の層変更＝全線変更の `d->write_layer` 書換と
+ * 同じ）、④線色・⑤線種＝linechg_range_apply と同じ `d->pen`・
+ * `d->line_type`。文字（text）は layer は持つが pen/type を持たない
+ * ので④⑤の対象にしない（src/jwc.h JwcText）。 */
+static void attr_apply(JwCmd *c, Jwc *d)
+{
+    long k;
+
+    if (!d || (!c->attr_group && !c->attr_layer && !c->attr_pen
+               && !c->attr_type)) {
+        return;
+    }
+    for (k = 0; k < d->n_lines && k < c->n0_lines; k++) {
+        if (!picked_line(c, d, k)) {
+            continue;
+        }
+        if (c->attr_group) {
+            d->lines[k].layer = (unsigned char)
+                ((d->write_layer & 0xf0) | (d->lines[k].layer & 0x0f));
+        } else if (c->attr_layer) {
+            d->lines[k].layer = (unsigned char)d->write_layer;
+        }
+        if (c->attr_pen) {
+            d->lines[k].pen = (unsigned char)d->pen;
+        }
+        if (c->attr_type) {
+            d->lines[k].type = (unsigned char)d->line_type;
+        }
+    }
+    for (k = 0; k < d->n_arcs && k < c->n0_arcs; k++) {
+        if (!picked_arc(c, d, k)) {
+            continue;
+        }
+        if (c->attr_group) {
+            d->arcs[k].layer = (unsigned char)
+                ((d->write_layer & 0xf0) | (d->arcs[k].layer & 0x0f));
+        } else if (c->attr_layer) {
+            d->arcs[k].layer = (unsigned char)d->write_layer;
+        }
+        if (c->attr_pen) {
+            d->arcs[k].pen = (unsigned char)d->pen;
+        }
+        if (c->attr_type) {
+            d->arcs[k].type = (unsigned char)d->line_type;
+        }
+    }
+    for (k = 0; k < d->n_texts && k < c->n0_texts; k++) {
+        if (!picked_text(c, d, k)) {
+            continue;
+        }
+        if (c->attr_group) {
+            d->texts[k].layer = (unsigned char)
+                ((d->write_layer & 0xf0) | (d->texts[k].layer & 0x0f));
+        } else if (c->attr_layer) {
+            d->texts[k].layer = (unsigned char)d->write_layer;
         }
     }
 }

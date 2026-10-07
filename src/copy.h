@@ -19,6 +19,12 @@ The stages, as src/ui.c replays them:
      8  after [Enter]: it is done
      9  after ①ﾏｳｽ位置's second press: 再複写 位置指示 -- it does not end
         there, every press after it puts another one down
+    26  after ⑦属性変更: the five ways (①確定|②グループ|③レイヤ|④線色|
+        ⑤線種), added 2026-10-07 (not from copy_table.py -- captured by
+        hand with tools/steps_table.py since the tool only drives the seven
+        items it already knows; the row 2 status text that goes with it
+        (変更無し / 書込用…に変更) is not static and is drawn in src/ui.c
+        instead, from c->attr_group/attr_layer/attr_pen/attr_type)
 
 Stage 0 is the line the menu item puts up and is already in src/prompt.h.
 The two commands differ in only a word or two, but they are captured apart
@@ -89,6 +95,9 @@ static const JwStage JW_COPY[] = {
     { 1, 8,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
     { 1, 8,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
     { 1, 8,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "|" "\x87" "@" "\x93" "\xaf" "\x8c" "`" "\x95" "\xca" "\x8f" "\x88" "\x97" "\x9d" "|" "\x87" "A" "\x91" "\xbc" "\x90" "}" "\x8c" "`" "\x8f" "\x88" "\x97" "\x9d" "|" "\x87" "B" "\x98" "A" "\x91" "\xb1" "|" },
+    /* stage 26: ⑦属性変更 -- the five ways (added by hand, not copy_table.py) */
+    { 1, 26,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
+    { 1, 26,  8, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "|\x87" "@ \x8a" "m \x92" "\xe8" " |\x87" "A\x83" "O\x83" "\x8b" "\x81" "[\x83" "v |\x87" "B\x83" "\x8c" "\x83" "C\x83" "\x84" " |\x87" "C\x90" "\xfc" " \x90" "F |\x87" "D\x90" "\xfc" " \x8e" "\xed" " |" },
     /* stage 9: 再複写 -- put another one down */
     { 1, 9,  1, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "[ESC]" },
     { 1, 9,  6, 1, 7, 0x0000, 0, 0, { 0, 0 }, 0, "\x81" "E" },
