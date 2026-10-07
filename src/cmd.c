@@ -344,6 +344,32 @@ static void box_corners(const JwCmd *c, const Jwc *d, double px, double py,
     }
 }
 
+/* box_corners() が出した四隅を、押した点 (px,py) を中心に box_ang 度だけ
+ * 回します。大きさを決めて置いている（box_fix）□ に ②角度 で角度を
+ * 決めたあと、もう一押しで傾いた箱がその場に出る経路（測定：
+ * tools/functest.sh の「90 120 left|type 1|type 60,40|key enter|
+ * 450 330 left|type 2|type 30|key enter|550 200 left」で実機の線
+ * 34〜37、ang=120/30/-60/-150）。回す向き・符号は置いた点を中心にした
+ * 四隅の実測値から逆算（decomp 未確認・測定のみ）。 */
+static void box_corners_rot(const JwCmd *c, double px, double py,
+                            float X[5], float Y[5])
+{
+    if (c->box_rot) {
+        const float a = (float)c->box_ang;
+        const double r = (double)a * 0.017453292519943295;
+        const float cs = (float)cos(r), sn = (float)sin(r);
+        const float ox = (float)px, oy = (float)py;
+        int k;
+
+        for (k = 0; k < 5; k++) {
+            const float ux = X[k] - ox, uy = Y[k] - oy;
+
+            X[k] = (float)((double)ux * cs - (double)uy * sn + (double)ox);
+            Y[k] = (float)((double)ux * sn + (double)uy * cs + (double)oy);
+        }
+    }
+}
+
 /* □ の ②角度：傾いた四角の四隅。本物はオーバーレイ 23 の 0x2f7b3〜0x2f861
  * と 0x2fd05〜0x3008e で、
  *
@@ -9922,15 +9948,24 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (c->command == 4 && c->box_ask == 2) {
         /* □ の `角度 =` の欄。[Enter] で角度が決まり、2 点の四角が傾く
-         * `始点指示 … [BS]前項` へ（測定）。何も打たずに [Enter] は前の角度。 */
+         * `始点指示 … [BS]前項` へ（測定）。何も打たずに [Enter] は前の角度。
+         * **大きさを決めて置いている（box_fix）あいだにこの欄を開いた
+         * ときは、box_fix を解きません**（測定：box_angle_esc_unlock の
+         * 監査。実機は寸法確定→②角度 の押しのあとも同じ
+         * `①終点指示 …|①寸法|②角度|③平行|④基点変|` の帯のままで、続けて
+         * 1 回押すだけで傾いた □ が置かれる——2 点待ちの帯
+         * `始点指示 … [BS]前項` には変わらない。box_fix を 0 にしていた旧実装は
+         * この帯を壊し、②角度 を開き直す digit キーが升を見つけられず
+         * 無反応になっていた（src/ui.c 4084 の box_mode 帯は升を持たない）。
+         * 大きさをまだ決めていない（box_fix==0）ときは、従来どおり
+         * 2 点待ちの box_mode へ（measured, 既存の box_s0_c*_v 群で確認済み）。 */
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
                 c->box_ang = (float)field_eval(c->typed);
             }
             c->box_rot = 1;
-            c->box_mode = 1;
-            c->box_fix = 0;
+            c->box_mode = c->box_fix ? 0 : 1;
             c->typing = 0;
             c->box_ask = 0;
             return 1;
@@ -20901,12 +20936,14 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         return 1;
     }
     if (c->command == 4 && c->box_ask == 2 && c->typing) {
-        /* `｜0 度 ﾏｳｽ(L)｜前回と同じ ﾏｳｽ(R)｜`（＋ と同じ欄）。 */
+        /* `｜0 度 ﾏｳｽ(L)｜前回と同じ ﾏｳｽ(R)｜`（＋ と同じ欄）。box_fix が
+         * 立っていたとき（寸法を決めて置いているあいだに ②角度 を押した
+         * とき）は、上の [Enter] の節と同じ理由で box_mode を立てません。 */
         if (!right) {
             c->box_ang = 0.0;
         }
         c->box_rot = 1;
-        c->box_mode = 1;
+        c->box_mode = c->box_fix ? 0 : 1;
         c->typing = 0;
         c->box_ask = 0;
         box_unhold(c);
@@ -20950,6 +20987,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;
         }
         box_corners(c, d, x, y, X, Y);
+        box_corners_rot(c, x, y, X, Y);
         for (k = 0; k < 4; k++) {
             if (!jwc_add_line(d, X[k], Y[k], X[k + 1], Y[k + 1],
                               (unsigned char)d->line_type,

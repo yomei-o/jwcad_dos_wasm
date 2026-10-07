@@ -103,6 +103,15 @@ notes/decomp-audit.md 10-c/10-d・nokori.md 参照）。
 接線を全部戻す処理を追加。全部 192.168.11.37 の `tools/functest.sh`/`tools/cmdstate.mjs` で実機突き合わせ
 済み（円線接の段12/16/4 は測定のみ・decomp未確認）。複線の「`点指示 or 間隔=` 欄の ESC」の記述は実機で
 再現できず未解決のまま（nokori.md 参照）。
+**10-08（7 回目、box_angle_esc_unlock 解消）**：□ の懸案 `box_angle_esc_unlock`（nokori.md）を解決。
+正体は「角度欄 ESC が保留中の箱を確定している」ではなく、②角度 を確定する [Enter] が `box_fix`
+（寸法確定・即置きモード）を無条件で解いていたバグ——実機は確定後も升つきの同じ帯のままなのに、
+移植は升の無い帯に落ちて 2 回目の `②角度` が無反応になり、続く [ESC] が別の汎用取り消し節に
+先取りされて確定済みの箱を消してしまっていた（詳細は `notes/traps.md` の新しい項、
+nokori.md の該当節）。`box_fix` を解かない修正に加え、大きさ固定＋回転確定後の単発クリック配置が
+軸並行のままだった副作用も修正（`box_corners_rot()` 新設、回す符号は実機測定から逆算・decomp未確認）。
+`tools/functest.sh` で確認（`box_angle_esc_unlock` は record 差分 0、新しい単発回転配置は小数 3 桁一致・
+生バイトは最後の数ビットのみ既知の丸め差）。
 
 ### 検査の道具（10-07 に増えたもの）
 * `tools/usable.mjs`：ESC で戻る・消す・移動／複写の通し（`node tools/usable.mjs`）。`tools/e2e.mjs`：描く→保存→開き直す。
