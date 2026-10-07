@@ -7213,6 +7213,26 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->ch_ty = c->ch_undo[c->ch_n].ty;
         return 1;
     }
+    /* ①②③④⑥ の最初の行（段 10・40・30・50）の [BS]`前項` も曲線の最初の行へ
+     * （測定のみ・decomp 未確認：escfz_r_24）。 */
+    if (c->command == 23 && key == 8 && !c->typing && !c->poly && !c->hand
+        && ((c->sine == 1 && c->stage == 10) || (c->sine == 3 && c->stage == 40)
+            || (c->stage == 30 && (c->spl || c->chain)) || c->stage == 50)) {
+        c->sine = 0;
+        c->spl = 0;
+        c->chain = 0;
+        c->stage = 0;
+        c->top_item = 0;
+        return 1;
+    }
+    /* ⑤手書線 の始点の行の [BS]`前項` は曲線の最初の行へ（測定のみ・decomp 未確認：escfz_r_22）。 */
+    if (c->command == 23 && c->hand && key == 8 && c->stage == 60 && c->hand_n == 0 && !c->typing) {
+        c->hand = 0;
+        c->hand_did = 0;
+        c->stage = 0;
+        c->top_item = 0;
+        return 1;
+    }
     if (c->command == 23 && c->hand && key == 27
         && (c->stage == 60 || c->stage == 61)) {
         /* 区間があれば最後の一本を取り消し、その始点から一筆を続ける
