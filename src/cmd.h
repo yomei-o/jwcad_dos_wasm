@@ -670,6 +670,10 @@ typedef struct {
     int te_dir;                 /* 文編集 移動・複写 の ②方向：0 任意、1 X軸（測定：probe_item_walk wk_a2_2） */
     int te_ret;                 /* 基点の盤から戻る先の top_item（移動 2・複写 3、変更なら 1） */
     int lyr_only;               /* 範囲の行の ①レイヤ：`書込 レイヤ のみ選択`（測定：escfz_R_68） */
+    JwcLine lc_old_line;        /* 線変更：変える前の線（[ESC] で戻す。decomp ovl26 0x30d98〜0x30eb5） */
+    JwcArc lc_old_arc;
+    long lc_old_idx;
+    int lc_old_kind;            /* 0 なし、1 線、2 円弧 */
     int box_keep_off;           /* □ 寸法欄で打ちかけの押し：数え箱が戻る（測定：escfz_B_77） */
     int ref_miss;               /* □ ③平行：基準線の読み外れの数（二度目で数え箱が戻る。測定：box_s1_c3） */
     int ref_hold;               /* □ ③平行：始点を持ったまま基準線を聞いている（測定：box_s1_c3） */

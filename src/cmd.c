@@ -7018,6 +7018,16 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     /* 線変更 で一本変えたあとの [ESC] は最初の行（段 0）へ（測定のみ・decomp 未確認：escfz_w_24）。 */
     if (key == 27 && c->command == 24 && !c->typing && c->stage == 1 && !c->pressed && !c->lc_range && c->top_item != 3 && c->top_item != 1
         && c->hit_kind) {
+        /* 変える前の線・円弧に戻す（decomp ovl26 0x30d98〜0x30eb5：保存した変更前の記録を書き戻し、
+         * [bp-0xbe]=0 で最初の行へ）。 */
+        if (d && c->lc_old_kind == 1 && c->lc_old_idx >= 0 && c->lc_old_idx < d->n_lines) {
+            d->lines[c->lc_old_idx] = c->lc_old_line;
+            jwc_ink_note(d, 0, JW_INK_LINE, &d->lines[c->lc_old_idx]);
+        } else if (d && c->lc_old_kind == 2 && c->lc_old_idx >= 0 && c->lc_old_idx < d->n_arcs) {
+            d->arcs[c->lc_old_idx] = c->lc_old_arc;
+            jwc_ink_note(d, 0, JW_INK_ARC, &d->arcs[c->lc_old_idx]);
+        }
+        c->lc_old_kind = 0;
         c->stage = 0;
         c->hit_kind = 0;
         return 1;
@@ -9029,9 +9039,34 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
              * `・` at column 6 -- whether the range was half taken or fixed.
              * Measured on 消去 from both. */
             /* 何も選ばずに置いたあと（[ESC] の札が無い行）の [ESC] は何も起きない（測定：move_s0_c1_v）。 */
-            if (JW_MOVE_CMD(c->command) && c->mv_none && c->mv_undo && c->stage == 9) {
+            /* 置いた印(mv_none: 選んだ要素が一つも無い)が 0 のとき、再配置の段の ESC は 2cb4 の引数 0 で飲み込まれる
+             * （decomp ovl1 3ab8:4cb7、dis 031981：置きの call 0x2ec04 が [bp-0x10e] に印を立て、引数に渡す）。 */
+            if (JW_MOVE_CMD(c->command) && c->mv_none && c->mv_undo
+                && (c->stage == 9 || c->stage == 12 || c->stage == 16 || c->stage == 20 || c->stage == 25)) {
                 return 0;
             }
+            /* 再配置の段：直前の置きを取り消してから一つ前の段へ（decomp 031ed0 以降：⑤12→10、⑥16→15、③20→19、④25→24）。
+             * 置く段 15(⑥)・24(④) は 14(角度の欄)・23 へ（030698→0306f7、03041f→030429）。 */
+            if (JW_MOVE_CMD(c->command)
+                && (c->stage == 12 || c->stage == 16 || c->stage == 20 || c->stage == 25)) {
+                if (c->mv_undo && d) {
+                    place_undo(c, d);
+                }
+                c->stage = c->stage == 12 ? 10 : c->stage == 16 ? 15 : c->stage == 20 ? 19 : 24;
+                return 1;
+            }
+            if (JW_MOVE_CMD(c->command) && c->stage == 15) {
+                c->typing = 1;
+                c->typed[0] = 0;
+                c->typed_n = 0;
+                c->stage = 14;
+                return 1;
+            }
+            if (JW_MOVE_CMD(c->command) && c->stage == 24) {
+                c->stage = 23;
+                return 1;
+            }
+
             /* 複写・移動 は段を一つずつ戻す（範囲ごとは捨てない）。段 9
              * （再配置待ち）はまず最後の一回を取り消してから段 6（置く場所を
              * 聞く行）へ、段 7（②数値位置 の欄）は打ちかけを捨てて段 4
@@ -18747,7 +18782,14 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         {
             double qx, qy;
 
-            if (k == c->pick_a || !cross_at(&d->lines[c->pick_a], &d->lines[k], &qx, &qy)) {
+            if (k == c->pick_a) {
+                /* 同じ線：左押しは `同データです` で最初の行(A)へ、右押しは黙って(A)へ（decomp ovl2 0x2b82a〜0x2b85b、0x2b78e）。 */
+                c->ch_same = right ? 0 : 4;
+                c->pick_a = -1;
+                c->stage = 0;
+                return 1;
+            }
+            if (!cross_at(&d->lines[c->pick_a], &d->lines[k], &qx, &qy)) {
                 /* 同じ線・平行な線：`計算不可` で、最初の線を持ったまま（測定のみ・
                  * decomp 未確認：escfz_V_84）。 */
                 c->ch_same = 2;
@@ -18823,6 +18865,15 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * it does not become 02.  decomp/ovl26 reads DS:[0x5e40] (the same
          * 【有】/【無】 flag c->lc_off mirrors) several times further into
          * FUN_4000_0cb6; this is what it gates. */
+        if (k >= 0) {
+            c->lc_old_line = d->lines[k];
+            c->lc_old_idx = k;
+            c->lc_old_kind = 1;
+        } else {
+            c->lc_old_arc = d->arcs[j];
+            c->lc_old_idx = j;
+            c->lc_old_kind = 2;
+        }
         if (k >= 0) {
             d->lines[k].type = (unsigned char)d->line_type;
             d->lines[k].pen = (unsigned char)d->pen;
