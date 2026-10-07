@@ -6482,7 +6482,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
             c->te_panel = 0;
             c->top_item = 1;
         } else {
-            c->te_dir = !c->te_dir;
+            c->te_dir = (c->te_dir + 1) % 4;    /* 任意→Ｘ軸→Ｙ軸→XY軸（decomp ovl15 3ab8:33ee `++local_bc>3`、DS:0x1295〜0x12a4。実機確認） */
         }
         return 1;
     }
@@ -8284,13 +8284,26 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->zukei_drive = 0;         /* ドライブの行の [ESC] は枠の行へ（測定のみ） */
         return 1;
     }
+    /* 図形 ④グループ変更 の枠の [Enter] も抜ける（decomp 07c8 `local_60a==1||0xd→0ba9`。キー ① も同じ。実機確認）。 */
+    if ((key == 13 || key == 10 || key == 49) && c->command == 27 && c->top_item == 4 && !c->zukei && !c->pressed
+        && !c->zukei_drive) {
+        c->top_item = 0;
+        c->top_right = 0;
+        c->zukei_cell_set = 0;
+        return 1;
+    }
+    /* 測定 ⑨式 ヘロンの範囲の始点の行の [ESC]：行 2 の案内が消える（decomp ovl29 1a9b＋root 2a18、実機確認：measure_s0_c9）。 */
+    if (key == 27 && c->command == 15 && c->meas9 && !c->meas9p) {
+        c->meas9z = 1;
+        return 1;
+    }
     /* 図形 ④グループ変更 の枠の [ESC] は最初の行へ（測定のみ：zukei_s0_c4）。 */
     if (key == 27 && c->command == 27 && c->top_item == 4 && !c->zukei && !c->pressed) {
         c->top_item = 0;
         c->top_right = 0;
         return 1;
     }
-    if (c->command == 27 && c->zukei_plain && (key == 13 || key == 10 || key == 27)) {
+    if (c->command == 27 && c->zukei_plain && (key == 13 || key == 10)) {
         c->zukei_plain = 0;         /* [Enter]・[ESC] で札が戻る（測定のみ：zukei_s0_c6_v・c1_v） */
         return 1;
     }
@@ -19145,7 +19158,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         if (c->command == 27 && !c->zukei && !c->pressed && c->top_item == 4) {
             /* ④グループ変更：枠の升を押すとその升が選ばれる（測定：zukei_s0_c4）。 */
             if (!c->zukei_drive && sx >= 144 && sx < 624 && sy >= 56 && sy < 376) {
-                c->zukei_cell = (sy - 56) / 32 * 5 + (sx - 144) / 96;
+                const int cell = (sy - 56) / 32 * 5 + (sx - 144) / 96;
+
+                if (cell == c->zukei_cell && c->zukei_cell_set) {
+                    c->top_item = 0;        /* 選択済みの升をもう一度押すと枠を抜ける（decomp ovl31 3ab8:07c8 `local_604==local_606→0ba9`。実機確認） */
+                    c->top_right = 0;
+                    c->zukei_cell_set = 0;
+                    return 1;
+                }
+                c->zukei_cell = cell;
+                c->zukei_cell_set = 1;
             }
             return 1;
         }

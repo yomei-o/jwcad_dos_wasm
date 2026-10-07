@@ -674,6 +674,7 @@ typedef struct {
     JwcArc lc_old_arc;
     long lc_old_idx;
     int lc_old_kind;            /* 0 なし、1 線、2 円弧 */
+    int zukei_cell_set;         /* 図形 ④ の枠で升を選んである（もう一度押すと抜ける） */
     int box_keep_off;           /* □ 寸法欄で打ちかけの押し：数え箱が戻る（測定：escfz_B_77） */
     int ref_miss;               /* □ ③平行：基準線の読み外れの数（二度目で数え箱が戻る。測定：box_s1_c3） */
     int ref_hold;               /* □ ③平行：始点を持ったまま基準線を聞いている（測定：box_s1_c3） */

@@ -5207,6 +5207,10 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     }
     /* 図形 の最初の行の [9] は何もしない（測定のみ：zukei_s0_c9。<他図面> の升は鍵では選べない）。 */
     if (cmd.command == 27 && key == '9' && !cmd.typing && !cmd.zukei && !cmd.top_item && !cmd.pressed) {
+        /* 無効キーではなく全面再描画で、消えていた札が戻る（decomp ovl31 2a6c、実機確認） */
+        cmd.zukei_plain = 0;
+        sync_ui();
+        present();
         return 0;
     }
     if (cmd.command && key >= '1' && key <= '9' && !cmd.typing

@@ -5411,8 +5411,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                     two[sizeof two - 1] = 0;
                     hit = strstr(two, "\x94\x43\x88\xd3");
                     if (hit) {
-                        hit[0] = (char)0x82;
-                        hit[1] = (char)0x77;
+                        /* 任意→Ｘ軸→Ｙ軸→XY軸（DS:0x129a・0x129f・0x12a4） */
+                        if (s->te_dir == 3) {
+                            hit[0] = 'X';
+                            hit[1] = 'Y';
+                        } else {
+                            hit[0] = (char)0x82;
+                            hit[1] = (char)(s->te_dir == 2 ? 0x78 : 0x77);
+                        }
                         hit[2] = (char)0x8e;
                         hit[3] = (char)0xb2;
                     }
@@ -5833,7 +5839,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             if (s->command == 27 && s->top_item == 4 && !s->zukei && s->zukei_cell > 0) {
                 char nm[24];
 
-                sprintf(nm, "A:ZUKEI_%d", s->zukei_cell + 1);
+                /* 名前は n<10 で `ZUKEI_%d_`、n>=10 で `ZUKEI_%2d`（decomp ovl31 07c8 の DS:6e3c・6e46。実機確認） */
+                if (s->zukei_cell + 1 < 10) {
+                    sprintf(nm, "A:ZUKEI_%d_", s->zukei_cell + 1);
+                } else {
+                    sprintf(nm, "A:ZUKEI_%2d", s->zukei_cell + 1);
+                }
                 jw_ui_text(v, 18, 2, 7, 0, nm);
             }
             if (s->command == 27 && s->top_item == 4 && !s->zukei && s->zukei_drive) {
