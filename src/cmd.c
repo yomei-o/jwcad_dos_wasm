@@ -8850,6 +8850,18 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             /* ③数値倍率：段 18（倍率の欄）→ 17（基準点位置）→ 4（①〜⑦の一覧）
              * （測定のみ・decomp 未確認：escfz_C_72、tmp の cm 系）。 */
+            /* ⑤反転(10)・⑥回転(13→14)・④マウス倍率(21→22→23) も一段ずつ戻って、最初の段は
+             * ①〜⑦ の一覧へ（測定のみ・decomp 未確認：tmp の mm 系）。 */
+            if (JW_MOVE_CMD(c->command)
+                && (c->stage == 10 || c->stage == 13 || c->stage == 14 || c->stage == 21
+                    || c->stage == 22 || c->stage == 23)) {
+                c->typing = 0;
+                c->typed[0] = 0;
+                c->typed_n = 0;
+                c->stage = (c->stage == 14 || c->stage == 22 || c->stage == 23) ? c->stage - 1
+                         : 4;
+                return 1;
+            }
             if (JW_MOVE_CMD(c->command) && c->stage == 19) {
                 c->typing = 1;
                 c->typed[0] = 0;
