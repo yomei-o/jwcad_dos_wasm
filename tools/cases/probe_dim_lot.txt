@@ -1,0 +1,17 @@
+# 寸法 ⑤一括（段 21〜24）の [ESC]・[BS]前項（escaudit8、2026-10-07）。
+# SAMPLE0: 90,280 で寸法を選び、400,150(引出し線)→300,250(寸法線)→
+# 450,330(寸法値始点)で段3へ、600,5 で⑤一括へ（段21）。300,140 は枠の
+# 上辺（線1、drawing (40.973,323.057)-(477,323.057)）、162,200 は枠の
+# 左辺（線0、drawing (40.973,44)-(40.973,323.057)）を拾う。
+#
+# ovl27 3ab8:206c（FUN_3ab8_206c）の段24の入力待ち（file-linear
+# 0x2eafb-0x2eb23、disasm.py --ovl 27 0x2eac0 0x80）で、[BS]前項 の札
+# （グローバル [0xc2c]）と [ESC] のゲートはどちらも「①一括処理実行 を
+# 一度でも実行したか」で決まる（実行していなければ両方 2cb4 の中で
+# 捨てられる）。port は c->dim_lot_done でこれを追う。
+dim_lot_esc_after_exec|SAMPLE0|90 280 left|400 150 left|300 250 left|450 330 left|600 5 left|300 140 left|162 200 left|type 1|key esc
+dim_lot_bs_after_exec|SAMPLE0|90 280 left|400 150 left|300 250 left|450 330 left|600 5 left|300 140 left|162 200 left|type 1|key bs
+dim_lot_bs_twice_noop|SAMPLE0|90 280 left|400 150 left|300 250 left|450 330 left|600 5 left|300 140 left|162 200 left|type 1|key bs|key bs
+# 段23（追加線･除外線、実行前）の [ESC] はまだ配線していない（今回の
+# 修正は段24だけ）——このケースは現状維持の記録用（stage は 23 のまま）。
+dim_lot_esc_stage23_still_open|SAMPLE0|90 280 left|400 150 left|300 250 left|450 330 left|600 5 left|300 140 left|162 200 left|key esc
