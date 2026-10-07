@@ -19480,10 +19480,14 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         return 1;
     }
     if (c->command == 4 && c->box_ask == 1 && c->typing && c->typed_n) {
-        /* 数を打ちかけの欄での押しは、打った数を消すだけ（測定のみ・decomp 未確認：escfz_B_77）。 */
-        c->typed_n = 0;
-        c->typed[0] = 0;
-        c->box_keep_off = 1;
+        /* 数を打ちかけの欄での押しは [Enter] と同じ（測定のみ・decomp 未確認：escfz_B_77 は
+         * 0 を断られて欄が空に、escfz_X_76 は 1 が長さになる）。 */
+        jw_cmd_key(c, d, 13);
+        if (c->box_ask) {
+            c->box_keep_off = 1;
+        } else {
+            box_unhold(c);
+        }
         return 1;
     }
     if (c->command == 4 && c->box_ask && c->typing) {
@@ -19540,6 +19544,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->fix_done = 0;
         c->typing = 0;
         c->ask_kind = 0;
+        return 1;
+    }
+    if ((c->command == 2 || c->command == 3) && (c->ask_kind == 1 || c->ask_kind == 2)
+        && c->typing && c->typed_n) {
+        /* 打ちかけの数があれば押しは [Enter] と同じで、始点を持っていたらその始点に戻る
+         * （測定のみ・decomp 未確認：escfz_X_76）。 */
+        jw_cmd_key(c, d, 13);
+        if (!c->ask_kind) {
+            box_unhold(c);
+        }
         return 1;
     }
     if ((c->command == 2 || c->command == 3) && c->ask_kind == 1
