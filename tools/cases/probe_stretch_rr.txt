@@ -36,6 +36,16 @@
 #   1bb4:61b0 / 1bb4:5bf3 の正確な役割）は時間切れで確定できていない——
 #   実装は見送り、ここは state machine（RR 検出とモード切替）のみ。
 #
+# tools/functest.sh での回帰（192.168.11.37、記録突き合わせ）：
+#   sh tools/functest.sh '90 152 left' '220 157 right' '220 157 right'
+#     -> same（線切断は実行されない。RR 検出前は未実装だったので比較していない
+#        が、直したあとは実機と一致）。
+#   sh tools/functest.sh '90 152 left' '220 157 right' 'move 598 300'
+#     -> DIFFERENT だが rest の touched ビット（第 4 バイト bit0）だけ
+#        （今回の変更より前からある既知の別パターン、＜ の罠と同種、
+#        notes/traps.md 参照）。RR を使わない通常の線切断はこの変更の前後で
+#        同じ差分のまま——今回の RR 追加による新しい退行ではない。
+#
 # port の内部状態での確認（実機不要、node tools/cmdstate.mjs）：
 #   node tools/cmdstate.mjs orig/SAMPLE0.JWC "90 152 left" "220 157 right" \
 #       "220 157 right"
