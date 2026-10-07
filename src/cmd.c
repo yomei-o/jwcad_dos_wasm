@@ -8603,6 +8603,18 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->stage = 0;
         return 1;
     }
+    if (key == 27 && d && c->command == 10 && !c->typing && c->stage == 1
+        && !c->ld_undo_on && c->rd_undo_on) {
+        JwcLine q = c->rd_undo;
+
+        memset(q.rest + 1, 0, 3);
+        if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen, q.layer)) {
+            d->lines[d->n_lines - 1] = q;
+        }
+        c->rd_undo_on = 0;
+        c->stage = 0;
+        return 1;
+    }
     /* 線消 の部分消去の [ESC]：終点 → 始点（線は選んだまま）→ 最初の行
      * （`[ESC]` の無い段 0）。測定。 */
     if (key == 27 && c->command == 10 && !c->typing
@@ -14750,8 +14762,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 1;
         }
         if (k >= 0) {
+            c->rd_undo = d->lines[k];
+            c->rd_undo_on = 1;      /* 右の消去も [ESC] で一本戻る（測定のみ：tmp の ld 系） */
             jwc_remove_line(d, k);
         } else {
+            c->rd_undo_on = 0;
             jwc_remove_arc(d, j);
         }
         c->stage = 1;

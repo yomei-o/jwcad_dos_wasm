@@ -660,6 +660,8 @@ typedef struct {
     int pt_plain;               /* 点【実点】：升の無い数字で `F1～F6 Pen No1` の札が消えた（測定：vq2） */
     int pt_delall;              /* 点 ⑤仮点削除 の ①全仮点削除 の確認行（測定：tmp/vq.txt vd1〜8） */
     int poly_esc;               /* ⑦連線 の最初の [ESC]：行 2 の `45度毎 マウス` の札が消える（測定：escfz_r_20） */
+    JwcLine rd_undo;            /* 線消 右押しで消した線（[ESC] で一本戻る） */
+    int rd_undo_on;
     int box_keep_off;           /* □ 寸法欄で打ちかけの押し：数え箱が戻る（測定：escfz_B_77） */
     int ref_miss;               /* □ ③平行：基準線の読み外れの数（二度目で数え箱が戻る。測定：box_s1_c3） */
     int ref_hold;               /* □ ③平行：始点を持ったまま基準線を聞いている（測定：box_s1_c3） */
