@@ -3707,6 +3707,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                        "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
+    } else if (s->command == 22 && s->pt_delall) {
+        /* 点 ⑤仮点削除 の ①全仮点削除 の確認（測定：tmp/vq.txt vd1。桁は本物の画面から）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, "\x91\x53\x89\xbc\x93\x5f\x8d\xed\x8f\x9c");
+        jw_ui_text(v, 19, 1, 7, 0, "\x95\x9c\x8a\x88\x8f\x6f\x97\x88\x82\xdc\x82\xb9\x82\xf1");
+        jw_ui_text(v, 34, 1, 7, 0, "|" "\x87@" " \x8e\xc0\x8d\x73(L)|" "\x87" "A" " \x92\x86\x8e\x7e(R)|");
     } else if (s->command == 10 && s->ld_ask) {
         /* 線消 の ①線切断寸法 の欄（桁は本物の画面から）。 */
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");

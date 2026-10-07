@@ -5296,6 +5296,32 @@ range_items:
         c->div_real = !c->div_real;
         return 1;
     }
+    /* 点 ⑤仮点削除 の ①全仮点削除：`全仮点削除 復活出来ません |①実行(L)|②中止(R)|` の確認。
+     * ①・左押しで全部消して最初の行（①②…の行）へ、②・右押し・[ESC] は仮点削除の行へ戻り、
+     * ほかの升・[Enter] は何もしない（測定：tmp/vq.txt vd1〜vd8）。 */
+    if (c->command == 22 && c->pt_delall) {
+        if (item == 1) {
+            if (d) {
+                d->n_temp = 0;
+            }
+            c->pt_delall = 0;
+            c->pt_mode = 0;
+            c->pt_undo = 0;
+            c->stage = 0;
+            c->top_item = 0;
+        } else {
+            if (item == 2) {
+                c->pt_delall = 0;
+                c->top_item = 5;
+            }
+        }
+        return 1;
+    }
+    if (c->command == 22 && c->pt_mode == 5 && item == 1) {
+        c->pt_delall = 1;
+        c->top_item = 0;
+        return 1;
+    }
     /* 点 ②距離の始点の行：① は 直進⇔円周、② は連続（点を作ったあとだけ。decomp 0x2f730・0x2f754）。 */
     if (c->command == 22 && c->pt_mode == 2 && c->pt2 == 0 && item == 1) {
         c->pt2_circ = !c->pt2_circ;
@@ -7028,6 +7054,17 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* 点【実点】：升の無い数字（0・6〜9）は行を描き直して `F1～F6 Pen No1` の札を消す
      * （測定のみ・decomp 未確認：escfz_v_10、tmp の vq2）。 */
+    if (c->command == 22 && c->pt_delall && key == 27) {
+        c->pt_delall = 0;
+        c->top_item = 5;
+        return 1;
+    }
+    /* 点【実点】の [ESC] も行を描き直して札を消す（測定のみ・decomp 未確認：escfz_v_15）。 */
+    if (c->command == 22 && c->pt_real && !c->typing && key == 27 && c->stage == 1 && c->top_item == 1) {
+        c->pt_plain = 1;
+        c->top_item = 0;
+        return 1;
+    }
     if (c->command == 22 && c->pt_real && !c->typing && key >= '0' && key <= '9'
         && (key == '0' || key >= '6') && c->stage == 0) {
         c->pt_plain = 1;
@@ -18968,6 +19005,20 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 1;
         }
         return 0;
+    }
+    if (c->command == 22 && c->pt_delall) {
+        if (!right) {
+            if (d) {
+                d->n_temp = 0;
+            }
+            c->pt_mode = 0;
+            c->pt_undo = 0;
+            c->stage = 0;
+        } else {
+            c->top_item = 5;
+        }
+        c->pt_delall = 0;
+        return 1;
     }
     if (c->command == 22) {
         /* 点: a press drops a 仮点.  The original changes neither count
