@@ -1,0 +1,85 @@
+escfz_c_0|SAMPLE0|type c|type 1|250 200 right|key enter|300 250 left|type 12|move 300 250|key esc|key esc|key esc
+escfz_b_1|SAMPLE0|type b|400 140 right|450 330 right|key esc|key esc|key esc
+escfz_b_2|SAMPLE0|type b|350 350 right|move 500 200|350 350 left|type 1000|400 140 right|key enter|key esc|key esc|key esc
+escfz_t_3|SAMPLE0|type t|598 300 right|type 30|350 350 left|key bs|move 598 300|500 200 left|key esc|key esc|key esc
+escfz_t_4|SAMPLE0|type t|key bs|move 300 250|type 30|key esc|key esc|key esc
+escfz_t_5|SAMPLE0|type t|type 0|350 350 right|key bs|move 598 300|key enter|type 4|key esc|key esc|key esc
+escfz_v_6|SAMPLE0|type v|500 200 left|type 9|type 30|key esc|key esc|key esc
+escfz_v_7|SAMPLE0|type v|type 5|key enter|key esc|key esc|key esc
+escfz_v_8|SAMPLE0|type v|type 12|500 200 right|key bs|key bs|300 250 left|type 9|key esc|key esc|key esc
+escfz_v_9|SAMPLE0|type v|250 200 left|key enter|type 5|type 1|key esc|key esc|key esc
+escfz_v_10|SAMPLE0|type v|key enter|move 400 140|250 200 right|move 450 330|type 1|key enter|key esc|key esc|key esc
+escfz_v_11|SAMPLE0|type v|key bs|key bs|key enter|key bs|type 4|key esc|key esc|key esc
+escfz_v_12|SAMPLE0|type v|500 200 right|type 3|move 598 300|type 9|move 300 250|key esc|key esc|key esc
+escfz_v_13|SAMPLE0|type v|type 7|598 300 left|type 8|type 4|400 140 right|key esc|key esc|key esc
+escfz_v_14|SAMPLE0|type v|598 300 left|move 500 200|450 330 left|400 140 right|type 2|key bs|key esc|key esc|key esc
+escfz_r_15|SAMPLE0|type r|250 200 right|key enter|type 4|key esc|key esc|key esc
+escfz_r_16|SAMPLE0|type r|key enter|key bs|598 300 left|key bs|type 6|key esc|key esc|key esc
+escfz_r_17|SAMPLE0|type r|move 500 200|300 250 left|move 400 140|key bs|type 5|400 140 left|key esc|key esc|key esc
+escfz_r_18|SAMPLE0|type r|type 2|key enter|key esc|key esc|key esc
+escfz_r_19|SAMPLE0|type r|move 450 330|type 8|key esc|key esc|key esc
+escfz_r_20|SAMPLE0|type r|type 12|key esc|key esc|key esc
+escfz_r_21|SAMPLE0|type r|type 7|type 5|type 5|key esc|key esc|key esc
+escfz_r_22|SAMPLE0|type r|type 12|400 140 right|type 1000|350 350 left|key enter|key enter|key esc|key esc|key esc
+escfz_r_23|SAMPLE0|type r|move 400 140|type 9|type 7|162 250 left|type 30|key enter|key esc|key esc|key esc
+escfz_w_24|SAMPLE0|type w|400 140 left|move 162 250|key enter|key esc|key esc|key esc
+escfz_w_25|SAMPLE0|type w|move 300 250|500 200 right|type 8|type 2|key enter|key bs|key esc|key esc|key esc
+escfz_w_26|SAMPLE0|type w|162 250 right|key enter|key bs|type 2|key esc|key esc|key esc
+escfz_w_27|SAMPLE0|type w|400 140 right|type 12|598 300 right|type 12|key esc|key esc|key esc
+escfz_e_28|SAMPLE0|type e|key bs|type 5|type 1000|type 5|type 1|key enter|key esc|key esc|key esc
+escfz_e_29|SAMPLE0|type e|key enter|type 30|key bs|type 12|type 30|key esc|key esc|key esc
+escfz_e_30|SAMPLE0|type e|type 30|key enter|type 4|type 12|key esc|key esc|key esc
+escfz_e_31|SAMPLE0|type e|type 12|key bs|key bs|key esc|key esc|key esc
+escfz_e_32|SAMPLE0|type e|move 500 200|type 30|move 350 350|key enter|500 200 left|type 0|key esc|key esc|key esc
+escfz_e_33|SAMPLE0|type e|key enter|type 9|move 350 350|type 4|key esc|key esc|key esc
+escfz_e_34|SAMPLE0|type e|key bs|type 4|type 3|move 598 300|key esc|key esc|key esc
+escfz_e_35|SAMPLE0|type e|type 2|500 200 right|key bs|key bs|450 330 right|450 330 left|key esc|key esc|key esc
+escfz_e_36|SAMPLE0|type e|type 2|type 3|key bs|key esc|key esc|key esc
+escfz_e_37|SAMPLE0|type e|key bs|162 250 left|type 30|400 140 left|598 300 left|500 200 left|key esc|key esc|key esc
+escfz_e_38|SAMPLE0|type e|key enter|type 4|162 250 right|type 1|key bs|key esc|key esc|key esc
+escfz_e_39|SAMPLE0|type e|type 2|300 250 left|type 7|key esc|key esc|key esc
+escfz_e_40|SAMPLE0|type e|type 2|type 0|key esc|key esc|key esc
+escfz_e_41|SAMPLE0|type e|type 2|type 6|key enter|key esc|key esc|key esc
+escfz_e_42|SAMPLE0|type e|type 1000|type 4|move 450 330|key bs|350 350 left|key esc|key esc|key esc
+escfz_e_43|SAMPLE0|type e|move 162 250|type 30|type 3|type 6|move 400 140|key esc|key esc|key esc
+escfz_e_44|SAMPLE0|type e|key enter|type 3|type 1000|250 200 left|move 162 250|250 200 right|key esc|key esc|key esc
+escfz_e_45|SAMPLE0|type e|type 4|type 2|type 1000|key esc|key esc|key esc
+escfz_n_46|SAMPLE0|type n|type 3|key bs|450 330 right|type 4|key esc|key esc|key esc
+escfz_n_47|SAMPLE0|type n|type 5|key esc|key esc|key esc
+escfz_n_48|SAMPLE0|type n|type 2|300 250 right|400 140 right|key bs|move 350 350|key esc|key esc|key esc
+escfz_n_49|SAMPLE0|type n|500 200 right|type 7|key esc|key esc|key esc
+escfz_a_50|SAMPLE0|type a|key enter|300 250 right|162 250 left|type 8|key enter|250 200 right|key esc|key esc|key esc
+escfz_a_51|SAMPLE0|type a|key enter|move 350 350|250 200 left|key bs|key bs|type 5|key esc|key esc|key esc
+escfz_a_52|SAMPLE0|type a|162 250 left|type 0|key esc|key esc|key esc
+escfz_a_53|SAMPLE0|type a|type 7|key esc|key esc|key esc
+escfz_a_54|SAMPLE0|type a|key enter|key bs|598 300 left|key bs|type 6|key esc|key esc|key esc
+escfz_a_55|SAMPLE0|type a|type 30|250 200 left|400 140 right|key enter|350 350 right|450 330 right|key esc|key esc|key esc
+escfz_C_56|SAMPLE0|type C|300 250 right|162 250 right|type 30|key enter|type 1|key esc|key esc|key esc
+escfz_H_57|SAMPLE0|type H|type 0|400 140 left|type 1|key esc|key esc|key esc
+escfz_H_58|SAMPLE0|type H|500 200 left|500 200 left|type 1000|450 330 right|type 5|250 200 right|key esc|key esc|key esc
+escfz_X_59|SAMPLE0|type X|key enter|key enter|162 250 right|598 300 left|type 1000|key esc|key esc|key esc
+escfz_B_60|SAMPLE0|type B|key enter|key bs|type 12|500 200 left|type 9|type 5|key esc|key esc|key esc
+escfz_B_61|SAMPLE0|type B|key enter|key bs|598 300 left|450 330 right|move 162 250|key esc|key esc|key esc
+escfz_B_62|SAMPLE0|type B|type 1|key enter|type 2|key esc|key esc|key esc
+escfz_B_63|SAMPLE0|type B|type 12|350 350 left|162 250 right|type 3|key esc|key esc|key esc
+escfz_F_64|SAMPLE0|type F|move 350 350|162 250 left|key enter|350 350 left|key bs|key esc|key esc|key esc
+escfz_F_65|SAMPLE0|type F|key bs|key bs|type 12|598 300 right|500 200 left|key esc|key esc|key esc
+escfz_T_66|SAMPLE0|type T|key bs|400 140 right|key esc|key esc|key esc
+escfz_R_67|SAMPLE0|type R|key enter|key enter|162 250 right|598 300 left|type 1000|key esc|key esc|key esc
+escfz_R_68|SAMPLE0|type R|key enter|type 4|162 250 right|type 1|key bs|key esc|key esc|key esc
+escfz_W_69|SAMPLE0|type W|500 200 left|type 4|598 300 right|move 300 250|key esc|key esc|key esc
+escfz_W_70|SAMPLE0|type W|key enter|type 0|key bs|key enter|598 300 left|400 140 right|key esc|key esc|key esc
+escfz_W_71|SAMPLE0|type W|162 250 right|450 330 left|250 200 left|key enter|key esc|key esc|key esc
+escfz_D_72|SAMPLE0|type D|598 300 right|key enter|type 3|key esc|key esc|key esc
+escfz_E_73|SAMPLE0|type E|type 1000|key enter|key enter|key bs|key esc|key esc|key esc
+escfz_E_74|SAMPLE0|type E|450 330 left|162 250 right|key bs|key enter|move 450 330|key esc|key esc|key esc
+escfz_E_75|SAMPLE0|type E|250 200 left|300 250 right|350 350 left|598 300 right|key bs|move 500 200|key esc|key esc|key esc
+escfz_N_76|SAMPLE0|type N|450 330 left|key bs|move 500 200|key esc|key esc|key esc
+escfz_N_77|SAMPLE0|type N|key bs|type 5|250 200 left|type 1|450 330 left|162 250 left|key esc|key esc|key esc
+escfz_A_78|SAMPLE0|type A|type 1000|400 140 right|162 250 right|key esc|key esc|key esc
+escfz_A_79|SAMPLE0|type A|type 12|key bs|key bs|key esc|key esc|key esc
+escfz_A_80|SAMPLE0|type A|450 330 right|598 300 right|500 200 right|type 2|key esc|key esc|key esc
+escfz_A_81|SAMPLE0|type A|key enter|type 5|250 200 left|key esc|key esc|key esc
+escfz_A_82|SAMPLE0|type A|500 200 left|key enter|key esc|key esc|key esc
+escfz_A_83|SAMPLE0|type A|type 6|key bs|key bs|key enter|500 200 right|key esc|key esc|key esc
+escfz_A_84|SAMPLE0|type A|type 1000|type 2|type 1000|type 9|162 250 left|key esc|key esc|key esc
