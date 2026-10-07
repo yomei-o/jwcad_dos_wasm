@@ -7879,6 +7879,30 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->stage = 5;
         return 1;
     }
+    /* 分割数の欄の [ESC] は終点の行（段 1）へ、点を作ったあと（段 4）の [ESC] は
+     * その点を取り消して始点の行（段 5）へ（測定のみ・decomp 未確認：escfz_t_8・t_9）。 */
+    if (c->command == 21 && key == 27 && c->typing && c->stage == 2) {
+        c->typing = 0;
+        c->typed_n = 0;
+        c->typed[0] = 0;
+        c->stage = 1;
+        return 1;
+    }
+    if (c->command == 21 && key == 27 && !c->typing && c->stage == 4 && d && c->divisions >= 2) {
+        int i;
+
+        for (i = 1; i < c->divisions; i++) {
+            if (c->div_real) {
+                if (d->n_points > 0) {
+                    jwc_remove_point(d, d->n_points - 1);
+                }
+            } else if (d->n_temp > 0) {
+                d->n_temp--;
+            }
+        }
+        c->stage = 5;
+        return 1;
+    }
     /* 連続書 の間隔の欄の鍵。 */
     /* 文編集 ⑤ の ②行間 の欄。0 で現位置に戻す（測定：tmp/te5e.txt te5g）。
      * 1～100 の外は未測定（取らない）。 */
@@ -17968,7 +17992,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         }
         if (c->stage == 0) {
             if (right) {
-                return 0;
+                /* 最初の行の右押しは `②円分割点(R)` を選ぶ（測定のみ・decomp 未確認：escfz_t_5・t_7）。 */
+                c->div2 = 2;
+                c->stage = 6;
+                return 1;
             }
             c->stage = 5;
             return 1;
