@@ -1367,6 +1367,14 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
     if (s->hold_counts && (q->row == 2 || q->row == 3) && q->col <= 15) {
         return;
     }
+    /* ○ の半径確定後（①径寸法 を閉じて矢が付いてくる段）の `半径=` `直径=`
+     * は、ポインタが作図範囲外なら描かない（測定のみ・decomp 未確認。
+     * s->snap は作図範囲内かどうかの既存の印、src/main_wasm.c の
+     * AREA_X0..AREA_Y1 から計算済み）。 */
+    if (q->command == 11 && stage == 1 && !s->snap
+        && (q->row == 2 || q->row == 3) && q->col == 1) {
+        return;
+    }
     /* 文字's field is only up while it is taking a string: once [Enter] has
      * written the text the command is at stage 2 and none of stage 1 is on
      * the screen any more (the original writes ` Get type[tab]` back at row 4
