@@ -4955,7 +4955,7 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->box_ctr = !c->box_ctr;
         return 1;
     }
-    if (c->command == 4 && c->box_fix && item == 4) {
+    if (c->command == 4 && c->box_fix && (item == 4 || item == 5)) {
         static const int DX[9] = { 0, 1, 1, 1, 0, -1, -1, -1, 0 };
         static const int DY[9] = { 0, -1, 0, 1, 1, 1, 0, -1, -1 };
 
