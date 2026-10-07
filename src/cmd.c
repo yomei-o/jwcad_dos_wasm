@@ -8222,6 +8222,14 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->moved = 0;
         return 1;
     }
+    /* ┣ 線伸縮：対象線を選んだあと（段 1）の [ESC] は最初の行（段 0）へ
+     * （測定のみ・decomp 未確認：escfz_T_83）。 */
+    if (key == 27 && c->command == 6 && !c->typing && c->stage == 1 && c->pick_a >= 0) {
+        c->pick_a = -1;
+        c->stage = 0;
+        c->moved = 0;
+        return 1;
+    }
     /* ②連続 で足した線は [ESC] で一本戻り、行は段 0 の `線指示 …` へ
      * （測定のみ・decomp 未確認：escfz_F_80）。 */
     if (key == 27 && c->command == 5 && !c->typing && c->stage == 3 && c->off_cont && d
