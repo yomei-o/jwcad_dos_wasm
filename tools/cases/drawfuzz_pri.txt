@@ -1,0 +1,480 @@
+dfz_H_0|SAMPLE0|type H|200 300 left|type 4|430 180 right|type 3|598 140 left|162 250 right|move 350 350|type 9|162 250 left|key enter|type 8
+dfz_H_1|SAMPLE0|type H|type 4|type 5|598 300 right|type 7|move 598 300|type 45|type 30|300 250 right|598 140 right
+dfz_H_2|SAMPLE0|type H|400 140 left|162 250 right|380 200 right|250 200 left|598 140 left
+dfz_H_3|SAMPLE0|type H|300 250 left|300 250 left|550 250 left|type 4
+dfz_H_4|SAMPLE0|type H|type 3|380 200 left|250 200 left|598 140 left|380 200 left|450 330 left|400 140 left|key enter|598 300 left|500 200 left|type 6
+dfz_H_5|SAMPLE0|type H|type 8|key enter|380 200 left|type 5|key enter|type 8|type 6|type 7|type 7|key enter|type 7
+dfz_H_6|SAMPLE0|type H|type 1|type 5|380 200 left|550 250 left
+dfz_H_7|SAMPLE0|type H|598 300 left|280 160 left|250 200 left|300 350 right|162 250 left|430 180 left
+dfz_H_8|SAMPLE0|type H|type 8|move 430 180|type 3|type 1|598 420 left
+dfz_H_9|SAMPLE0|type H|type 2|598 140 left|598 300 left|598 420 left
+dfz_H_10|SAMPLE0|type H|162 420 left|550 250 left|key enter|400 140 right|type 7|400 140 left
+dfz_H_11|SAMPLE0|type H|type 2|move 300 350|type 5|move 200 300|280 160 left
+dfz_H_12|SAMPLE0|type H|type 2|500 200 left|550 250 left|key enter
+dfz_H_13|SAMPLE0|type H|type 4|type 6|type 8|500 200 left|162 140 left|type 4|key enter|162 420 left|550 250 left
+dfz_H_14|SAMPLE0|type H|162 140 left|550 250 left|move 300 350|430 180 right
+dfz_H_15|SAMPLE0|type H|200 300 left|162 250 left|key enter|162 140 left|400 140 left|250 200 left|type 9|450 330 left|move 300 250
+dfz_H_16|SAMPLE0|type H|type 9|type 6|move 250 200|550 250 left|400 140 right|type 1|162 140 left|type 9|type 3|500 200 left|380 200 left
+dfz_H_17|SAMPLE0|type H|type 1|430 180 left|250 200 left|type 4|380 200 left|move 280 160|move 162 420|400 140 left|type 1|280 160 right|type 0
+dfz_H_18|SAMPLE0|type H|type 2|162 250 left|type 3|430 180 right
+dfz_H_19|SAMPLE0|type H|598 300 left|280 160 left|key enter|type 3|type 9|380 200 left|450 330 left|type 4|300 250 left|type 1|type 1
+dfz_H_20|SAMPLE0|type H|type 2|350 350 left|move 200 300|380 200 left|550 250 left|550 250 left|300 350 left|move 450 330|type 1|450 330 left
+dfz_H_21|SAMPLE0|type H|162 420 right|550 250 left|300 250 left|type 100
+dfz_H_22|SAMPLE0|type H|type 7|key enter|type 9|280 160 left
+dfz_H_23|SAMPLE0|type H|450 330 left|key enter|type 6|key enter|162 420 left|250 200 left|500 200 left
+dfz_H_24|SAMPLE0|type H|type 2|300 350 left|400 140 left|598 420 left|430 180 left
+dfz_H_25|SAMPLE0|type H|550 250 left|280 160 right|350 350 left|350 350 left|move 300 250|type 3|move 200 300
+dfz_H_26|SAMPLE0|type H|162 420 left|430 180 left|598 420 left|type 1|key enter
+dfz_H_27|SAMPLE0|type H|type 6|type 5|move 350 350|400 140 left|key enter|type 5
+dfz_H_28|SAMPLE0|type H|type 6|type 9|300 250 left|type 5|162 420 left|type 6|350 350 left
+dfz_H_29|SAMPLE0|type H|type 2|598 420 left|598 140 left|380 200 left|type 7|type 8|type 2|type 1|300 250 left
+dfz_H_30|SAMPLE0|type H|type 9|250 200 right|162 140 left|162 420 right|move 300 250|type 2|type 1|350 350 right
+dfz_H_31|SAMPLE0|type H|550 250 right|type 1|550 250 right|380 200 left|598 140 right|type 9|move 598 140|500 200 left|type 7|type 5|162 420 right
+dfz_H_32|SAMPLE0|type H|162 420 left|type 8|550 250 left|move 500 200
+dfz_H_33|SAMPLE0|type H|type 8|500 200 left|300 350 right|162 250 left
+dfz_H_34|SAMPLE0|type H|type 8|300 350 right|type 7|430 180 left|move 450 330|300 250 left
+dfz_H_35|SAMPLE0|type H|type 4|type 4|500 200 left|key enter|162 250 left|300 350 left|type 2|162 140 left|type 6
+dfz_H_36|SAMPLE0|type H|598 420 left|250 200 left|450 330 left|type 1000|type 7|162 140 right|type 12
+dfz_H_37|SAMPLE0|type H|162 420 left|type 3|598 420 left|162 420 left|type 7|type 8
+dfz_H_38|SAMPLE0|type H|type 1|250 200 left|type 8|type 45|450 330 left|162 420 left|key enter|200 300 left|598 140 right|380 200 left|598 420 left
+dfz_H_39|SAMPLE0|type H|380 200 left|type 12|type 5|key enter|type 3|200 300 left|type 8|type 9|598 140 left
+dfz_X_0|SAMPLE0|type X|type 9|280 160 left|162 140 left|key enter|450 330 left|type 100|500 200 right|type 45|type 5|162 420 left
+dfz_X_1|SAMPLE0|type X|type 2|type 2|598 420 left|type 3|key enter|move 400 140|type 1|type 100|move 450 330|350 350 right|type 6
+dfz_X_2|SAMPLE0|type X|type 9|162 250 right|300 250 left|type 3|key enter|type 1|type 1
+dfz_X_3|SAMPLE0|type X|type 3|500 200 right|type 4|162 140 right|598 140 right|key enter|380 200 left|type 2|500 200 right
+dfz_X_4|SAMPLE0|type X|type 3|type 5|move 430 180|type 2
+dfz_X_5|SAMPLE0|type X|550 250 left|500 200 right|type 3|162 420 left|430 180 left|type 5|type 1
+dfz_X_6|SAMPLE0|type X|350 350 left|450 330 left|162 140 left|key enter|type 2|move 280 160
+dfz_X_7|SAMPLE0|type X|type 4|598 300 right|280 160 right|type 3|move 598 140|380 200 left|type 8|type 2
+dfz_X_8|SAMPLE0|type X|type 3|380 200 right|type 4|type 1|key enter|type 0|300 250 right|type 7|key enter
+dfz_X_9|SAMPLE0|type X|type 7|move 598 140|move 380 200|type 2|250 200 right|type 45
+dfz_X_10|SAMPLE0|type X|550 250 right|type 8|key enter|450 330 left|350 350 left|162 250 right|type 2|162 250 left
+dfz_X_11|SAMPLE0|type X|type 2|300 350 left|type 3|key enter|162 420 right
+dfz_X_12|SAMPLE0|type X|162 420 left|type 9|162 420 left|200 300 left
+dfz_X_13|SAMPLE0|type X|type 6|type 4|type 3|280 160 left|type 6|type 9|250 200 left|type 1|type 4|type 5
+dfz_X_14|SAMPLE0|type X|type 7|type 6|598 420 left|300 250 right|move 450 330|280 160 left|type 5
+dfz_X_15|SAMPLE0|type X|162 420 right|400 140 left|type 6|598 420 left|280 160 left|380 200 left
+dfz_X_16|SAMPLE0|type X|type 7|type 1|300 350 right|430 180 right|380 200 left|450 330 left
+dfz_X_17|SAMPLE0|type X|162 420 left|type 1|type 5|550 250 left|300 350 right|type 0|key enter
+dfz_X_18|SAMPLE0|type X|300 350 left|300 250 left|type 7|400 140 left|key enter|300 350 right|type 5|key enter|key enter|200 300 left|type 7
+dfz_X_19|SAMPLE0|type X|type 2|type 4|type 7|move 598 300
+dfz_X_20|SAMPLE0|type X|300 350 right|type 8|type 7|type 2|450 330 left|key enter|type 8|500 200 left|350 350 left
+dfz_X_21|SAMPLE0|type X|430 180 left|500 200 left|200 300 left|550 250 left|move 550 250|key enter|162 250 left|598 420 right|280 160 left|type 4|162 250 left
+dfz_X_22|SAMPLE0|type X|162 420 left|key enter|type 5|200 300 right|500 200 left|250 200 left|500 200 left|type 12
+dfz_X_23|SAMPLE0|type X|500 200 left|key enter|500 200 left|598 300 right|move 200 300
+dfz_X_24|SAMPLE0|type X|type 1|598 140 left|598 300 left|250 200 left|280 160 left
+dfz_X_25|SAMPLE0|type X|450 330 left|type 7|550 250 left|280 160 left|550 250 left|type 9
+dfz_X_26|SAMPLE0|type X|350 350 left|type 4|type 9|type 8|280 160 left|key enter
+dfz_X_27|SAMPLE0|type X|type 4|type 1|type 3|400 140 right|type 1000|type 1|350 350 left|type 1|162 250 left|type 9|type 0
+dfz_X_28|SAMPLE0|type X|430 180 left|500 200 left|200 300 left|200 300 left|type 1
+dfz_X_29|SAMPLE0|type X|type 3|200 300 left|300 350 left|280 160 left|598 300 left|type 4
+dfz_X_30|SAMPLE0|type X|type 9|key enter|598 300 left|162 420 left|380 200 left|type 6|380 200 left|162 250 left
+dfz_X_31|SAMPLE0|type X|type 3|type 6|380 200 left|type 5|550 250 left|key enter|380 200 right|162 140 left|move 400 140|type 5
+dfz_X_32|SAMPLE0|type X|250 200 left|162 250 left|type 12|500 200 left|162 420 right|380 200 left|430 180 left|500 200 right|450 330 left|598 140 right
+dfz_X_33|SAMPLE0|type X|type 3|type 9|200 300 right|250 200 left|type 8|380 200 left|598 140 left|250 200 left|400 140 right|type 5
+dfz_X_34|SAMPLE0|type X|250 200 right|type 2|move 598 420|162 140 left|type 4
+dfz_X_35|SAMPLE0|type X|type 8|162 420 left|162 140 left|380 200 left|350 350 left|type 4|type 6|key enter|type 0|type 9
+dfz_X_36|SAMPLE0|type X|400 140 left|598 300 right|380 200 right|key enter|162 420 left|162 250 left|598 420 left|350 350 right
+dfz_X_37|SAMPLE0|type X|598 420 left|type 4|type 2|type 7|type 2|200 300 right|380 200 left|type 9|598 420 right|move 450 330
+dfz_X_38|SAMPLE0|type X|type 5|type 4|type 9|move 400 140|550 250 left|type 9|key enter
+dfz_X_39|SAMPLE0|type X|type 2|key enter|250 200 right|type 4|key enter|550 250 left|598 140 left|type 0|500 200 left
+dfz_B_0|SAMPLE0|type B|430 180 right|598 300 left|type 30|200 300 right|300 350 right|162 140 right|type 7|162 140 left|type 45
+dfz_B_1|SAMPLE0|type B|type 4|key enter|key enter|type 7|type 3|type 5
+dfz_B_2|SAMPLE0|type B|type 7|type 5|350 350 left|450 330 left|type 7|380 200 right
+dfz_B_3|SAMPLE0|type B|type 2|key enter|598 420 left|400 140 right|598 300 left|598 140 left
+dfz_B_4|SAMPLE0|type B|300 350 left|move 380 200|type 4|type 3|300 250 left|key enter|450 330 left|key enter|450 330 left|type 5
+dfz_B_5|SAMPLE0|type B|type 8|280 160 left|type 3|598 140 left|162 420 right|250 200 right|300 350 left|type 5|type 4
+dfz_B_6|SAMPLE0|type B|type 5|key enter|move 200 300|type 1|400 140 left|type 2|400 140 left|200 300 left
+dfz_B_7|SAMPLE0|type B|type 6|430 180 left|type 0|280 160 left|move 550 250|300 350 left|key enter
+dfz_B_8|SAMPLE0|type B|type 3|380 200 left|type 5|type 12
+dfz_B_9|SAMPLE0|type B|type 5|162 420 left|250 200 left|450 330 left|type 3|450 330 left|350 350 right|380 200 left|162 420 left|350 350 left|300 250 left
+dfz_B_10|SAMPLE0|type B|type 4|350 350 left|380 200 left|key enter|type 1|380 200 left|598 420 right|key enter|type 9|move 300 250
+dfz_B_11|SAMPLE0|type B|200 300 left|type 7|key enter|type 7|type 1
+dfz_B_12|SAMPLE0|type B|type 8|162 250 left|move 450 330|type 6
+dfz_B_13|SAMPLE0|type B|162 420 left|type 5|450 330 right|350 350 left|key enter|type 9|move 598 300|162 250 left
+dfz_B_14|SAMPLE0|type B|type 6|280 160 left|key enter|162 140 left|280 160 right|type 0|key enter|550 250 left
+dfz_B_15|SAMPLE0|type B|450 330 left|162 420 left|move 500 200|key enter|350 350 right
+dfz_B_16|SAMPLE0|type B|200 300 left|250 200 left|key enter|type 7
+dfz_B_17|SAMPLE0|type B|type 6|type 5|type 4|type 3|type 6|type 8|162 140 left|598 420 left|400 140 left|type 6
+dfz_B_18|SAMPLE0|type B|250 200 left|162 140 right|300 350 left|430 180 left|move 598 420|type 7|300 250 left|598 140 left
+dfz_B_19|SAMPLE0|type B|type 8|300 350 left|598 300 left|598 140 right|type 5|400 140 left|598 420 left|type 5|162 140 left|300 250 left|250 200 left
+dfz_B_20|SAMPLE0|type B|type 1|type 12|move 400 140|type 3|598 420 left|162 420 right|type 1|move 400 140|move 380 200
+dfz_B_21|SAMPLE0|type B|280 160 right|162 250 left|move 380 200|type 7|type 4|450 330 right|598 300 left|162 140 right|type 4|450 330 left
+dfz_B_22|SAMPLE0|type B|400 140 left|280 160 left|type 4|430 180 left|500 200 left|type 9|type 5|500 200 left|type 8
+dfz_B_23|SAMPLE0|type B|200 300 left|type 8|300 250 left|430 180 left
+dfz_B_24|SAMPLE0|type B|300 250 left|key enter|300 250 right|430 180 left|550 250 left|key enter|type 1|598 140 left|280 160 left|type 7
+dfz_B_25|SAMPLE0|type B|250 200 right|move 280 160|move 430 180|move 300 250|598 140 left|type 9|598 300 right|type 5|300 350 left
+dfz_B_26|SAMPLE0|type B|type 5|key enter|430 180 right|type 7|type 4|type 2|550 250 left|type 9|400 140 left|300 250 left|type 6
+dfz_B_27|SAMPLE0|type B|type 6|key enter|162 250 left|300 250 left|598 300 left|162 140 right|type 6
+dfz_B_28|SAMPLE0|type B|type 2|500 200 left|162 420 left|type 30|type 1|move 550 250|598 300 left|move 400 140|type 4|type 1
+dfz_B_29|SAMPLE0|type B|type 2|598 300 right|type 3|200 300 right|type 1000|598 300 left|move 598 420|type 9|type 4|280 160 left|move 250 200
+dfz_B_30|SAMPLE0|type B|type 9|300 250 left|key enter|162 250 right|move 250 200
+dfz_B_31|SAMPLE0|type B|type 7|type 8|350 350 left|598 420 left|type 7|type 9|type 8|type 8|450 330 right|type 5|550 250 left
+dfz_B_32|SAMPLE0|type B|type 7|type 5|move 162 140|250 200 right|key enter|350 350 right|key enter|550 250 left
+dfz_B_33|SAMPLE0|type B|type 2|type 9|key enter|598 420 left|type 6|200 300 left|type 4
+dfz_B_34|SAMPLE0|type B|250 200 left|key enter|type 12|250 200 left|key enter|move 162 420|598 140 left
+dfz_B_35|SAMPLE0|type B|type 1|162 140 left|280 160 left|598 300 left|162 140 left
+dfz_B_36|SAMPLE0|type B|type 9|key enter|type 9|type 6|type 5|300 350 left|type 9|200 300 left|250 200 left|type 6
+dfz_B_37|SAMPLE0|type B|type 9|598 300 left|key enter|300 250 left|move 598 140|450 330 left|move 598 300
+dfz_B_38|SAMPLE0|type B|type 3|move 430 180|type 7|type 3|598 420 right|move 300 250
+dfz_B_39|SAMPLE0|type B|type 4|550 250 left|type 9|598 140 left|162 140 left|move 450 330|key enter|move 400 140|type 6|move 598 300
+dfz_E_0|SAMPLE0|type E|162 250 left|598 140 left|450 330 left|type 9|key enter|type 3
+dfz_E_1|SAMPLE0|type E|type 4|move 500 200|162 420 left|400 140 left
+dfz_E_2|SAMPLE0|type E|type 6|type 6|type 6|500 200 right|450 330 left|550 250 left|type 45|162 140 left
+dfz_E_3|SAMPLE0|type E|type 4|430 180 left|type 7|type 4
+dfz_E_4|SAMPLE0|type E|type 9|250 200 left|450 330 left|type 2|key enter
+dfz_E_5|SAMPLE0|type E|300 350 right|type 45|move 250 200|598 140 left|400 140 left|380 200 left|350 350 left|350 350 right|move 162 420|450 330 left
+dfz_E_6|SAMPLE0|type E|250 200 left|500 200 right|300 250 left|598 300 left|type 2|162 420 left|type 5|type 9|type 1000
+dfz_E_7|SAMPLE0|type E|598 300 right|598 300 left|move 430 180|162 420 left|200 300 left|type 8|250 200 left|move 400 140
+dfz_E_8|SAMPLE0|type E|380 200 right|350 350 left|250 200 left|300 350 right|type 2|350 350 left|598 140 left|280 160 left|type 5|type 6|450 330 right
+dfz_E_9|SAMPLE0|type E|type 8|550 250 left|type 3|280 160 left|type 45|380 200 left|type 45|300 250 left|280 160 left|430 180 right
+dfz_E_10|SAMPLE0|type E|380 200 left|200 300 left|550 250 right|450 330 left
+dfz_E_11|SAMPLE0|type E|type 1|162 250 left|type 7|type 9|430 180 left|280 160 left|move 550 250|key enter
+dfz_E_12|SAMPLE0|type E|type 9|type 4|type 8|type 5|type 5|type 6
+dfz_E_13|SAMPLE0|type E|598 140 right|400 140 left|380 200 left|move 350 350|598 140 right
+dfz_E_14|SAMPLE0|type E|type 5|move 450 330|type 2|300 350 right|type 1|type 8|type 8|598 420 left
+dfz_E_15|SAMPLE0|type E|550 250 left|300 250 left|type 6|350 350 left
+dfz_E_16|SAMPLE0|type E|300 250 left|162 250 left|598 140 right|type 45|250 200 right|300 250 left|430 180 left|598 420 left
+dfz_E_17|SAMPLE0|type E|type 2|598 420 left|type 9|300 350 left|type 3|300 350 right|type 9|type 9|type 7|move 430 180
+dfz_E_18|SAMPLE0|type E|type 1|type 3|type 5|type 45|162 250 left
+dfz_E_19|SAMPLE0|type E|type 2|move 250 200|move 162 250|type 1|200 300 left|move 550 250|type 4|500 200 right|450 330 left|550 250 right|598 300 right
+dfz_E_20|SAMPLE0|type E|250 200 left|key enter|162 420 left|400 140 left|key enter|type 100|type 7|598 300 left|598 420 right|300 350 left|400 140 right
+dfz_E_21|SAMPLE0|type E|598 300 left|type 1000|type 9|move 380 200|key enter|500 200 left|200 300 right|598 140 left
+dfz_E_22|SAMPLE0|type E|type 6|type 7|300 350 left|type 9|380 200 left
+dfz_E_23|SAMPLE0|type E|type 4|type 100|162 250 left|key enter|162 420 left|type 5|280 160 right|type 1|162 420 left|162 420 right
+dfz_E_24|SAMPLE0|type E|type 8|type 5|key enter|move 450 330|162 250 right|280 160 right|type 5|162 250 left|280 160 left
+dfz_E_25|SAMPLE0|type E|380 200 right|598 420 left|type 7|type 3|type 8|400 140 left|key enter|type 1|type 9
+dfz_E_26|SAMPLE0|type E|type 1|type 5|key enter|598 420 left
+dfz_E_27|SAMPLE0|type E|250 200 left|type 1|598 140 left|500 200 left|162 420 right|key enter|350 350 left|598 420 left|type 45
+dfz_E_28|SAMPLE0|type E|type 1|162 250 left|type 1|162 250 left|type 0|type 7|300 250 right
+dfz_E_29|SAMPLE0|type E|350 350 right|450 330 left|598 140 left|type 6
+dfz_E_30|SAMPLE0|type E|type 4|move 598 140|400 140 left|350 350 left|350 350 left|430 180 left|200 300 left
+dfz_E_31|SAMPLE0|type E|598 420 right|200 300 left|598 140 left|162 250 right|250 200 left|key enter|key enter|type 6|type 1000|430 180 left
+dfz_E_32|SAMPLE0|type E|type 4|type 6|type 9|type 1|key enter|type 2|type 2
+dfz_E_33|SAMPLE0|type E|380 200 right|type 2|300 350 left|type 3
+dfz_E_34|SAMPLE0|type E|type 4|type 4|move 280 160|type 1|250 200 left
+dfz_E_35|SAMPLE0|type E|162 420 left|move 280 160|type 3|500 200 left|162 250 left|type 1|type 0
+dfz_E_36|SAMPLE0|type E|350 350 left|type 1|move 162 250|key enter|162 140 right|type 6|162 250 left|type 5|key enter
+dfz_E_37|SAMPLE0|type E|type 3|type 7|300 250 right|move 162 420|162 250 right
+dfz_E_38|SAMPLE0|type E|300 250 right|300 250 left|598 420 left|350 350 left|type 8|type 4|550 250 left|162 250 left|200 300 left|key enter|type 3
+dfz_E_39|SAMPLE0|type E|162 250 left|key enter|350 350 left|key enter|380 200 left|162 250 left|key enter|type 1|type 4
+dfz_N_0|SAMPLE0|type N|type 8|250 200 left|type 3|280 160 right|380 200 left|550 250 left|400 140 left|type 1
+dfz_N_1|SAMPLE0|type N|380 200 left|type 3|598 420 left|key enter|598 140 left|300 250 left|type 6|type 4|type 2|type 12
+dfz_N_2|SAMPLE0|type N|550 250 right|450 330 left|598 300 left|type 2|162 140 left|380 200 left|400 140 left|430 180 left
+dfz_N_3|SAMPLE0|type N|type 9|type 1|400 140 left|type 8|move 400 140|500 200 right|200 300 right|move 300 350
+dfz_N_4|SAMPLE0|type N|type 7|200 300 left|key enter|type 4|350 350 left|350 350 left|type 6|move 162 250
+dfz_N_5|SAMPLE0|type N|type 1|162 140 left|type 6|move 162 250|type 1|300 250 left|type 2|598 420 left|598 420 left
+dfz_N_6|SAMPLE0|type N|598 420 left|type 4|key enter|type 6|598 140 right|400 140 right|162 140 right|type 9|162 140 left
+dfz_N_7|SAMPLE0|type N|type 6|type 5|430 180 right|type 5|move 550 250|move 550 250
+dfz_N_8|SAMPLE0|type N|type 2|380 200 left|move 450 330|300 350 left|type 3|598 140 left|250 200 left|350 350 right|350 350 left
+dfz_N_9|SAMPLE0|type N|598 300 right|type 4|350 350 left|162 250 left|type 100
+dfz_N_10|SAMPLE0|type N|type 1|move 162 420|250 200 left|key enter|550 250 left
+dfz_N_11|SAMPLE0|type N|250 200 right|move 300 350|move 200 300|type 6|300 350 left|type 8|280 160 left|280 160 left
+dfz_N_12|SAMPLE0|type N|162 140 left|300 350 left|300 250 left|500 200 right|550 250 left|598 300 left
+dfz_N_13|SAMPLE0|type N|500 200 left|430 180 right|598 420 right|type 4|type 6|280 160 left|type 5
+dfz_N_14|SAMPLE0|type N|type 1|162 420 left|move 350 350|move 598 140|type 2|type 9|key enter|162 140 right
+dfz_N_15|SAMPLE0|type N|type 2|550 250 left|type 100|type 30|type 1|162 420 right|300 250 right
+dfz_N_16|SAMPLE0|type N|type 9|200 300 right|type 6|430 180 right|162 140 left
+dfz_N_17|SAMPLE0|type N|300 250 left|598 300 left|type 2|type 3|350 350 left|move 598 140|key enter|move 200 300|type 8
+dfz_N_18|SAMPLE0|type N|300 250 left|type 7|type 1000|450 330 left|key enter|move 598 140
+dfz_N_19|SAMPLE0|type N|type 8|162 140 left|162 420 right|280 160 right|250 200 left
+dfz_N_20|SAMPLE0|type N|type 3|430 180 left|162 250 left|200 300 left|type 4|type 9|type 1|move 250 200|key enter
+dfz_N_21|SAMPLE0|type N|550 250 right|move 350 350|type 0|move 250 200|type 6|500 200 left|key enter|450 330 left|598 140 left|200 300 left
+dfz_N_22|SAMPLE0|type N|200 300 right|type 6|move 450 330|430 180 right|type 1|type 7|type 4|key enter|162 420 left|598 140 left|380 200 left
+dfz_N_23|SAMPLE0|type N|type 6|500 200 left|type 3|380 200 left|598 300 left|550 250 left
+dfz_N_24|SAMPLE0|type N|type 5|move 598 300|key enter|type 9|move 350 350
+dfz_N_25|SAMPLE0|type N|type 4|598 140 right|162 420 left|300 350 left|598 140 left|type 5|move 300 350|500 200 right|type 45
+dfz_N_26|SAMPLE0|type N|type 2|type 30|280 160 left|280 160 left|200 300 left|550 250 right|162 250 left|598 140 left|400 140 right|type 1|200 300 left
+dfz_N_27|SAMPLE0|type N|type 7|type 0|380 200 left|type 3
+dfz_N_28|SAMPLE0|type N|type 9|key enter|key enter|type 1|key enter|key enter|type 9|key enter
+dfz_N_29|SAMPLE0|type N|450 330 left|350 350 left|550 250 left|type 30
+dfz_N_30|SAMPLE0|type N|type 4|key enter|162 140 left|200 300 left|type 9|200 300 right|350 350 left|type 7|move 300 250|type 5
+dfz_N_31|SAMPLE0|type N|430 180 left|380 200 right|type 9|598 140 left|move 430 180|500 200 left|550 250 left|type 5
+dfz_N_32|SAMPLE0|type N|450 330 left|move 162 250|type 2|598 300 left|type 8|move 550 250|598 420 left|move 162 420
+dfz_N_33|SAMPLE0|type N|type 4|300 250 left|move 300 350|key enter|key enter|type 2
+dfz_N_34|SAMPLE0|type N|type 1|type 8|200 300 left|type 7
+dfz_N_35|SAMPLE0|type N|type 2|type 5|type 5|250 200 left|280 160 left|380 200 left|key enter|300 350 left|type 1
+dfz_N_36|SAMPLE0|type N|350 350 left|598 300 left|type 1|key enter|type 1|type 8
+dfz_N_37|SAMPLE0|type N|200 300 left|type 6|key enter|type 6|162 420 right
+dfz_N_38|SAMPLE0|type N|162 250 right|move 200 300|key enter|type 1|type 6|380 200 left|300 250 left|type 4|430 180 right|162 250 left|type 4
+dfz_N_39|SAMPLE0|type N|type 1|type 7|key enter|550 250 left|type 6|598 420 left|move 450 330|key enter
+dfz_A_0|SAMPLE0|type A|type 3|300 250 left|key enter|200 300 right|162 420 left|200 300 right|key enter|type 1|250 200 left|300 350 left
+dfz_A_1|SAMPLE0|type A|162 140 left|598 300 right|450 330 left|type 1|key enter|550 250 right|200 300 left
+dfz_A_2|SAMPLE0|type A|400 140 left|type 2|350 350 right|450 330 right
+dfz_A_3|SAMPLE0|type A|598 140 left|380 200 left|400 140 left|move 550 250|350 350 left|type 45|type 5|598 300 left
+dfz_A_4|SAMPLE0|type A|type 1|300 350 right|162 420 left|key enter
+dfz_A_5|SAMPLE0|type A|type 1|430 180 left|450 330 left|250 200 left|430 180 right|key enter|move 280 160|598 420 left|598 140 left|598 420 left
+dfz_A_6|SAMPLE0|type A|type 7|500 200 left|598 140 left|300 250 left|300 250 left|type 5|280 160 right|type 8|move 550 250
+dfz_A_7|SAMPLE0|type A|300 250 left|key enter|598 300 left|162 250 left|200 300 right|move 500 200|200 300 left
+dfz_A_8|SAMPLE0|type A|type 8|550 250 right|400 140 left|400 140 left
+dfz_A_9|SAMPLE0|type A|200 300 left|430 180 left|type 3|type 8|key enter|550 250 left
+dfz_A_10|SAMPLE0|type A|type 1|200 300 right|450 330 left|598 140 left|key enter|move 162 140|280 160 left|move 430 180|type 9
+dfz_A_11|SAMPLE0|type A|type 2|type 0|type 3|key enter|200 300 left
+dfz_A_12|SAMPLE0|type A|300 350 left|type 2|430 180 left|type 2|598 300 left
+dfz_A_13|SAMPLE0|type A|350 350 left|key enter|type 9|250 200 left|450 330 left|162 250 left|type 7|key enter|type 8|400 140 right|380 200 left
+dfz_A_14|SAMPLE0|type A|type 6|250 200 left|type 30|250 200 left
+dfz_A_15|SAMPLE0|type A|598 420 left|move 400 140|162 250 left|type 2|type 4|300 250 left|type 5
+dfz_A_16|SAMPLE0|type A|type 6|key enter|350 350 left|type 6|598 140 left|move 380 200|key enter|type 8|type 4|300 350 left|key enter
+dfz_A_17|SAMPLE0|type A|type 9|350 350 left|200 300 left|key enter|move 598 140|380 200 right|598 300 left|type 4
+dfz_A_18|SAMPLE0|type A|type 2|350 350 right|450 330 left|type 9
+dfz_A_19|SAMPLE0|type A|type 2|type 5|type 9|type 7|598 420 right|280 160 left|450 330 right
+dfz_A_20|SAMPLE0|type A|380 200 left|400 140 left|type 4|type 100|move 550 250|type 9|280 160 left|280 160 left|550 250 left
+dfz_A_21|SAMPLE0|type A|type 6|400 140 left|350 350 left|type 4|move 598 300|type 8|250 200 right|200 300 left|key enter|598 140 left
+dfz_A_22|SAMPLE0|type A|400 140 right|type 6|162 140 left|type 1|key enter|598 420 left|200 300 left|500 200 right|162 140 right|type 8|type 3
+dfz_A_23|SAMPLE0|type A|280 160 right|162 140 right|type 100|162 140 left|200 300 right|450 330 right|type 3
+dfz_A_24|SAMPLE0|type A|type 2|162 250 left|move 350 350|move 300 250|key enter|350 350 left|162 250 right
+dfz_A_25|SAMPLE0|type A|type 4|type 1|type 4|598 420 right|type 100|move 550 250|350 350 right|type 0|162 250 left
+dfz_A_26|SAMPLE0|type A|type 6|type 2|162 140 left|550 250 right|350 350 left|300 250 left|162 250 left
+dfz_A_27|SAMPLE0|type A|200 300 left|280 160 left|280 160 left|type 100|type 8|300 250 left|500 200 left
+dfz_A_28|SAMPLE0|type A|type 6|200 300 left|type 0|move 162 140|162 420 right|430 180 left|key enter|598 420 left
+dfz_A_29|SAMPLE0|type A|type 3|162 140 right|162 420 right|type 100|type 6|type 2|162 140 left|550 250 left|type 5|type 2|450 330 left
+dfz_A_30|SAMPLE0|type A|598 140 left|type 0|type 1|type 8|500 200 left|type 8
+dfz_A_31|SAMPLE0|type A|type 3|type 3|250 200 left|type 8|550 250 right|280 160 left|key enter|move 280 160|type 2|598 140 left|type 3
+dfz_A_32|SAMPLE0|type A|300 350 left|400 140 left|162 420 right|400 140 right|200 300 left|162 140 right|430 180 right|400 140 left|type 9|move 450 330
+dfz_A_33|SAMPLE0|type A|598 300 right|400 140 left|598 140 left|move 430 180|key enter
+dfz_A_34|SAMPLE0|type A|300 250 left|162 420 left|type 3|162 250 right|380 200 left|type 3
+dfz_A_35|SAMPLE0|type A|598 300 right|key enter|550 250 left|move 162 420|250 200 left|key enter|type 5|type 4
+dfz_A_36|SAMPLE0|type A|type 9|type 3|type 7|400 140 right|type 5|key enter|598 420 left|598 420 left|300 350 right|300 250 left|598 420 right
+dfz_A_37|SAMPLE0|type A|type 6|350 350 right|type 5|type 12|350 350 right|move 250 200|key enter
+dfz_A_38|SAMPLE0|type A|380 200 left|200 300 left|162 420 right|type 1|move 550 250|300 350 left|162 250 left|162 420 left|type 3|200 300 left|598 140 left
+dfz_A_39|SAMPLE0|type A|type 1|type 2|key enter|type 8|key enter|type 3|type 3|500 200 left|300 250 left
+dfz_S_0|SAMPLE0|type S|350 350 right|550 250 left|type 8|300 350 left
+dfz_S_1|SAMPLE0|type S|type 1|300 250 right|type 3|type 1000|move 162 140|move 280 160|162 140 left|350 350 right|280 160 left
+dfz_S_2|SAMPLE0|type S|type 2|type 5|598 140 left|type 30
+dfz_S_3|SAMPLE0|type S|type 1|162 250 right|move 598 140|type 1|type 2|type 7|162 420 right|type 4|key enter
+dfz_S_4|SAMPLE0|type S|type 9|key enter|type 6|move 162 420|type 5|200 300 left|type 3|280 160 left|key enter|type 8|162 250 right
+dfz_S_5|SAMPLE0|type S|type 7|key enter|550 250 left|key enter|type 5|type 3|300 250 left|key enter
+dfz_S_6|SAMPLE0|type S|type 3|550 250 left|key enter|162 250 left|300 350 right|300 250 right
+dfz_S_7|SAMPLE0|type S|598 140 right|162 250 left|598 140 left|350 350 left|move 300 250|type 7|500 200 left|380 200 left
+dfz_S_8|SAMPLE0|type S|400 140 left|move 162 250|type 5|type 1000|598 300 right|key enter|move 300 250|type 2|type 8|type 1
+dfz_S_9|SAMPLE0|type S|type 3|type 6|type 3|550 250 left|type 30|type 9|move 430 180|type 6|move 200 300|move 162 140|move 598 140
+dfz_S_10|SAMPLE0|type S|type 1|move 450 330|type 3|type 8|550 250 left
+dfz_S_11|SAMPLE0|type S|type 7|400 140 left|200 300 left|500 200 left
+dfz_S_12|SAMPLE0|type S|type 8|type 5|300 350 left|250 200 right|type 30|type 12|598 420 left|350 350 left|type 7|type 0|162 420 left
+dfz_S_13|SAMPLE0|type S|type 6|400 140 right|move 380 200|type 4|598 300 left|598 140 left|move 162 420
+dfz_S_14|SAMPLE0|type S|598 300 right|598 300 right|type 12|300 250 left|type 0
+dfz_S_15|SAMPLE0|type S|598 300 left|598 140 left|300 250 left|550 250 right|250 200 right|450 330 left
+dfz_S_16|SAMPLE0|type S|598 300 left|598 420 left|move 200 300|200 300 left
+dfz_S_17|SAMPLE0|type S|598 420 left|380 200 left|598 140 right|type 2
+dfz_S_18|SAMPLE0|type S|200 300 left|598 140 left|300 350 left|type 2|type 3|move 350 350|280 160 left|type 3|type 1|type 4|type 9
+dfz_S_19|SAMPLE0|type S|250 200 left|type 9|type 5|type 4|550 250 left|598 140 right
+dfz_S_20|SAMPLE0|type S|450 330 left|430 180 left|300 350 left|598 300 left|400 140 right
+dfz_S_21|SAMPLE0|type S|type 8|key enter|200 300 left|key enter|300 250 left|450 330 left|type 100|598 140 left|550 250 left|type 2|type 0
+dfz_S_22|SAMPLE0|type S|280 160 left|type 9|250 200 left|type 5
+dfz_S_23|SAMPLE0|type S|550 250 left|350 350 right|550 250 left|380 200 left|200 300 left|type 9|300 350 left
+dfz_S_24|SAMPLE0|type S|598 300 left|380 200 left|type 3|type 3|162 250 left|400 140 right|598 140 left|key enter|type 4|key enter|162 140 left
+dfz_S_25|SAMPLE0|type S|type 3|162 420 left|598 300 right|type 4|430 180 left|move 598 420|598 300 left|type 45
+dfz_S_26|SAMPLE0|type S|type 9|598 300 left|type 8|500 200 left|type 1|type 2
+dfz_S_27|SAMPLE0|type S|598 300 left|350 350 right|move 350 350|type 1|type 3|type 6|450 330 left|250 200 left|move 500 200
+dfz_S_28|SAMPLE0|type S|598 420 right|450 330 left|430 180 right|300 250 right
+dfz_S_29|SAMPLE0|type S|type 9|598 140 right|type 8|type 7|598 420 left|598 420 left
+dfz_S_30|SAMPLE0|type S|type 6|200 300 left|162 140 right|162 140 left|type 7|598 140 left|250 200 left
+dfz_S_31|SAMPLE0|type S|type 4|key enter|type 3|type 1|250 200 left|430 180 right|key enter|key enter|key enter|400 140 left
+dfz_S_32|SAMPLE0|type S|type 1|450 330 left|key enter|162 420 left|162 420 left|162 420 left
+dfz_S_33|SAMPLE0|type S|type 3|type 12|500 200 left|300 250 right|350 350 left|400 140 left|250 200 left
+dfz_S_34|SAMPLE0|type S|598 140 left|type 0|430 180 left|500 200 left
+dfz_S_35|SAMPLE0|type S|162 250 left|type 7|type 0|162 140 left|key enter|450 330 right|key enter|300 350 right|move 162 140
+dfz_S_36|SAMPLE0|type S|162 140 right|move 598 420|type 7|598 420 right|type 5
+dfz_S_37|SAMPLE0|type S|type 6|type 3|move 450 330|type 7|598 300 left|type 45|type 2|300 350 right|162 420 left
+dfz_S_38|SAMPLE0|type S|type 7|550 250 left|key enter|move 380 200|type 3|type 2|300 250 left|500 200 left|250 200 left|598 300 left|350 350 right
+dfz_S_39|SAMPLE0|type S|type 6|type 8|500 200 right|162 250 left
+dfz_d_0|SAMPLE0|type d|162 420 left|598 140 left|162 250 left|type 4|430 180 left|350 350 right|type 8|type 7|type 5|key enter|type 4
+dfz_d_1|SAMPLE0|type d|type 8|type 9|type 2|move 598 420|type 6
+dfz_d_2|SAMPLE0|type d|598 300 left|type 6|type 1|430 180 left|350 350 right
+dfz_d_3|SAMPLE0|type d|450 330 left|598 420 left|598 420 left|move 380 200|move 280 160|move 300 250
+dfz_d_4|SAMPLE0|type d|type 6|162 140 left|key enter|key enter|550 250 left|key enter|250 200 right|430 180 left|430 180 left|key enter|162 250 left
+dfz_d_5|SAMPLE0|type d|type 9|300 250 left|move 450 330|type 1|key enter|450 330 right|type 9|key enter|280 160 left|key enter|move 162 250
+dfz_d_6|SAMPLE0|type d|200 300 right|500 200 right|type 5|300 350 left|type 1|598 300 right|300 250 left|598 140 left|450 330 left|key enter
+dfz_d_7|SAMPLE0|type d|380 200 right|type 100|move 280 160|type 9|type 3
+dfz_d_8|SAMPLE0|type d|type 1|move 500 200|598 420 left|type 12|type 3|250 200 right|key enter|move 300 250|280 160 right
+dfz_d_9|SAMPLE0|type d|type 7|type 4|162 250 left|162 250 left|300 350 left
+dfz_d_10|SAMPLE0|type d|type 6|350 350 left|350 350 left|550 250 right|300 250 left|598 420 right|type 3|300 350 right|200 300 left|430 180 right|key enter
+dfz_d_11|SAMPLE0|type d|type 3|250 200 right|type 8|move 598 420|380 200 left|key enter|280 160 left|type 1|550 250 left|500 200 left
+dfz_d_12|SAMPLE0|type d|type 6|550 250 right|550 250 right|move 280 160|162 420 left|type 100|key enter|move 430 180
+dfz_d_13|SAMPLE0|type d|162 250 left|162 140 left|280 160 left|type 2|type 8|380 200 right|type 5|280 160 left
+dfz_d_14|SAMPLE0|type d|type 6|type 3|type 8|move 200 300|280 160 left|type 4|300 350 left|key enter
+dfz_d_15|SAMPLE0|type d|430 180 right|350 350 left|162 420 left|move 280 160|300 350 left|key enter|key enter|550 250 left|type 5|430 180 right
+dfz_d_16|SAMPLE0|type d|550 250 left|300 250 left|type 5|300 250 left|type 5|200 300 left|type 9|type 5
+dfz_d_17|SAMPLE0|type d|type 2|162 250 left|type 9|450 330 right|350 350 left|type 9|430 180 left|type 7|type 0|162 140 left
+dfz_d_18|SAMPLE0|type d|type 8|598 300 left|type 30|type 8|type 4|162 140 left|200 300 left|key enter|type 5|type 4|type 5
+dfz_d_19|SAMPLE0|type d|598 300 left|type 6|200 300 left|key enter|380 200 left
+dfz_d_20|SAMPLE0|type d|type 5|430 180 right|400 140 right|key enter|598 420 left|type 3|type 1000
+dfz_d_21|SAMPLE0|type d|type 2|300 350 right|598 140 left|type 3|250 200 left
+dfz_d_22|SAMPLE0|type d|300 250 left|162 140 left|type 8|380 200 left|type 4|key enter|162 140 left|430 180 left|200 300 left|key enter|280 160 left
+dfz_d_23|SAMPLE0|type d|type 5|move 380 200|300 250 right|type 7|type 5|200 300 left|type 100|300 250 left
+dfz_d_24|SAMPLE0|type d|type 9|type 2|200 300 left|450 330 left|300 250 left|598 300 left|type 6|500 200 left|type 30
+dfz_d_25|SAMPLE0|type d|250 200 left|type 1|type 5|162 140 left|400 140 left|250 200 left|type 7|550 250 right|key enter|430 180 left|598 300 left
+dfz_d_26|SAMPLE0|type d|type 7|162 420 right|key enter|300 350 left|162 250 left|400 140 left|key enter|key enter|type 9|400 140 right
+dfz_d_27|SAMPLE0|type d|598 140 left|key enter|type 5|162 250 left|280 160 left
+dfz_d_28|SAMPLE0|type d|type 3|type 5|type 12|type 2|280 160 left|type 2|598 300 left
+dfz_d_29|SAMPLE0|type d|type 9|380 200 right|type 2|380 200 left|move 350 350
+dfz_d_30|SAMPLE0|type d|450 330 left|450 330 left|type 100|430 180 left|162 420 right
+dfz_d_31|SAMPLE0|type d|400 140 right|key enter|key enter|type 1
+dfz_d_32|SAMPLE0|type d|type 2|type 4|type 4|type 45|450 330 left|type 4|550 250 left|162 250 right
+dfz_d_33|SAMPLE0|type d|type 2|162 250 left|move 450 330|350 350 right|type 8
+dfz_d_34|SAMPLE0|type d|type 3|key enter|type 7|type 5|type 100|key enter|type 100
+dfz_d_35|SAMPLE0|type d|type 1|type 7|300 350 right|162 250 right|162 250 left|450 330 left|400 140 left|key enter|type 2|380 200 left
+dfz_d_36|SAMPLE0|type d|162 140 left|200 300 left|type 12|500 200 right|550 250 left|move 598 140|162 250 left|key enter
+dfz_d_37|SAMPLE0|type d|430 180 right|162 250 left|300 250 left|type 3|key enter|400 140 left|key enter|598 420 left|type 100|type 1
+dfz_d_38|SAMPLE0|type d|200 300 left|450 330 left|type 5|key enter|type 4
+dfz_d_39|SAMPLE0|type d|type 9|type 4|type 1|200 300 left|162 250 left
+dfz_D_0|SAMPLE0|type D|500 200 left|type 12|500 200 left|key enter|598 420 left|type 9|162 140 left|300 350 left|598 140 left
+dfz_D_1|SAMPLE0|type D|162 140 left|250 200 left|type 4|key enter
+dfz_D_2|SAMPLE0|type D|type 3|key enter|type 8|350 350 right
+dfz_D_3|SAMPLE0|type D|type 3|type 5|type 45|type 9|type 2|380 200 right|key enter|type 9
+dfz_D_4|SAMPLE0|type D|350 350 right|280 160 right|key enter|key enter|type 3|162 420 left|598 300 left|598 420 right|450 330 left
+dfz_D_5|SAMPLE0|type D|280 160 left|200 300 left|162 250 left|type 8
+dfz_D_6|SAMPLE0|type D|350 350 right|400 140 left|type 8|key enter|350 350 left|162 250 right|type 3
+dfz_D_7|SAMPLE0|type D|type 4|move 598 420|type 9|type 1|move 598 300|450 330 left|598 140 left|200 300 left|598 300 left|430 180 left
+dfz_D_8|SAMPLE0|type D|380 200 left|type 5|type 8|key enter|380 200 left|250 200 left|key enter|400 140 left|162 140 left|162 140 left|280 160 left
+dfz_D_9|SAMPLE0|type D|250 200 left|type 3|550 250 left|type 2|350 350 left|200 300 right|type 1|type 7|450 330 left|450 330 left|type 30
+dfz_D_10|SAMPLE0|type D|380 200 right|type 3|key enter|type 5|350 350 left|380 200 right|type 1|300 250 left|350 350 left
+dfz_D_11|SAMPLE0|type D|type 9|key enter|598 300 left|key enter
+dfz_D_12|SAMPLE0|type D|400 140 left|430 180 left|250 200 left|400 140 left|250 200 right|380 200 left|430 180 left|type 4|type 8|move 598 300
+dfz_D_13|SAMPLE0|type D|598 420 right|type 5|move 200 300|type 3|key enter|type 9|280 160 left|type 5|200 300 left|type 4|598 140 left
+dfz_D_14|SAMPLE0|type D|162 140 left|380 200 left|move 550 250|450 330 left
+dfz_D_15|SAMPLE0|type D|type 8|350 350 left|type 1|move 598 300|type 9|key enter|key enter|move 250 200|type 5|type 2
+dfz_D_16|SAMPLE0|type D|type 5|type 5|300 350 right|250 200 left|250 200 left|280 160 left|move 500 200
+dfz_D_17|SAMPLE0|type D|type 2|500 200 left|type 4|598 140 left
+dfz_D_18|SAMPLE0|type D|type 7|162 420 right|type 6|162 250 left|type 30|type 5|key enter|move 280 160|400 140 left
+dfz_D_19|SAMPLE0|type D|type 6|350 350 left|move 250 200|type 7|type 8|type 1
+dfz_D_20|SAMPLE0|type D|type 4|type 1|move 300 250|type 30|162 420 left|type 9|type 1|move 450 330
+dfz_D_21|SAMPLE0|type D|200 300 right|400 140 left|type 12|type 1000|move 598 300|type 45|move 200 300|400 140 left|162 140 left
+dfz_D_22|SAMPLE0|type D|type 4|type 5|200 300 left|type 6|162 420 left
+dfz_D_23|SAMPLE0|type D|200 300 left|key enter|430 180 left|450 330 left|key enter|250 200 right|598 420 left|type 3|300 350 left|key enter|type 6
+dfz_D_24|SAMPLE0|type D|type 1|type 4|550 250 left|430 180 right|key enter|162 140 left|key enter
+dfz_D_25|SAMPLE0|type D|type 4|162 420 left|280 160 left|type 7|type 3|350 350 left|500 200 left|350 350 left|key enter
+dfz_D_26|SAMPLE0|type D|type 3|250 200 right|move 550 250|400 140 right|350 350 left|450 330 right|type 5|type 6|162 250 left
+dfz_D_27|SAMPLE0|type D|type 3|598 300 right|300 250 left|400 140 right|type 2|380 200 right|300 250 left|type 3
+dfz_D_28|SAMPLE0|type D|type 8|300 250 right|162 250 left|type 7|move 598 420|550 250 right|550 250 right|598 140 right
+dfz_D_29|SAMPLE0|type D|550 250 left|type 0|450 330 left|598 140 left
+dfz_D_30|SAMPLE0|type D|type 2|430 180 left|key enter|key enter|key enter|598 140 left|350 350 left|type 4|move 350 350|350 350 left
+dfz_D_31|SAMPLE0|type D|type 8|598 420 left|type 7|380 200 left|162 420 left|type 9|400 140 left|380 200 left|type 8|type 9|type 4
+dfz_D_32|SAMPLE0|type D|type 4|162 140 left|598 140 left|598 140 right|type 30|key enter|400 140 right
+dfz_D_33|SAMPLE0|type D|400 140 right|move 598 300|move 598 420|300 350 left
+dfz_D_34|SAMPLE0|type D|type 4|type 6|598 140 right|type 7|500 200 left|type 8
+dfz_D_35|SAMPLE0|type D|type 7|key enter|key enter|162 250 left|430 180 left|450 330 left|move 300 250|400 140 left|type 5
+dfz_D_36|SAMPLE0|type D|type 4|162 420 left|type 9|300 250 left|key enter|598 420 right|250 200 left|200 300 left|550 250 right
+dfz_D_37|SAMPLE0|type D|280 160 left|key enter|400 140 left|250 200 left
+dfz_D_38|SAMPLE0|type D|type 7|move 280 160|162 420 left|move 250 200|400 140 left|300 350 left|300 350 right|550 250 left|type 1
+dfz_D_39|SAMPLE0|type D|type 8|key enter|200 300 left|type 2|250 200 left|type 7|key enter|type 7|type 4|type 3
+dfz_c_0|SAMPLE0|type c|type 5|280 160 left|key enter|type 100
+dfz_c_1|SAMPLE0|type c|type 8|400 140 left|200 300 left|430 180 left|type 1|type 8|type 2|598 300 left|type 2
+dfz_c_2|SAMPLE0|type c|type 4|380 200 left|type 0|450 330 left|move 598 140|300 250 left|500 200 right|move 400 140|move 598 420|350 350 left|380 200 left
+dfz_c_3|SAMPLE0|type c|type 5|type 7|380 200 left|300 250 left
+dfz_c_4|SAMPLE0|type c|type 9|move 280 160|250 200 left|162 250 left|type 7|type 9|move 430 180|162 140 left|type 2|162 420 left|430 180 left
+dfz_c_5|SAMPLE0|type c|280 160 right|162 140 left|400 140 left|type 1|200 300 left|250 200 left|type 2|key enter|550 250 left|598 140 left
+dfz_c_6|SAMPLE0|type c|type 3|400 140 left|380 200 left|type 9|162 140 left|type 9
+dfz_c_7|SAMPLE0|type c|430 180 left|162 250 right|550 250 right|move 450 330|type 1000
+dfz_c_8|SAMPLE0|type c|280 160 right|380 200 left|400 140 left|type 4|598 420 left|280 160 left|598 420 left
+dfz_c_9|SAMPLE0|type c|280 160 left|type 3|400 140 left|350 350 left|key enter|350 350 left|type 0|type 5|598 300 left|300 350 left
+dfz_c_10|SAMPLE0|type c|500 200 right|type 30|400 140 right|key enter|move 280 160|300 350 left|162 250 right
+dfz_c_11|SAMPLE0|type c|type 5|250 200 left|type 7|type 5|move 350 350|450 330 left|type 9|type 1|type 2
+dfz_c_12|SAMPLE0|type c|598 300 left|200 300 left|type 0|key enter|type 5|move 300 250|type 4|move 300 250|key enter|type 5
+dfz_c_13|SAMPLE0|type c|type 3|move 162 420|type 9|380 200 left|type 9|550 250 right|type 7
+dfz_c_14|SAMPLE0|type c|598 420 left|type 4|162 140 left|598 420 left|type 7|162 140 right|type 9|280 160 left|598 300 left|type 8|400 140 left
+dfz_c_15|SAMPLE0|type c|162 250 right|550 250 left|162 250 left|598 420 left|280 160 right|598 140 left
+dfz_c_16|SAMPLE0|type c|250 200 left|450 330 left|300 350 left|key enter|type 1000|300 250 right|500 200 left|598 300 right|type 7|598 420 left
+dfz_c_17|SAMPLE0|type c|type 7|380 200 left|598 300 left|type 30|key enter
+dfz_c_18|SAMPLE0|type c|type 5|500 200 left|300 350 right|500 200 left|500 200 right|162 140 right|162 140 left|type 1
+dfz_c_19|SAMPLE0|type c|type 9|key enter|162 420 left|380 200 left|250 200 right|type 9|280 160 left|400 140 left|move 200 300
+dfz_c_20|SAMPLE0|type c|162 250 left|type 5|type 5|type 5|key enter|type 8|move 162 420
+dfz_c_21|SAMPLE0|type c|type 6|162 420 left|type 4|598 140 left|key enter|350 350 left|type 1
+dfz_c_22|SAMPLE0|type c|type 8|162 250 left|type 5|key enter
+dfz_c_23|SAMPLE0|type c|type 1|300 350 right|move 280 160|type 45|type 9|598 140 right|move 598 300
+dfz_c_24|SAMPLE0|type c|type 3|280 160 left|250 200 left|type 8
+dfz_c_25|SAMPLE0|type c|type 7|598 420 left|380 200 right|type 1000|550 250 left|162 250 left|162 140 left
+dfz_c_26|SAMPLE0|type c|500 200 left|type 45|300 350 left|type 6|type 8|598 420 left|450 330 left|key enter|300 350 right
+dfz_c_27|SAMPLE0|type c|type 2|350 350 left|450 330 right|type 1|move 400 140|key enter|type 30|162 420 left
+dfz_c_28|SAMPLE0|type c|430 180 left|type 8|280 160 left|type 8|400 140 left
+dfz_c_29|SAMPLE0|type c|type 4|500 200 left|type 9|162 140 left|300 350 left|380 200 left|type 5|380 200 right|400 140 left|450 330 left|key enter
+dfz_c_30|SAMPLE0|type c|type 3|type 9|key enter|move 162 140|598 300 left|type 8|type 9|300 350 left
+dfz_c_31|SAMPLE0|type c|type 6|450 330 left|key enter|key enter|key enter|key enter
+dfz_c_32|SAMPLE0|type c|550 250 left|300 250 right|type 1|162 140 left|key enter|598 420 left|key enter|280 160 right
+dfz_c_33|SAMPLE0|type c|300 250 left|500 200 right|type 9|162 250 left|550 250 left|598 420 left|type 4
+dfz_c_34|SAMPLE0|type c|200 300 right|key enter|350 350 left|430 180 right|type 5|162 140 left|598 420 right|move 350 350|type 8|type 6
+dfz_c_35|SAMPLE0|type c|type 4|key enter|598 420 right|type 5|type 3|200 300 right|598 300 left|300 250 left|type 6|type 6
+dfz_c_36|SAMPLE0|type c|450 330 left|type 8|500 200 left|450 330 right|key enter|300 350 left
+dfz_c_37|SAMPLE0|type c|type 3|type 7|400 140 left|598 300 left|400 140 left|type 7
+dfz_c_38|SAMPLE0|type c|250 200 left|450 330 left|450 330 left|move 162 420
+dfz_c_39|SAMPLE0|type c|type 7|350 350 left|162 140 left|598 420 left|300 350 right|430 180 left|type 5|key enter
+dfz_C_0|SAMPLE0|type C|type 7|250 200 left|move 380 200|type 4|162 420 left|162 420 left|550 250 left|type 5|450 330 left|type 4|250 200 right
+dfz_C_1|SAMPLE0|type C|598 140 right|500 200 left|450 330 left|550 250 left|350 350 left|598 420 left|400 140 left
+dfz_C_2|SAMPLE0|type C|162 140 left|550 250 right|type 6|400 140 left|430 180 left|key enter|move 598 140|move 400 140|400 140 right
+dfz_C_3|SAMPLE0|type C|type 4|598 140 left|598 300 left|598 300 left|280 160 left|type 100|type 8|598 300 left|300 350 left|200 300 left|type 12
+dfz_C_4|SAMPLE0|type C|type 7|type 0|350 350 left|type 7|450 330 left|280 160 left
+dfz_C_5|SAMPLE0|type C|380 200 right|280 160 left|type 9|key enter
+dfz_C_6|SAMPLE0|type C|280 160 left|type 3|430 180 right|250 200 left|type 9|move 400 140
+dfz_C_7|SAMPLE0|type C|450 330 left|type 45|350 350 right|key enter|type 3|250 200 left|type 6|450 330 right|380 200 left|598 140 left|300 250 right
+dfz_C_8|SAMPLE0|type C|type 7|move 200 300|250 200 left|598 300 left|300 350 left|type 0|type 1000|move 162 140|type 8|type 7|380 200 right
+dfz_C_9|SAMPLE0|type C|type 3|type 6|type 8|move 162 250|move 380 200
+dfz_C_10|SAMPLE0|type C|type 9|162 140 left|350 350 left|key enter|type 4|type 6|move 280 160|type 5
+dfz_C_11|SAMPLE0|type C|type 2|598 300 left|type 7|598 420 left|type 5|type 4|200 300 left|450 330 left|430 180 left
+dfz_C_12|SAMPLE0|type C|type 4|move 280 160|500 200 left|400 140 left|key enter|598 140 left|550 250 left|300 350 left|type 8|type 5|162 250 left
+dfz_C_13|SAMPLE0|type C|type 3|type 1|400 140 right|type 8|key enter|type 6|300 350 left|162 250 right|598 420 left|350 350 left|type 1
+dfz_C_14|SAMPLE0|type C|430 180 right|type 2|type 9|280 160 left|162 140 left|type 4
+dfz_C_15|SAMPLE0|type C|type 5|type 7|key enter|598 300 left|400 140 left|598 140 left|400 140 left|300 250 left|380 200 left
+dfz_C_16|SAMPLE0|type C|350 350 left|300 350 left|598 140 left|key enter|280 160 right|type 8|430 180 left|type 2|300 350 left|type 7
+dfz_C_17|SAMPLE0|type C|type 2|type 1000|move 598 420|162 250 left|key enter|500 200 left|type 4
+dfz_C_18|SAMPLE0|type C|350 350 left|key enter|type 3|type 1000|type 8|type 12|500 200 left
+dfz_C_19|SAMPLE0|type C|598 300 left|type 4|598 140 left|type 8
+dfz_C_20|SAMPLE0|type C|type 7|type 30|type 4|162 250 left|type 3|162 250 left|550 250 right|type 2
+dfz_C_21|SAMPLE0|type C|type 2|400 140 right|type 9|500 200 left|162 420 left|450 330 left|500 200 left|key enter|300 250 right|type 2|type 2
+dfz_C_22|SAMPLE0|type C|162 420 right|300 250 left|280 160 right|598 420 right|450 330 left|type 45|300 350 left|key enter|type 2|type 8|598 420 right
+dfz_C_23|SAMPLE0|type C|280 160 left|key enter|250 200 left|type 6|400 140 left|350 350 right|type 12|400 140 left|300 250 left
+dfz_C_24|SAMPLE0|type C|450 330 left|300 250 right|type 4|380 200 right|200 300 right|type 2|500 200 left|450 330 left|key enter|280 160 right
+dfz_C_25|SAMPLE0|type C|type 6|598 300 right|key enter|598 420 left|550 250 left
+dfz_C_26|SAMPLE0|type C|300 350 right|598 420 left|type 7|300 250 left|type 4|300 250 right|type 9|300 350 left|430 180 left|162 250 right
+dfz_C_27|SAMPLE0|type C|162 420 right|type 1000|type 100|type 3
+dfz_C_28|SAMPLE0|type C|type 8|598 300 right|450 330 right|450 330 left|598 300 left
+dfz_C_29|SAMPLE0|type C|type 6|162 420 left|key enter|move 500 200|550 250 left|598 140 left
+dfz_C_30|SAMPLE0|type C|300 350 right|type 1|type 5|key enter|300 350 right|type 6
+dfz_C_31|SAMPLE0|type C|type 5|type 6|500 200 right|550 250 left
+dfz_C_32|SAMPLE0|type C|162 140 right|type 3|500 200 left|type 2|key enter|type 1000|type 5|type 8|380 200 left
+dfz_C_33|SAMPLE0|type C|162 250 left|type 30|type 4|200 300 left|598 140 right|430 180 right
+dfz_C_34|SAMPLE0|type C|500 200 left|type 6|type 4|500 200 left|280 160 left|598 420 left|500 200 left|500 200 right|type 1|key enter
+dfz_C_35|SAMPLE0|type C|430 180 left|type 1|250 200 right|280 160 left|type 2|type 7|type 4|move 350 350|450 330 left
+dfz_C_36|SAMPLE0|type C|type 6|500 200 left|type 2|type 3|move 430 180
+dfz_C_37|SAMPLE0|type C|300 350 right|598 420 right|200 300 left|300 250 left
+dfz_C_38|SAMPLE0|type C|598 300 left|380 200 left|250 200 left|type 7|400 140 left|move 300 350|430 180 left|162 420 left
+dfz_C_39|SAMPLE0|type C|430 180 left|type 7|430 180 right|250 200 left|280 160 right|550 250 left|380 200 left|move 500 200|598 300 left
+dfz_R_0|SAMPLE0|type R|type 5|move 380 200|move 380 200|key enter|type 5|350 350 right|type 8
+dfz_R_1|SAMPLE0|type R|280 160 right|162 250 left|200 300 left|300 350 left|type 3|key enter|450 330 left
+dfz_R_2|SAMPLE0|type R|type 4|162 140 left|type 4|300 250 left|598 300 left|162 250 left|type 8|450 330 left|type 8
+dfz_R_3|SAMPLE0|type R|type 8|move 300 250|300 350 right|598 140 right|250 200 left|400 140 left
+dfz_R_4|SAMPLE0|type R|type 7|430 180 left|type 8|type 0|162 140 left|430 180 left|move 550 250|500 200 left|450 330 left
+dfz_R_5|SAMPLE0|type R|type 2|move 400 140|250 200 left|550 250 right|type 4|move 350 350|key enter
+dfz_R_6|SAMPLE0|type R|type 9|type 1|type 2|500 200 left|type 3|200 300 left|key enter|type 9|250 200 left|280 160 left
+dfz_R_7|SAMPLE0|type R|162 140 left|162 140 left|type 6|move 250 200|380 200 right|type 2|250 200 right|type 9|380 200 left|type 3
+dfz_R_8|SAMPLE0|type R|type 6|162 140 left|type 2|162 420 right
+dfz_R_9|SAMPLE0|type R|type 4|380 200 right|type 6|162 140 left|type 5|type 1|598 420 left|type 4|type 3|key enter|598 300 right
+dfz_R_10|SAMPLE0|type R|type 4|550 250 left|type 2|598 420 left|598 140 left|move 162 420
+dfz_R_11|SAMPLE0|type R|type 3|type 4|200 300 left|type 5
+dfz_R_12|SAMPLE0|type R|type 3|type 1|key enter|move 162 140
+dfz_R_13|SAMPLE0|type R|type 7|500 200 left|380 200 left|type 9
+dfz_R_14|SAMPLE0|type R|598 420 left|key enter|type 1|type 4|type 9|598 420 left|450 330 right
+dfz_R_15|SAMPLE0|type R|430 180 right|key enter|type 7|move 162 420
+dfz_R_16|SAMPLE0|type R|type 9|type 100|type 1|type 1|380 200 left|type 100
+dfz_R_17|SAMPLE0|type R|type 2|key enter|250 200 left|type 4|250 200 right|key enter|350 350 right|type 1
+dfz_R_18|SAMPLE0|type R|type 3|380 200 left|162 420 left|key enter
+dfz_R_19|SAMPLE0|type R|type 6|key enter|type 9|type 8|key enter|key enter|162 420 left|400 140 right|550 250 right|type 2
+dfz_R_20|SAMPLE0|type R|type 5|400 140 left|300 350 left|type 6
+dfz_R_21|SAMPLE0|type R|type 4|type 4|type 45|300 250 left|type 5|598 420 left|type 8|type 6
+dfz_R_22|SAMPLE0|type R|598 300 right|move 598 140|350 350 right|move 300 250|type 7|move 300 250
+dfz_R_23|SAMPLE0|type R|300 250 left|162 250 left|250 200 left|type 2|key enter|598 300 right
+dfz_R_24|SAMPLE0|type R|type 3|500 200 left|162 250 right|200 300 left|162 250 left|type 4|type 4|550 250 right
+dfz_R_25|SAMPLE0|type R|type 1|type 8|380 200 left|200 300 left|type 4|598 140 left|280 160 left
+dfz_R_26|SAMPLE0|type R|380 200 left|598 140 left|type 6|type 2|430 180 left
+dfz_R_27|SAMPLE0|type R|162 250 left|type 2|key enter|type 4|type 8|move 598 420|300 250 left|type 1|598 140 left|type 9|type 5
+dfz_R_28|SAMPLE0|type R|type 8|200 300 right|430 180 right|type 2
+dfz_R_29|SAMPLE0|type R|200 300 right|400 140 right|key enter|162 250 left|type 9|280 160 left|430 180 left|500 200 left|598 140 right|162 250 left|200 300 left
+dfz_R_30|SAMPLE0|type R|type 7|type 30|598 140 left|type 4|type 1|162 140 left|type 100|598 300 left
+dfz_R_31|SAMPLE0|type R|type 1|move 598 420|200 300 right|598 300 right|type 2|250 200 left
+dfz_R_32|SAMPLE0|type R|380 200 left|type 1000|type 9|type 3|162 420 left|type 2|200 300 right|type 3
+dfz_R_33|SAMPLE0|type R|type 2|type 5|400 140 left|250 200 left|type 1|key enter|type 5|280 160 left|400 140 right|type 4|598 140 left
+dfz_R_34|SAMPLE0|type R|300 350 left|430 180 left|162 420 left|type 6|350 350 right
+dfz_R_35|SAMPLE0|type R|430 180 left|type 8|500 200 right|200 300 left|key enter|type 9|350 350 left
+dfz_R_36|SAMPLE0|type R|type 3|type 2|500 200 left|598 140 left
+dfz_R_37|SAMPLE0|type R|type 6|move 280 160|200 300 left|move 598 300|300 350 left|type 4|162 250 left|430 180 right|300 250 left
+dfz_R_38|SAMPLE0|type R|type 4|type 5|type 5|598 300 left
+dfz_R_39|SAMPLE0|type R|300 250 right|162 420 right|type 5|type 3|move 598 420|key enter|430 180 right|move 380 200

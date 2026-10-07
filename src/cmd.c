@@ -8609,13 +8609,16 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
          * を打って [ESC] → 2 点の四角、そのあと `確定寸法=`。○ も同じ）。 */
         /* 何も打っていない欄の [ESC] は 2 点描きにならず、ただ欄を閉じる
          * （測定のみ・decomp 未確認：escfz_E_91。□ の escfz_B_77 は 0 を打った後で 2 点描き）。 */
-        if (c->command == 4 && c->box_ask && (c->typed_n || c->circ_hold)) {
-            c->box_mode = 1;
-            c->box_fix = 0;
-        }
-        if (c->command == 11 && c->circ_ask && (c->typed_n || c->circ_hold)) {
-            c->circ_mode = 1;
-            c->circ_fix = 0;
+        /* decomp：ESC は打った文字数と関係なく、欄を開いた時点の状態に戻る（始点待ちから開いたなら最初の行、
+         * 始点・固定を持っていたならそのまま：□ 0x2ee4f→0x2ecbf／0x2f5e9→0x2f0b7、○ 0x2faa1→0x2f5fd／0x308e6→0x3046d）。
+         * 2 点描きの行へは行かない。 */
+        if (c->command == 12 && c->arc_ask) {
+            /* 円弧：ESC は L 押しと同じ -1 で、呼び出し側が固定を解く（半径 [bp-0xe6]=0、角度 [bp-0xf4]=0） */
+            if (c->arc_ask == 2) {
+                c->arc_rfix = 0;
+            } else {
+                c->arc_fix = 0;
+            }
         }
         c->typing = 0;
         c->typed[0] = 0;
@@ -9307,12 +9310,28 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         /* （ の `角度 =` の欄。[Enter] で角度が決まり、`） 終点指示` に
          * 戻ります（測定：120 のあと下を押すと 240..0、上を押すと 0..120）。 */
         if (key == 13 || key == 10) {
+            /* 空の [Enter] は既定（半径 1000、角度 90）を受けて固定にする。範囲は半径 0.01〜900000、角度は 0 を断わり
+             * 欄が空で残る（decomp ovl4 3ab8:6669 dis 0x311e9。実機 c23・c24）。 */
             c->typed[c->typed_n] = 0;
-            if (c->typed_n && c->arc_ask == 2) {
-                c->arc_r = (float)field_eval(c->typed);
+            if (c->arc_ask == 2) {
+                const double v = c->typed_n ? (float)field_eval(c->typed) : (c->arc_r > 0.0 ? c->arc_r : 1000.0);
+
+                if (v < 0.01 || v > 900000.0) {
+                    c->typed[0] = 0;
+                    c->typed_n = 0;
+                    return 1;
+                }
+                c->arc_r = v;
                 c->arc_rfix = 1;
-            } else if (c->typed_n) {
-                c->arc_ang = (float)field_eval(c->typed);
+            } else {
+                const double v = c->typed_n ? (float)field_eval(c->typed) : (c->arc_ang != 0.0 ? c->arc_ang : 90.0);
+
+                if (v == 0.0) {
+                    c->typed[0] = 0;
+                    c->typed_n = 0;
+                    return 1;
+                }
+                c->arc_ang = v;
                 c->arc_fix = 1;
             }
             c->typing = 0;
@@ -9344,7 +9363,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             if (c->typed_n) {
                 r = (float)field_eval(c->typed);
             }
-            if (r <= 0.0) {
+            if (r < 0.1 || r > 1e6) {       /* 範囲は 0.1〜1e6（decomp ovl4 3ab8:4671 0x2f4ae〜0x2f524、実機 0.05 断わり） */
                 c->typed[0] = 0;
                 c->typed_n = 0;
                 c->circ_bad = 1;
@@ -9424,7 +9443,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             if (comma && comma[1]) {
                 h = (float)field_eval(comma + 1);
             }
-            if (w <= 0.0 || h <= 0.0) {
+            /* 検査は第 1 値（横）だけで 0 < w <= 9e7、縦は 0 や負でも受ける（decomp ovl23 3ab8:0000 0x2ac94〜0x2acc9、
+             * 実機 `60,0` 受理）。 */
+            if (w <= 0.0 || w > 9e7) {
                 c->typed[0] = 0;
                 c->typed_n = 0;
                 return 1;
@@ -14309,6 +14330,31 @@ static void box_unhold(JwCmd *c)
         c->y0 = c->circ_hy;
         c->circ_hold = 0;
     }
+}
+
+/* 半径の決まった ○ を (x,y) を中心に置く（多重円・基点つき）。 */
+static int circ_put(JwCmd *c, Jwc *d, double x, double y)
+{
+    static const int DX[9] = { 0, 1, 1, 1, 0, -1, -1, -1, 0 };
+    static const int DY[9] = { 0, -1, 0, 1, 1, 1, 0, -1, -1 };
+    const float r = (float)c->circ_r / jwc_zukei_scale(d);
+    const int b = c->circ_base;
+    const int n = c->circ_multi > 1 ? c->circ_multi : 1;
+    int k;
+
+    for (k = n; k >= 1; k--) {
+        const float rk = k == n ? r : (float)((double)r * k / n);
+
+        if (!jwc_add_arc(d, (float)x + (float)DX[b] * r,
+                         (float)y + (float)DY[b] * r, rk,
+                         (unsigned char)d->line_type,
+                         (unsigned char)d->pen,
+                         (unsigned char)d->write_layer)) {
+            return 0;
+        }
+    }
+    c->circ_done = 1;
+    return 1;
 }
 
 static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
@@ -19962,10 +20008,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         return 0;               /* ＋ line on an axis, ／ line, □ box, ○ circle */
     }
     if (c->command == 11 && c->circ_ask && c->typing && c->typed_n) {
-        /* 打ちかけの数があれば押しは [Enter] と同じ（測定のみ・decomp 未確認：escfz_E_91）。 */
+        /* 打ちかけの数があれば押しは [Enter] と同じ（decomp：numin 0x2646 以降。実機確認）。中心を持っていたなら
+         * マウスの押しで半径が確定した瞬間にその中心へ円を置く（decomp ovl4 0x30946〜0x30982→0x3110b。
+         * キーの Enter では置かない）。 */
+        const int held = c->circ_hold;
+        const double hx = c->circ_hx, hy = c->circ_hy;
+
         jw_cmd_key(c, d, 13);
-        if (!c->circ_ask) {
-            box_unhold(c);
+        if (!c->circ_ask && held) {
+            c->circ_hold = 0;
+            circ_put(c, d, hx, hy);
         }
         return 1;
     }
@@ -19978,6 +20030,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->circ_done = 0;
         c->typing = 0;
         c->circ_ask = 0;
+        if (right && c->circ_hold) {
+            /* 右押し＝前回と同じ半径で、持っていた中心に置く（decomp 同上、実機確認） */
+            c->circ_hold = 0;
+            circ_put(c, d, c->circ_hx, c->circ_hy);
+            return 1;
+        }
         /* 中心を持っていたなら、L はその中心のまま半径の押しを待つ
          * （測定：中心のあと ① → L → 次の押しがその中心の円の半径）。 */
         if (!right && c->circ_hold) {
@@ -20047,7 +20105,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         if (c->box_ask) {
             c->box_keep_off = 1;
         } else {
-            box_unhold(c);
+            /* 寸法が通ると大きさ固定（[bp-0x120]=1）になり、持っていた始点は使われない
+             * （decomp ovl23 0x2ee83・0x2f610〜0x2f625・0x2f0b7。実機 c13）。始点は戻さない。 */
+            c->circ_hold = 0;
         }
         return 1;
     }
