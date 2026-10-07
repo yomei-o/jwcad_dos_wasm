@@ -5149,7 +5149,8 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     if ((key == 13 || key == 10) && cmd.command != 17 && (JW_RANGE(&cmd) || (cmd.command == 24 && cmd.top_item == 3)
          || (cmd.command == 25 && cmd.span))
         && !cmd.typing && !cmd.typing_text
-        && (cmd.pressed == 0 || cmd.pressed == 2) && !cmd.te5) {
+        && (cmd.pressed == 0 || cmd.pressed == 2) && !cmd.te5
+        && !(JW_MOVE_CMD(cmd.command) && cmd.stage >= 4)) {      /* 複写・移動 の 位置を聞く段などでは [Enter] は何もしない（測定：escfz_c_2） */
         key = '1';
     }
     if (cmd.command && key >= '1' && key <= '9' && !cmd.typing
