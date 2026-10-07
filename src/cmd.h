@@ -323,6 +323,12 @@ typedef struct {
                                  * 一本ぶん減ります） */
     long dim_lot_k[64];
     int dim_lot_sx, dim_lot_sy;         /* 始線を押した画面の点 */
+    /* ⑤一括 段24（一括処理を実行した直後）で [ESC]・[BS]前項 が効くかどうか
+     * （ovl27 3ab8:206c、0x2eafb〜0x2eb0b の `cmp [bp-0x12a],0` が
+     * `[0xc2c]`（[BS]前項 の札）を立てるかどうかを決め、同じ条件が
+     * 0x2eb1f の ESC ゲートにも使われている。実行していなければ
+     * どちらも捨てられる）。 */
+    int dim_lot_done;
     int dim_arc_two;
     long dim_arc_l0;            /* 始線 */
     double dim_arc_px, dim_arc_py;      /* 始線を押したところ */

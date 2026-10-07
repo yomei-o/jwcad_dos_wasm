@@ -5474,12 +5474,14 @@ range_items:
                 c->dim_seen_points = d->n_points;
             dimension_lot(c, d);
             c->dim_texts = d->n_texts;
+            c->dim_lot_done = 1;
             c->stage = 24;
             return 1;
         }
         if (item == 2) {
             c->dim_lot = 0;
             c->dim_lot_n = 0;
+            c->dim_lot_done = 0;
             c->stage = 3;
             return 1;
         }
@@ -8956,6 +8958,43 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->dim7_hold = 0;
         c->dim7_n = 0;
         c->undo_lines = c->undo_arcs = c->undo_texts = 0;
+        return 1;
+    }
+    /* 寸法 ⑤一括 段24（①一括処理実行 の直後）の [ESC]・[BS]前項：どちらも
+     * 何も実行していなければ無反応で（c->dim_lot_done==0 のとき段 24 の
+     * 桁 73 に `[BS]前項` は出ない）、一度でも実行していれば効く
+     * （ovl27 3ab8:206c、0x2eafb の `cmp [bp-0x12a],0` が `[0xc2c]`
+     * （[BS]前項 の札・BS の通る条件）を立てるかどうかを決め、同じ条件が
+     * 0x2eb1f 直後の 1bb4:2cb4 呼び出しの ESC ゲートにも使われている —
+     * 実行していないときは [0xc2c] が 0 のままで ESC/BS とも 2cb4 の
+     * 中で捨てられる）。効いたときの着地は、本プロジェクトの他の命令
+     * （⑧値変の段 7 の [BS]前項、cmd.c:8658）に揃えて「一つ前の段
+     * （追加線･除外線＝段 23）へ戻る」とした——[ESC] はさらに、他の
+     * 寸法の道（①②③・④円角）と同じ「戻るときは直前に書いたものを
+     * 消す」に揃えて、実行で足した行・円弧・文字・点を
+     * dim_seen_lines 等まで取り消す。[BS]前項 は描いたものは残したまま
+     * 段だけ戻す（測定未確認・他コマンドの [BS]前項 との類推。
+     * ①連続入力／②終了 の正確な着地は未解決のまま——nokori.md 参照）。 */
+    if ((key == 27 || key == 8) && d && c->command == 14 && c->dim_lot
+        && c->stage == 24 && c->dim_lot_done && !c->typing) {
+        if (key == 27) {
+            while (d->n_lines > c->dim_seen_lines) {
+                jwc_remove_line(d, d->n_lines - 1);
+            }
+            while (d->n_arcs > c->dim_seen_arcs) {
+                jwc_remove_arc(d, d->n_arcs - 1);
+            }
+            while (d->n_texts > c->dim_seen_texts) {
+                jwc_remove_text(d, d->n_texts - 1);
+            }
+            while (d->n_points > c->dim_seen_points) {
+                jwc_remove_point(d, d->n_points - 1);
+            }
+            jwc_ink_clear(d);
+            c->dim_texts = d->n_texts;
+        }
+        c->dim_lot_done = 0;
+        c->stage = 23;
         return 1;
     }
     /* **取り消し。** 何も持っていないときの [ESC] は、直前の押しで足した
@@ -15443,6 +15482,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 /* 一本入れたあと、図面を押すと 始線 から始め直します
                  * （測定したのは空押しだけです）。 */
                 c->dim_lot_n = 0;
+                c->dim_lot_done = 0;
                 c->stage = 21;
                 return 1;
             }

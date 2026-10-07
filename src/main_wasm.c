@@ -3615,6 +3615,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         && x / 8 + 1 >= 74) {
         cmd.dim_lot = 1;
         cmd.dim_lot_n = 0;
+        cmd.dim_lot_done = 0;
         cmd.stage = 21;
         cmd.n0_lines = drawing ? drawing->n_lines : 0;
         cmd.n0_arcs = drawing ? drawing->n_arcs : 0;
