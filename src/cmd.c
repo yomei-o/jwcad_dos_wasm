@@ -7010,6 +7010,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->stage = 1;               /* ①接線 の ②円周点 の [BS]`前項` は ①接線 の行へ（測定のみ：escfz_e_31） */
         return 1;
     }
+    /* 線変更 で一本変えたあとの [ESC] は最初の行（段 0）へ（測定のみ・decomp 未確認：escfz_w_24）。 */
+    if (key == 27 && c->command == 24 && !c->typing && c->stage == 1 && !c->pressed && !c->lc_range && c->top_item != 3 && c->top_item != 1
+        && c->hit_kind) {
+        c->stage = 0;
+        c->hit_kind = 0;
+        return 1;
+    }
     /* 円線接：行の下の段の [BS]`前項` は、その行へ一段戻る（測定のみ・decomp 未確認：escfz_e_31・e_36）。
      * 30 の行（②接円）は 31〜49、50 の行（③接円）は 51〜69、1 の行（①接線）は 10〜29 の子。 */
     if (c->command == 26 && key == 8 && !c->typing) {
