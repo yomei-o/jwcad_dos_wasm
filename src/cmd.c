@@ -8120,6 +8120,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* ⑦連線 の始点の行の [ESC] は行 2 の `45度毎 マウス` の札を消すだけ（測定のみ・decomp 未確認：
      * escfz_r_20）。①角度 を押すと戻る。 */
+    /* 升の無い数字も同じ（測定のみ：escfz_r_21）。 */
+    if (c->command == 23 && c->poly && c->poly_n == 0 && !c->typing && key >= '0' && key <= '9'
+        && key != '1') {
+        c->poly_esc = 1;
+        return 1;
+    }
     if (key == 27 && c->command == 23 && c->poly && c->poly_n == 0 && !c->poly_esc) {
         c->poly_esc = 1;
         return 1;
