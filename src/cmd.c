@@ -5148,6 +5148,7 @@ range_items:
             return 0;
         }
         c->lx0 = ax; c->ly0 = ay; c->lx1 = bx; c->ly1 = by;
+        c->off_cont = 1;
         return 1;
     }
     /* 消去's own line, before any point is pressed:
@@ -8216,6 +8217,32 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->typed_n = 0;
         c->typed[0] = 0;
         c->stage = 1;
+        c->moved = 0;
+        return 1;
+    }
+    /* ②連続 で足した線は [ESC] で一本戻り、行は段 0 の `線指示 …` へ
+     * （測定のみ・decomp 未確認：escfz_F_80）。 */
+    if (key == 27 && c->command == 5 && !c->typing && c->stage == 3 && c->off_cont && d
+        && d->n_lines > 0) {
+        jwc_remove_line(d, d->n_lines - 1);
+        c->off_cont = 0;
+        c->stage = 0;
+        c->moved = 0;
+        return 1;
+    }
+    /* ①間隔取得 の `◇点マウス指示`（段 5）の [ESC] は基準線の行（段 4）へ
+     * （測定のみ・decomp 未確認：escfz_F_81）。 */
+    if (key == 27 && c->command == 5 && !c->typing && c->stage == 5) {
+        c->stage = 4;
+        c->pick = -1;
+        c->moved = 0;
+        return 1;
+    }
+    /* ①間隔取得 の `基準線 マウス指示`（段 4）の [ESC] は段 0 の `線指示 …` へ
+     * （測定のみ・decomp 未確認：escfz_F_79）。 */
+    if (key == 27 && c->command == 5 && !c->typing && c->stage == 4 && !c->pressed) {
+        c->stage = 0;
+        c->pick = -1;
         c->moved = 0;
         return 1;
     }
@@ -14225,6 +14252,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             /* 前線と連続(R) が出せるかは、今の一本を選んだこの時点で決まる
              * （decomp ovl7 0x2cc46〜0x2ce00：四条件）。 */
             c->off_done = offset_can_continue(c, d, w);
+            c->off_cont = 0;
             /* The right button takes the interval last used and goes straight
              * to choosing the side -- `(R)同じ寸法`, as the command's own line
              * says.  No field, no `点指示 or 間隔=`: measured by running 複線
