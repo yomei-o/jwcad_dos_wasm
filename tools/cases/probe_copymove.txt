@@ -16,3 +16,20 @@ cm_move_distance_empty_enter|SAMPLE0|30 72 left|150 130 left|245 170 right|type 
 cm_move_repeat_twice|SAMPLE0|30 72 left|150 130 left|245 170 right|350 350 left|450 450 left|type 2|30 72 left|150 130 left|245 170 right|350 350 left|450 450 left|type 2
 cm_copy_stage9_esc_once|SAMPLE0|90 72 left|150 130 left|245 170 right|350 350 left|450 450 left|key esc
 cm_copy_stage9_esc_twice|SAMPLE0|90 72 left|150 130 left|245 170 right|350 350 left|450 450 left|key esc|key esc
+
+# 2026-10-07 夜（escaudit9）：③数値倍率・⑥回転 の ESC 連打からの再クリックで
+# 内部の進捗変数（c->scaling/rotate）が戻っていなかったバグの再現・回帰（notes/traps.md 新しい罠）。
+# 直す前は、置いたあと [ESC] を 3 回押して段を 20→19→18→17 まで戻してから
+# 作図領域を押すと「基準点の再指定」ではなく古い倍率のまま新しい複写が増えた
+# （線の数が余分に増える＝tools/functest.sh の保存記録で見える）。
+cm_copy_scale_esc_chain_reclick_noop|SAMPLE0|90 72 left|150 130 left|245 170 right|type 3|200 300 left|type 2|key enter|400 300 left|key esc|key esc|key esc|300 250 left
+cm_copy_rotate_esc_chain_reclick_noop|SAMPLE0|90 72 left|150 130 left|245 170 right|type 6|200 300 left|type 30|key enter|400 300 left|key esc|key esc|key esc|300 250 left
+
+# ③数値倍率 の倍率欄の入力検査（192.168.11.37 の実機、tools/steps_table.py で境目を確認：
+# |v|<=10000 かつ v≠0 のときだけ通る）。0・範囲外は `データが不適当` で欄が空になり
+# 同じ段（c->scaling==2, stage 18）に留まる＝保存記録は変わらない。
+cm_copy_scale_zero_rejected|SAMPLE0|90 72 left|150 130 left|245 170 right|type 3|200 300 left|type 0|key enter|400 300 left
+cm_copy_scale_toolarge_rejected|SAMPLE0|90 72 left|150 130 left|245 170 right|type 3|200 300 left|type 20000|key enter|400 300 left
+# （10000 近辺・絶対値の大きい倍率は、できた複写の座標が大きすぎて
+# tools/onlykind.py の固定ヘッダ解析が落ちる場合がある——tools/functest.sh
+# での確認はあきらめ、境目は steps_table.py の画面文字列だけで確認した。）
