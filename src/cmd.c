@@ -7062,13 +7062,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     /* 点【実点】の [ESC] も行を描き直して札を消す（測定のみ・decomp 未確認：escfz_v_15）。 */
     if (c->command == 22 && c->pt_real && !c->typing && key == 27 && c->stage == 1 && c->top_item == 1) {
         c->pt_plain = 1;
-        c->top_item = 0;
+        c->stage = 0;
         return 1;
     }
     if (c->command == 22 && c->pt_real && !c->typing && key >= '0' && key <= '9'
         && (key == '0' || key >= '6') && c->stage == 0) {
         c->pt_plain = 1;
-        c->top_item = 0;
         return 1;
     }
     if (c->command == 18 && !c->hatch_closed

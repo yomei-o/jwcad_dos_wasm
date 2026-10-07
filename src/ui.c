@@ -5179,6 +5179,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (r->row == 25 || r->row == 30 || r->row == 0) {
                     continue;
                 }
+                /* 点【実点】：升の無い数字・[ESC] のあとは行 2 の `F1～F6` の札だけ消える（測定：vq2・escfz_v_15）。 */
+                if (s->command == 22 && s->pt_plain && r->row == 2) {
+                    continue;
+                }
                 if (s->command == 28 && s->top_item == 6 && s->te_plain
                     && r->row >= 2) {
                     continue;
