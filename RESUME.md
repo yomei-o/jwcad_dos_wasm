@@ -78,6 +78,12 @@ notes/decomp-audit.md 10-c/10-d・nokori.md 参照）。
 `|①確定|②グループ|③レイヤ|④線色|⑤線種|` という別の帯に入ることだけ確認——`src/cmd.c` の段4ハンドラに item==7 の分岐が無い）。
 変形 ①パラメトリック変形 の同じ倍率欄（`c->command==17 && c->stage==18`）には同じ入力検査を足していない（スコープ外、同じ欠けが
 残っている可能性あり）。`tools/cases/probe_copymove.txt` に回帰 4 件を追加、192.168.11.37 で 17/17 一致を確認。詳細は nokori.md 参照。
+**10-07 深夜（4 回目、escaudit10）**：上の (3) が複写側しか直していなかった、移動＋⑤⑥③④ の ESC 取り消しを実装。
+`move_range(-dx,-dy)` と同じ流儀で、`mirror_range`/`turn_range`/`scale_range` を基準点⇄置く点を入れ替え・角度を逆／倍率を
+逆数にしてもう一度呼ぶ（`place_undo`）。最初に「変形前の値を控えて書き戻す」方式を試したが、192.168.11.37 の実機と生バイトで
+比べると合わず（`notes/traps.md` 新しい罠）、上の「同じ関数を呼び直す」方式に直してビット一致を確認（⑤⑥③④ の `functest.sh`
+が `same`）。基準点と置く点の y が同じになる置き方だけ、共有頂点の 1 座標が最後の 1 ビット違う既知の残り（nokori.md 参照）。
+`tools/cases/probe_copymove.txt` に回帰 5 件を追加。
 
 ### 検査の道具（10-07 に増えたもの）
 * `tools/usable.mjs`：ESC で戻る・消す・移動／複写の通し（`node tools/usable.mjs`）。`tools/e2e.mjs`：描く→保存→開き直す。

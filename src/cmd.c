@@ -3380,8 +3380,11 @@ static void place_by(JwCmd *c, Jwc *d, double dx, double dy)
         }
         c->mv_none = !any;
     }
-    /* 取り消し（[ESC]）のための控え：複写は足した数、移動は量。 */
+    /* 取り消し（[ESC]）のための控え：複写は足した数、移動は量。並行移動
+     * だけの置きなので mv_xform は立てない（反転・回転・倍率は
+     * place_snapshot_move/place_undo が別に扱う）。 */
     c->mv_undo = 1;
+    c->mv_xform = 0;
     c->mv_nl = d->n_lines;
     c->mv_na = d->n_arcs;
     c->mv_nt = d->n_texts;
@@ -3407,29 +3410,97 @@ static void place_by(JwCmd *c, Jwc *d, double dx, double dy)
  * いなかった（192.168.11.37、tools/functest.sh の
  * cm_copy_scale_esc_chain_reclick_noop で発覚：本物は ESC 3 回で置いた複写を
  * 消して 30 本に戻るのに、直す前の移植は 32 本のまま。移動は mv_dx/mv_dy が
- * 単純な並行移動の量でしかなく回転・倍率・反転には使えないため、ここでは
- * 複写（!JW_MOVING）のときだけ控えを立てる——移動側の ESC 取り消しは
- * 元々どおり未対応のまま（nokori.md 参照）。 */
+ * 単純な並行移動の量でしかなく回転・倍率・反転には使えないため、複写
+ * （!JW_MOVING）のときだけ控えを立てる——移動側は place_snapshot_move（下）
+ * を使う。 */
 static void place_snapshot(JwCmd *c, const Jwc *d)
 {
     c->mv_undo = 1;
+    c->mv_xform = 0;
     c->mv_nl = d->n_lines;
     c->mv_na = d->n_arcs;
     c->mv_nt = d->n_texts;
     c->mv_np = d->n_points;
 }
 
-/* 複写・移動 の取り消し：複写は足したものを抜き、移動は同じ量だけ float で
- * 戻す（本物も float で戻すので、最後の 1 ビットが残ることがある——
- * 測定：61.441078 が 61.441071 に）。 */
+/* 移動 ⑤反転・⑥回転・③数値倍率・④ﾏｳｽ倍率 が置く（＝その場で裏返す/回す/
+ * 掛ける）直前の控え。移動には複写のような「足した数」が無く、
+ * mirror_range/turn_range/scale_range は拾った実体をその場で書き換えるだけ
+ * なので、place_snapshot の「個数」方式でも mv_dx/mv_dy の単純な並行移動
+ * でも取り消せない。192.168.11.37 の実機で ESC 後の座標を生のバイトで見ると、
+ * 変形前の値そのもの（literal snapshot）には戻っていない——最後の数ビットが
+ * 違う（measured: line5.x0 が変形前 0x4223e460 のところ ESC 後は 0x4223e45e）。
+ * 一方、基準点と置く点を入れ替えて同じ turn_range を**もう一度**呼んだ結果の
+ * 最初の端点はこの ESC 後の値とビット単位で一致した（40.97301483154297）。
+ * つまり本物は「変形前の値を控えておく」のではなく、「同じ変形をもう一度、
+ * 基準点⇄置く点を入れ替え、角度は逆・倍率は逆数にして呼ぶ」ことで戻している
+ * らしい（反転は基準線が同じなら二度掛ければ戻る）。ここではその形に合わせて
+ * 直前の変形の種類と引数（c->base_x/y・c->step_x/y・c->rot_deg・
+ * c->scale_x/y、反転は c->mv_mirror_axis）だけを覚えておき、ESC のときに
+ * turn_range/scale_range/mirror_range を引数を入れ替えてもう一度呼ぶ
+ * （place_undo）。どちらの端点もビット単位で一致するかまでは全部の形で
+ * 詰め切れていない（測定のみ・decomp 未確認、二つ目の端点は 1 ULP 未満のずれが
+ * 残る場合がある——下記 place_undo のコメント参照）。 */
+static void place_snapshot_move(JwCmd *c, const Jwc *d)
+{
+    (void)d;
+    c->mv_undo = 1;
+    c->mv_xform = 1;
+}
+
+/* 複写・移動 の取り消し：複写は足したものを抜き、移動の並行移動は同じ量だけ
+ * float で戻す（本物も float で戻すので、最後の 1 ビットが残ることがある——
+ * 測定：61.441078 が 61.441071 に）。
+ *
+ * 移動の反転・回転・倍率（mv_xform）は、置いたのと同じ turn_range/
+ * scale_range/mirror_range を、基準点⇄置く点を入れ替え・角度を逆・倍率を
+ * 逆数にしてもう一度呼ぶ（place_snapshot_move のコメント参照）。c->base_x/y
+ * と c->rot_deg・c->scale_x/y は命令を選び直すまで保たれ、直前の呼び出しで
+ * 使った「置く点」は c->step_x/y（= 置く点 − 基準点）から base_x+step_x /
+ * base_y+step_y で求め直せる。反転は拾う軸の線番号 m を呼ぶたびに
+ * c->mv_mirror_axis に控えておき、同じ m で mirror_range をもう一度呼ぶ
+ * （軸の線は範囲の外から選ぶ前提——軸自体が範囲に含まれて一緒に動く場合は
+ * 未確認・decomp 未確認のまま）。
+ *
+ * どの変形がいま有効かは c->mirror/c->rotate/c->scaling/c->mscale のうち
+ * 0 でないものを見る（複写・移動は ⑤⑥③④ のどれか一つしか選べないので
+ * 同時に二つ以上立つことは無い）。 */
 static void place_undo(JwCmd *c, Jwc *d)
 {
-    long k;
-
     if (!c->mv_undo) {
         return;
     }
-    if (c->command == 16) {
+    if (c->command == 16 && c->mv_xform) {
+        if (c->mirror) {
+            mirror_range(c, d, c->mv_mirror_axis);
+        } else if (c->rotate) {
+            const double sbx = c->base_x, sby = c->base_y, srot = c->rot_deg;
+            const double px = sbx + c->step_x, py = sby + c->step_y;
+
+            c->base_x = px;
+            c->base_y = py;
+            c->rot_deg = -srot;
+            turn_range(c, d, sbx, sby);
+            c->base_x = sbx;
+            c->base_y = sby;
+            c->rot_deg = srot;
+        } else if (c->scaling || c->mscale) {
+            const double sbx = c->base_x, sby = c->base_y;
+            const double ssx = c->scale_x, ssy = c->scale_y;
+            const double px = sbx + c->step_x, py = sby + c->step_y;
+
+            c->base_x = px;
+            c->base_y = py;
+            c->scale_x = ssx != 0.0 ? 1.0 / ssx : 1.0;
+            c->scale_y = ssy != 0.0 ? 1.0 / ssy : 1.0;
+            scale_range(c, d, sbx, sby);
+            c->base_x = sbx;
+            c->base_y = sby;
+            c->scale_x = ssx;
+            c->scale_y = ssy;
+        }
+        c->mv_xform = 0;
+    } else if (c->command == 16) {
         move_range(c, d, -c->mv_dx, -c->mv_dy);
     } else {
         while (d->n_lines > c->mv_nl) {
@@ -3445,7 +3516,6 @@ static void place_undo(JwCmd *c, Jwc *d)
             d->n_points--;
         }
     }
-    (void)k;
     jwc_ink_clear(d);
     c->mv_undo = 0;
 }
@@ -16240,6 +16310,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->missed = 0;
         if (!JW_MOVING(c)) {
             place_snapshot(c, d);
+        } else {
+            c->mv_mirror_axis = m;
+            place_snapshot_move(c, d);
         }
         mirror_range(c, d, m);
         c->mirror = 2;
@@ -19536,6 +19609,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 }
                 if (!JW_MOVING(c)) {
                     place_snapshot(c, d);
+                } else {
+                    place_snapshot_move(c, d);
                 }
                 scale_range(c, d, c->msc_px, c->msc_py);
                 c->step_x = c->msc_px - c->base_x;
@@ -19572,6 +19647,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 }
                 if (!JW_MOVING(c)) {
                     place_snapshot(c, d);
+                } else {
+                    place_snapshot_move(c, d);
                 }
                 if (c->rotate) {
                     turn_range(c, d, px, py);

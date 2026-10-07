@@ -33,3 +33,21 @@ cm_copy_scale_toolarge_rejected|SAMPLE0|90 72 left|150 130 left|245 170 right|ty
 # （10000 近辺・絶対値の大きい倍率は、できた複写の座標が大きすぎて
 # tools/onlykind.py の固定ヘッダ解析が落ちる場合がある——tools/functest.sh
 # での確認はあきらめ、境目は steps_table.py の画面文字列だけで確認した。）
+
+# 2026-10-07 夜（escaudit10）：移動＋⑤反転・⑥回転・③数値倍率・④ﾏｳｽ倍率 の
+# 置いた直後の [ESC] が変形を全く戻していなかったバグの回帰（nokori.md に
+# escaudit9 の未解決として残っていた点）。place_undo は同じ turn_range/
+# scale_range/mirror_range を基準点⇄置く点を入れ替え・角度を逆／倍率を逆数に
+# してもう一度呼ぶ。192.168.11.37 の実機で ⑤⑥③④ とも tools/functest.sh が
+# `same` と出ることを確認（下の 4 件）。ただし ⑥回転 は基準点と置く点の y が
+# 同じ（180,300 と事実上 320 のような base_y==place_y の形）になる置き方では、
+# 複数の線が共有する頂点の 1 座標だけ実機と最後の 1 ビットが違うことがある
+# （測定：200,300→400,300・30°で line5.y1/line6.y0 が実機 0x4398cedf、
+# 移植 0x4398cee0——他の 3 座標はビット一致。原因・decomp 未確認、表示 3 桁では
+# 一致。cm_move_rotate_esc_degenerate_ulp に記録、regression としては経過観察）。
+cm_move_mirror_esc_restore|SAMPLE0|30 72 left|150 130 left|245 170 right|type 5|90 320 left|key esc
+cm_move_rotate_esc_restore|SAMPLE0|30 72 left|150 130 left|245 170 right|type 6|90 320 left|type 47|key enter|500 150 left|key esc
+cm_move_scale_esc_restore|SAMPLE0|30 72 left|150 130 left|245 170 right|type 3|200 300 left|type 2|key enter|400 300 left|key esc
+cm_move_mscale_esc_restore|SAMPLE0|30 72 left|150 130 left|245 170 right|type 4|200 300 left|300 380 left|350 200 left|550 360 left|key esc
+# 経過観察（既知の 1 ULP 差、cmp -s では DIFFERENT と出る——上のコメント参照）：
+cm_move_rotate_esc_degenerate_ulp|SAMPLE0|30 72 left|150 130 left|245 170 right|type 6|200 300 left|type 30|key enter|400 300 left|key esc

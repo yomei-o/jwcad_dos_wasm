@@ -561,6 +561,16 @@ typedef struct {
     int mv_undo;                /* 複写・移動 の取り消しの控え */
     long mv_nl, mv_na, mv_nt, mv_np;
     double mv_dx, mv_dy;
+    /* 移動 ⑤反転・⑥回転・③数値倍率・④ﾏｳｽ倍率 の取り消しの控え：mv_dx/mv_dy の
+     * 単純な並行移動では回転・倍率・反転を戻せない。実機で確かめると、戻した
+     * 座標は変形前の生のバイトとは最後の数ビットだけ違う（192.168.11.37、
+     * tools/functest.sh）——単に控えた値を書き戻しているのではなく、同じ
+     * turn_range/scale_range/mirror_range を基準点と置く点を入れ替えて
+     * もう一度呼び、逆変換を計算し直している（src/cmd.c の place_undo）。
+     * mirror だけは基準線を選び直す形の呼び出しなので、使った軸の線番号を
+     * 覚えておく。 */
+    int mv_xform;
+    long mv_mirror_axis;
     int cl_pts;                 /* 中心線の 2 点指示：読んだ点の数 */
     double cl_x1, cl_y1, cl_x2, cl_y2;
     int text_ang_ask;           /* 文字 ③角度指定 の欄 */
