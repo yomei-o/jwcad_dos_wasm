@@ -5239,6 +5239,16 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         present();
         return 0;
     }
+    if (!pick && (key == 13 || key == 10) && cmd.command == 12 && cmd.pressed >= 1 && !cmd.moved && !cmd.typing) {
+        /* 円弧 の途中の [Enter] も数え箱を段の行へ描き直す（測定のみ：escfz_N_94）。 */
+        if (drawing) {
+            jw_cmd_track(&cmd, drawing, &view, mouse_x, mouse_y);
+        }
+        sync_ui();
+        ui.moved = 1;
+        present();
+        return 0;
+    }
     if (!pick && ((key >= '0' && key <= '9') || key == 8) && cmd.pressed == 1 && !cmd.moved
         && (cmd.command == 2 || cmd.command == 3 || cmd.command == 4
             || cmd.command == 11)) {
