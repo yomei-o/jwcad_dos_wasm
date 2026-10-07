@@ -5866,6 +5866,11 @@ range_items:
         }
         return 0;
     }
+    if (c->command == 27 && c->prev_top_item == 4 && !c->zukei && !c->pressed && c->stage == 0 && item == 3) {
+        c->zukei_drive = 1;         /* 枠の画面の ③ドライブ(A:)変更（測定：zukei_s0_c4_v） */
+        c->top_item = 4;
+        return 1;
+    }
     if (c->command == 27 && !c->zukei && c->pressed == 0 && c->stage == 0) {
         if (item == 5) {
             c->zukei_blank = c->zukei_n == 0;       /* 登録図形なしで ④⑤ を選ぶと図面の領域が空（測定：zukei_s0_c5） */
@@ -6459,6 +6464,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
      * one that has not leaves the screen as it was, and then src/item.h --
      * what the original wrote when the same cell was pressed there -- is put
      * over the line the menu item came up with.  See src/ui.c. */
+    c->prev_top_item = c->top_item;
     c->top_item = 0;
     c->top_right = 0;
     c->te_pick = -1;    /* 文編集：項目を選び直すと選んだ文字も [ESC] も無くなる */
@@ -8131,6 +8137,10 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     if (c->command == 28 && key == 8 && c->top_item && !c->typing && !c->typing_text && !c->te_sub
         && c->stage == 0 && !c->te5) {
         c->top_item = 0;
+        return 1;
+    }
+    if (key == 27 && c->command == 27 && c->zukei_drive) {
+        c->zukei_drive = 0;         /* ドライブの行の [ESC] は枠の行へ（測定のみ） */
         return 1;
     }
     /* 図形 ④グループ変更 の枠の [ESC] は最初の行へ（測定のみ：zukei_s0_c4）。 */

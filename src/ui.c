@@ -5186,6 +5186,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (r->row == 25 || r->row == 30 || r->row == 0) {
                     continue;
                 }
+                if (s->command == 27 && s->top_item == 4 && s->zukei_drive && r->row == 2 && r->col == 18) {
+                    continue;
+                }
                 if (s->command == 27 && s->top_item == 4 && s->zukei_cell > 0
                     && ((r->row == 2 && r->col == 18) || (r->row == 5 && r->col == 20))) {
                     continue;           /* 選んだ升は自前で描く */
@@ -5780,6 +5783,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
                 sprintf(nm, "A:ZUKEI_%d", s->zukei_cell + 1);
                 jw_ui_text(v, 18, 2, 7, 0, nm);
+            }
+            if (s->command == 27 && s->top_item == 4 && !s->zukei && s->zukei_drive) {
+                fill(v, 0, 0, 639, 15, 0);
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                jw_ui_text(v, 8, 1, 7, 0, "\x83\x68\x83\x89\x83\x43\x83\x75\x82\xcc\x95\xcf\x8d\x58");
+                jw_ui_text(v, 23, 1, 7, 0, "|" "\x87@" " " "\x82\x60" "|" "\x87" "A" " " "\x82\x61" "|" "\x87" "B" " " "\x82\x62" "|" "\x87" "C" " " "\x82\x63" "|" "\x87" "D" " " "\x82\x64" "|" "\x87" "E" " " "\x82\x65" "|" "\x87" "F" " " "\x82\x66" "|" "\x87" "G" " " "\x94\x43\x88\xd3" "|");
             }
             /* ④グループ変更：登録図形の枠（5×10）は空なら `--`。左上だけ白地に黒字（測定：zukei_s0_c4）。 */
             if (s->command == 27 && s->top_item == 4 && !s->zukei) {

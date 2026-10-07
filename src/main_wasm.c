@@ -535,6 +535,7 @@ static void sync_ui(void)
     ui.chb = cmd.chb;
     ui.ch_bad = cmd.ch_bad;
     ui.circ_bad = cmd.circ_bad;
+    ui.zukei_drive = cmd.zukei_drive;
     ui.zukei_cell = cmd.zukei_cell;
     ui.zukei_blank = cmd.zukei_blank;
     ui.zukei_plain = cmd.zukei_plain;

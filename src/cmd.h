@@ -665,6 +665,8 @@ typedef struct {
     int zukei_plain;            /* 図形：升の無い数字で行 2 の札（③表示・⑥レイヤ）が消えた（測定：zukei_s0_c6_v） */
     int zukei_blank;            /* 図形 ④⑤ を登録図形なしで選び、図面の領域が空のまま範囲に入った（測定：zukei_s0_c5） */
     int zukei_cell;             /* 図形 ④ の枠で選んだ升（0〜49。測定：zukei_s0_c4） */
+    int zukei_drive;            /* 図形 ④ の ③ドライブ変更 の行（測定：zukei_s0_c4_v） */
+    int prev_top_item;          /* jw_cmd_top が top_item を 0 に戻す前の値 */
     int box_keep_off;           /* □ 寸法欄で打ちかけの押し：数え箱が戻る（測定：escfz_B_77） */
     int ref_miss;               /* □ ③平行：基準線の読み外れの数（二度目で数え箱が戻る。測定：box_s1_c3） */
     int ref_hold;               /* □ ③平行：始点を持ったまま基準線を聞いている（測定：box_s1_c3） */
