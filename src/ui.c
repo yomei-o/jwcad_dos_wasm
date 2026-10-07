@@ -1873,6 +1873,8 @@ static int asks_range(void)
 /* A line cut to a box before it is drawn.  jw_line does not clip -- it is the
  * chrome's own routine and the chrome draws inside itself -- and the fittings
  * library asks for lines that run out of the row they are shown in. */
+static int clip_style = JW_STYLE_SOLID;     /* clip_line の線種（建具の立面の鎖線など） */
+
 static void clip_line(VGA *v, double x0, double y0, double x1, double y1,
                       int bx0, int by0, int bx1, int by1, unsigned colour)
 {
@@ -1915,7 +1917,7 @@ static void clip_line(VGA *v, double x0, double y0, double x1, double y1,
     }
     jw_line(v, (int)(x0 + t0 * dx), (int)(y0 + t0 * dy),
             (int)(x0 + t1 * dx), (int)(y0 + t1 * dy), colour, ROP_REPLACE,
-            JW_STYLE_SOLID);
+            clip_style);
 }
 
 /* One coordinate, in pixels away from the block's own origin.
@@ -2400,7 +2402,9 @@ static void tategu(VGA *v, int which)
                 v->clip_y1 = cy1;
                 continue;
             }
-            clip_line(v, ax, ay, bx, by, x0, y0, x1, y1, ink);
+            clip_style = l->ltype > 1 ? jw_view_line_style((unsigned)l->ltype) : JW_STYLE_SOLID;
+            clip_line(v, ax, ay, bx, by, x0, y0, x1, y1, l->ltype > 1 ? jw_view_pen_colour(2u) : ink);
+            clip_style = JW_STYLE_SOLID;
         }
     }
 }

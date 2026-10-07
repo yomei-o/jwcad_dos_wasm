@@ -38,6 +38,7 @@ typedef struct {
      * the distance between them, `sweep` is degrees anticlockwise and `mode`
      * says what else to draw -- see the note at the top of the file. */
     int pen;                    /* 線色, the 7th number.  2 when there is none */
+    int ltype;                  /* 線種, the 8th number.  1 when there is none */
     int arc;
     int sweep;
     int mode;

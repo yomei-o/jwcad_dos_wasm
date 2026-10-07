@@ -3824,7 +3824,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
         cmd.top_item = 0;
         cmd.top_right = 0;
-        if (ui.opt_stage == 0 && item == 1) {
+        if (ui.opt_stage == 0 && item >= 1 && item <= 3) {   /* ②断面・③立面 も同じ一覧画面（測定：probe_option_walk） */
             /* The screen is up; what is on it comes from src/item.h like
              * ②断面's and ③立面's. */
             ui.opt_stage = JW_OPT_PLAN;
@@ -3838,7 +3838,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             ui.opt_gap = 0.0;
             ui.opt_line = -1;
         }
-        if (ui.opt_stage == 0 || item == 1) {
+        if (ui.opt_stage == 0 || (item >= 1 && item <= 3)) {
             if (jw_ui_item_has(29, item, right)) {
             /* The rest of ｵﾌﾟｼｮﾝ's bar is not built, but the original
              * still writes something when it is pressed -- src/item.h. */

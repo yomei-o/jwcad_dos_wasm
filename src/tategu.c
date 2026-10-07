@@ -44,7 +44,7 @@ int jw_tategu_read(const char *path, JwTategu *out)
         if (line[0] == '#') {
             continue;           /* a comment */
         }
-        got = numbers(line, v, 7);
+        got = numbers(line, v, 8);
         if (got == 1 && v[0] >= 990 && v[0] <= 999) {
             /* the next line opens a shape */
             if (out->n < JW_TATEGU_MAX) {
@@ -84,6 +84,7 @@ int jw_tategu_read(const char *path, JwTategu *out)
             /* `... 3 1 1A` -- 線色, 線種, レイヤ.  Without them the line is
              * pen 2, which is what the shapes that carry none come out as. */
             l->pen = got >= 7 ? v[6] : 2;
+            l->ltype = got >= 8 ? v[7] : 1;
             /* `... 1 0 -1 E 90 12` -- the `E` turns the record into an arc
              * and the two numbers after it are the sweep and the mode. */
             if (e && numbers(e + 1, v, 2) == 2) {
