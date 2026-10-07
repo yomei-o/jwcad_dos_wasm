@@ -7007,7 +7007,8 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     if (c->command == 26 && key == 8 && !c->typing && c->stage == 16) {
-        c->stage = 1;               /* ①接線 の ②円周点 の [BS]`前項` は ①接線 の行へ（測定のみ：escfz_e_31） */
+        c->stage = 1;
+        c->tan_kind = 0;               /* ①接線 の ②円周点 の [BS]`前項` は ①接線 の行へ（測定のみ：escfz_e_31） */
         return 1;
     }
     /* 線変更 で一本変えたあとの [ESC] は最初の行（段 0）へ（測定のみ・decomp 未確認：escfz_w_24）。 */
@@ -7042,6 +7043,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         if (st >= 10 && st < 30 && st != 30) {
             c->stage = 1;
+            c->tan_kind = 0;
             c->missed = 0;
             return 1;
         }
