@@ -7071,6 +7071,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->top_item = 5;
         return 1;
     }
+    /* 点【実点】の [BS]・[Enter] も札を消す（測定のみ：escfz_v_8・v_10）。 */
+    if (c->command == 22 && c->pt_real && !c->typing && (key == 8 || key == 13 || key == 10)
+        && c->pt_mode == 0 && (c->top_item == 1 || c->stage == 1)) {
+        c->pt_plain = 1;
+        return 1;
+    }
     /* 点【実点】の [ESC] も行を描き直して札を消す（測定のみ・decomp 未確認：escfz_v_15）。 */
     if (c->command == 22 && c->pt_real && !c->typing && key == 27 && c->stage == 1 && c->top_item == 1) {
         c->pt_plain = 1;
@@ -7078,7 +7084,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     if (c->command == 22 && c->pt_real && !c->typing && key >= '0' && key <= '9'
-        && (key == '0' || key >= '6') && c->stage == 0) {
+        && (key == '0' || key >= '6') && c->stage <= 1) {
         c->pt_plain = 1;
         return 1;
     }
@@ -8091,7 +8097,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 8 && c->pt2 == 0 && !c->typing) {
             c->pt_mode = 0;
             c->pt_undo = 0;
-            c->top_item = 1;            /* 点の最初の行（① の行）に戻る（測定：probe_pdist2 pf_a） */
+            c->top_item = c->pt_real ? 1 : 0;   /* 点の最初の行（① の行）に戻る（測定：probe_pdist2 pf_a は【実点】。【仮点】は escfz_v_14） */
             c->top_right = 0;
             return 1;
         }
@@ -19132,6 +19138,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         return 1;
     }
     if (c->command == 22) {
+        c->pt_plain = 0;            /* 押すと札は戻る（測定のみ：escfz_v_8） */
         /* 点: a press drops a 仮点.  The original changes neither count
          * (SAMPLE0 stays at 30|13), writes nothing on the top line, and
          * repaints the panel -- read off a press at (300,250) with 点 picked,
