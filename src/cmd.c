@@ -8866,11 +8866,26 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->moved = 0;
         return 1;
     }
-    /* ②連続 で足した線は [ESC] で一本戻り、行は段 0 の `線指示 …` へ
-     * （decomp 照合済み（調査担当が dis で確認）：escfz_F_80）。 */
-    if (key == 27 && c->command == 5 && !c->typing && c->stage == 3 && c->off_cont && d
+    /* ②連続だけでなく、① の押しで最初に足した線も [ESC] で一本戻り、
+     * 行は段 0 の `線指示 …` へ（decomp の 0x2cb4 の戻り値 -1 の着地
+     * （file-linear 0x2c08e〜0x2c1e1、ovl07 `FUN_3ab8_1237`）は off_cont の
+     * ような区別を見せず、段 3（線を 1 本置いたところ）で ESC が来たときは
+     * いつも直前に足した線を戻す。実機で確認：`90 136 left|400 140 left|
+     * type 20|key enter|300 250 left|key esc` は off_cont=0（①だけ、②連続
+     * は未使用）でも本物は線を 1 本に戻す（修正前の移植は off_cont を
+     * 要求していたので戻さず 1 本多いまま——`tools/cases/probe_offset.txt`
+     * off_esc_first）。②連続（off_cont=1）のときの挙動は escfz_F_80 の
+     * とおり変えていない）。 */
+    if (key == 27 && c->command == 5 && !c->typing && c->stage == 3 && d
         && d->n_lines > 0) {
         jwc_remove_line(d, d->n_lines - 1);
+        if (!c->off_cont) {
+            /* ① そのものを戻したので、前線と連続(R) の控えも最初の状態へ
+             * （測定：off_esc_first のあと同じ線を続けて複写しても
+             * `●前線と連続(R)` にならず `連続入力` のまま）。 */
+            c->off_prev_pick = -1;
+            c->off_prev_copy = -1;
+        }
         c->off_cont = 0;
         c->stage = 0;
         c->moved = 0;
