@@ -18512,6 +18512,17 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->ch_same = 1;
             return 1;
         }
+        {
+            double qx, qy;
+
+            if (!cross_at(&d->lines[c->pick_a], &d->lines[k], &qx, &qy)) {
+                /* 平行な二本：`データが不適当` で最初の行（対象線(A)）へ（測定のみ：escfz_R_67） */
+                c->ch_same = 3;
+                c->pick_a = -1;
+                c->stage = 0;
+                return 1;
+            }
+        }
         chamfer(c, d, w, c->pick_a, k, sx, sy);
         c->pick_a = -1;
         c->stage = 2;

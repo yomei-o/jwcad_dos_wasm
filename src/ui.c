@@ -545,8 +545,8 @@ void jw_ui_band_end(VGA *v, const JwUi *s)
         fill(v, 376, 17, 423, 31, 0);   /* 表の 6 桁の白枠の残りを消す（測定：zukei_s0_c6） */
         jw_ui_text(v, 48, 2, 7, 0xffffu, L2[s->zukei_layer % 3]);
     }
-    if (s->command == 8 && s->ch_same == 1 && s->stage == 1) {
-            jw_ui_text(v, 20, 2, 7, 0, "\x83" "f\x81[\x83^\x82\xaa\x95s\x93K\x93\x96");
+    if (s->command == 8 && ((s->ch_same == 1 && s->stage == 1) || (s->ch_same == 3 && s->stage == 0))) {
+            jw_ui_text(v, s->ch_same == 3 ? 18 : 20, 2, 7, 0, "\x83" "f\x81[\x83^\x82\xaa\x95s\x93K\x93\x96");
     }
     if (s->command == 7 && s->ch_same == 2 && s->stage == 1) {
         jw_ui_text(v, 20, 2, 7, 0, "\x8c\x76\x8e\x5a\x95\x73\x89\xc2");
