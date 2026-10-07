@@ -7018,6 +7018,14 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->hit_kind = 0;
         return 1;
     }
+    /* 円線接 の ②１点１線・③１円１点・①１線１円 の二つ目の指示の段（33・37・41）の [ESC] は一つ目の段へ
+     * （測定のみ・decomp 未確認：escfz_e_40）。 */
+    if (c->command == 26 && key == 27 && !c->typing && c->tan_on
+        && (c->stage == 33 || c->stage == 37 || c->stage == 41)) {
+        c->stage--;
+        c->missed = 0;
+        return 1;
+    }
     /* 円線接 の ①接円半径 の欄の [ESC] は打ちかけを捨てて一つ前の段へ（測定のみ：escfz_e_35）。 */
     if (c->command == 26 && key == 27 && c->typing && c->tan_on
         && (c->stage == 35 || c->stage == 39 || c->stage == 43)) {
