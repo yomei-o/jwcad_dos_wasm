@@ -19570,11 +19570,27 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;
         }
         c->missed = 0;
-        if (c->pick_a < 0 && right) {
+        if (right) {
             /* **線切断 ﾏｳｽ(R)**：押した点を線に下ろした所で二本に分けます。
              * 元の線を抜き、始点側・終点側の順に最後へ（測定：右の辺を
              * (598,300) で切ると 139.943〜300 と 300〜419 の 2 本）。
-             * 座標系は 1bb4:27ea と同じ float の cos/sin、原点は始点。 */
+             * 座標系は 1bb4:27ea と同じ float の cos/sin、原点は始点。
+             *
+             * **2026-10-07 夜・点/＜/┣ 監査で解消**：右押しは `Ａ` を
+             * 持っているかどうかに関わらず効く（実機 192.168.11.37、
+             * `tools/probe.sh 7 220 157 r 598 300` ——Ａを選んだあと
+             * 別の線を右押ししても Ａ はそのまま・行は【Ｂ】のまま
+             * 切れて `残切断点` が 20→19 に減った）。前の実装は
+             * `c->pick_a < 0` のときしか右押しの切断を試さず、Ａを
+             * 持った状態での右押しは「Ｂ を選んだ」ことにして誤って
+             * コーナー連結してしまっていた（未検証のまま放置されていた
+             * 一本道、タスクの「右押し側（残切断点）は未読」に対応）。
+             * Ａと同じ線・同じ点を右押しした場合（`tools/probe.sh 7 220 157
+             * r 220 157`）も実機は切ってしまい（Ａの線が無くなるので
+             * Ａは外れて（Ａ）の行に戻る）、「同じ線の右押しは黙って(A)へ」
+             * という以前の decomp 引用（0x2b82a〜0x2b85b、0x2b78e）は
+             * この一本道には当てはまらなかった——**実機を優先**してそちらに
+             * 合わせた（測定のみ、decomp 再確認はしていない）。 */
             const JwcLine l = d->lines[k];
             const double dx = (double)l.x1 - l.x0, dy = (double)l.y1 - l.y0;
             const double len = sqrt(dy * dy + dx * dx);
@@ -19606,7 +19622,15 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 c->cut_py[c->cut_n] = qy;
                 c->cut_n++;
             }
-            c->stage = 2;
+            /* 切った線が Ａ 自身なら Ａ は外れる。Ａ がそれより後ろの番号
+             * だった場合は jwc_remove_line が一つ前へ詰めるので、Ａ の
+             * 添字も一つ減らして同じ線を指し続けるようにする。 */
+            if (c->pick_a == k) {
+                c->pick_a = -1;
+            } else if (c->pick_a > k) {
+                c->pick_a--;
+            }
+            c->stage = c->pick_a < 0 ? 2 : 1;
             return 1;
         }
         if (c->pick_a < 0) {
@@ -19620,8 +19644,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             double qx, qy;
 
             if (k == c->pick_a) {
-                /* 同じ線：左押しは `同データです` で最初の行(A)へ、右押しは黙って(A)へ（decomp ovl2 0x2b82a〜0x2b85b、0x2b78e）。 */
-                c->ch_same = right ? 0 : 4;
+                /* 同じ線の左押し：`同データです` で最初の行(A)へ（decomp ovl2
+                 * 0x2b82a〜0x2b85b、0x2b78e）。右押しは上の「線切断」で
+                 * 既に拾われているのでここには来ない。 */
+                c->ch_same = 4;
                 c->pick_a = -1;
                 c->stage = 0;
                 return 1;

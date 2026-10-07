@@ -1,0 +1,14 @@
+# ＜（command==7、コーナー連結/線切断）の右押し監査（2026-10-07 夜・点/＜/┣）。
+# 「右押し側（残切断点）は未読」だった分：Ａ を選んだあとの右押しがそれまで
+# コーナー連結（Ｂ選び）に化けていたのを直した。実機（192.168.11.37、
+# tools/functest.sh）で以下すべて位置が一致（rest の touched ビット 1 個だけ
+# 既知の別パターンでずれる——他のコーナー連結単体でも出るので今回の変更とは
+# 無関係）。
+#   sh tools/functest.sh '90 160 left' '220 157 left' '598 300 right'   # A を持ったまま別の線を右切断
+#   sh tools/functest.sh '90 160 left' '220 157 left' '220 157 right'   # A と同じ線・同じ点を右切断（A が外れる）
+#   sh tools/functest.sh '90 160 left' '220 157 left' '598 163 left'    # 通常のコーナー連結（回帰）
+#   sh tools/functest.sh '90 160 left' '220 157 left' '220 157 left'    # 同じ線の左押し＝同データです（回帰）
+corner_cut_keep_a|SAMPLE0|90 160 left|220 157 left|598 300 right|598 163 left
+corner_cut_same_as_a|SAMPLE0|90 160 left|220 157 left|220 157 right|598 163 left
+corner_join_plain|SAMPLE0|90 160 left|220 157 left|598 163 left
+corner_same_data|SAMPLE0|90 160 left|220 157 left|220 157 left|598 163 left
