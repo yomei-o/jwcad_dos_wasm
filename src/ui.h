@@ -695,6 +695,9 @@ typedef struct {
      * says `□ 線切断はマウス移動` (src/stage.h stage 11) instead of the
      * command's own line. */
     int cutting;
+    /* 線伸縮 の RR：「基準線へ」モードに切り替わっている（src/cmd.h
+     * JwCmd.st_base_mode と同じ意味、測定のみ）。 */
+    int st_base_mode;
     /* 文字 is taking a string: the port draws it at column 1 of row 2. */
     int typing_text;
     /* 文字's own numbers: the character type selected for writing and that

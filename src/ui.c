@@ -6816,6 +6816,25 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 8, 1, 7, 0, one);
                 jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
             }
+            /* ┣ 線伸縮 の RR：「基準線へ」モードに切り替わったあとの段 2
+             * （対象線をもう一度待つ）の帯は、stage.h の既存行（指定点へ
+             * …）を実機測定の文言（基準線へ…）で上書きする。%s の中身が
+             * 替わるだけで他は同じ（192.168.11.37 `tools/probe.sh 6
+             * r 220 157 r 220 157` の生の文字列ログから直接起こした
+             * バイト列。decomp の sprintf 引数そのものは未確認）。 */
+            if (s->command == 6 && s->st_base_mode && i == s->stage
+                && s->stage == 2 && !s->cutting) {
+                jw_ui_text(v, 6, 1, 7, 0, "\x81" "E");
+                jw_ui_text(v, 8, 1, 7, 0,
+                    "\x81" "\x9b" "\x8a" "\xee" "\x8f" "\x80" "\x90" "\xfc"
+                    "\x82" "\xd6" "\x90" "L" "\x8f" "k" "\x82" "\xb7" "\x82"
+                    "\xe9" "\x91" "\xce" "\x8f" "\xdb" "\x90" "\xfc" "\x8e"
+                    "w" "\x8e" "\xa6" "(" "\xcf" "\xb3" "\xbd" "-L) " "\x81"
+                    "\x9e" "\x90" "\xfc" "\x90" "\xd8" "\x92" "f(" "\xcf"
+                    "\xb3" "\xbd" "-R)" "\x81" "y" "\x8a" "\xee" "\x8f" "\x80"
+                    "\x90" "\xfc" "\x8e" "w" "\x8e" "\xa6" "(" "\xcf" "\xb3"
+                    "\xbd" "-RR)" "\x81" "z");
+            }
             /* ③書込角度's own field (段 10): the same `角度 =` line
              * ③任意方向 has, with its own 前回と同じ at column 50. */
             if (s->command == 14 && s->dim_ck && i == s->stage

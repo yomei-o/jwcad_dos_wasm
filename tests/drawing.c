@@ -307,6 +307,7 @@ int main(int argc, char **argv)
                 t.moved = c.moved;
                 t.hit_kind = c.hit_kind;
                 t.cutting = c.cutting;
+                t.st_base_mode = c.st_base_mode;
                 t.divisions = c.divisions;
                 t.meas_total = c.meas_total;
                 t.meas_last = c.meas_last;
@@ -446,6 +447,7 @@ int main(int argc, char **argv)
         s.moved = c.moved;
         s.hit_kind = c.hit_kind;
         s.cutting = c.cutting;
+        s.st_base_mode = c.st_base_mode;
         s.divisions = c.divisions;
         s.meas_total = c.meas_total;
         s.meas_last = c.meas_last;

@@ -19582,6 +19582,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 c->pick_a = k;
                 c->cut_x = l->x0 + t * dx;
                 c->cut_y = l->y0 + t * dy;
+                /* RR（同位置のもう一度の右押し）を見分けるため、この
+                 * 押しの画面位置も控える（pick_x/pick_y は左押しの
+                 * 「指定点」段でも使うが、cutting==1 の間はまだ別の
+                 * 意味で使われていないので共用する）。 */
+                c->pick_x = sx;
+                c->pick_y = sy;
                 c->stage = 2;
                 c->cutting = 1;
                 return 1;
@@ -19590,6 +19596,22 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->pick_x = sx;
             c->pick_y = sy;
             c->stage = 1;
+            return 1;
+        }
+        /* ┣ の RR：線切断を待っている（cutting==1）あいだに、ポインタが
+         * 動く前（jw_cmd_track で cutting が解かれる前）に同じ画面位置へ
+         * もう一度右押しが来たら、線切断ではなく「基準線へ伸縮する」
+         * モードへの切り替え（実機 192.168.11.37 `tools/probe.sh 6
+         * r 220 157 r 220 157` で確認：切断は実行されず、対象線選びへ
+         * 戻って帯の文言が「指定点へ」から「基準線へ」に変わる）。
+         * 基準線を選んでの交点計算そのものは未実装（nokori.md ┣ 参照、
+         * 測定のみ・decomp のモードフラグは未特定のため、二点目の押しは
+         * 従来どおり stretch_to() を呼ぶ）。 */
+        if (c->cutting && right && sx == c->pick_x && sy == c->pick_y) {
+            c->cutting = 0;
+            c->pick_a = -1;
+            c->st_base_mode = !c->st_base_mode;
+            c->stage = 2;
             return 1;
         }
         /* 読取が外れたら同じ段のまま待ちます（測定：`サーチ`
