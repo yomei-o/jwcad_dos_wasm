@@ -8199,15 +8199,20 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->pg_edge = !c->pg_edge;
         return 1;
     }
-    /* 円線接 ③接円（３条件）③１点と２線･円・④３線･円 の [ESC]：取りかけなら
-     * 最初の段へ、円を作った直後ならその円を取り消して [ESC] の無い行へ
-     * （測定：func_all tangent_s0_c3_v で 14 → 13）。 */
+    /* 円線接 ③接円（３条件）③１点と２線･円・④３線･円 の [ESC]：取りかけは
+     * 一段戻すだけ（53→52→51、56→55→54）——以前の「最初の段へ一気に戻す」
+     * 実装は違っていた（nokori.md 10-07、実機 192.168.11.37・
+     * tools/cmdstate.mjs で確認：2 本目を選んだあと [ESC] を 2 回押すと、
+     * 本物は 1 本目の段を経て 0 本の段へ順に戻る。段ごとの `1bb4:2cb4` 呼び
+     * 出し自体は decomp 未確認・測定のみ）。円を作った直後ならその円を
+     * 取り消して [ESC] の無い行へ（測定：func_all tangent_s0_c3_v で
+     * 14 → 13）。 */
     if (c->command == 26 && key == 27 && !c->typing
         && (c->tan_tri == 13 || c->tan_tri == 14)) {
         const int top = c->tan_tri == 13 ? 51 : 54;
 
         if (c->stage > top && c->stage <= top + 2) {
-            c->stage = top;
+            c->stage--;
             c->missed = 0;
             return 1;
         }
