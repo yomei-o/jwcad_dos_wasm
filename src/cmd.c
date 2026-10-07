@@ -8934,26 +8934,62 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->moved = 1;       /* 終点の行（T 段）を出し直す */
         return 1;
     }
-    /* 線消 で部分消去したあとの [ESC]：抜いた元の線を rest を 0 にして末尾へ
-     * 戻す（切った残りはそのまま。測定：func_all linedel_s1_c1、間に右押しの
-     * 消去があっても上の辺が戻る）。一度だけ。 */
+    /* 線消 で部分消去したあとの [ESC]：間に別の消去（右押しの全消）を挟んで
+     * いなければ、切って足した破片（1〜2 本）を消したうえで、抜いた元の線を
+     * rest を 0 にして末尾へ戻す（切った残りは消える——実機測定：90 216
+     * left|400 140 left|300 250 left|450 330 left|key esc を
+     * tools/functest.sh に通すと、本物は破片が両方消えて 1 本（元の形）だけに
+     * 戻る。破片を消さない旧実装はここで 2 本余計に残っていた）。
+     * **間に右押しの消去を挟んだとき（`c->rd_undo_on`）は破片を消さない**
+     * ——func_all linedel_s1_c1（①線切断寸法 の欄のあと、右押しの消去を
+     * 挟んで [ESC]）で実機を確かめると、このときは破片 2 本がそのまま残り、
+     * 元の線だけが追加で戻る（traps.md 既存の測定どおり。右押しの消去が
+     * 破片の最新の状態を外から書き換えてしまっているらしく、破片を内容
+     * 一致で探すと無関係な行まで巻き込みうるため、この場合は決め打ちで
+     * 触らない——nokori.md の「`linedel_s1_c1` は現状の挙動で一致している
+     * ので触らない」を実機で裏取りして踏襲）。一度だけ。 */
     if (key == 27 && d && c->command == 10 && !c->typing && c->stage == 1
         && c->ld_undo_on) {
         JwcLine q = c->ld_undo;
 
+        if (!c->rd_undo_on) {
+            int i;
+
+            for (i = 0; i < c->ld_undo_n; i++) {
+                const JwcLine *f = &c->ld_frag[i];
+                long k;
+
+                for (k = d->n_lines - 1; k >= 0; k--) {
+                    const JwcLine *m = &d->lines[k];
+
+                    if (m->x0 == f->x0 && m->y0 == f->y0 && m->x1 == f->x1
+                        && m->y1 == f->y1 && m->type == f->type
+                        && m->pen == f->pen && m->layer == f->layer) {
+                        jwc_remove_line(d, k);
+                        break;
+                    }
+                }
+            }
+        }
         memset(q.rest + 1, 0, 3);
         if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen, q.layer)) {
             d->lines[d->n_lines - 1] = q;
         }
         c->ld_undo_on = 0;
+        c->ld_undo_n = 0;
         c->stage = 0;
         return 1;
     }
     if (key == 27 && d && c->command == 10 && !c->typing && c->stage == 1
         && !c->ld_undo_on && c->rd_undo_on) {
+        /* 右押しの全消のあとの [ESC]：消した線をそのまま（rest も含めて）
+         * 末尾へ戻す。部分消去の undo（上のブロック）と違って rest は
+         * **0 にしない**——実機測定（90 216 left|400 140 right|key esc、
+         * tools/functest.sh）：戻った線の rest は元のまま 410000。全消は
+         * レコードをそのまま置き戻すだけで、部分消去のように新しい
+         * レコードを作り直すわけではないらしい。 */
         JwcLine q = c->rd_undo;
 
-        memset(q.rest + 1, 0, 3);
         if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen, q.layer)) {
             d->lines[d->n_lines - 1] = q;
         }
@@ -15342,6 +15378,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             }
             c->ld_undo = l;
             c->ld_undo_on = 1;
+            c->ld_undo_n = 0;
             jwc_remove_line(d, k);
             if (a > 0.0f) {
                 const float ax = (float)((double)cs * a + ox);
@@ -15351,6 +15388,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                                  l.layer)) {
                     d->lines[d->n_lines - 1].rest[1] = 0;
                     d->lines[d->n_lines - 1].rest[3] = 0;
+                    c->ld_frag[c->ld_undo_n++] = d->lines[d->n_lines - 1];
                 }
             }
             if (b < ue) {
@@ -15361,6 +15399,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                                  l.layer)) {
                     d->lines[d->n_lines - 1].rest[1] = 0;
                     d->lines[d->n_lines - 1].rest[3] = 0;
+                    c->ld_frag[c->ld_undo_n++] = d->lines[d->n_lines - 1];
                 }
             }
         }

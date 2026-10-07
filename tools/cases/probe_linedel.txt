@@ -1,0 +1,25 @@
+# 線消(command=10) 部分消去の [ESC] 監査（2026-10-07 深夜）。
+#
+# nokori.md が「読みは逆だが実機未確認」と書いていた点を実機で解消：
+# 部分消去（左押しで線の途中を切り取る）のあとの [ESC] は、切ってできた
+# 破片（1〜2 本）を消して、元の線を 1 本だけ（rest は 0 クリア）に戻す。
+# 旧実装は破片を消さず、元の線を足し戻すだけだったので破片が残っていた。
+#
+# ただし間に右押しの全消（線消のもう一つの undo 経路、c->rd_undo_on）を
+# 挟んだときは破片を消さない（既存の func_all linedel_s1_c1 と同じ形）。
+# 突き合わせは tools/functest.sh（JWC バイト列の一致）。
+
+# --- 新しく直した本体：破片が消えて 1 本に戻る ---
+ld_esc_undo_fragments|SAMPLE0|90 216 left|400 140 left|300 250 left|450 330 left|key esc
+
+# --- 片方だけ破片ができる場合（始点側が線の端そのもの） ---
+ld_esc_undo_one_fragment|SAMPLE0|90 216 left|400 140 left|170 140 left|450 330 left|key esc
+
+# --- regression：間に右押しの全消を挟むと破片を消さない（linedel_s1_c1 と同じ形） ---
+ld_esc_keep_fragments_after_rd|SAMPLE0|90 216 left|400 140 left|type 1|move 300 250|300 250 left|move 450 330|450 330 left|162 250 left|598 300 right|move 350 350|350 350 left|key esc
+
+# --- regression：undo の枠は一つ、2 回目の [ESC] は何もしない ---
+ld_esc_once_only|SAMPLE0|90 216 left|400 140 left|300 250 left|450 330 left|key esc|key esc
+
+# --- 右押しの全消を [ESC] で戻すとき rest は元のまま（0 にしない） ---
+ld_rd_undo_keeps_rest|SAMPLE0|90 216 left|400 140 right|key esc
