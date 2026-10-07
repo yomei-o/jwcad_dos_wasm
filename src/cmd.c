@@ -5773,6 +5773,7 @@ range_items:
             c->typing = 1;
             c->typed[0] = 0;
             c->typed_n = 0;
+            c->tan_r_back = c->stage;   /* 欄を開いた段（最初か2番目）を覚える */
             c->stage = 39;
             return 1;
         }
@@ -5781,6 +5782,7 @@ range_items:
             c->typing = 1;
             c->typed[0] = 0;
             c->typed_n = 0;
+            c->tan_r_back = c->stage;
             c->stage = 43;
             return 1;
         }
@@ -5789,6 +5791,7 @@ range_items:
             c->typing = 1;
             c->typed[0] = 0;
             c->typed_n = 0;
+            c->tan_r_back = c->stage;
             c->stage = 35;
             return 1;
         }
@@ -5797,6 +5800,7 @@ range_items:
             c->typing = 1;
             c->typed[0] = 0;
             c->typed_n = 0;
+            c->tan_r_back = c->stage;
             c->stage = 31;
             return 1;
         }
@@ -5805,6 +5809,7 @@ range_items:
             c->typing = 1;
             c->typed[0] = 0;
             c->typed_n = 0;
+            c->tan_r_back = c->stage;
             c->stage = 26;
             return 1;
         }
@@ -5814,6 +5819,7 @@ range_items:
             c->typing = 1;
             c->typed[0] = 0;
             c->typed_n = 0;
+            c->tan_r_back = c->stage;
             c->stage = 23;
             return 1;
         }
@@ -7292,22 +7298,42 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->missed = 0;
         return 1;
     }
-    /* ④角度指定 の角度の欄（段 12）の [ESC] は ①接線 の行（段 1）へ（測定のみ：escfz_e_49）。 */
+    /* ④角度指定 の角度の欄（段 12）の [ESC]：まだ接線を 1 本も引いていなければ
+     * ①接線 の行（段 1）へ（測定のみ：escfz_e_49）。**1 本以上すでに引いた
+     * あと**（一本引くたびに段 12 へ戻ってくる、18654〜18665 行参照）なら、
+     * この回で引いた接線を全部取り消して段 12 に留まる（nokori.md 10-07。
+     * 以前はここでも常に段 1 へ抜けていたので、引いた線がそのまま残って
+     * しまっていた）。tan_start() が控えた n0_lines（①接線 を選んだ時点の
+     * 本数）まで戻す。 */
     if (c->command == 26 && key == 27 && c->typing && c->tan_on && c->stage == 12) {
         c->typing = 0;
         c->typed[0] = 0;
         c->typed_n = 0;
+        if (d && d->n_lines > c->n0_lines) {
+            while (d->n_lines > c->n0_lines) {
+                jwc_remove_line(d, d->n_lines - 1);
+            }
+            c->tan_did = 0;
+            return 1;
+        }
         c->stage = 1;
         c->tan_kind = 0;
         return 1;
     }
-    /* 円線接 の ①接円半径 の欄の [ESC] は打ちかけを捨てて一つ前の段へ（測定のみ：escfz_e_35）。 */
+    /* 円線接 の ①接円半径 の欄の [ESC] は打ちかけを捨てて、**欄を開いた段**
+     * （最初の段か、一つ目を選んだあとの 2 番目の段）へ戻る——nokori.md
+     * 10-07：以前はどこから開いても常に最初の段（24/32/36/40/20/27）へ
+     * 戻していたので、2 番目の段（一つ目をすでに選んだあと）から欄を開いた
+     * ときに、その選んだ分まで無かったことになっていた。tan_r_back に
+     * 開いた時点の段を控えてそこへ戻す（測定のみ：escfz_e_35。stage 23・31
+     * は以前 [ESC] の分岐そのものが無く、欄が閉じなかった分もここで直した）。 */
     if (c->command == 26 && key == 27 && c->typing && c->tan_on
-        && (c->stage == 26 || c->stage == 35 || c->stage == 39 || c->stage == 43)) {
+        && (c->stage == 23 || c->stage == 26 || c->stage == 31
+            || c->stage == 35 || c->stage == 39 || c->stage == 43)) {
         c->typing = 0;
         c->typed[0] = 0;
         c->typed_n = 0;
-        c->stage = c->stage == 26 ? 24 : c->stage == 35 ? 32 : c->stage == 39 ? 36 : 40;
+        c->stage = c->tan_r_back;
         return 1;
     }
     if (c->command == 8 && c->chb && c->lyr_only && key == 8) {
@@ -8286,6 +8312,39 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     /* 円線接 ③指定点 の円を訊く行（段 3）の [ESC] は指定点の行（段 2）へ（測定：tangent_s0_c1_v）。 */
     if (c->command == 26 && key == 27 && !c->typing && c->stage == 3 && c->tan_on) {
         c->stage = 2;
+        c->missed = 0;
+        return 1;
+    }
+    /* 円線接 ③指定点 の「また一点」の段（段 4：1 本以上引いたあとだけ来る
+     * 繰り返しの段、18674〜18678 行）の [ESC] は、この回で引いた接線を
+     * 全部取り消して同じ段に留まる（nokori.md 10-07。④角度指定 の段 12 と
+     * 同じ形。測定のみ・decomp未確認）。 */
+    if (c->command == 26 && key == 27 && !c->typing && c->tan_on
+        && c->stage == 4 && d && d->n_lines > c->n0_lines) {
+        while (d->n_lines > c->n0_lines) {
+            jwc_remove_line(d, d->n_lines - 1);
+        }
+        c->tan_did = 0;
+        c->missed = 0;
+        return 1;
+    }
+    /* 円線接 ②円周点 の円を訊く段（段 16）は、まだ何も引いていない最初の
+     * 訪問と、一本引いたあとの繰り返し（18670〜18672 行）の両方で同じ段
+     * 番号を使う。[ESC] は、この回で引いたものがあれば全部取り消して
+     * 同じ段に留まり、まだ無ければ ①接線 の行（段 1）へ（測定のみ・
+     * decomp未確認。段 1 への着地は同じ段の [BS]`前項`、7254 行と同じ形）。 */
+    if (c->command == 26 && key == 27 && !c->typing && c->tan_on
+        && c->stage == 16) {
+        if (d && d->n_lines > c->n0_lines) {
+            while (d->n_lines > c->n0_lines) {
+                jwc_remove_line(d, d->n_lines - 1);
+            }
+            c->tan_did = 0;
+            c->missed = 0;
+            return 1;
+        }
+        c->stage = 1;
+        c->tan_kind = 0;
         c->missed = 0;
         return 1;
     }
@@ -10089,16 +10148,8 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (c->command == 26 && c->tan_on
         && (c->stage == 39 || c->stage == 43)) {
-        /* ③１円１点・①１線１円 の ①接円半径 の欄。 */
-        const int back = c->stage == 39 ? 36 : 40;
-
-        if (key == 27) {            /* 欄の [ESC] は打ちかけを捨てて 1 つ前の段へ（測定のみ：escfz_e_35） */
-            c->typing = 0;
-            c->typed[0] = 0;
-            c->typed_n = 0;
-            c->stage = back;
-            return 1;
-        }
+        /* ③１円１点・①１線１円 の ①接円半径 の欄。[ESC] は上の汎用節
+         * （tan_r_back）が先に拾う。 */
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
@@ -10107,7 +10158,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typing = 0;
             c->typed[0] = 0;
             c->typed_n = 0;
-            c->stage = back;
+            c->stage = c->tan_r_back;
             return 1;
         }
         if (key == 8) {
@@ -10124,14 +10175,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     if (c->command == 26 && c->tan_on && c->stage == 35) {
-        /* ②１点１線 の ①接円半径 の欄（戻る段だけ違います）。 */
-        if (key == 27) {
-            c->typing = 0;
-            c->typed[0] = 0;
-            c->typed_n = 0;
-            c->stage = 32;
-            return 1;
-        }
+        /* ②１点１線 の ①接円半径 の欄。[ESC] は上の汎用節が拾う。 */
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
@@ -10140,7 +10184,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typing = 0;
             c->typed[0] = 0;
             c->typed_n = 0;
-            c->stage = 32;
+            c->stage = c->tan_r_back;
             return 1;
         }
         if (key == 8) {
@@ -10157,7 +10201,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     if (c->command == 26 && c->tan_on && c->stage == 31) {
-        /* ⑤２円 の ①接円半径 の欄（戻る段だけ違います）。 */
+        /* ⑤２円 の ①接円半径 の欄。[ESC] は上の汎用節が拾う。 */
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
@@ -10166,7 +10210,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typing = 0;
             c->typed[0] = 0;
             c->typed_n = 0;
-            c->stage = 27;
+            c->stage = c->tan_r_back;
             return 1;
         }
         if (key == 8) {
@@ -10183,7 +10227,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     if (c->command == 26 && c->tan_on && c->stage == 26) {
-        /* ④２線 の ①接円半径 の欄（段 23 と同じ中身で、戻る段だけ違う）。 */
+        /* ④２線 の ①接円半径 の欄（段 23 と同じ中身）。[ESC] は上の汎用節が拾う。 */
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
@@ -10192,7 +10236,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typing = 0;
             c->typed[0] = 0;
             c->typed_n = 0;
-            c->stage = 24;
+            c->stage = c->tan_r_back;
             return 1;
         }
         if (key == 8) {
@@ -10209,7 +10253,8 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     if (c->command == 26 && c->tan_on && c->stage == 23) {
-        /* ①接円半径 の欄。空のまま [Enter] なら前のまま。 */
+        /* ⑥２点 の ①接円半径 の欄。空のまま [Enter] なら前のまま。[ESC] は
+         * 上の汎用節が拾う（以前はここに分岐が無く、欄が閉じなかった）。 */
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
@@ -10218,7 +10263,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typing = 0;
             c->typed[0] = 0;
             c->typed_n = 0;
-            c->stage = 20;
+            c->stage = c->tan_r_back;
             return 1;
         }
         if (key == 8) {
