@@ -1567,6 +1567,9 @@ static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
     }
     /* 連線's two band words: `45度毎`/`90度毎`/`free` and `マウス`/`----`.
      * ①角 度 goes round the three and the table holds the first. */
+    if (q->command == 23 && q->row == 2 && (q->col == 37 || q->col == 46) && s->poly_esc) {
+        return;
+    }
     if (q->command == 23 && q->row == 2 && (q->col == 37 || q->col == 46)) {
         const char *one = q->col == 37
             ? (s->poly_deg == 90 ? "90" "\x93" "x" "\x96" "\x88"

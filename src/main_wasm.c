@@ -535,6 +535,7 @@ static void sync_ui(void)
     ui.chb = cmd.chb;
     ui.ch_bad = cmd.ch_bad;
     ui.circ_bad = cmd.circ_bad;
+    ui.poly_esc = cmd.poly_esc;
     ui.pt_delall = cmd.pt_delall;
     ui.pt_plain = cmd.pt_plain;
     ui.ch_same = cmd.ch_same;

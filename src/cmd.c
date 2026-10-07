@@ -5807,6 +5807,7 @@ range_items:
         }
         if (!c->poly && !c->sine && !c->spl && !c->chain && item == 7) {
             c->poly = 1;
+            c->poly_esc = 0;
             c->poly_deg = 45;   /* the band comes up saying `45度毎` */
             c->poly_n = 0;
             c->stage = 1;
@@ -5816,6 +5817,7 @@ range_items:
             /* ①角 度 goes round: 45度毎, 90度毎, free.  Measured by
              * pressing it once and twice and reading the band. */
             c->poly_deg = c->poly_deg == 45 ? 90 : c->poly_deg == 90 ? 0 : 45;
+            c->poly_esc = 0;
             return 1;
         }
         if (c->poly && item == 4 && c->poly_n >= 2) {
@@ -8073,6 +8075,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             return 1;
         }
+    }
+    /* ⑦連線 の始点の行の [ESC] は行 2 の `45度毎 マウス` の札を消すだけ（測定のみ・decomp 未確認：
+     * escfz_r_20）。①角度 を押すと戻る。 */
+    if (key == 27 && c->command == 23 && c->poly && c->poly_n == 0 && !c->poly_esc) {
+        c->poly_esc = 1;
+        return 1;
     }
     /* 点 ③交点・④円中心・⑤仮点削除 の行の [BS]`前項` は最初の行へ戻る
      * （測定のみ・decomp 未確認：escfz_v_14・v_17）。 */
