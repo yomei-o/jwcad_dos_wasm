@@ -4920,6 +4920,16 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->box_refask = 1;
         return 1;
     }
+    /* □ の大きさを決めて置いているあいだの ②角度 も `角度 =` の欄を開く（測定のみ・decomp 未確認：
+     * escfz_B_62）。 */
+    if (c->command == 4 && item == 2 && c->box_fix && !c->box_ask) {
+        c->circ_hold = 0;
+        c->box_ask = 2;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 1;
+    }
     if (c->command == 4 && item == 2 && !c->box_fix) {
         c->circ_hold = c->pressed == 1 && c->stage == 1;
         c->circ_hx = c->x0;
@@ -9175,6 +9185,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->box_w = w;
             c->box_h = h;
             c->box_fix = 1;
+            c->num[0] = w;
+            c->num[1] = h;
+            c->dec[0] = c->dec[1] = 3;
             /* box_done（行の頭の [ESC]）はそのまま：置いたあとに大きさを
              * 打ち直しても本物は [ESC] を残します（測定）。 */
             c->box_mode = 0;
