@@ -785,6 +785,7 @@ int jw_ui_past_cells(int x, int y);
 #define JW_PICK_DXFOUT 4        /* ⑥ＤＸＦ ①保存 -- `*.dxf`, DXFOUT     */
 #define JW_PICK_DXFIN 5         /* ⑥ＤＸＦ ②読込 -- `*.dxf`, DXFIN      */
 #define JW_PICK_TEXTIN 6        /* 文字 ⑤文書 ②読込・③短文ﾌｧｲﾙ設定 -- `*.txt`, 文読込 */
+#define JW_PICK_HENKEI 7        /* 変形 ⑤外部 -- `*.bat`, 外部変形 */
 void jw_ui_pick_kind(JwUi *s, int kind);
 char jw_ui_menu_key(int command);
 

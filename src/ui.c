@@ -399,7 +399,7 @@ void jw_ui_pick_kind(JwUi *s, int kind)
      * "460 8 left" "100 8 left"). */
     s->file_named = kind == JW_PICK_IO || kind == JW_PICK_DXFOUT
                     || kind == JW_PICK_DXFIN;
-    s->file_path_fg = kind == JW_PICK_CHILD ? 4 : 5;
+    s->file_path_fg = (kind == JW_PICK_CHILD || kind == JW_PICK_HENKEI) ? 4 : 5;
     switch (kind) {
     case JW_PICK_DXFOUT:
         s->file_bar = 0;                /* 保存's own, from `saving` */
@@ -427,6 +427,11 @@ void jw_ui_pick_kind(JwUi *s, int kind)
         s->file_bar = JW_PICK_NAME_BAR;
         s->file_path = "path=A:" "\x5c" "*.txt";
         s->file_word = " " "\x95\xb6\x93\xc7\x8d\x9e" "    ";
+        break;
+    case JW_PICK_HENKEI:
+        s->file_bar = JW_PICK_CHILD_BAR;
+        s->file_path = "path=A:" "\x5c" "*.bat";
+        s->file_word = " " "\x8a\x4f\x95\x94\x95\xcf\x8c\x60" "    ";
         break;
     case JW_PICK_CHILD:
         s->file_bar = JW_PICK_CHILD_BAR;

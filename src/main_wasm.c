@@ -1409,8 +1409,8 @@ static void file_list(int for_save)
  * jw_ui_pick_kind. */
 static void file_pick(int kind)
 {
-    static const char *const EXT[7] = { "JWC", "JWC", "TXT", "BAT", "DXF",
-                                        "DXF", "TXT" };
+    static const char *const EXT[8] = { "JWC", "JWC", "TXT", "BAT", "DXF",
+                                        "DXF", "TXT", "BAT" };
 
     file_list_ext(0, EXT[kind]);
     jw_ui_pick_kind(&ui, kind);
@@ -3105,6 +3105,8 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             kind = JW_PICK_COORD;
         } else if (ui.command == 29 && it == 7) {
             kind = JW_PICK_CHILD;
+        } else if (ui.command == 17 && it == 5 && !ui.stage) {
+            kind = JW_PICK_HENKEI;
         }
         if (kind) {
             file_pick(kind);
