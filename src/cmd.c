@@ -18935,7 +18935,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 1;
         }
         if (c->command == 27 && !c->zukei && !c->pressed) {
-            if (c->zukei_blank && (c->top_item == 4 || c->top_item == 5)) {
+            if (c->top_item == 2 && c->zukei_n == 0) {
+                c->zukei_blank = 1;     /* 登録図形なしの ②読込 から範囲へ（測定のみ：zukei_s0_c2） */
+            }
+            if (c->zukei_blank && (c->top_item == 2 || c->top_item == 4 || c->top_item == 5)) {
                 c->top_item = 0;
                 c->top_right = 0;
             }
