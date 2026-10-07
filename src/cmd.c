@@ -19588,6 +19588,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         && (float)x == (float)c->x0 && (float)y == (float)c->y0
         && d->pen < 0x5a) {
         c->fix_done = 0;
+        c->fix_mode = 1;        /* 行は `始点指示 … [BS]前項`（桁 6 の ・、[ESC] 無し。測定：escfz_H_74） */
+        c->stage = 2;
         return 1;
     }
     if (c->command == 2 || c->command == 3) {
