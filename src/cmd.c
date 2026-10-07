@@ -6366,6 +6366,10 @@ int jw_cmd_te_digit(JwCmd *c, int n)
         if (n == 1) {
             c->te_sub = 0;
             c->te_panel = 0;
+            if (c->te_ret) {
+                c->top_item = c->te_ret;
+                c->te_ret = 0;
+            }
         } else if (n == 2) {
             c->te_bh = (c->te_bh + 1) % 3;
             c->te_panel = 1;
@@ -6464,6 +6468,20 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
      * one that has not leaves the screen as it was, and then src/item.h --
      * what the original wrote when the same cell was pressed there -- is put
      * over the line the menu item came up with.  See src/ui.c. */
+    /* 文編集 移動・複写 の `文字を選んで下さい |①基点(左下)|②【任意】方向|`：① は 文字基準点 の盤、
+     * ② は 任意⇔X軸（測定のみ・decomp 未確認：probe_item_walk wk_a2_1・a2_2）。 */
+    if (c->command == 28 && (c->top_item == 2 || c->top_item == 3) && c->te_pick < 0 && !c->te_sub
+        && c->stage == 0 && (item == 1 || item == 2)) {
+        if (item == 1) {
+            c->te_ret = c->top_item;
+            c->te_sub = 1;
+            c->te_panel = 0;
+            c->top_item = 1;
+        } else {
+            c->te_dir = !c->te_dir;
+        }
+        return 1;
+    }
     c->prev_top_item = c->top_item;
     c->top_item = 0;
     c->top_right = 0;

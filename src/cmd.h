@@ -667,6 +667,8 @@ typedef struct {
     int zukei_cell;             /* 図形 ④ の枠で選んだ升（0〜49。測定：zukei_s0_c4） */
     int zukei_drive;            /* 図形 ④ の ③ドライブ変更 の行（測定：zukei_s0_c4_v） */
     int prev_top_item;          /* jw_cmd_top が top_item を 0 に戻す前の値 */
+    int te_dir;                 /* 文編集 移動・複写 の ②方向：0 任意、1 X軸（測定：probe_item_walk wk_a2_2） */
+    int te_ret;                 /* 基点の盤から戻る先の top_item（移動 2・複写 3、変更なら 1） */
     int box_keep_off;           /* □ 寸法欄で打ちかけの押し：数え箱が戻る（測定：escfz_B_77） */
     int ref_miss;               /* □ ③平行：基準線の読み外れの数（二度目で数え箱が戻る。測定：box_s1_c3） */
     int ref_hold;               /* □ ③平行：始点を持ったまま基準線を聞いている（測定：box_s1_c3） */

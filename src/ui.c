@@ -5379,6 +5379,24 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                         continue;
                     }
                 }
+                if (s->command == 28 && s->te_dir && (s->top_item == 2 || s->top_item == 3)
+                    && r->row == 1 && strstr(r->text, "\x94\x43\x88\xd3")) {
+                    /* 移動・複写 の ②方向：【任意】→【X軸】（測定のみ：probe_item_walk wk_a2_2） */
+                    char two[200];
+                    char *hit;
+
+                    strncpy(two, r->text, sizeof two - 1);
+                    two[sizeof two - 1] = 0;
+                    hit = strstr(two, "\x94\x43\x88\xd3");
+                    if (hit) {
+                        hit[0] = (char)0x82;
+                        hit[1] = (char)0x77;
+                        hit[2] = (char)0x8e;
+                        hit[3] = (char)0xb2;
+                    }
+                    jw_ui_text(v, r->col, r->row, (unsigned)r->fg, (unsigned)r->bg, two);
+                    continue;
+                }
                 jw_ui_text(v, r->col, r->row, (unsigned)r->fg,
                            (unsigned)r->bg, r->text);
             }
