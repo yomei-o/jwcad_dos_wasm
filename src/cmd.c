@@ -7018,6 +7018,15 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->hit_kind = 0;
         return 1;
     }
+    /* 円線接 の ①接円半径 の欄の [ESC] は打ちかけを捨てて一つ前の段へ（測定のみ：escfz_e_35）。 */
+    if (c->command == 26 && key == 27 && c->typing && c->tan_on
+        && (c->stage == 35 || c->stage == 39 || c->stage == 43)) {
+        c->typing = 0;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        c->stage = c->stage == 35 ? 32 : c->stage == 39 ? 36 : 40;
+        return 1;
+    }
     /* 円線接：行の下の段の [BS]`前項` は、その行へ一段戻る（測定のみ・decomp 未確認：escfz_e_31・e_36）。
      * 30 の行（②接円）は 31〜49、50 の行（③接円）は 51〜69、1 の行（①接線）は 10〜29 の子。 */
     if (c->command == 26 && key == 8 && !c->typing) {
@@ -9507,6 +9516,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         /* ③１円１点・①１線１円 の ①接円半径 の欄。 */
         const int back = c->stage == 39 ? 36 : 40;
 
+        if (key == 27) {            /* 欄の [ESC] は打ちかけを捨てて 1 つ前の段へ（測定のみ：escfz_e_35） */
+            c->typing = 0;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = back;
+            return 1;
+        }
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
@@ -9533,6 +9549,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (c->command == 26 && c->tan_on && c->stage == 35) {
         /* ②１点１線 の ①接円半径 の欄（戻る段だけ違います）。 */
+        if (key == 27) {
+            c->typing = 0;
+            c->typed[0] = 0;
+            c->typed_n = 0;
+            c->stage = 32;
+            return 1;
+        }
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
