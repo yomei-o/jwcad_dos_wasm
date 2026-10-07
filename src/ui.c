@@ -539,8 +539,11 @@ void jw_ui_band_end(VGA *v, const JwUi *s)
         jw_ui_text(v, 25, 2, 7, 0xffffu, s->zukei_disp ? "\x90}\x8c`" : "\xcc\xa7\xb2\xd9");
         jw_ui_text(v, 48, 2, 7, 0xffffu, L2[s->zukei_layer % 3]);
     }
-    if (s->command == 8 && s->ch_same && s->stage == 1) {
+    if (s->command == 8 && s->ch_same == 1 && s->stage == 1) {
             jw_ui_text(v, 20, 2, 7, 0, "\x83" "f\x81[\x83^\x82\xaa\x95s\x93K\x93\x96");
+    }
+    if (s->command == 7 && s->ch_same == 2 && s->stage == 1) {
+        jw_ui_text(v, 20, 2, 7, 0, "\x8c\x76\x8e\x5a\x95\x73\x89\xc2");
     }
     /* 面取【辺寸法】：角を作ったあとの行（段 2）でも `②【面寸法】` の 面 は 辺（測定：chamfer_s0_c2）。 */
     if (s->command == 8 && s->ch_side && !s->chb && !s->top_item && (s->stage == 0 || s->stage == 2)) {

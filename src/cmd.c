@@ -18349,9 +18349,17 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 1;
             return 1;
         }
-        if (k != c->pick_a) {
-            corner_join(c, d, w, c->pick_a, k, sx, sy);
+        {
+            double qx, qy;
+
+            if (k == c->pick_a || !cross_at(&d->lines[c->pick_a], &d->lines[k], &qx, &qy)) {
+                /* 同じ線・平行な線：`計算不可` で、最初の線を持ったまま（測定のみ・
+                 * decomp 未確認：escfz_V_84）。 */
+                c->ch_same = 2;
+                return 1;
+            }
         }
+        corner_join(c, d, w, c->pick_a, k, sx, sy);
         c->pick_a = -1;
         c->stage = 2;
         return 1;
