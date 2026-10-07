@@ -7056,6 +7056,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->stage = c->stage == 26 ? 24 : c->stage == 35 ? 32 : c->stage == 39 ? 36 : 40;
         return 1;
     }
+    /* ○ で円を描いたあと（段 2）の [BS]`前項` は最初の行へ（円は残る。測定のみ・decomp 未確認：escfz_E_75）。 */
+    if (c->command == 11 && key == 8 && !c->typing && c->stage == 2 && !c->pressed && !c->circ_fix) {
+        c->stage = 0;
+        c->circ_done = 0;
+        return 1;
+    }
     /* 円線接：行の下の段の [BS]`前項` は、その行へ一段戻る（測定のみ・decomp 未確認：escfz_e_31・e_36）。
      * 30 の行（②接円）は 31〜49、50 の行（③接円）は 51〜69、1 の行（①接線）は 10〜29 の子。 */
     if (c->command == 26 && key == 8 && !c->typing) {
