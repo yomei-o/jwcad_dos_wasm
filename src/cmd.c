@@ -8074,6 +8074,16 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
     }
+    /* 点 ③交点・④円中心・⑤仮点削除 の行の [BS]`前項` は最初の行へ戻る
+     * （測定のみ・decomp 未確認：escfz_v_14・v_17）。 */
+    if (c->command == 22 && key == 8 && !c->typing && !c->pt3 && !c->pt_delall
+        && (c->pt_mode == 3 || c->pt_mode == 4 || c->pt_mode == 5)) {
+        c->pt_mode = 0;
+        c->pt_undo = 0;
+        c->top_item = 0;
+        c->stage = 0;
+        return 1;
+    }
     /* 点 の [ESC]（decomp ovl20 3ab8:45ea の 02f400〜02f44c）。取り消しの数
      * [bp-0x48] は符号つきで、仮点を打てると +1（02f507）、実点を打てると -1
      * （02f575）、①のトグルで 0 になる（02f3f4）。[ESC] は数が正なら仮点を一つ消し
