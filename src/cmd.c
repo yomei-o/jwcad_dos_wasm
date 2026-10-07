@@ -7006,6 +7006,43 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->top_item = 0;
         return 1;
     }
+    if (c->command == 26 && key == 8 && !c->typing && c->stage == 16) {
+        c->stage = 1;               /* ①接線 の ②円周点 の [BS]`前項` は ①接線 の行へ（測定のみ：escfz_e_31） */
+        return 1;
+    }
+    /* 円線接：行の下の段の [BS]`前項` は、その行へ一段戻る（測定のみ・decomp 未確認：escfz_e_31・e_36）。
+     * 30 の行（②接円）は 31〜49、50 の行（③接円）は 51〜69、1 の行（①接線）は 10〜29 の子。 */
+    if (c->command == 26 && key == 8 && !c->typing) {
+        const int st = c->stage;
+
+        if (st == 30) {
+            c->stage = 0;
+            c->tan_tri = 0;
+            c->tan_on = 0;
+            c->tan_circ = 0;
+            c->top_item = 0;
+            return 1;
+        }
+        if (st > 30 && st < 50) {
+            c->stage = 30;
+            c->missed = 0;
+            return 1;
+        }
+        if (st > 50 && st < 70) {
+            c->stage = 50;
+            c->missed = 0;
+            return 1;
+        }
+        if (st >= 10 && st < 30 && st != 30) {
+            c->stage = 1;
+            c->missed = 0;
+            return 1;
+        }
+    }
+    /* 円線接 の途中の段の [BS]`前項` は [ESC] と同じ一段戻り（測定のみ：fuzz_esc2 の escfz_e）。 */
+    if (c->command == 26 && key == 8 && !c->typing && c->stage >= 2) {
+        key = 27;
+    }
     /* 寸法 ⑤③円周の行：ESC で ⑤ の項目の行へ。ほかの鍵は何もしない。 */
     if (c->command == 14 && c->dim5c) {
         c->dim5m = 0;               /* [ESC] は札を消すだけで行はそのまま（測定：dim_s0_c5_v） */
@@ -16006,6 +16043,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * なって 1886 画素ずれました）。 */
         if (!c->tan_on && !c->tan_tri) {
             if (right) {
+                /* 最初の行の右押しは ②接円(半径と2条件) の行へ（測定のみ・decomp 未確認：tmp の ec2） */
+                if (c->stage == 0 && !c->pressed) {
+                    jw_cmd_top(c, d, 2, 0);
+                    return 1;
+                }
                 return 0;       /* ②接円 is not done */
             }
             c->tan_on = 1;
