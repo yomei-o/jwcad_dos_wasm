@@ -7074,6 +7074,18 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->missed = 0;
             return 1;
         }
+        if (st == 57) {
+            c->stage = 0;
+            c->tan_tri = 0;
+            c->tan_on = 0;
+            c->top_item = 0;
+            return 1;
+        }
+        if (st > 57 && st < 70) {
+            c->stage = 57;
+            c->missed = 0;
+            return 1;
+        }
         if (st > 50 && st < 70) {
             c->stage = 50;
             c->missed = 0;
