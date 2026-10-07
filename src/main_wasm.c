@@ -5282,9 +5282,15 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         return 0;
     }
     if (!pick && (key == 13 || key == 10) && cmd.command == 12 && cmd.pressed >= 1 && !cmd.moved && !cmd.typing) {
-        /* 円弧 の途中の [Enter] も数え箱を段の行へ描き直す（測定のみ：escfz_N_94）。 */
+        /* 円弧 の途中の [Enter] も数え箱を段の行へ描き直す（測定のみ：escfz_N_94）。
+         * この分岐は !cmd.moved（このループではまだ矢が動いていない）のときだけ
+         * 通るので、生の mouse_x/mouse_y をそのまま使うと直前に押した点と同じ
+         * 位置になり、角度が必ず 0.000 度になってしまう（押した点との差が
+         * 0 だから）。本物はこの段の矢がまだ動いていないときは既定の画面位置
+         * (400,200) から角度を計算する（nokori.md 「まだ直していない」節、
+         * 測定：escfz_N_94 相当の手順で 13.393 度。decomp 未確認・測定のみ）。 */
         if (drawing) {
-            jw_cmd_track(&cmd, drawing, &view, mouse_x, mouse_y);
+            jw_cmd_track(&cmd, drawing, &view, 400, 200);
         }
         sync_ui();
         ui.moved = 1;
