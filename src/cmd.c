@@ -9277,11 +9277,31 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 return 0;
             }
             /* 再配置の段：直前の置きを取り消してから一つ前の段へ（decomp 031ed0 以降：⑤12→10、⑥16→15、③20→19、④25→24）。
-             * 置く段 15(⑥)・24(④) は 14(角度の欄)・23 へ（030698→0306f7、03041f→030429）。 */
+             * 置く段 15(⑥)・24(④) は 14(角度の欄)・23 へ（030698→0306f7、03041f→030429）。
+             * **段番号だけでなく、同じだけ内部の「③④⑤⑥ のどこまで進んだか」の印
+             * （c->mirror/rotate/scaling/mscale）も一段戻す**こと。段を戻しても
+             * この印を触らずにいると、印は「完了」（2/4/4/5）のまま止まり、次の
+             * 押しがどの段の押しとして扱われるかを決めている判定（stage では
+             * なくこの印を見る：16155 行・19466〜19502 行・19540〜）と食い違って、
+             * 再度の押しが別の形で受理されてしまう（cmdstate.mjs で確認：
+             * 複写 ③数値倍率 を確定して置いたあと [ESC] を 3 回押すと段は
+             * 17 まで正しく戻るのに scaling は 4 のまま残り、そこでもう一押しする
+             * とコマンドまるごと選び直しの状態（cmd=3, stage=0）に化けた
+             * ——「ESC で scaling 等の内部状態を戻していない疑い」として
+             * nokori.md に書かれていた懸念そのもの、2026-10-07 夜 確認）。 */
             if (JW_MOVE_CMD(c->command)
                 && (c->stage == 12 || c->stage == 16 || c->stage == 20 || c->stage == 25)) {
                 if (c->mv_undo && d) {
                     place_undo(c, d);
+                }
+                if (c->stage == 12) {
+                    c->mirror = 1;
+                } else if (c->stage == 16) {
+                    c->rotate = 3;
+                } else if (c->stage == 20) {
+                    c->scaling = 3;
+                } else {
+                    c->mscale = 4;
                 }
                 c->stage = c->stage == 12 ? 10 : c->stage == 16 ? 15 : c->stage == 20 ? 19 : 24;
                 return 1;
@@ -9290,10 +9310,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 c->typing = 1;
                 c->typed[0] = 0;
                 c->typed_n = 0;
+                c->rotate = 2;
                 c->stage = 14;
                 return 1;
             }
             if (JW_MOVE_CMD(c->command) && c->stage == 24) {
+                c->mscale = 3;
                 c->stage = 23;
                 return 1;
             }
@@ -9323,13 +9345,29 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             /* ③数値倍率：段 18（倍率の欄）→ 17（基準点位置）→ 4（①〜⑦の一覧）
              * （decomp 照合済み（調査担当が dis で確認）：escfz_C_72、tmp の cm 系）。 */
             /* ⑤反転(10)・⑥回転(13→14)・④マウス倍率(21→22→23) も一段ずつ戻って、最初の段は
-             * ①〜⑦ の一覧へ（decomp 照合済み（調査担当が dis で確認）：tmp の mm 系）。 */
+             * ①〜⑦ の一覧へ（decomp 照合済み（調査担当が dis で確認）：tmp の mm 系）。
+             * ここも上と同じ理由で c->mirror/rotate/mscale を段と一緒に一段戻す
+             * （10→4・13→4・21→4 は印を 0 に、14→13・22→21・23→22 は
+             * 「ひとつ前の押し待ち」の値に。2026-10-07 夜）。 */
             if (JW_MOVE_CMD(c->command)
                 && (c->stage == 10 || c->stage == 13 || c->stage == 14 || c->stage == 21
                     || c->stage == 22 || c->stage == 23)) {
                 c->typing = 0;
                 c->typed[0] = 0;
                 c->typed_n = 0;
+                if (c->stage == 10) {
+                    c->mirror = 0;
+                } else if (c->stage == 13) {
+                    c->rotate = 0;
+                } else if (c->stage == 14) {
+                    c->rotate = 1;
+                } else if (c->stage == 21) {
+                    c->mscale = 0;
+                } else if (c->stage == 22) {
+                    c->mscale = 1;
+                } else {
+                    c->mscale = 2;
+                }
                 c->stage = (c->stage == 14 || c->stage == 22 || c->stage == 23) ? c->stage - 1
                          : 4;
                 return 1;
@@ -9338,6 +9376,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 c->typing = 1;
                 c->typed[0] = 0;
                 c->typed_n = 0;
+                c->scaling = 2;
                 c->stage = 18;
                 return 1;
             }
@@ -9345,6 +9384,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 c->typing = 0;
                 c->typed[0] = 0;
                 c->typed_n = 0;
+                c->scaling = c->stage == 18 ? 1 : 0;
                 c->stage = c->stage == 18 ? 17 : 4;
                 return 1;
             }
