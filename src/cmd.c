@@ -7038,6 +7038,15 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->missed = 0;
         return 1;
     }
+    /* ④角度指定 の角度の欄（段 12）の [ESC] は ①接線 の行（段 1）へ（測定のみ：escfz_e_49）。 */
+    if (c->command == 26 && key == 27 && c->typing && c->tan_on && c->stage == 12) {
+        c->typing = 0;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        c->stage = 1;
+        c->tan_kind = 0;
+        return 1;
+    }
     /* 円線接 の ①接円半径 の欄の [ESC] は打ちかけを捨てて一つ前の段へ（測定のみ：escfz_e_35）。 */
     if (c->command == 26 && key == 27 && c->typing && c->tan_on
         && (c->stage == 26 || c->stage == 35 || c->stage == 39 || c->stage == 43)) {
