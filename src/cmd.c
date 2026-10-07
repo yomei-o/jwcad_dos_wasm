@@ -7016,6 +7016,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     /* 線変更 で一本変えたあとの [ESC] は最初の行（段 0）へ（測定のみ・decomp 未確認：escfz_w_24）。 */
+    /* ＋／：零長の線を断わったあとの ESC は何もしない（取り消し件数を 0 にしてから 67fa を呼ぶので 2cb4 の引数が 0x2710。
+     * decomp ovl23 0x2e672〜0x2e69f・0x2bce8、実機 c25）。 */
+    if (key == 27 && (c->command == 2 || c->command == 3) && c->zero_len && !c->typing) {
+        return 1;
+    }
     if (key == 27 && c->command == 24 && !c->typing && c->stage == 1 && !c->pressed && !c->lc_range && c->top_item != 3 && c->top_item != 1
         && c->hit_kind) {
         /* 変える前の線・円弧に戻す（decomp ovl26 0x30d98〜0x30eb5：保存した変更前の記録を書き戻し、
@@ -14360,6 +14365,7 @@ static int circ_put(JwCmd *c, Jwc *d, double x, double y)
 static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                       int right)
 {
+    c->zero_len = 0;
     double x, y;
 
     if (!d) {
@@ -20232,6 +20238,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         && (float)x == (float)c->x0 && (float)y == (float)c->y0
         && d->pen < 0x5a) {
         c->fix_done = 0;
+        c->zero_len = 1;
         c->fix_mode = 1;        /* 行は `始点指示 … [BS]前項`（桁 6 の ・、[ESC] 無し。測定：escfz_H_74） */
         c->stage = 2;
         return 1;
