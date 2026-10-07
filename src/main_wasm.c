@@ -5011,8 +5011,13 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         const long a0 = drawing ? drawing->n_arcs : 0;
         const long t0 = drawing ? drawing->n_texts : 0;
         const int was_typing = cmd.typing;
+        const int p0 = cmd.pressed;
 
         if (jw_cmd_key(&cmd, drawing, key)) {
+            /* 図形：空の領域から [ESC] で範囲を抜けたら枠の左の辺だけ残る（測定のみ：zukei_s0_c2・c5）。 */
+            if (key == 27 && cmd.command == 27 && p0 && !cmd.pressed && cmd.zukei_blank == 1) {
+                cmd.zukei_blank = 2;
+            }
             /* 手書線の [ESC] で一区間戻ると、矢もその始点へ跳ぶ（測定：
              * curve_s1_c5 で矢が (598,300) に）。 */
             /* □ で始点を持ち直したら、数え箱と仮の四角はその場の矢から

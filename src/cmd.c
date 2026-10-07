@@ -5872,7 +5872,7 @@ range_items:
         return 1;
     }
     if (c->command == 27 && !c->zukei && c->pressed == 0 && c->stage == 0) {
-        if (item == 5) {
+        if (item == 5 || item == 2) {
             c->zukei_blank = c->zukei_n == 0;       /* 登録図形なしで ④⑤ を選ぶと図面の領域が空（測定：zukei_s0_c5） */
         } else if (item == 1 || item == 2) {
             c->zukei_blank = 0;
@@ -7062,6 +7062,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->stage = 0;
         c->top_item = 0;
         c->top_right = 0;
+        if (c->zukei_blank) {
+            c->zukei_blank = 2;     /* 戻ったあとは枠の左の辺だけ残る（測定のみ：zukei_s0_c2・c5 の ESC） */
+        }
         return 1;
     }
 

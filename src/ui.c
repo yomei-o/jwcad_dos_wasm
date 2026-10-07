@@ -5639,6 +5639,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         /* 図形 ⑤削除（登録図形が無いとき）は図面の領域を空にして描き直す（測定のみ：zukei_s0_c5）。 */
         if (s->command == 27 && ((s->top_item == 5 && !s->zukei) || s->zukei_blank)) {
             fill(v, 122, 48, 638, 383, 0);
+            if (s->zukei_blank == 2) {
+                fill(v, 161, 139, 161, 383, 7);
+            }
         }
         if (s->command == 27 && (s->again || s->top_item == 2) && s->top_item) {
             const JwItem *r;
