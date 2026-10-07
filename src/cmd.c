@@ -7040,11 +7040,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* 円線接 の ①接円半径 の欄の [ESC] は打ちかけを捨てて一つ前の段へ（測定のみ：escfz_e_35）。 */
     if (c->command == 26 && key == 27 && c->typing && c->tan_on
-        && (c->stage == 35 || c->stage == 39 || c->stage == 43)) {
+        && (c->stage == 26 || c->stage == 35 || c->stage == 39 || c->stage == 43)) {
         c->typing = 0;
         c->typed[0] = 0;
         c->typed_n = 0;
-        c->stage = c->stage == 35 ? 32 : c->stage == 39 ? 36 : 40;
+        c->stage = c->stage == 26 ? 24 : c->stage == 35 ? 32 : c->stage == 39 ? 36 : 40;
         return 1;
     }
     /* 円線接：行の下の段の [BS]`前項` は、その行へ一段戻る（測定のみ・decomp 未確認：escfz_e_31・e_36）。
