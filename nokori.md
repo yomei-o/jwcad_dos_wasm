@@ -5,7 +5,7 @@ RESUME.md は経緯と手順、**ここは「あと何をやれば完成か」�
 
 最終更新：2026-10-07 夕。**画面一致 756/796**（全体を再計測）。この日の追加：ランダム ESC 探索 `node tools/escfuzz.mjs`
 （env N=試行数 DEPTH SEED OUT=一覧出力）で 98 シナリオ tools/cases/fuzz_esc.txt を作り、本物と突き合わせて直した：
-＋／ ／・□・○・複線・面取・＜・┣・分割・点・曲線 の ESC/BS/打ちかけの押し。`python tools/stepfast.py tools/cases/fuzz_esc.txt` で 61/98 一致。
+＋／ ／・□・○・複線・面取・＜・┣・分割・点・曲線 の ESC/BS/打ちかけの押し。`python tools/stepfast.py tools/cases/fuzz_esc.txt` で 65/98 一致（文編集 a・複写移動 ③④⑤⑥ の ESC も追加）。
 **残りの差 37 件**は 図形・オプション・入出力・文字・寸法 など未実装の板（想定内）と、円線接 e（多段の項目選択）、
 線変更 w、円 E_92（円を置いた直後の読み外れ後の ESC）、2線 W_90（始点行の Enter）、文字 A、円弧 N、b_4。
 **tmp の掃除**：tmp\origcache・tmp\emucache・tmp\stepcheck は NTFS 圧縮済み（`compact /c /s:<dir> /i /q`）。
