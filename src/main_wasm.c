@@ -4349,6 +4349,13 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* `読取可能データ無` は**次の入力イベント**で消えます（decomp：入力待ち root
      * 0x6608 の 0x66a0〜0x672c が `[0xc22]` を見てメッセージ行を塗りつぶす。
      * 外れを再び立てるのはそのキーの処理）。以前は [ESC] だけで消していた。 */
+    if (cmd.missed || cmd.ch_same) {
+        /* 次の鍵で外れの札は消える。その鍵が何もしなくても描き直す（測定：escfz_r_26）。 */
+        cmd.missed = 0;
+        cmd.ch_same = 0;
+        sync_ui();
+        present();
+    }
     cmd.missed = 0;
     cmd.ch_same = 0;
     lc_msg_was = cmd.lc_msg;

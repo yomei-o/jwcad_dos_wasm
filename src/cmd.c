@@ -7190,6 +7190,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
      * から抜ける（測定：func_all curve_s1_c6 の末尾、1 回目の [ESC] で
      * 二本目が消え、2 回目の [ESC] で一本目も消えて、連続弧の外へ出る。
      * decomp 未確認・測定のみ）。 */
+    /* ⑥連続弧 の始めの段の [ESC] は一つ前の段へ（測定のみ・decomp 未確認：escfz_r_25・r_27）。 */
+    if (c->command == 23 && c->chain && key == 27 && !c->typing
+        && (c->stage == 51 || c->stage == 52 || c->stage == 55)) {
+        c->stage = c->stage == 52 ? 51 : 50;
+        return 1;
+    }
     if (c->command == 23 && c->chain && key == 27 && c->stage == 53
         && c->ch_n > 0 && d) {
         c->ch_n--;
