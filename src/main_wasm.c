@@ -5219,7 +5219,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         present();
         return 0;
     }
-    if (!pick && key >= '0' && key <= '9' && cmd.pressed == 1 && !cmd.moved
+    if (!pick && ((key >= '0' && key <= '9') || key == 8) && cmd.pressed == 1 && !cmd.moved
         && (cmd.command == 2 || cmd.command == 3 || cmd.command == 4
             || cmd.command == 11)) {
         sync_ui();
