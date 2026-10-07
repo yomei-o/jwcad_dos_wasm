@@ -10051,7 +10051,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     if (key == 13 || key == 10) {               /* [Enter] */
         c->typed[c->typed_n] = 0;
-        c->gap = field_eval(c->typed);
+        c->gap = c->typed_n ? field_eval(c->typed) : c->gap_hist[0];   /* 何も打たずに [Enter] は前回の間隔（測定：escfz_F_64） */
         gap_remember(c);
         c->typing = 0;
         c->stage = 2;
