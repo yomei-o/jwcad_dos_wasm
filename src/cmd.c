@@ -7069,28 +7069,19 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->circ_done = 0;
         return 1;
     }
-    /* 円線接：行の下の段の [BS]`前項` は、その行へ一段戻る（測定のみ・decomp 未確認：escfz_e_31・e_36）。
-     * 30 の行（②接円）は 31〜49、50 の行（③接円）は 51〜69、1 の行（①接線）は 10〜29 の子。 */
+    /* 円線接：[BS]`前項` は、本物の入力待ち（root 1bb4:2cb4）が `[0xc2c]` を立てて読む段（画面に `[BS]前項` が
+     * 出る段）でだけ効く。それ以外の段の BS は捨てられる（decomp 確認：円線接オーバーレイ ovl24 263c・0ada、
+     * ovl25 0cb2・1e8e・0adc、ovl26 2d2f・3195）。行（段 1・30・50・57）は段0へ、③④（51〜69）は行へ戻る。
+     * ②の項目は最初の段（32・36・40・20・24・27）だけが ②の行へ、③の ①②（44〜49）は ③の行へ、
+     * ①の項目は最初の段（2・12・16・18）だけが ①の行へ。ほかの段の BS は何もしない。 */
     if (c->command == 26 && key == 8 && !c->typing) {
         const int st = c->stage;
 
-        if (st == 30) {
+        if (st == 30 || st == 57) {
             c->stage = 0;
             c->tan_tri = 0;
             c->tan_on = 0;
             c->tan_circ = 0;
-            c->top_item = 0;
-            return 1;
-        }
-        if (st > 30 && st < 50) {
-            c->stage = 30;
-            c->missed = 0;
-            return 1;
-        }
-        if (st == 57) {
-            c->stage = 0;
-            c->tan_tri = 0;
-            c->tan_on = 0;
             c->top_item = 0;
             return 1;
         }
@@ -7099,21 +7090,22 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->missed = 0;
             return 1;
         }
-        if (st > 50 && st < 70) {
+        if ((st > 50 && st < 57) || (st >= 44 && st <= 49)) {
             c->stage = 50;
             c->missed = 0;
             return 1;
         }
-        if (st >= 10 && st < 30 && st != 30) {
+        if (st == 32 || st == 36 || st == 40 || st == 20 || st == 24 || st == 27) {
+            c->stage = 30;
+            c->missed = 0;
+            return 1;
+        }
+        if (st == 2 || st == 12 || st == 16 || st == 18) {
             c->stage = 1;
             c->tan_kind = 0;
             c->missed = 0;
             return 1;
         }
-    }
-    /* 円線接 の途中の段の [BS]`前項` は [ESC] と同じ一段戻り（測定のみ：fuzz_esc2 の escfz_e）。 */
-    if (c->command == 26 && key == 8 && !c->typing && c->stage >= 2) {
-        key = 27;
     }
     /* 寸法 ⑤③円周の行：ESC で ⑤ の項目の行へ。ほかの鍵は何もしない。 */
     if (c->command == 14 && c->dim5c) {
