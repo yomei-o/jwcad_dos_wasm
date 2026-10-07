@@ -3400,6 +3400,25 @@ static void place_by(JwCmd *c, Jwc *d, double dx, double dy)
     c->copies = 1;
 }
 
+/* ⑤反転・⑥回転・③数値倍率・④ﾏｳｽ倍率 が複写で置く直前の控え（place_by と
+ * 同じ形）。実機で確かめて見つけた抜け：mirror_range/turn_range/scale_range は
+ * place_by を経由しないので mv_undo が立たず、置いた直後の [ESC]（段 12/16/
+ * 20/25→10/15/19/24、下の place_undo 呼び出し）が実際には何も取り消して
+ * いなかった（192.168.11.37、tools/functest.sh の
+ * cm_copy_scale_esc_chain_reclick_noop で発覚：本物は ESC 3 回で置いた複写を
+ * 消して 30 本に戻るのに、直す前の移植は 32 本のまま。移動は mv_dx/mv_dy が
+ * 単純な並行移動の量でしかなく回転・倍率・反転には使えないため、ここでは
+ * 複写（!JW_MOVING）のときだけ控えを立てる——移動側の ESC 取り消しは
+ * 元々どおり未対応のまま（nokori.md 参照）。 */
+static void place_snapshot(JwCmd *c, const Jwc *d)
+{
+    c->mv_undo = 1;
+    c->mv_nl = d->n_lines;
+    c->mv_na = d->n_arcs;
+    c->mv_nt = d->n_texts;
+    c->mv_np = d->n_points;
+}
+
 /* 複写・移動 の取り消し：複写は足したものを抜き、移動は同じ量だけ float で
  * 戻す（本物も float で戻すので、最後の 1 ビットが残ることがある——
  * 測定：61.441078 が 61.441071 に）。 */
@@ -16219,6 +16238,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;
         }
         c->missed = 0;
+        if (!JW_MOVING(c)) {
+            place_snapshot(c, d);
+        }
         mirror_range(c, d, m);
         c->mirror = 2;
         c->stage = 12;
@@ -19512,6 +19534,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                     c->scale_x = ax != 0.0 ? (px - c->msc_px) / ax : 1.0;
                     c->scale_y = ay != 0.0 ? (py - c->msc_py) / ay : 1.0;
                 }
+                if (!JW_MOVING(c)) {
+                    place_snapshot(c, d);
+                }
                 scale_range(c, d, c->msc_px, c->msc_py);
                 c->step_x = c->msc_px - c->base_x;
                 c->step_y = c->msc_py - c->base_y;
@@ -19544,6 +19569,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                     c->typed_n = 0;
                     c->typed[0] = 0;
                     return 1;
+                }
+                if (!JW_MOVING(c)) {
+                    place_snapshot(c, d);
                 }
                 if (c->rotate) {
                     turn_range(c, d, px, py);
