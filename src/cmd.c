@@ -8666,6 +8666,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 c->arc_fix = 0;
             }
         }
+        if (c->command == 4 && c->box_ask == 2) {
+            /* □ の `角度 =` 欄の [ESC] は角度固定を解く（円弧の arc_fix/arc_rfix
+             * と同じ形。decomp の該当番地は未確認・測定のみ：角度欄を開いたあとの
+             * [ESC] で、次の □ は固定角のままにならず自由な向きに戻る）。 */
+            c->box_rot = 0;
+        }
         c->typing = 0;
         c->typed[0] = 0;
         c->typed_n = 0;
@@ -9450,6 +9456,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 c->typed[0] = 0;
                 c->typed_n = 0;
                 c->circ_bad = 1;
+                /* 断わりでも数え箱は標準に戻る（numin の出口は受理・断わり・ESC
+                 * どれでも共通。box と同じ box_keep_off で揃える）。 */
+                c->box_keep_off = 1;
                 return 1;
             }
             c->circ_r = r;
@@ -9531,6 +9540,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             if (w <= 0.0 || w > 9e7) {
                 c->typed[0] = 0;
                 c->typed_n = 0;
+                /* 断わりでも数え箱は標準に戻る（numin の出口は受理・断わり・ESC
+                 * どれでも 0xdef:2730 を呼ぶ。decomp root 0ad:16d4 numin、
+                 * decomp/lift/root_0ad_16d4_numin.txt の 0023ab/00264f 等の
+                 * 各出口）。キー [Enter] の断わりだけ抜けていた。 */
+                c->box_keep_off = 1;
                 return 1;
             }
             c->box_w = w;
