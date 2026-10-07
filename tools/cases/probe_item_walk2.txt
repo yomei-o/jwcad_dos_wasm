@@ -1,0 +1,1045 @@
+w2_c|SAMPLE0|type c
+w2_c1|SAMPLE0|type c|type 1
+w2_c1_1|SAMPLE0|type c|type 1|type 1
+w2_c1_2|SAMPLE0|type c|type 1|type 2
+w2_c1_3|SAMPLE0|type c|type 1|type 3
+w2_c1_4|SAMPLE0|type c|type 1|type 4
+w2_c1_5|SAMPLE0|type c|type 1|type 5
+w2_c2|SAMPLE0|type c|type 2
+w2_c2_1|SAMPLE0|type c|type 2|type 1
+w2_c2_2|SAMPLE0|type c|type 2|type 2
+w2_c2_3|SAMPLE0|type c|type 2|type 3
+w2_c2_4|SAMPLE0|type c|type 2|type 4
+w2_c2_5|SAMPLE0|type c|type 2|type 5
+w2_c3|SAMPLE0|type c|type 3
+w2_c3_1|SAMPLE0|type c|type 3|type 1
+w2_c3_2|SAMPLE0|type c|type 3|type 2
+w2_c3_3|SAMPLE0|type c|type 3|type 3
+w2_c3_4|SAMPLE0|type c|type 3|type 4
+w2_c3_5|SAMPLE0|type c|type 3|type 5
+w2_c4|SAMPLE0|type c|type 4
+w2_c4_1|SAMPLE0|type c|type 4|type 1
+w2_c4_2|SAMPLE0|type c|type 4|type 2
+w2_c4_3|SAMPLE0|type c|type 4|type 3
+w2_c4_4|SAMPLE0|type c|type 4|type 4
+w2_c4_5|SAMPLE0|type c|type 4|type 5
+w2_c5|SAMPLE0|type c|type 5
+w2_c5_1|SAMPLE0|type c|type 5|type 1
+w2_c5_2|SAMPLE0|type c|type 5|type 2
+w2_c5_3|SAMPLE0|type c|type 5|type 3
+w2_c5_4|SAMPLE0|type c|type 5|type 4
+w2_c5_5|SAMPLE0|type c|type 5|type 5
+w2_c6|SAMPLE0|type c|type 6
+w2_c6_1|SAMPLE0|type c|type 6|type 1
+w2_c6_2|SAMPLE0|type c|type 6|type 2
+w2_c6_3|SAMPLE0|type c|type 6|type 3
+w2_c6_4|SAMPLE0|type c|type 6|type 4
+w2_c6_5|SAMPLE0|type c|type 6|type 5
+w2_c7|SAMPLE0|type c|type 7
+w2_c7_1|SAMPLE0|type c|type 7|type 1
+w2_c7_2|SAMPLE0|type c|type 7|type 2
+w2_c7_3|SAMPLE0|type c|type 7|type 3
+w2_c7_4|SAMPLE0|type c|type 7|type 4
+w2_c7_5|SAMPLE0|type c|type 7|type 5
+w2_c8|SAMPLE0|type c|type 8
+w2_c8_1|SAMPLE0|type c|type 8|type 1
+w2_c8_2|SAMPLE0|type c|type 8|type 2
+w2_c8_3|SAMPLE0|type c|type 8|type 3
+w2_c8_4|SAMPLE0|type c|type 8|type 4
+w2_c8_5|SAMPLE0|type c|type 8|type 5
+w2_c9|SAMPLE0|type c|type 9
+w2_c9_1|SAMPLE0|type c|type 9|type 1
+w2_c9_2|SAMPLE0|type c|type 9|type 2
+w2_c9_3|SAMPLE0|type c|type 9|type 3
+w2_c9_4|SAMPLE0|type c|type 9|type 4
+w2_c9_5|SAMPLE0|type c|type 9|type 5
+w2_h|SAMPLE0|type h
+w2_h1|SAMPLE0|type h|type 1
+w2_h1_1|SAMPLE0|type h|type 1|type 1
+w2_h1_2|SAMPLE0|type h|type 1|type 2
+w2_h1_3|SAMPLE0|type h|type 1|type 3
+w2_h1_4|SAMPLE0|type h|type 1|type 4
+w2_h1_5|SAMPLE0|type h|type 1|type 5
+w2_h2|SAMPLE0|type h|type 2
+w2_h2_1|SAMPLE0|type h|type 2|type 1
+w2_h2_2|SAMPLE0|type h|type 2|type 2
+w2_h2_3|SAMPLE0|type h|type 2|type 3
+w2_h2_4|SAMPLE0|type h|type 2|type 4
+w2_h2_5|SAMPLE0|type h|type 2|type 5
+w2_h3|SAMPLE0|type h|type 3
+w2_h3_1|SAMPLE0|type h|type 3|type 1
+w2_h3_2|SAMPLE0|type h|type 3|type 2
+w2_h3_3|SAMPLE0|type h|type 3|type 3
+w2_h3_4|SAMPLE0|type h|type 3|type 4
+w2_h3_5|SAMPLE0|type h|type 3|type 5
+w2_h4|SAMPLE0|type h|type 4
+w2_h4_1|SAMPLE0|type h|type 4|type 1
+w2_h4_2|SAMPLE0|type h|type 4|type 2
+w2_h4_3|SAMPLE0|type h|type 4|type 3
+w2_h4_4|SAMPLE0|type h|type 4|type 4
+w2_h4_5|SAMPLE0|type h|type 4|type 5
+w2_h5|SAMPLE0|type h|type 5
+w2_h5_1|SAMPLE0|type h|type 5|type 1
+w2_h5_2|SAMPLE0|type h|type 5|type 2
+w2_h5_3|SAMPLE0|type h|type 5|type 3
+w2_h5_4|SAMPLE0|type h|type 5|type 4
+w2_h5_5|SAMPLE0|type h|type 5|type 5
+w2_h6|SAMPLE0|type h|type 6
+w2_h6_1|SAMPLE0|type h|type 6|type 1
+w2_h6_2|SAMPLE0|type h|type 6|type 2
+w2_h6_3|SAMPLE0|type h|type 6|type 3
+w2_h6_4|SAMPLE0|type h|type 6|type 4
+w2_h6_5|SAMPLE0|type h|type 6|type 5
+w2_h7|SAMPLE0|type h|type 7
+w2_h7_1|SAMPLE0|type h|type 7|type 1
+w2_h7_2|SAMPLE0|type h|type 7|type 2
+w2_h7_3|SAMPLE0|type h|type 7|type 3
+w2_h7_4|SAMPLE0|type h|type 7|type 4
+w2_h7_5|SAMPLE0|type h|type 7|type 5
+w2_h8|SAMPLE0|type h|type 8
+w2_h8_1|SAMPLE0|type h|type 8|type 1
+w2_h8_2|SAMPLE0|type h|type 8|type 2
+w2_h8_3|SAMPLE0|type h|type 8|type 3
+w2_h8_4|SAMPLE0|type h|type 8|type 4
+w2_h8_5|SAMPLE0|type h|type 8|type 5
+w2_h9|SAMPLE0|type h|type 9
+w2_h9_1|SAMPLE0|type h|type 9|type 1
+w2_h9_2|SAMPLE0|type h|type 9|type 2
+w2_h9_3|SAMPLE0|type h|type 9|type 3
+w2_h9_4|SAMPLE0|type h|type 9|type 4
+w2_h9_5|SAMPLE0|type h|type 9|type 5
+w2_x|SAMPLE0|type x
+w2_x1|SAMPLE0|type x|type 1
+w2_x1_1|SAMPLE0|type x|type 1|type 1
+w2_x1_2|SAMPLE0|type x|type 1|type 2
+w2_x1_3|SAMPLE0|type x|type 1|type 3
+w2_x1_4|SAMPLE0|type x|type 1|type 4
+w2_x1_5|SAMPLE0|type x|type 1|type 5
+w2_x2|SAMPLE0|type x|type 2
+w2_x2_1|SAMPLE0|type x|type 2|type 1
+w2_x2_2|SAMPLE0|type x|type 2|type 2
+w2_x2_3|SAMPLE0|type x|type 2|type 3
+w2_x2_4|SAMPLE0|type x|type 2|type 4
+w2_x2_5|SAMPLE0|type x|type 2|type 5
+w2_x3|SAMPLE0|type x|type 3
+w2_x3_1|SAMPLE0|type x|type 3|type 1
+w2_x3_2|SAMPLE0|type x|type 3|type 2
+w2_x3_3|SAMPLE0|type x|type 3|type 3
+w2_x3_4|SAMPLE0|type x|type 3|type 4
+w2_x3_5|SAMPLE0|type x|type 3|type 5
+w2_x4|SAMPLE0|type x|type 4
+w2_x4_1|SAMPLE0|type x|type 4|type 1
+w2_x4_2|SAMPLE0|type x|type 4|type 2
+w2_x4_3|SAMPLE0|type x|type 4|type 3
+w2_x4_4|SAMPLE0|type x|type 4|type 4
+w2_x4_5|SAMPLE0|type x|type 4|type 5
+w2_x5|SAMPLE0|type x|type 5
+w2_x5_1|SAMPLE0|type x|type 5|type 1
+w2_x5_2|SAMPLE0|type x|type 5|type 2
+w2_x5_3|SAMPLE0|type x|type 5|type 3
+w2_x5_4|SAMPLE0|type x|type 5|type 4
+w2_x5_5|SAMPLE0|type x|type 5|type 5
+w2_x6|SAMPLE0|type x|type 6
+w2_x6_1|SAMPLE0|type x|type 6|type 1
+w2_x6_2|SAMPLE0|type x|type 6|type 2
+w2_x6_3|SAMPLE0|type x|type 6|type 3
+w2_x6_4|SAMPLE0|type x|type 6|type 4
+w2_x6_5|SAMPLE0|type x|type 6|type 5
+w2_x7|SAMPLE0|type x|type 7
+w2_x7_1|SAMPLE0|type x|type 7|type 1
+w2_x7_2|SAMPLE0|type x|type 7|type 2
+w2_x7_3|SAMPLE0|type x|type 7|type 3
+w2_x7_4|SAMPLE0|type x|type 7|type 4
+w2_x7_5|SAMPLE0|type x|type 7|type 5
+w2_x8|SAMPLE0|type x|type 8
+w2_x8_1|SAMPLE0|type x|type 8|type 1
+w2_x8_2|SAMPLE0|type x|type 8|type 2
+w2_x8_3|SAMPLE0|type x|type 8|type 3
+w2_x8_4|SAMPLE0|type x|type 8|type 4
+w2_x8_5|SAMPLE0|type x|type 8|type 5
+w2_x9|SAMPLE0|type x|type 9
+w2_x9_1|SAMPLE0|type x|type 9|type 1
+w2_x9_2|SAMPLE0|type x|type 9|type 2
+w2_x9_3|SAMPLE0|type x|type 9|type 3
+w2_x9_4|SAMPLE0|type x|type 9|type 4
+w2_x9_5|SAMPLE0|type x|type 9|type 5
+w2_b|SAMPLE0|type b
+w2_b1|SAMPLE0|type b|type 1
+w2_b1_1|SAMPLE0|type b|type 1|type 1
+w2_b1_2|SAMPLE0|type b|type 1|type 2
+w2_b1_3|SAMPLE0|type b|type 1|type 3
+w2_b1_4|SAMPLE0|type b|type 1|type 4
+w2_b1_5|SAMPLE0|type b|type 1|type 5
+w2_b2|SAMPLE0|type b|type 2
+w2_b2_1|SAMPLE0|type b|type 2|type 1
+w2_b2_2|SAMPLE0|type b|type 2|type 2
+w2_b2_3|SAMPLE0|type b|type 2|type 3
+w2_b2_4|SAMPLE0|type b|type 2|type 4
+w2_b2_5|SAMPLE0|type b|type 2|type 5
+w2_b3|SAMPLE0|type b|type 3
+w2_b3_1|SAMPLE0|type b|type 3|type 1
+w2_b3_2|SAMPLE0|type b|type 3|type 2
+w2_b3_3|SAMPLE0|type b|type 3|type 3
+w2_b3_4|SAMPLE0|type b|type 3|type 4
+w2_b3_5|SAMPLE0|type b|type 3|type 5
+w2_b4|SAMPLE0|type b|type 4
+w2_b4_1|SAMPLE0|type b|type 4|type 1
+w2_b4_2|SAMPLE0|type b|type 4|type 2
+w2_b4_3|SAMPLE0|type b|type 4|type 3
+w2_b4_4|SAMPLE0|type b|type 4|type 4
+w2_b4_5|SAMPLE0|type b|type 4|type 5
+w2_b5|SAMPLE0|type b|type 5
+w2_b5_1|SAMPLE0|type b|type 5|type 1
+w2_b5_2|SAMPLE0|type b|type 5|type 2
+w2_b5_3|SAMPLE0|type b|type 5|type 3
+w2_b5_4|SAMPLE0|type b|type 5|type 4
+w2_b5_5|SAMPLE0|type b|type 5|type 5
+w2_b6|SAMPLE0|type b|type 6
+w2_b6_1|SAMPLE0|type b|type 6|type 1
+w2_b6_2|SAMPLE0|type b|type 6|type 2
+w2_b6_3|SAMPLE0|type b|type 6|type 3
+w2_b6_4|SAMPLE0|type b|type 6|type 4
+w2_b6_5|SAMPLE0|type b|type 6|type 5
+w2_b7|SAMPLE0|type b|type 7
+w2_b7_1|SAMPLE0|type b|type 7|type 1
+w2_b7_2|SAMPLE0|type b|type 7|type 2
+w2_b7_3|SAMPLE0|type b|type 7|type 3
+w2_b7_4|SAMPLE0|type b|type 7|type 4
+w2_b7_5|SAMPLE0|type b|type 7|type 5
+w2_b8|SAMPLE0|type b|type 8
+w2_b8_1|SAMPLE0|type b|type 8|type 1
+w2_b8_2|SAMPLE0|type b|type 8|type 2
+w2_b8_3|SAMPLE0|type b|type 8|type 3
+w2_b8_4|SAMPLE0|type b|type 8|type 4
+w2_b8_5|SAMPLE0|type b|type 8|type 5
+w2_b9|SAMPLE0|type b|type 9
+w2_b9_1|SAMPLE0|type b|type 9|type 1
+w2_b9_2|SAMPLE0|type b|type 9|type 2
+w2_b9_3|SAMPLE0|type b|type 9|type 3
+w2_b9_4|SAMPLE0|type b|type 9|type 4
+w2_b9_5|SAMPLE0|type b|type 9|type 5
+w2_f|SAMPLE0|type f
+w2_f1|SAMPLE0|type f|type 1
+w2_f1_1|SAMPLE0|type f|type 1|type 1
+w2_f1_2|SAMPLE0|type f|type 1|type 2
+w2_f1_3|SAMPLE0|type f|type 1|type 3
+w2_f1_4|SAMPLE0|type f|type 1|type 4
+w2_f1_5|SAMPLE0|type f|type 1|type 5
+w2_f2|SAMPLE0|type f|type 2
+w2_f2_1|SAMPLE0|type f|type 2|type 1
+w2_f2_2|SAMPLE0|type f|type 2|type 2
+w2_f2_3|SAMPLE0|type f|type 2|type 3
+w2_f2_4|SAMPLE0|type f|type 2|type 4
+w2_f2_5|SAMPLE0|type f|type 2|type 5
+w2_f3|SAMPLE0|type f|type 3
+w2_f3_1|SAMPLE0|type f|type 3|type 1
+w2_f3_2|SAMPLE0|type f|type 3|type 2
+w2_f3_3|SAMPLE0|type f|type 3|type 3
+w2_f3_4|SAMPLE0|type f|type 3|type 4
+w2_f3_5|SAMPLE0|type f|type 3|type 5
+w2_f4|SAMPLE0|type f|type 4
+w2_f4_1|SAMPLE0|type f|type 4|type 1
+w2_f4_2|SAMPLE0|type f|type 4|type 2
+w2_f4_3|SAMPLE0|type f|type 4|type 3
+w2_f4_4|SAMPLE0|type f|type 4|type 4
+w2_f4_5|SAMPLE0|type f|type 4|type 5
+w2_f5|SAMPLE0|type f|type 5
+w2_f5_1|SAMPLE0|type f|type 5|type 1
+w2_f5_2|SAMPLE0|type f|type 5|type 2
+w2_f5_3|SAMPLE0|type f|type 5|type 3
+w2_f5_4|SAMPLE0|type f|type 5|type 4
+w2_f5_5|SAMPLE0|type f|type 5|type 5
+w2_f6|SAMPLE0|type f|type 6
+w2_f6_1|SAMPLE0|type f|type 6|type 1
+w2_f6_2|SAMPLE0|type f|type 6|type 2
+w2_f6_3|SAMPLE0|type f|type 6|type 3
+w2_f6_4|SAMPLE0|type f|type 6|type 4
+w2_f6_5|SAMPLE0|type f|type 6|type 5
+w2_f7|SAMPLE0|type f|type 7
+w2_f7_1|SAMPLE0|type f|type 7|type 1
+w2_f7_2|SAMPLE0|type f|type 7|type 2
+w2_f7_3|SAMPLE0|type f|type 7|type 3
+w2_f7_4|SAMPLE0|type f|type 7|type 4
+w2_f7_5|SAMPLE0|type f|type 7|type 5
+w2_f8|SAMPLE0|type f|type 8
+w2_f8_1|SAMPLE0|type f|type 8|type 1
+w2_f8_2|SAMPLE0|type f|type 8|type 2
+w2_f8_3|SAMPLE0|type f|type 8|type 3
+w2_f8_4|SAMPLE0|type f|type 8|type 4
+w2_f8_5|SAMPLE0|type f|type 8|type 5
+w2_f9|SAMPLE0|type f|type 9
+w2_f9_1|SAMPLE0|type f|type 9|type 1
+w2_f9_2|SAMPLE0|type f|type 9|type 2
+w2_f9_3|SAMPLE0|type f|type 9|type 3
+w2_f9_4|SAMPLE0|type f|type 9|type 4
+w2_f9_5|SAMPLE0|type f|type 9|type 5
+w2_t|SAMPLE0|type t
+w2_t1|SAMPLE0|type t|type 1
+w2_t1_1|SAMPLE0|type t|type 1|type 1
+w2_t1_2|SAMPLE0|type t|type 1|type 2
+w2_t1_3|SAMPLE0|type t|type 1|type 3
+w2_t1_4|SAMPLE0|type t|type 1|type 4
+w2_t1_5|SAMPLE0|type t|type 1|type 5
+w2_t2|SAMPLE0|type t|type 2
+w2_t2_1|SAMPLE0|type t|type 2|type 1
+w2_t2_2|SAMPLE0|type t|type 2|type 2
+w2_t2_3|SAMPLE0|type t|type 2|type 3
+w2_t2_4|SAMPLE0|type t|type 2|type 4
+w2_t2_5|SAMPLE0|type t|type 2|type 5
+w2_t3|SAMPLE0|type t|type 3
+w2_t3_1|SAMPLE0|type t|type 3|type 1
+w2_t3_2|SAMPLE0|type t|type 3|type 2
+w2_t3_3|SAMPLE0|type t|type 3|type 3
+w2_t3_4|SAMPLE0|type t|type 3|type 4
+w2_t3_5|SAMPLE0|type t|type 3|type 5
+w2_t4|SAMPLE0|type t|type 4
+w2_t4_1|SAMPLE0|type t|type 4|type 1
+w2_t4_2|SAMPLE0|type t|type 4|type 2
+w2_t4_3|SAMPLE0|type t|type 4|type 3
+w2_t4_4|SAMPLE0|type t|type 4|type 4
+w2_t4_5|SAMPLE0|type t|type 4|type 5
+w2_t5|SAMPLE0|type t|type 5
+w2_t5_1|SAMPLE0|type t|type 5|type 1
+w2_t5_2|SAMPLE0|type t|type 5|type 2
+w2_t5_3|SAMPLE0|type t|type 5|type 3
+w2_t5_4|SAMPLE0|type t|type 5|type 4
+w2_t5_5|SAMPLE0|type t|type 5|type 5
+w2_t6|SAMPLE0|type t|type 6
+w2_t6_1|SAMPLE0|type t|type 6|type 1
+w2_t6_2|SAMPLE0|type t|type 6|type 2
+w2_t6_3|SAMPLE0|type t|type 6|type 3
+w2_t6_4|SAMPLE0|type t|type 6|type 4
+w2_t6_5|SAMPLE0|type t|type 6|type 5
+w2_t7|SAMPLE0|type t|type 7
+w2_t7_1|SAMPLE0|type t|type 7|type 1
+w2_t7_2|SAMPLE0|type t|type 7|type 2
+w2_t7_3|SAMPLE0|type t|type 7|type 3
+w2_t7_4|SAMPLE0|type t|type 7|type 4
+w2_t7_5|SAMPLE0|type t|type 7|type 5
+w2_t8|SAMPLE0|type t|type 8
+w2_t8_1|SAMPLE0|type t|type 8|type 1
+w2_t8_2|SAMPLE0|type t|type 8|type 2
+w2_t8_3|SAMPLE0|type t|type 8|type 3
+w2_t8_4|SAMPLE0|type t|type 8|type 4
+w2_t8_5|SAMPLE0|type t|type 8|type 5
+w2_t9|SAMPLE0|type t|type 9
+w2_t9_1|SAMPLE0|type t|type 9|type 1
+w2_t9_2|SAMPLE0|type t|type 9|type 2
+w2_t9_3|SAMPLE0|type t|type 9|type 3
+w2_t9_4|SAMPLE0|type t|type 9|type 4
+w2_t9_5|SAMPLE0|type t|type 9|type 5
+w2_v|SAMPLE0|type v
+w2_v1|SAMPLE0|type v|type 1
+w2_v1_1|SAMPLE0|type v|type 1|type 1
+w2_v1_2|SAMPLE0|type v|type 1|type 2
+w2_v1_3|SAMPLE0|type v|type 1|type 3
+w2_v1_4|SAMPLE0|type v|type 1|type 4
+w2_v1_5|SAMPLE0|type v|type 1|type 5
+w2_v2|SAMPLE0|type v|type 2
+w2_v2_1|SAMPLE0|type v|type 2|type 1
+w2_v2_2|SAMPLE0|type v|type 2|type 2
+w2_v2_3|SAMPLE0|type v|type 2|type 3
+w2_v2_4|SAMPLE0|type v|type 2|type 4
+w2_v2_5|SAMPLE0|type v|type 2|type 5
+w2_v3|SAMPLE0|type v|type 3
+w2_v3_1|SAMPLE0|type v|type 3|type 1
+w2_v3_2|SAMPLE0|type v|type 3|type 2
+w2_v3_3|SAMPLE0|type v|type 3|type 3
+w2_v3_4|SAMPLE0|type v|type 3|type 4
+w2_v3_5|SAMPLE0|type v|type 3|type 5
+w2_v4|SAMPLE0|type v|type 4
+w2_v4_1|SAMPLE0|type v|type 4|type 1
+w2_v4_2|SAMPLE0|type v|type 4|type 2
+w2_v4_3|SAMPLE0|type v|type 4|type 3
+w2_v4_4|SAMPLE0|type v|type 4|type 4
+w2_v4_5|SAMPLE0|type v|type 4|type 5
+w2_v5|SAMPLE0|type v|type 5
+w2_v5_1|SAMPLE0|type v|type 5|type 1
+w2_v5_2|SAMPLE0|type v|type 5|type 2
+w2_v5_3|SAMPLE0|type v|type 5|type 3
+w2_v5_4|SAMPLE0|type v|type 5|type 4
+w2_v5_5|SAMPLE0|type v|type 5|type 5
+w2_v6|SAMPLE0|type v|type 6
+w2_v6_1|SAMPLE0|type v|type 6|type 1
+w2_v6_2|SAMPLE0|type v|type 6|type 2
+w2_v6_3|SAMPLE0|type v|type 6|type 3
+w2_v6_4|SAMPLE0|type v|type 6|type 4
+w2_v6_5|SAMPLE0|type v|type 6|type 5
+w2_v7|SAMPLE0|type v|type 7
+w2_v7_1|SAMPLE0|type v|type 7|type 1
+w2_v7_2|SAMPLE0|type v|type 7|type 2
+w2_v7_3|SAMPLE0|type v|type 7|type 3
+w2_v7_4|SAMPLE0|type v|type 7|type 4
+w2_v7_5|SAMPLE0|type v|type 7|type 5
+w2_v8|SAMPLE0|type v|type 8
+w2_v8_1|SAMPLE0|type v|type 8|type 1
+w2_v8_2|SAMPLE0|type v|type 8|type 2
+w2_v8_3|SAMPLE0|type v|type 8|type 3
+w2_v8_4|SAMPLE0|type v|type 8|type 4
+w2_v8_5|SAMPLE0|type v|type 8|type 5
+w2_v9|SAMPLE0|type v|type 9
+w2_v9_1|SAMPLE0|type v|type 9|type 1
+w2_v9_2|SAMPLE0|type v|type 9|type 2
+w2_v9_3|SAMPLE0|type v|type 9|type 3
+w2_v9_4|SAMPLE0|type v|type 9|type 4
+w2_v9_5|SAMPLE0|type v|type 9|type 5
+w2_d|SAMPLE0|type d
+w2_d1|SAMPLE0|type d|type 1
+w2_d1_1|SAMPLE0|type d|type 1|type 1
+w2_d1_2|SAMPLE0|type d|type 1|type 2
+w2_d1_3|SAMPLE0|type d|type 1|type 3
+w2_d1_4|SAMPLE0|type d|type 1|type 4
+w2_d1_5|SAMPLE0|type d|type 1|type 5
+w2_d2|SAMPLE0|type d|type 2
+w2_d2_1|SAMPLE0|type d|type 2|type 1
+w2_d2_2|SAMPLE0|type d|type 2|type 2
+w2_d2_3|SAMPLE0|type d|type 2|type 3
+w2_d2_4|SAMPLE0|type d|type 2|type 4
+w2_d2_5|SAMPLE0|type d|type 2|type 5
+w2_d3|SAMPLE0|type d|type 3
+w2_d3_1|SAMPLE0|type d|type 3|type 1
+w2_d3_2|SAMPLE0|type d|type 3|type 2
+w2_d3_3|SAMPLE0|type d|type 3|type 3
+w2_d3_4|SAMPLE0|type d|type 3|type 4
+w2_d3_5|SAMPLE0|type d|type 3|type 5
+w2_d4|SAMPLE0|type d|type 4
+w2_d4_1|SAMPLE0|type d|type 4|type 1
+w2_d4_2|SAMPLE0|type d|type 4|type 2
+w2_d4_3|SAMPLE0|type d|type 4|type 3
+w2_d4_4|SAMPLE0|type d|type 4|type 4
+w2_d4_5|SAMPLE0|type d|type 4|type 5
+w2_d5|SAMPLE0|type d|type 5
+w2_d5_1|SAMPLE0|type d|type 5|type 1
+w2_d5_2|SAMPLE0|type d|type 5|type 2
+w2_d5_3|SAMPLE0|type d|type 5|type 3
+w2_d5_4|SAMPLE0|type d|type 5|type 4
+w2_d5_5|SAMPLE0|type d|type 5|type 5
+w2_d6|SAMPLE0|type d|type 6
+w2_d6_1|SAMPLE0|type d|type 6|type 1
+w2_d6_2|SAMPLE0|type d|type 6|type 2
+w2_d6_3|SAMPLE0|type d|type 6|type 3
+w2_d6_4|SAMPLE0|type d|type 6|type 4
+w2_d6_5|SAMPLE0|type d|type 6|type 5
+w2_d7|SAMPLE0|type d|type 7
+w2_d7_1|SAMPLE0|type d|type 7|type 1
+w2_d7_2|SAMPLE0|type d|type 7|type 2
+w2_d7_3|SAMPLE0|type d|type 7|type 3
+w2_d7_4|SAMPLE0|type d|type 7|type 4
+w2_d7_5|SAMPLE0|type d|type 7|type 5
+w2_d8|SAMPLE0|type d|type 8
+w2_d8_1|SAMPLE0|type d|type 8|type 1
+w2_d8_2|SAMPLE0|type d|type 8|type 2
+w2_d8_3|SAMPLE0|type d|type 8|type 3
+w2_d8_4|SAMPLE0|type d|type 8|type 4
+w2_d8_5|SAMPLE0|type d|type 8|type 5
+w2_d9|SAMPLE0|type d|type 9
+w2_d9_1|SAMPLE0|type d|type 9|type 1
+w2_d9_2|SAMPLE0|type d|type 9|type 2
+w2_d9_3|SAMPLE0|type d|type 9|type 3
+w2_d9_4|SAMPLE0|type d|type 9|type 4
+w2_d9_5|SAMPLE0|type d|type 9|type 5
+w2_n|SAMPLE0|type n
+w2_n1|SAMPLE0|type n|type 1
+w2_n1_1|SAMPLE0|type n|type 1|type 1
+w2_n1_2|SAMPLE0|type n|type 1|type 2
+w2_n1_3|SAMPLE0|type n|type 1|type 3
+w2_n1_4|SAMPLE0|type n|type 1|type 4
+w2_n1_5|SAMPLE0|type n|type 1|type 5
+w2_n2|SAMPLE0|type n|type 2
+w2_n2_1|SAMPLE0|type n|type 2|type 1
+w2_n2_2|SAMPLE0|type n|type 2|type 2
+w2_n2_3|SAMPLE0|type n|type 2|type 3
+w2_n2_4|SAMPLE0|type n|type 2|type 4
+w2_n2_5|SAMPLE0|type n|type 2|type 5
+w2_n3|SAMPLE0|type n|type 3
+w2_n3_1|SAMPLE0|type n|type 3|type 1
+w2_n3_2|SAMPLE0|type n|type 3|type 2
+w2_n3_3|SAMPLE0|type n|type 3|type 3
+w2_n3_4|SAMPLE0|type n|type 3|type 4
+w2_n3_5|SAMPLE0|type n|type 3|type 5
+w2_n4|SAMPLE0|type n|type 4
+w2_n4_1|SAMPLE0|type n|type 4|type 1
+w2_n4_2|SAMPLE0|type n|type 4|type 2
+w2_n4_3|SAMPLE0|type n|type 4|type 3
+w2_n4_4|SAMPLE0|type n|type 4|type 4
+w2_n4_5|SAMPLE0|type n|type 4|type 5
+w2_n5|SAMPLE0|type n|type 5
+w2_n5_1|SAMPLE0|type n|type 5|type 1
+w2_n5_2|SAMPLE0|type n|type 5|type 2
+w2_n5_3|SAMPLE0|type n|type 5|type 3
+w2_n5_4|SAMPLE0|type n|type 5|type 4
+w2_n5_5|SAMPLE0|type n|type 5|type 5
+w2_n6|SAMPLE0|type n|type 6
+w2_n6_1|SAMPLE0|type n|type 6|type 1
+w2_n6_2|SAMPLE0|type n|type 6|type 2
+w2_n6_3|SAMPLE0|type n|type 6|type 3
+w2_n6_4|SAMPLE0|type n|type 6|type 4
+w2_n6_5|SAMPLE0|type n|type 6|type 5
+w2_n7|SAMPLE0|type n|type 7
+w2_n7_1|SAMPLE0|type n|type 7|type 1
+w2_n7_2|SAMPLE0|type n|type 7|type 2
+w2_n7_3|SAMPLE0|type n|type 7|type 3
+w2_n7_4|SAMPLE0|type n|type 7|type 4
+w2_n7_5|SAMPLE0|type n|type 7|type 5
+w2_n8|SAMPLE0|type n|type 8
+w2_n8_1|SAMPLE0|type n|type 8|type 1
+w2_n8_2|SAMPLE0|type n|type 8|type 2
+w2_n8_3|SAMPLE0|type n|type 8|type 3
+w2_n8_4|SAMPLE0|type n|type 8|type 4
+w2_n8_5|SAMPLE0|type n|type 8|type 5
+w2_n9|SAMPLE0|type n|type 9
+w2_n9_1|SAMPLE0|type n|type 9|type 1
+w2_n9_2|SAMPLE0|type n|type 9|type 2
+w2_n9_3|SAMPLE0|type n|type 9|type 3
+w2_n9_4|SAMPLE0|type n|type 9|type 4
+w2_n9_5|SAMPLE0|type n|type 9|type 5
+w2_C|SAMPLE0|type C
+w2_C1|SAMPLE0|type C|type 1
+w2_C1_1|SAMPLE0|type C|type 1|type 1
+w2_C1_2|SAMPLE0|type C|type 1|type 2
+w2_C1_3|SAMPLE0|type C|type 1|type 3
+w2_C1_4|SAMPLE0|type C|type 1|type 4
+w2_C1_5|SAMPLE0|type C|type 1|type 5
+w2_C2|SAMPLE0|type C|type 2
+w2_C2_1|SAMPLE0|type C|type 2|type 1
+w2_C2_2|SAMPLE0|type C|type 2|type 2
+w2_C2_3|SAMPLE0|type C|type 2|type 3
+w2_C2_4|SAMPLE0|type C|type 2|type 4
+w2_C2_5|SAMPLE0|type C|type 2|type 5
+w2_C3|SAMPLE0|type C|type 3
+w2_C3_1|SAMPLE0|type C|type 3|type 1
+w2_C3_2|SAMPLE0|type C|type 3|type 2
+w2_C3_3|SAMPLE0|type C|type 3|type 3
+w2_C3_4|SAMPLE0|type C|type 3|type 4
+w2_C3_5|SAMPLE0|type C|type 3|type 5
+w2_C4|SAMPLE0|type C|type 4
+w2_C4_1|SAMPLE0|type C|type 4|type 1
+w2_C4_2|SAMPLE0|type C|type 4|type 2
+w2_C4_3|SAMPLE0|type C|type 4|type 3
+w2_C4_4|SAMPLE0|type C|type 4|type 4
+w2_C4_5|SAMPLE0|type C|type 4|type 5
+w2_C5|SAMPLE0|type C|type 5
+w2_C5_1|SAMPLE0|type C|type 5|type 1
+w2_C5_2|SAMPLE0|type C|type 5|type 2
+w2_C5_3|SAMPLE0|type C|type 5|type 3
+w2_C5_4|SAMPLE0|type C|type 5|type 4
+w2_C5_5|SAMPLE0|type C|type 5|type 5
+w2_C6|SAMPLE0|type C|type 6
+w2_C6_1|SAMPLE0|type C|type 6|type 1
+w2_C6_2|SAMPLE0|type C|type 6|type 2
+w2_C6_3|SAMPLE0|type C|type 6|type 3
+w2_C6_4|SAMPLE0|type C|type 6|type 4
+w2_C6_5|SAMPLE0|type C|type 6|type 5
+w2_C7|SAMPLE0|type C|type 7
+w2_C7_1|SAMPLE0|type C|type 7|type 1
+w2_C7_2|SAMPLE0|type C|type 7|type 2
+w2_C7_3|SAMPLE0|type C|type 7|type 3
+w2_C7_4|SAMPLE0|type C|type 7|type 4
+w2_C7_5|SAMPLE0|type C|type 7|type 5
+w2_C8|SAMPLE0|type C|type 8
+w2_C8_1|SAMPLE0|type C|type 8|type 1
+w2_C8_2|SAMPLE0|type C|type 8|type 2
+w2_C8_3|SAMPLE0|type C|type 8|type 3
+w2_C8_4|SAMPLE0|type C|type 8|type 4
+w2_C8_5|SAMPLE0|type C|type 8|type 5
+w2_C9|SAMPLE0|type C|type 9
+w2_C9_1|SAMPLE0|type C|type 9|type 1
+w2_C9_2|SAMPLE0|type C|type 9|type 2
+w2_C9_3|SAMPLE0|type C|type 9|type 3
+w2_C9_4|SAMPLE0|type C|type 9|type 4
+w2_C9_5|SAMPLE0|type C|type 9|type 5
+w2_H|SAMPLE0|type H
+w2_H1|SAMPLE0|type H|type 1
+w2_H1_1|SAMPLE0|type H|type 1|type 1
+w2_H1_2|SAMPLE0|type H|type 1|type 2
+w2_H1_3|SAMPLE0|type H|type 1|type 3
+w2_H1_4|SAMPLE0|type H|type 1|type 4
+w2_H1_5|SAMPLE0|type H|type 1|type 5
+w2_H2|SAMPLE0|type H|type 2
+w2_H2_1|SAMPLE0|type H|type 2|type 1
+w2_H2_2|SAMPLE0|type H|type 2|type 2
+w2_H2_3|SAMPLE0|type H|type 2|type 3
+w2_H2_4|SAMPLE0|type H|type 2|type 4
+w2_H2_5|SAMPLE0|type H|type 2|type 5
+w2_H3|SAMPLE0|type H|type 3
+w2_H3_1|SAMPLE0|type H|type 3|type 1
+w2_H3_2|SAMPLE0|type H|type 3|type 2
+w2_H3_3|SAMPLE0|type H|type 3|type 3
+w2_H3_4|SAMPLE0|type H|type 3|type 4
+w2_H3_5|SAMPLE0|type H|type 3|type 5
+w2_H4|SAMPLE0|type H|type 4
+w2_H4_1|SAMPLE0|type H|type 4|type 1
+w2_H4_2|SAMPLE0|type H|type 4|type 2
+w2_H4_3|SAMPLE0|type H|type 4|type 3
+w2_H4_4|SAMPLE0|type H|type 4|type 4
+w2_H4_5|SAMPLE0|type H|type 4|type 5
+w2_H5|SAMPLE0|type H|type 5
+w2_H5_1|SAMPLE0|type H|type 5|type 1
+w2_H5_2|SAMPLE0|type H|type 5|type 2
+w2_H5_3|SAMPLE0|type H|type 5|type 3
+w2_H5_4|SAMPLE0|type H|type 5|type 4
+w2_H5_5|SAMPLE0|type H|type 5|type 5
+w2_H6|SAMPLE0|type H|type 6
+w2_H6_1|SAMPLE0|type H|type 6|type 1
+w2_H6_2|SAMPLE0|type H|type 6|type 2
+w2_H6_3|SAMPLE0|type H|type 6|type 3
+w2_H6_4|SAMPLE0|type H|type 6|type 4
+w2_H6_5|SAMPLE0|type H|type 6|type 5
+w2_H7|SAMPLE0|type H|type 7
+w2_H7_1|SAMPLE0|type H|type 7|type 1
+w2_H7_2|SAMPLE0|type H|type 7|type 2
+w2_H7_3|SAMPLE0|type H|type 7|type 3
+w2_H7_4|SAMPLE0|type H|type 7|type 4
+w2_H7_5|SAMPLE0|type H|type 7|type 5
+w2_H8|SAMPLE0|type H|type 8
+w2_H8_1|SAMPLE0|type H|type 8|type 1
+w2_H8_2|SAMPLE0|type H|type 8|type 2
+w2_H8_3|SAMPLE0|type H|type 8|type 3
+w2_H8_4|SAMPLE0|type H|type 8|type 4
+w2_H8_5|SAMPLE0|type H|type 8|type 5
+w2_H9|SAMPLE0|type H|type 9
+w2_H9_1|SAMPLE0|type H|type 9|type 1
+w2_H9_2|SAMPLE0|type H|type 9|type 2
+w2_H9_3|SAMPLE0|type H|type 9|type 3
+w2_H9_4|SAMPLE0|type H|type 9|type 4
+w2_H9_5|SAMPLE0|type H|type 9|type 5
+w2_X|SAMPLE0|type X
+w2_X1|SAMPLE0|type X|type 1
+w2_X1_1|SAMPLE0|type X|type 1|type 1
+w2_X1_2|SAMPLE0|type X|type 1|type 2
+w2_X1_3|SAMPLE0|type X|type 1|type 3
+w2_X1_4|SAMPLE0|type X|type 1|type 4
+w2_X1_5|SAMPLE0|type X|type 1|type 5
+w2_X2|SAMPLE0|type X|type 2
+w2_X2_1|SAMPLE0|type X|type 2|type 1
+w2_X2_2|SAMPLE0|type X|type 2|type 2
+w2_X2_3|SAMPLE0|type X|type 2|type 3
+w2_X2_4|SAMPLE0|type X|type 2|type 4
+w2_X2_5|SAMPLE0|type X|type 2|type 5
+w2_X3|SAMPLE0|type X|type 3
+w2_X3_1|SAMPLE0|type X|type 3|type 1
+w2_X3_2|SAMPLE0|type X|type 3|type 2
+w2_X3_3|SAMPLE0|type X|type 3|type 3
+w2_X3_4|SAMPLE0|type X|type 3|type 4
+w2_X3_5|SAMPLE0|type X|type 3|type 5
+w2_X4|SAMPLE0|type X|type 4
+w2_X4_1|SAMPLE0|type X|type 4|type 1
+w2_X4_2|SAMPLE0|type X|type 4|type 2
+w2_X4_3|SAMPLE0|type X|type 4|type 3
+w2_X4_4|SAMPLE0|type X|type 4|type 4
+w2_X4_5|SAMPLE0|type X|type 4|type 5
+w2_X5|SAMPLE0|type X|type 5
+w2_X5_1|SAMPLE0|type X|type 5|type 1
+w2_X5_2|SAMPLE0|type X|type 5|type 2
+w2_X5_3|SAMPLE0|type X|type 5|type 3
+w2_X5_4|SAMPLE0|type X|type 5|type 4
+w2_X5_5|SAMPLE0|type X|type 5|type 5
+w2_X6|SAMPLE0|type X|type 6
+w2_X6_1|SAMPLE0|type X|type 6|type 1
+w2_X6_2|SAMPLE0|type X|type 6|type 2
+w2_X6_3|SAMPLE0|type X|type 6|type 3
+w2_X6_4|SAMPLE0|type X|type 6|type 4
+w2_X6_5|SAMPLE0|type X|type 6|type 5
+w2_X7|SAMPLE0|type X|type 7
+w2_X7_1|SAMPLE0|type X|type 7|type 1
+w2_X7_2|SAMPLE0|type X|type 7|type 2
+w2_X7_3|SAMPLE0|type X|type 7|type 3
+w2_X7_4|SAMPLE0|type X|type 7|type 4
+w2_X7_5|SAMPLE0|type X|type 7|type 5
+w2_X8|SAMPLE0|type X|type 8
+w2_X8_1|SAMPLE0|type X|type 8|type 1
+w2_X8_2|SAMPLE0|type X|type 8|type 2
+w2_X8_3|SAMPLE0|type X|type 8|type 3
+w2_X8_4|SAMPLE0|type X|type 8|type 4
+w2_X8_5|SAMPLE0|type X|type 8|type 5
+w2_X9|SAMPLE0|type X|type 9
+w2_X9_1|SAMPLE0|type X|type 9|type 1
+w2_X9_2|SAMPLE0|type X|type 9|type 2
+w2_X9_3|SAMPLE0|type X|type 9|type 3
+w2_X9_4|SAMPLE0|type X|type 9|type 4
+w2_X9_5|SAMPLE0|type X|type 9|type 5
+w2_B|SAMPLE0|type B
+w2_B1|SAMPLE0|type B|type 1
+w2_B1_1|SAMPLE0|type B|type 1|type 1
+w2_B1_2|SAMPLE0|type B|type 1|type 2
+w2_B1_3|SAMPLE0|type B|type 1|type 3
+w2_B1_4|SAMPLE0|type B|type 1|type 4
+w2_B1_5|SAMPLE0|type B|type 1|type 5
+w2_B2|SAMPLE0|type B|type 2
+w2_B2_1|SAMPLE0|type B|type 2|type 1
+w2_B2_2|SAMPLE0|type B|type 2|type 2
+w2_B2_3|SAMPLE0|type B|type 2|type 3
+w2_B2_4|SAMPLE0|type B|type 2|type 4
+w2_B2_5|SAMPLE0|type B|type 2|type 5
+w2_B3|SAMPLE0|type B|type 3
+w2_B3_1|SAMPLE0|type B|type 3|type 1
+w2_B3_2|SAMPLE0|type B|type 3|type 2
+w2_B3_3|SAMPLE0|type B|type 3|type 3
+w2_B3_4|SAMPLE0|type B|type 3|type 4
+w2_B3_5|SAMPLE0|type B|type 3|type 5
+w2_B4|SAMPLE0|type B|type 4
+w2_B4_1|SAMPLE0|type B|type 4|type 1
+w2_B4_2|SAMPLE0|type B|type 4|type 2
+w2_B4_3|SAMPLE0|type B|type 4|type 3
+w2_B4_4|SAMPLE0|type B|type 4|type 4
+w2_B4_5|SAMPLE0|type B|type 4|type 5
+w2_B5|SAMPLE0|type B|type 5
+w2_B5_1|SAMPLE0|type B|type 5|type 1
+w2_B5_2|SAMPLE0|type B|type 5|type 2
+w2_B5_3|SAMPLE0|type B|type 5|type 3
+w2_B5_4|SAMPLE0|type B|type 5|type 4
+w2_B5_5|SAMPLE0|type B|type 5|type 5
+w2_B6|SAMPLE0|type B|type 6
+w2_B6_1|SAMPLE0|type B|type 6|type 1
+w2_B6_2|SAMPLE0|type B|type 6|type 2
+w2_B6_3|SAMPLE0|type B|type 6|type 3
+w2_B6_4|SAMPLE0|type B|type 6|type 4
+w2_B6_5|SAMPLE0|type B|type 6|type 5
+w2_B7|SAMPLE0|type B|type 7
+w2_B7_1|SAMPLE0|type B|type 7|type 1
+w2_B7_2|SAMPLE0|type B|type 7|type 2
+w2_B7_3|SAMPLE0|type B|type 7|type 3
+w2_B7_4|SAMPLE0|type B|type 7|type 4
+w2_B7_5|SAMPLE0|type B|type 7|type 5
+w2_B8|SAMPLE0|type B|type 8
+w2_B8_1|SAMPLE0|type B|type 8|type 1
+w2_B8_2|SAMPLE0|type B|type 8|type 2
+w2_B8_3|SAMPLE0|type B|type 8|type 3
+w2_B8_4|SAMPLE0|type B|type 8|type 4
+w2_B8_5|SAMPLE0|type B|type 8|type 5
+w2_B9|SAMPLE0|type B|type 9
+w2_B9_1|SAMPLE0|type B|type 9|type 1
+w2_B9_2|SAMPLE0|type B|type 9|type 2
+w2_B9_3|SAMPLE0|type B|type 9|type 3
+w2_B9_4|SAMPLE0|type B|type 9|type 4
+w2_B9_5|SAMPLE0|type B|type 9|type 5
+w2_T|SAMPLE0|type T
+w2_T1|SAMPLE0|type T|type 1
+w2_T1_1|SAMPLE0|type T|type 1|type 1
+w2_T1_2|SAMPLE0|type T|type 1|type 2
+w2_T1_3|SAMPLE0|type T|type 1|type 3
+w2_T1_4|SAMPLE0|type T|type 1|type 4
+w2_T1_5|SAMPLE0|type T|type 1|type 5
+w2_T2|SAMPLE0|type T|type 2
+w2_T2_1|SAMPLE0|type T|type 2|type 1
+w2_T2_2|SAMPLE0|type T|type 2|type 2
+w2_T2_3|SAMPLE0|type T|type 2|type 3
+w2_T2_4|SAMPLE0|type T|type 2|type 4
+w2_T2_5|SAMPLE0|type T|type 2|type 5
+w2_T3|SAMPLE0|type T|type 3
+w2_T3_1|SAMPLE0|type T|type 3|type 1
+w2_T3_2|SAMPLE0|type T|type 3|type 2
+w2_T3_3|SAMPLE0|type T|type 3|type 3
+w2_T3_4|SAMPLE0|type T|type 3|type 4
+w2_T3_5|SAMPLE0|type T|type 3|type 5
+w2_T4|SAMPLE0|type T|type 4
+w2_T4_1|SAMPLE0|type T|type 4|type 1
+w2_T4_2|SAMPLE0|type T|type 4|type 2
+w2_T4_3|SAMPLE0|type T|type 4|type 3
+w2_T4_4|SAMPLE0|type T|type 4|type 4
+w2_T4_5|SAMPLE0|type T|type 4|type 5
+w2_T5|SAMPLE0|type T|type 5
+w2_T5_1|SAMPLE0|type T|type 5|type 1
+w2_T5_2|SAMPLE0|type T|type 5|type 2
+w2_T5_3|SAMPLE0|type T|type 5|type 3
+w2_T5_4|SAMPLE0|type T|type 5|type 4
+w2_T5_5|SAMPLE0|type T|type 5|type 5
+w2_T6|SAMPLE0|type T|type 6
+w2_T6_1|SAMPLE0|type T|type 6|type 1
+w2_T6_2|SAMPLE0|type T|type 6|type 2
+w2_T6_3|SAMPLE0|type T|type 6|type 3
+w2_T6_4|SAMPLE0|type T|type 6|type 4
+w2_T6_5|SAMPLE0|type T|type 6|type 5
+w2_T7|SAMPLE0|type T|type 7
+w2_T7_1|SAMPLE0|type T|type 7|type 1
+w2_T7_2|SAMPLE0|type T|type 7|type 2
+w2_T7_3|SAMPLE0|type T|type 7|type 3
+w2_T7_4|SAMPLE0|type T|type 7|type 4
+w2_T7_5|SAMPLE0|type T|type 7|type 5
+w2_T8|SAMPLE0|type T|type 8
+w2_T8_1|SAMPLE0|type T|type 8|type 1
+w2_T8_2|SAMPLE0|type T|type 8|type 2
+w2_T8_3|SAMPLE0|type T|type 8|type 3
+w2_T8_4|SAMPLE0|type T|type 8|type 4
+w2_T8_5|SAMPLE0|type T|type 8|type 5
+w2_T9|SAMPLE0|type T|type 9
+w2_T9_1|SAMPLE0|type T|type 9|type 1
+w2_T9_2|SAMPLE0|type T|type 9|type 2
+w2_T9_3|SAMPLE0|type T|type 9|type 3
+w2_T9_4|SAMPLE0|type T|type 9|type 4
+w2_T9_5|SAMPLE0|type T|type 9|type 5
+w2_V|SAMPLE0|type V
+w2_V1|SAMPLE0|type V|type 1
+w2_V1_1|SAMPLE0|type V|type 1|type 1
+w2_V1_2|SAMPLE0|type V|type 1|type 2
+w2_V1_3|SAMPLE0|type V|type 1|type 3
+w2_V1_4|SAMPLE0|type V|type 1|type 4
+w2_V1_5|SAMPLE0|type V|type 1|type 5
+w2_V2|SAMPLE0|type V|type 2
+w2_V2_1|SAMPLE0|type V|type 2|type 1
+w2_V2_2|SAMPLE0|type V|type 2|type 2
+w2_V2_3|SAMPLE0|type V|type 2|type 3
+w2_V2_4|SAMPLE0|type V|type 2|type 4
+w2_V2_5|SAMPLE0|type V|type 2|type 5
+w2_V3|SAMPLE0|type V|type 3
+w2_V3_1|SAMPLE0|type V|type 3|type 1
+w2_V3_2|SAMPLE0|type V|type 3|type 2
+w2_V3_3|SAMPLE0|type V|type 3|type 3
+w2_V3_4|SAMPLE0|type V|type 3|type 4
+w2_V3_5|SAMPLE0|type V|type 3|type 5
+w2_V4|SAMPLE0|type V|type 4
+w2_V4_1|SAMPLE0|type V|type 4|type 1
+w2_V4_2|SAMPLE0|type V|type 4|type 2
+w2_V4_3|SAMPLE0|type V|type 4|type 3
+w2_V4_4|SAMPLE0|type V|type 4|type 4
+w2_V4_5|SAMPLE0|type V|type 4|type 5
+w2_V5|SAMPLE0|type V|type 5
+w2_V5_1|SAMPLE0|type V|type 5|type 1
+w2_V5_2|SAMPLE0|type V|type 5|type 2
+w2_V5_3|SAMPLE0|type V|type 5|type 3
+w2_V5_4|SAMPLE0|type V|type 5|type 4
+w2_V5_5|SAMPLE0|type V|type 5|type 5
+w2_V6|SAMPLE0|type V|type 6
+w2_V6_1|SAMPLE0|type V|type 6|type 1
+w2_V6_2|SAMPLE0|type V|type 6|type 2
+w2_V6_3|SAMPLE0|type V|type 6|type 3
+w2_V6_4|SAMPLE0|type V|type 6|type 4
+w2_V6_5|SAMPLE0|type V|type 6|type 5
+w2_V7|SAMPLE0|type V|type 7
+w2_V7_1|SAMPLE0|type V|type 7|type 1
+w2_V7_2|SAMPLE0|type V|type 7|type 2
+w2_V7_3|SAMPLE0|type V|type 7|type 3
+w2_V7_4|SAMPLE0|type V|type 7|type 4
+w2_V7_5|SAMPLE0|type V|type 7|type 5
+w2_V8|SAMPLE0|type V|type 8
+w2_V8_1|SAMPLE0|type V|type 8|type 1
+w2_V8_2|SAMPLE0|type V|type 8|type 2
+w2_V8_3|SAMPLE0|type V|type 8|type 3
+w2_V8_4|SAMPLE0|type V|type 8|type 4
+w2_V8_5|SAMPLE0|type V|type 8|type 5
+w2_V9|SAMPLE0|type V|type 9
+w2_V9_1|SAMPLE0|type V|type 9|type 1
+w2_V9_2|SAMPLE0|type V|type 9|type 2
+w2_V9_3|SAMPLE0|type V|type 9|type 3
+w2_V9_4|SAMPLE0|type V|type 9|type 4
+w2_V9_5|SAMPLE0|type V|type 9|type 5
+w2_R|SAMPLE0|type R
+w2_R1|SAMPLE0|type R|type 1
+w2_R1_1|SAMPLE0|type R|type 1|type 1
+w2_R1_2|SAMPLE0|type R|type 1|type 2
+w2_R1_3|SAMPLE0|type R|type 1|type 3
+w2_R1_4|SAMPLE0|type R|type 1|type 4
+w2_R1_5|SAMPLE0|type R|type 1|type 5
+w2_R2|SAMPLE0|type R|type 2
+w2_R2_1|SAMPLE0|type R|type 2|type 1
+w2_R2_2|SAMPLE0|type R|type 2|type 2
+w2_R2_3|SAMPLE0|type R|type 2|type 3
+w2_R2_4|SAMPLE0|type R|type 2|type 4
+w2_R2_5|SAMPLE0|type R|type 2|type 5
+w2_R3|SAMPLE0|type R|type 3
+w2_R3_1|SAMPLE0|type R|type 3|type 1
+w2_R3_2|SAMPLE0|type R|type 3|type 2
+w2_R3_3|SAMPLE0|type R|type 3|type 3
+w2_R3_4|SAMPLE0|type R|type 3|type 4
+w2_R3_5|SAMPLE0|type R|type 3|type 5
+w2_R4|SAMPLE0|type R|type 4
+w2_R4_1|SAMPLE0|type R|type 4|type 1
+w2_R4_2|SAMPLE0|type R|type 4|type 2
+w2_R4_3|SAMPLE0|type R|type 4|type 3
+w2_R4_4|SAMPLE0|type R|type 4|type 4
+w2_R4_5|SAMPLE0|type R|type 4|type 5
+w2_R5|SAMPLE0|type R|type 5
+w2_R5_1|SAMPLE0|type R|type 5|type 1
+w2_R5_2|SAMPLE0|type R|type 5|type 2
+w2_R5_3|SAMPLE0|type R|type 5|type 3
+w2_R5_4|SAMPLE0|type R|type 5|type 4
+w2_R5_5|SAMPLE0|type R|type 5|type 5
+w2_R6|SAMPLE0|type R|type 6
+w2_R6_1|SAMPLE0|type R|type 6|type 1
+w2_R6_2|SAMPLE0|type R|type 6|type 2
+w2_R6_3|SAMPLE0|type R|type 6|type 3
+w2_R6_4|SAMPLE0|type R|type 6|type 4
+w2_R6_5|SAMPLE0|type R|type 6|type 5
+w2_R7|SAMPLE0|type R|type 7
+w2_R7_1|SAMPLE0|type R|type 7|type 1
+w2_R7_2|SAMPLE0|type R|type 7|type 2
+w2_R7_3|SAMPLE0|type R|type 7|type 3
+w2_R7_4|SAMPLE0|type R|type 7|type 4
+w2_R7_5|SAMPLE0|type R|type 7|type 5
+w2_R8|SAMPLE0|type R|type 8
+w2_R8_1|SAMPLE0|type R|type 8|type 1
+w2_R8_2|SAMPLE0|type R|type 8|type 2
+w2_R8_3|SAMPLE0|type R|type 8|type 3
+w2_R8_4|SAMPLE0|type R|type 8|type 4
+w2_R8_5|SAMPLE0|type R|type 8|type 5
+w2_R9|SAMPLE0|type R|type 9
+w2_R9_1|SAMPLE0|type R|type 9|type 1
+w2_R9_2|SAMPLE0|type R|type 9|type 2
+w2_R9_3|SAMPLE0|type R|type 9|type 3
+w2_R9_4|SAMPLE0|type R|type 9|type 4
+w2_R9_5|SAMPLE0|type R|type 9|type 5
+w2_D|SAMPLE0|type D
+w2_D1|SAMPLE0|type D|type 1
+w2_D1_1|SAMPLE0|type D|type 1|type 1
+w2_D1_2|SAMPLE0|type D|type 1|type 2
+w2_D1_3|SAMPLE0|type D|type 1|type 3
+w2_D1_4|SAMPLE0|type D|type 1|type 4
+w2_D1_5|SAMPLE0|type D|type 1|type 5
+w2_D2|SAMPLE0|type D|type 2
+w2_D2_1|SAMPLE0|type D|type 2|type 1
+w2_D2_2|SAMPLE0|type D|type 2|type 2
+w2_D2_3|SAMPLE0|type D|type 2|type 3
+w2_D2_4|SAMPLE0|type D|type 2|type 4
+w2_D2_5|SAMPLE0|type D|type 2|type 5
+w2_D3|SAMPLE0|type D|type 3
+w2_D3_1|SAMPLE0|type D|type 3|type 1
+w2_D3_2|SAMPLE0|type D|type 3|type 2
+w2_D3_3|SAMPLE0|type D|type 3|type 3
+w2_D3_4|SAMPLE0|type D|type 3|type 4
+w2_D3_5|SAMPLE0|type D|type 3|type 5
+w2_D4|SAMPLE0|type D|type 4
+w2_D4_1|SAMPLE0|type D|type 4|type 1
+w2_D4_2|SAMPLE0|type D|type 4|type 2
+w2_D4_3|SAMPLE0|type D|type 4|type 3
+w2_D4_4|SAMPLE0|type D|type 4|type 4
+w2_D4_5|SAMPLE0|type D|type 4|type 5
+w2_D5|SAMPLE0|type D|type 5
+w2_D5_1|SAMPLE0|type D|type 5|type 1
+w2_D5_2|SAMPLE0|type D|type 5|type 2
+w2_D5_3|SAMPLE0|type D|type 5|type 3
+w2_D5_4|SAMPLE0|type D|type 5|type 4
+w2_D5_5|SAMPLE0|type D|type 5|type 5
+w2_D6|SAMPLE0|type D|type 6
+w2_D6_1|SAMPLE0|type D|type 6|type 1
+w2_D6_2|SAMPLE0|type D|type 6|type 2
+w2_D6_3|SAMPLE0|type D|type 6|type 3
+w2_D6_4|SAMPLE0|type D|type 6|type 4
+w2_D6_5|SAMPLE0|type D|type 6|type 5
+w2_D7|SAMPLE0|type D|type 7
+w2_D7_1|SAMPLE0|type D|type 7|type 1
+w2_D7_2|SAMPLE0|type D|type 7|type 2
+w2_D7_3|SAMPLE0|type D|type 7|type 3
+w2_D7_4|SAMPLE0|type D|type 7|type 4
+w2_D7_5|SAMPLE0|type D|type 7|type 5
+w2_D8|SAMPLE0|type D|type 8
+w2_D8_1|SAMPLE0|type D|type 8|type 1
+w2_D8_2|SAMPLE0|type D|type 8|type 2
+w2_D8_3|SAMPLE0|type D|type 8|type 3
+w2_D8_4|SAMPLE0|type D|type 8|type 4
+w2_D8_5|SAMPLE0|type D|type 8|type 5
+w2_D9|SAMPLE0|type D|type 9
+w2_D9_1|SAMPLE0|type D|type 9|type 1
+w2_D9_2|SAMPLE0|type D|type 9|type 2
+w2_D9_3|SAMPLE0|type D|type 9|type 3
+w2_D9_4|SAMPLE0|type D|type 9|type 4
+w2_D9_5|SAMPLE0|type D|type 9|type 5
+w2_N|SAMPLE0|type N
+w2_N1|SAMPLE0|type N|type 1
+w2_N1_1|SAMPLE0|type N|type 1|type 1
+w2_N1_2|SAMPLE0|type N|type 1|type 2
+w2_N1_3|SAMPLE0|type N|type 1|type 3
+w2_N1_4|SAMPLE0|type N|type 1|type 4
+w2_N1_5|SAMPLE0|type N|type 1|type 5
+w2_N2|SAMPLE0|type N|type 2
+w2_N2_1|SAMPLE0|type N|type 2|type 1
+w2_N2_2|SAMPLE0|type N|type 2|type 2
+w2_N2_3|SAMPLE0|type N|type 2|type 3
+w2_N2_4|SAMPLE0|type N|type 2|type 4
+w2_N2_5|SAMPLE0|type N|type 2|type 5
+w2_N3|SAMPLE0|type N|type 3
+w2_N3_1|SAMPLE0|type N|type 3|type 1
+w2_N3_2|SAMPLE0|type N|type 3|type 2
+w2_N3_3|SAMPLE0|type N|type 3|type 3
+w2_N3_4|SAMPLE0|type N|type 3|type 4
+w2_N3_5|SAMPLE0|type N|type 3|type 5
+w2_N4|SAMPLE0|type N|type 4
+w2_N4_1|SAMPLE0|type N|type 4|type 1
+w2_N4_2|SAMPLE0|type N|type 4|type 2
+w2_N4_3|SAMPLE0|type N|type 4|type 3
+w2_N4_4|SAMPLE0|type N|type 4|type 4
+w2_N4_5|SAMPLE0|type N|type 4|type 5
+w2_N5|SAMPLE0|type N|type 5
+w2_N5_1|SAMPLE0|type N|type 5|type 1
+w2_N5_2|SAMPLE0|type N|type 5|type 2
+w2_N5_3|SAMPLE0|type N|type 5|type 3
+w2_N5_4|SAMPLE0|type N|type 5|type 4
+w2_N5_5|SAMPLE0|type N|type 5|type 5
+w2_N6|SAMPLE0|type N|type 6
+w2_N6_1|SAMPLE0|type N|type 6|type 1
+w2_N6_2|SAMPLE0|type N|type 6|type 2
+w2_N6_3|SAMPLE0|type N|type 6|type 3
+w2_N6_4|SAMPLE0|type N|type 6|type 4
+w2_N6_5|SAMPLE0|type N|type 6|type 5
+w2_N7|SAMPLE0|type N|type 7
+w2_N7_1|SAMPLE0|type N|type 7|type 1
+w2_N7_2|SAMPLE0|type N|type 7|type 2
+w2_N7_3|SAMPLE0|type N|type 7|type 3
+w2_N7_4|SAMPLE0|type N|type 7|type 4
+w2_N7_5|SAMPLE0|type N|type 7|type 5
+w2_N8|SAMPLE0|type N|type 8
+w2_N8_1|SAMPLE0|type N|type 8|type 1
+w2_N8_2|SAMPLE0|type N|type 8|type 2
+w2_N8_3|SAMPLE0|type N|type 8|type 3
+w2_N8_4|SAMPLE0|type N|type 8|type 4
+w2_N8_5|SAMPLE0|type N|type 8|type 5
+w2_N9|SAMPLE0|type N|type 9
+w2_N9_1|SAMPLE0|type N|type 9|type 1
+w2_N9_2|SAMPLE0|type N|type 9|type 2
+w2_N9_3|SAMPLE0|type N|type 9|type 3
+w2_N9_4|SAMPLE0|type N|type 9|type 4
+w2_N9_5|SAMPLE0|type N|type 9|type 5
+w2_A|SAMPLE0|type A
+w2_A1|SAMPLE0|type A|type 1
+w2_A1_1|SAMPLE0|type A|type 1|type 1
+w2_A1_2|SAMPLE0|type A|type 1|type 2
+w2_A1_3|SAMPLE0|type A|type 1|type 3
+w2_A1_4|SAMPLE0|type A|type 1|type 4
+w2_A1_5|SAMPLE0|type A|type 1|type 5
+w2_A2|SAMPLE0|type A|type 2
+w2_A2_1|SAMPLE0|type A|type 2|type 1
+w2_A2_2|SAMPLE0|type A|type 2|type 2
+w2_A2_3|SAMPLE0|type A|type 2|type 3
+w2_A2_4|SAMPLE0|type A|type 2|type 4
+w2_A2_5|SAMPLE0|type A|type 2|type 5
+w2_A3|SAMPLE0|type A|type 3
+w2_A3_1|SAMPLE0|type A|type 3|type 1
+w2_A3_2|SAMPLE0|type A|type 3|type 2
+w2_A3_3|SAMPLE0|type A|type 3|type 3
+w2_A3_4|SAMPLE0|type A|type 3|type 4
+w2_A3_5|SAMPLE0|type A|type 3|type 5
+w2_A4|SAMPLE0|type A|type 4
+w2_A4_1|SAMPLE0|type A|type 4|type 1
+w2_A4_2|SAMPLE0|type A|type 4|type 2
+w2_A4_3|SAMPLE0|type A|type 4|type 3
+w2_A4_4|SAMPLE0|type A|type 4|type 4
+w2_A4_5|SAMPLE0|type A|type 4|type 5
+w2_A5|SAMPLE0|type A|type 5
+w2_A5_1|SAMPLE0|type A|type 5|type 1
+w2_A5_2|SAMPLE0|type A|type 5|type 2
+w2_A5_3|SAMPLE0|type A|type 5|type 3
+w2_A5_4|SAMPLE0|type A|type 5|type 4
+w2_A5_5|SAMPLE0|type A|type 5|type 5
+w2_A6|SAMPLE0|type A|type 6
+w2_A6_1|SAMPLE0|type A|type 6|type 1
+w2_A6_2|SAMPLE0|type A|type 6|type 2
+w2_A6_3|SAMPLE0|type A|type 6|type 3
+w2_A6_4|SAMPLE0|type A|type 6|type 4
+w2_A6_5|SAMPLE0|type A|type 6|type 5
+w2_A7|SAMPLE0|type A|type 7
+w2_A7_1|SAMPLE0|type A|type 7|type 1
+w2_A7_2|SAMPLE0|type A|type 7|type 2
+w2_A7_3|SAMPLE0|type A|type 7|type 3
+w2_A7_4|SAMPLE0|type A|type 7|type 4
+w2_A7_5|SAMPLE0|type A|type 7|type 5
+w2_A8|SAMPLE0|type A|type 8
+w2_A8_1|SAMPLE0|type A|type 8|type 1
+w2_A8_2|SAMPLE0|type A|type 8|type 2
+w2_A8_3|SAMPLE0|type A|type 8|type 3
+w2_A8_4|SAMPLE0|type A|type 8|type 4
+w2_A8_5|SAMPLE0|type A|type 8|type 5
+w2_A9|SAMPLE0|type A|type 9
+w2_A9_1|SAMPLE0|type A|type 9|type 1
+w2_A9_2|SAMPLE0|type A|type 9|type 2
+w2_A9_3|SAMPLE0|type A|type 9|type 3
+w2_A9_4|SAMPLE0|type A|type 9|type 4
+w2_A9_5|SAMPLE0|type A|type 9|type 5

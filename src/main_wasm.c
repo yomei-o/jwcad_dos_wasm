@@ -5177,6 +5177,11 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         present();
         return -1;
     }
+    /* 円線接・線消 の途中の [Enter] は、矢の今の位置の左押しと同じ（測定のみ・decomp 未確認：tmp の en1・en3・en9）。 */
+    if ((key == 13 || key == 10) && ((cmd.command == 26 && cmd.stage == 16) || (cmd.command == 10 && cmd.stage >= 2)) && !cmd.typing
+        && !cmd.typing_text && drawing && cmd.stage >= 1 && mouse_x >= AREA_X0 && mouse_y >= AREA_Y0) {
+        return jw_click(mouse_x, mouse_y, 0);
+    }
     if ((key == 13 || key == 10) && cmd.command != 17 && (JW_RANGE(&cmd) || (cmd.command == 24 && cmd.top_item == 3)
          || (cmd.command == 25 && cmd.span))
         && !cmd.typing && !cmd.typing_text
