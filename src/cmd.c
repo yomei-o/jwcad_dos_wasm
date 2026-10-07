@@ -6811,6 +6811,12 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
             c->pressed = 0;
             c->stage = 0;
             c->n_flip = 0;
+            /* ②移動・③複写 へ数字キー／帯のます目から新しく入るときも
+             * ②方向 は任意へ戻る（上の直接押しの節と同じ decomp 根拠：
+             * ovl15 3ab8:33ee の `local_bc = 0;`）。 */
+            if (item == 2 || item == 3) {
+                c->te_dir = 0;
+            }
         }
         return 1;
     }
@@ -8611,9 +8617,17 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
     }
-    /* 文編集 で項目の行（top_item≠0）の [BS] は最初の行へ（decomp 照合済み（調査担当が dis で確認）：escfz_a_61〜66）。 */
-    if (c->command == 28 && key == 8 && c->top_item && !c->typing && !c->typing_text && !c->te_sub
-        && c->stage == 0 && !c->te5) {
+    /* 文編集 で項目の行（top_item≠0）の [BS] は最初の行へ（decomp 照合済み（調査担当が dis で確認）：escfz_a_61〜66）。
+     * **ただし ④設定 は例外**（2026-10-08）：④設定 は 文字種類 の表（src/ui.c の
+     * `command==28 && top_item==4` の全画面の盤）に入るところで、実機
+     * （192.168.11.37、tmp/te4_script.txt、type 4 → shot → key bs → shot）は
+     * [BS] の前後で画面が **0 画素差**——押しても何も起きない（盤が閉じない・
+     * 升も動かない）。この表の中身は別セグメントの `FUN_4375_88aa`（ovl15
+     * 3ab8:6467 の local_1da==4 枝、未解析）が持つ独自の入力ループへ入ると
+     * 見られ、共通の「項目の行の [BS]」規則はここには届いていない。
+     * 測定のみ・decomp（FUN_4375_88aa の中身）未確認。 */
+    if (c->command == 28 && key == 8 && c->top_item && c->top_item != 4 && !c->typing
+        && !c->typing_text && !c->te_sub && c->stage == 0 && !c->te5) {
         c->top_item = 0;
         return 1;
     }
@@ -18977,6 +18991,15 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         if (c->top_item == 0 && c->stage != 2) {
             c->top_item = right ? 2 : 1;
             c->top_right = 0;
+            /* ②移動 へ新しく入るたびに ②方向 は任意へ戻る（decomp 照合済み：
+             * ovl15 3ab8:33ee、`local_bc = 0;` が関数の入口で毎回効く
+             * （DS:[0x130]==2 のときだけ 3=XY軸、下の te_dir==0 既定の節参照）。
+             * 実機確認：192.168.11.37、②移動で方向をＹ軸へ回したあと [BS] で
+             * 項目の行へ戻り、改めて ②移動 を選び直すと帯は `②【任意】方向`
+             * に戻る（tmp/te4_script.txt 系列の手順、probe.sh）。 */
+            if (right) {
+                c->te_dir = 0;
+            }
             return 1;
         }
         /* ①文字変更 の段（書き換えた後の段 2 も）以外の拾い方はまだ

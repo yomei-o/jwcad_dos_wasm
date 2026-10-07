@@ -1907,11 +1907,11 @@ EMSCRIPTEN_KEEPALIVE const char *jw_cmd_state(void)
     snprintf(buf, sizeof buf,
              "cmd=%d stage=%d pressed=%d typing=%d fix_mode=%d fix_done=%d "
              "fix_len=%d fix_angle=%d ask_kind=%d top_item=%d box_ask=%d "
-             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g chb=%d cham=%d hn=%d h0=%d miss=%d lc=%d/%d zk=%d uitop=%d uistage=%d uiesc=%d noind=%d m5=%d um5=%d m5s=%d nl=%d unl=%d d8=%d mirror=%d rotate=%d scaling=%d mscale=%d attrg=%d attrl=%d attrp=%d attrt=%d",
+             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g chb=%d cham=%d hn=%d h0=%d miss=%d lc=%d/%d zk=%d uitop=%d uistage=%d uiesc=%d noind=%d m5=%d um5=%d m5s=%d nl=%d unl=%d d8=%d mirror=%d rotate=%d scaling=%d mscale=%d attrg=%d attrl=%d attrp=%d attrt=%d te_dir=%d",
              cmd.command, cmd.stage, cmd.pressed, cmd.typing, cmd.fix_mode,
              cmd.fix_done, cmd.fix_len, cmd.fix_angle, cmd.ask_kind,
              cmd.top_item, cmd.box_ask, cmd.box_fix, cmd.circ_fix,
-             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer, cmd.hatch_n, cmd.hatch_line[0], cmd.missed, cmd.lc_range, cmd.lc_narrow, cmd.zukei, ui.top_item, ui.stage, ui.escaped, cmd.meas_noind, cmd.meas5, ui.meas5, cmd.meas5s, drawing ? (int)drawing->n_lines : -1, (int)ui.n_lines, cmd.ch_side | (cmd.ch_ask << 1) | (cmd.chb << 2), cmd.mirror, cmd.rotate, cmd.scaling, cmd.mscale, cmd.attr_group, cmd.attr_layer, cmd.attr_pen, cmd.attr_type);
+             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer, cmd.hatch_n, cmd.hatch_line[0], cmd.missed, cmd.lc_range, cmd.lc_narrow, cmd.zukei, ui.top_item, ui.stage, ui.escaped, cmd.meas_noind, cmd.meas5, ui.meas5, cmd.meas5s, drawing ? (int)drawing->n_lines : -1, (int)ui.n_lines, cmd.ch_side | (cmd.ch_ask << 1) | (cmd.chb << 2), cmd.mirror, cmd.rotate, cmd.scaling, cmd.mscale, cmd.attr_group, cmd.attr_layer, cmd.attr_pen, cmd.attr_type, cmd.te_dir);
     return buf;
 }
 EMSCRIPTEN_KEEPALIVE int jw_top_item(int x, int y) { return jw_ui_top_item(x, y); }
