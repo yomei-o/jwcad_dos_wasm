@@ -6919,6 +6919,7 @@ static int pg1_accept(JwCmd *c, const Jwc *d, int use_prev)
     return 1;
 }
 
+static void box_unhold(JwCmd *c);
 int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
@@ -8248,6 +8249,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->box_ask = 0;
         c->circ_ask = 0;
         c->arc_ask = 0;
+        box_unhold(c);   /* 始点を持って開いた欄なら、その始点の `終点指示` へ戻る（測定：escfz_B_77） */
         return 1;
     }
     /* 寸法 ⑧値変 の段 8（欄を打っている途中）の [ESC]：打ちかけを捨てて
@@ -19475,6 +19477,13 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->typing = 0;
         c->box_ask = 0;
         box_unhold(c);
+        return 1;
+    }
+    if (c->command == 4 && c->box_ask == 1 && c->typing && c->typed_n) {
+        /* 数を打ちかけの欄での押しは、打った数を消すだけ（測定のみ・decomp 未確認：escfz_B_77）。 */
+        c->typed_n = 0;
+        c->typed[0] = 0;
+        c->box_keep_off = 1;
         return 1;
     }
     if (c->command == 4 && c->box_ask && c->typing) {

@@ -430,7 +430,13 @@ static void sync_ui(void)
     if ((cmd.command != 4 && cmd.command != 11) || !(cmd.command == 4 ? (cmd.box_ask || cmd.box_refask) : cmd.circ_ask)) {
         box_keep = 0;
     }
-    ui.keep_box_counts = cmd.command == 4 && cmd.box_ask
+    if (cmd.box_keep_off) {
+        box_keep = 0;
+        if (!cmd.box_ask) {
+            cmd.box_keep_off = 0;
+        }
+    }
+    ui.keep_box_counts = cmd.command == 4 && cmd.box_ask && !cmd.box_keep_off
                          && (cmd.box_fix || box_keep);
     /* □ ③平行 の基準線を聞く行でも数え箱は ` 横= / 縦=` のまま（測定：box_s1_c3）。 */
     if (cmd.command == 4 && cmd.box_refask && cmd.ref_miss >= 2) {
