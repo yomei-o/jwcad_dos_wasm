@@ -535,6 +535,7 @@ static void sync_ui(void)
     ui.chb = cmd.chb;
     ui.ch_bad = cmd.ch_bad;
     ui.circ_bad = cmd.circ_bad;
+    ui.ch_same = cmd.ch_same;
     ui.ch_side = cmd.ch_side;
     ui.div_real = cmd.div_real;
     ui.ld_ask = cmd.ld_ask;
@@ -4346,6 +4347,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * 0x6608 の 0x66a0〜0x672c が `[0xc22]` を見てメッセージ行を塗りつぶす。
      * 外れを再び立てるのはそのキーの処理）。以前は [ESC] だけで消していた。 */
     cmd.missed = 0;
+    cmd.ch_same = 0;
     lc_msg_was = cmd.lc_msg;
     cmd.lc_msg = 0;             /* 線変更の `線 変更` は次の鍵で消える（測定：linechg_s1_c4） */
     /* 点 ②距離の欄でも命令の頭文字の鍵は命令を替える（decomp：欄の読み 0xad:16d4 は [0x158] を立てて

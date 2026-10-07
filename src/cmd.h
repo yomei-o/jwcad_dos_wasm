@@ -656,6 +656,7 @@ typedef struct {
     double ell_px[2], ell_py[2];    /* 任意寸法の１点目・２点目 */
     int circ_bad;               /* ○ 半径欄：0 以下を断った（`データが不適当`。測定：escfz_E_91） */
     int off_cont;               /* 複線 ②連続 で足した線がある（[ESC] で一本戻って最初の行へ。測定：escfz_F_80） */
+    int ch_same;                /* 面取：同じ線をもう一度押した（`データが不適当`。測定：escfz_R_86） */
     int box_keep_off;           /* □ 寸法欄で打ちかけの押し：数え箱が戻る（測定：escfz_B_77） */
     int ref_miss;               /* □ ③平行：基準線の読み外れの数（二度目で数え箱が戻る。測定：box_s1_c3） */
     int ref_hold;               /* □ ③平行：始点を持ったまま基準線を聞いている（測定：box_s1_c3） */

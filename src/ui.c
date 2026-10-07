@@ -539,6 +539,9 @@ void jw_ui_band_end(VGA *v, const JwUi *s)
         jw_ui_text(v, 25, 2, 7, 0xffffu, s->zukei_disp ? "\x90}\x8c`" : "\xcc\xa7\xb2\xd9");
         jw_ui_text(v, 48, 2, 7, 0xffffu, L2[s->zukei_layer % 3]);
     }
+    if (s->command == 8 && s->ch_same && s->stage == 1) {
+            jw_ui_text(v, 20, 2, 7, 0, "\x83" "f\x81[\x83^\x82\xaa\x95s\x93K\x93\x96");
+    }
     /* 面取【辺寸法】：角を作ったあとの行（段 2）でも `②【面寸法】` の 面 は 辺（測定：chamfer_s0_c2）。 */
     if (s->command == 8 && s->ch_side && !s->chb && !s->top_item && (s->stage == 0 || s->stage == 2)) {
         jw_ui_text(v, 45, 1, 7, 0, "\x95\xd3");
@@ -3746,7 +3749,7 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         char one[32];
 
         /* 桁 6 は BEL ではなく `.`（測定：chamfer_s0_c2_v の 2x2 の点）。 */
-        jw_ui_text(v, 1, 1, 7, 0, "[ESC].\x90\xa1\x96@ =");
+        jw_ui_text(v, 1, 1, 7, 0, (s->chamfer == 1 || s->chamfer == 3) ? "[ESC].\x94\xbc\x8c" "a =" : "[ESC].\x90\xa1\x96@ =");
         jw_ui_text(v, 38, 1, 7, 0, "\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) ");
         sprintf(one, "[%10.3f", s->gap_chamfer);
         jw_ui_text(v, 56, 1, 7, 0, one);

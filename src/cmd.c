@@ -5106,8 +5106,10 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         return 0;
     }
 range_items:
-    if (c->command == 8 && item == 3 && c->pick_a < 0 && !c->ch_ask
-        && c->chamfer == 0) {
+    if (c->command == 8 && !c->chb && c->pick_a < 0 && !c->ch_ask
+        && ((item == 3 && c->chamfer == 0) || (item == 2 && (c->chamfer == 1 || c->chamfer == 3)))) {
+        /* 丸面・楕円面 では ② が 半径= の欄（測定のみ・decomp 未確認：escfz_R_85。ui は
+         * chamfer で `半径 =` に変える）。 */
         c->ch_ask = 1;
         c->typing = 1;
         c->typed[0] = 0;
@@ -18095,6 +18097,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;
         }
         c->missed = 0;
+        c->ch_same = 0;
         /* The line above carries the chamfer length, so it has to be in the
          * numbers the chrome fills in (src/stage.h's `③寸法=%*.*f`). */
         c->num[0] = c->gap_chamfer;
@@ -18112,9 +18115,13 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 1;
             return 1;
         }
-        if (k != c->pick_a) {
-            chamfer(c, d, w, c->pick_a, k, sx, sy);
+        if (k == c->pick_a) {
+            /* 同じ線をもう一度：`データが不適当` で、最初の線を持ったまま（測定のみ・
+             * decomp 未確認：escfz_R_86）。 */
+            c->ch_same = 1;
+            return 1;
         }
+        chamfer(c, d, w, c->pick_a, k, sx, sy);
         c->pick_a = -1;
         c->stage = 2;
         return 1;
