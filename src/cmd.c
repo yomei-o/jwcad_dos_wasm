@@ -8102,6 +8102,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
     }
+    /* 文編集 で項目の行（top_item≠0）の [BS] は最初の行へ（測定のみ・decomp 未確認：escfz_a_61〜66）。 */
+    if (c->command == 28 && key == 8 && c->top_item && !c->typing && !c->typing_text && !c->te_sub
+        && c->stage == 0 && !c->te5) {
+        c->top_item = 0;
+        return 1;
+    }
     /* ⑦連線 の始点の行の [ESC] は行 2 の `45度毎 マウス` の札を消すだけ（測定のみ・decomp 未確認：
      * escfz_r_20）。①角度 を押すと戻る。 */
     if (key == 27 && c->command == 23 && c->poly && c->poly_n == 0 && !c->poly_esc) {
