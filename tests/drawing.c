@@ -453,6 +453,15 @@ int main(int argc, char **argv)
         s.meas_last = c.meas_last;
         s.temp_left = JWC_TEMP_MAX - (d ? d->n_temp : 0);
         s.typing_text = c.typing_text;
+        /* 文字基準点 の盤（te_sub==1、ovl15 3ab8:0d67 共有）。src/main_wasm.c の
+         * sync_ui と同じ組。 */
+        s.te_sub = c.te_sub;
+        s.te_bh = c.te_bh;
+        s.te_bv = c.te_bv;
+        s.te_panel = c.te_panel;
+        memcpy(s.te_off_h, c.te_off_h, sizeof s.te_off_h);
+        memcpy(s.te_off_v, c.te_off_v, sizeof s.te_off_v);
+        s.te_off_ask = c.te_off_ask;
         if (command) {
             /* the line of guidance goes the moment anything is picked */
             s.guide = 0;

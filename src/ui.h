@@ -367,6 +367,8 @@ typedef struct {
     int ld_ask;
     int te_sub, te_bh, te_bv, te_panel, te_esc, te_plain, te6_layer, te6_hv, te5;
     int te5_ask;
+    float te_off_h[3], te_off_v[3]; /* 文字基準点 の ③横位置・⑤縦位置（ずれ位置 mm） */
+    int te_off_ask;
     int fep;
     int tx_plain;
     int tx_doc;

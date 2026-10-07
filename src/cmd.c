@@ -6596,7 +6596,11 @@ void jw_cmd_zukei_put(JwCmd *c, const Jwc *d)
  * `文字基準点|① 確 定 |②横【左】|③横位置  0.0 |④縦【下】|⑤縦位置  0.0 |`
  * の盤で、② は 左→中→右、④ は 下→中→上 と回り、① で【変更】の行に戻る
  * （行の 基点（左下） が 基点（右中） などに変わる。測定：steps_table
- * `28 400 140 t 1 t 2 t 2 t 4 t 1`）。③・⑤ の欄はまだ。 */
+ * `28 400 140 t 1 t 2 t 2 t 4 t 1`）。2026-10-08：③・⑤ の「ずれ位置」欄
+ * （ovl15 3ab8:0d67、全 986 バイト、tools/altlift.py で読んだ。文字基準点
+ * の盤は 文字 ④設定②・文編集 ①基点・複写移動 の①基点 から共有で入る）を
+ * 実装した。te_bh/te_bv ごとに mm を覚え（既定 0.0、上限 ±50.0 は同関数の
+ * DS:[0x9b64]=50.0f）、欄の鍵は jw_cmd_key の te_off_ask 節へ。 */
 int jw_cmd_te_digit(JwCmd *c, int n)
 {
     /* ⑤位置整理：追加･除外 の段の ① は 範囲確定 で 始点指示 の段へ
@@ -6647,6 +6651,14 @@ int jw_cmd_te_digit(JwCmd *c, int n)
         } else if (n == 4) {
             c->te_bv = (c->te_bv + 1) % 3;
             c->te_panel = 1;
+        } else if (n == 3 || n == 5) {
+            /* ③横位置・⑤縦位置：ずれ位置 mm の欄を開く（ovl15 3ab8:0d67、
+             * local_126==3/5 の枝。入力は空のまま [Enter]/[ESC] なら今の値の
+             * まま、|値|>50.0（DS:0x9b64）は捨てて欄を開いたまま）。 */
+            c->te_off_ask = n;
+            c->typing = 1;
+            c->typed_n = 0;
+            c->typed[0] = 0;
         }
         return 1;
     }
@@ -7759,7 +7771,8 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
              * src/typed.h, stage 2. */
             if (d && c->edit_text >= 0 && c->edit_text < d->n_texts) {
                 jwc_edit_text_at(d, c->edit_text, c->typed,
-                                 c->te_bh, c->te_bv);
+                                 c->te_bh, c->te_bv,
+                                 c->te_off_h[c->te_bh], c->te_off_v[c->te_bv]);
             }
             c->typing_text = 0;
             c->pressed = 0;
@@ -8505,6 +8518,49 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 }
             }
             c->te5_ask = 0;
+            c->typing = 0;
+            c->typed_n = 0;
+            c->typed[0] = 0;
+            return 1;
+        }
+        if (key == 8) {
+            if (c->typed_n > 0) {
+                c->typed[--c->typed_n] = 0;
+            }
+            return 1;
+        }
+        if (FIELD_CHAR(key) && FIELD_ROOM(c)) {
+            c->typed[c->typed_n++] = (char)key;
+            c->typed[c->typed_n] = 0;
+        }
+        return 1;
+    }
+    /* 文字基準点 の盤 ③横位置・⑤縦位置：ずれ位置 mm の欄（ovl15 3ab8:0d67、
+     * 文字・文編集 どちらからも共有）。空のまま [Enter]/[ESC] は今の値の
+     * まま欄を閉じる。|値|>50.0（同関数の DS:[0x9b64]=50.0f）は捨てて欄を
+     * 開いたまま（02bc7e の `jbe` が外れると 0x2bb84 へ戻って同じ欄を
+     * もう一度描き直す）。 */
+    if ((c->command == 28 || c->command == 13) && c->te_off_ask) {
+        const int which = c->te_off_ask;
+
+        if (key == 27 || key == 13 || key == 10) {
+            c->typed[c->typed_n] = 0;
+            if (key != 27 && c->typed_n) {
+                const double v = field_eval(c->typed);
+
+                if (v >= -50.0 && v <= 50.0) {
+                    if (which == 3) {
+                        c->te_off_h[c->te_bh] = (float)v;
+                    } else {
+                        c->te_off_v[c->te_bv] = (float)v;
+                    }
+                } else {
+                    c->typed_n = 0;
+                    c->typed[0] = 0;
+                    return 1;
+                }
+            }
+            c->te_off_ask = 0;
             c->typing = 0;
             c->typed_n = 0;
             c->typed[0] = 0;
@@ -18969,7 +19025,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 return 1;
             }
             jwc_move_text(d, c->te_pick, px, py, c->top_item == 3,
-                          c->te_bh, c->te_bv);
+                          c->te_bh, c->te_bv,
+                          c->te_off_h[c->te_bh], c->te_off_v[c->te_bv]);
             c->te_pick = -1;
             c->te_esc = 1;
             return 1;

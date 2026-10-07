@@ -553,6 +553,9 @@ static void sync_ui(void)
     ui.te_bh = cmd.te_bh;
     ui.te_bv = cmd.te_bv;
     ui.te_panel = cmd.te_panel;
+    memcpy(ui.te_off_h, cmd.te_off_h, sizeof ui.te_off_h);
+    memcpy(ui.te_off_v, cmd.te_off_v, sizeof ui.te_off_v);
+    ui.te_off_ask = cmd.te_off_ask;
     ui.te_pick = cmd.te_pick + 1;      /* 0 は無し（jw_ui_from が 0 にする） */
     ui.te_esc = cmd.te_esc;
     ui.te_plain = cmd.te_plain;
@@ -1908,11 +1911,13 @@ EMSCRIPTEN_KEEPALIVE const char *jw_cmd_state(void)
     snprintf(buf, sizeof buf,
              "cmd=%d stage=%d pressed=%d typing=%d fix_mode=%d fix_done=%d "
              "fix_len=%d fix_angle=%d ask_kind=%d top_item=%d box_ask=%d "
-             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g chb=%d cham=%d hn=%d h0=%d miss=%d lc=%d/%d zk=%d uitop=%d uistage=%d uiesc=%d noind=%d m5=%d um5=%d m5s=%d nl=%d unl=%d d8=%d mirror=%d rotate=%d scaling=%d mscale=%d attrg=%d attrl=%d attrp=%d attrt=%d te_dir=%d cutting=%d stbase=%d",
+             "box_fix=%d circ_fix=%d base=%.17g,%.17g step=%.17g,%.17g ang=%g chb=%d cham=%d hn=%d h0=%d miss=%d lc=%d/%d zk=%d uitop=%d uistage=%d uiesc=%d noind=%d m5=%d um5=%d m5s=%d nl=%d unl=%d d8=%d mirror=%d rotate=%d scaling=%d mscale=%d attrg=%d attrl=%d attrp=%d attrt=%d te_dir=%d cutting=%d stbase=%d te_sub=%d te_bh=%d te_bv=%d te_off_ask=%d te_off_h=%g te_off_v=%g",
              cmd.command, cmd.stage, cmd.pressed, cmd.typing, cmd.fix_mode,
              cmd.fix_done, cmd.fix_len, cmd.fix_angle, cmd.ask_kind,
              cmd.top_item, cmd.box_ask, cmd.box_fix, cmd.circ_fix,
-             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer, cmd.hatch_n, cmd.hatch_line[0], cmd.missed, cmd.lc_range, cmd.lc_narrow, cmd.zukei, ui.top_item, ui.stage, ui.escaped, cmd.meas_noind, cmd.meas5, ui.meas5, cmd.meas5s, drawing ? (int)drawing->n_lines : -1, (int)ui.n_lines, cmd.ch_side | (cmd.ch_ask << 1) | (cmd.chb << 2), cmd.mirror, cmd.rotate, cmd.scaling, cmd.mscale, cmd.attr_group, cmd.attr_layer, cmd.attr_pen, cmd.attr_type, cmd.te_dir, cmd.cutting, cmd.st_base_mode);
+             cmd.base_x, cmd.base_y, cmd.step_x, cmd.step_y, cmd.text_ang, cmd.chb, cmd.chamfer, cmd.hatch_n, cmd.hatch_line[0], cmd.missed, cmd.lc_range, cmd.lc_narrow, cmd.zukei, ui.top_item, ui.stage, ui.escaped, cmd.meas_noind, cmd.meas5, ui.meas5, cmd.meas5s, drawing ? (int)drawing->n_lines : -1, (int)ui.n_lines, cmd.ch_side | (cmd.ch_ask << 1) | (cmd.chb << 2), cmd.mirror, cmd.rotate, cmd.scaling, cmd.mscale, cmd.attr_group, cmd.attr_layer, cmd.attr_pen, cmd.attr_type, cmd.te_dir, cmd.cutting, cmd.st_base_mode,
+             cmd.te_sub, cmd.te_bh, cmd.te_bv, cmd.te_off_ask,
+             (double)cmd.te_off_h[cmd.te_bh], (double)cmd.te_off_v[cmd.te_bv]);
     return buf;
 }
 EMSCRIPTEN_KEEPALIVE int jw_top_item(int x, int y) { return jw_ui_top_item(x, y); }

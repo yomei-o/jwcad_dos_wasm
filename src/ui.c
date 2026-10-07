@@ -3618,6 +3618,24 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                        "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
                        "\x5b" "\x83" "\x5e" "\x96" "\xb3");
         }
+    } else if ((s->command == 28 || s->command == 13) && s->te_off_ask) {
+        /* 文字基準点 の盤 ③横位置・⑤縦位置：ずれ位置 mm の欄（ovl15
+         * 3ab8:0d67、DS:0x3fbf=" 確 定 "・0x3fc7="ずれ位置 "・0x3fd1=" ="、
+         * tools/altlift.py で読んだ。桁は測定していない——文言のみ decomp
+         * 照合済み）。 */
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0,
+                   "\x82\xb8\x82\xea\x88\xca\x92u");   /* ずれ位置 */
+        jw_ui_text(v, 17, 1, 7, 0, " =");
+        jw_ui_text(v, 60, 1, 7, 0, "\x90}\x96\xca\x90\xa1\x96@(mm)");
+        if (s->typed_n > 0) {
+            char t[96];
+
+            memcpy(t, s->typed, 95);
+            t[s->typed_n < 95 ? s->typed_n : 95] = 0;
+            jw_ui_text(v, 20, 1, 7, 0, t);
+        }
+        fill(v, 177 + s->typed_n * 8, 7, 184 + s->typed_n * 8, 15, 4);
     } else if ((s->command == 28 || s->command == 13) && s->te_sub == 1) {
         /* 文編集【変更】①基点 の盤（測定：steps_table 28 400 140 t 1 …）。 */
         static const char *const hz[3] = { "\x8d\xb6", "\x92\x86", "\x89\x45" };
@@ -3625,7 +3643,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
         char one[120];
 
         sprintf(one, "\x95\xb6\x8e\x9a\x8a\xee\x8f\x80\x93_|\x87@ \x8am \x92\xe8 |\x87" "A\x89\xa1\x81y%s\x81z|\x87" "B\x89\xa1\x88\xca\x92u%5.1f |\x87" "C\x8f" "c\x81y%s\x81z|\x87" "D\x8f" "c\x88\xca\x92u%5.1f |",
-                hz[s->te_bh], 0.0, vt[s->te_bv], 0.0);
+                hz[s->te_bh], (double)s->te_off_h[s->te_bh], vt[s->te_bv],
+                (double)s->te_off_v[s->te_bv]);
         jw_ui_text(v, 8, 1, 7, 0, one);
         /* ② か ④ を押すと左の盤が `ﾍﾟﾝ2 基点 中下` / `横 3.0 縦 3.0` に
          * なる（測定：tools/cases/probe_textedit.txt te_f・te_g）。 */

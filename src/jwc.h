@@ -425,9 +425,10 @@ int jwc_set_text(Jwc *d, long k, const char *str, unsigned char size);
 /* 文編集: a new string on the text at `k`.  The record goes to the back and
  * its baseline gets a new far end; see jwc.c. */
 int jwc_edit_text(Jwc *d, long k, const char *str);
-int jwc_edit_text_at(Jwc *d, long k, const char *str, int hb, int vb);
+int jwc_edit_text_at(Jwc *d, long k, const char *str, int hb, int vb,
+                     float offh, float offv);
 int jwc_move_text(Jwc *d, long k, double px, double py, int copy, int hb,
-                  int vb);
+                  int vb, float offh, float offv);
 int jwc_retype_text(Jwc *d, long k, int size, int layer, int hv);
 int jwc_requeue_text(Jwc *d, long k, float x0, float y0, float x1, float y1);
 

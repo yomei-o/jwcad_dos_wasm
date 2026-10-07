@@ -2079,7 +2079,7 @@ int jwc_set_text(Jwc *d, long k, const char *str, unsigned char size)
 
 int jwc_edit_text(Jwc *d, long k, const char *str)
 {
-    return jwc_edit_text_at(d, k, str, 0, 0);
+    return jwc_edit_text_at(d, k, str, 0, 0, 0.0f, 0.0f);
 }
 
 /* 本物の文編集の置き直し（ovl15 3ab8:08b3）。2 点の座標系（1bb4:27ea：
@@ -2113,14 +2113,20 @@ static float ed_y(const EdFrame *f, float t, float v)
 }
 
 static void ed_place(float r[4], double s, float px, float py, int hb,
-                     int vb, float h, EdFrame *out)
+                     int vb, float h, float offh, float offv, EdFrame *out)
 {
     EdFrame f = ed_frame(r[0], r[1], r[2], r[3]);
     float t = 0.0f, v = 0.0f, t2;
 
     f.ox = px;
     f.oy = py;
-    /* 横位置・縦位置（盤の ③・⑤）は 0 のまま（表 [0x10b2]・[0x10be]）。 */
+    /* 横位置・縦位置（盤の ③・⑤、表 [0x10b2]・[0x10be]）：offh/offv は mm の
+     * ずれ位置（既定 0.0）。s と同じ向きで足す（基点の裏返し（-1→+1 の
+     * 2 回呼び）でも向きが保たれるよう、既存の hb/vb 項と同じ掛け方に
+     * した——この符号の組み合わせは decomp の 08b3 本体までは未確認、
+     * 測定のみ）。 */
+    t = (float)((double)t + (double)offh * s);
+    v = (float)((double)v + (double)offv * s);
     if (hb == 1) {
         t = (float)((double)f.len * -0.5 * s + t);
     } else if (hb == 2) {
@@ -2197,7 +2203,8 @@ double jwc_ed_text_length(const Jwc *d, const char *str, unsigned char size,
  * 6 例（左・中・右 × 字数）で本物と float のビットまで一致（tools/cases/
  * probe_textedit.txt te_h〜te_n）。縦の中・上は式どおりで角度 0 では
  * 位置に効かない。斜めの字・縦書き・`^` の制御列は測っていない。 */
-int jwc_edit_text_at(Jwc *d, long k, const char *str, int hb, int vb)
+int jwc_edit_text_at(Jwc *d, long k, const char *str, int hb, int vb,
+                     float offh, float offv)
 {
     JwcText was;
     long off, gone, m;
@@ -2220,17 +2227,25 @@ int jwc_edit_text_at(Jwc *d, long k, const char *str, int hb, int vb)
         h = (float)((double)(float)d->text_h[sz] / b4a2 * 0.1);
         L = ed_length(d, str, was.size, b4a2, (was.rest[2] & 0x20) != 0);
     }
+    /* offh/offv（盤 ③横位置・⑤縦位置）は、基点 P を求める 2 回（s=-1）には
+     * 足さず、P から新しい始点を出す最後の 1 回（s=+1）にだけ足す。両方に
+     * 同じ値を足すと s の和が 0 になって打ち消し合い、画面上は何も動かない
+     * ことをこのポートの単体確認で踏んだ（tmp_offtest.c、hb=0/1 とも offh=10
+     * で x0 が変わらなかった）——jwc_move_text の単発呼びでは offh がそのまま
+     * 効く（310 vs 300）のとの対比から、P 自体はずれ位置を持たない「真の
+     * 基点」であるべきという読みにした（decomp の 08b3 本体はこの 3 回の
+     * 呼び分けまでは未確認、測定のみ）。 */
     r1[0] = was.x0; r1[1] = was.y0; r1[2] = was.x1; r1[3] = was.y1;
-    ed_place(r1, -1.0, was.x0, was.y0, hb, vb, h, 0);
+    ed_place(r1, -1.0, was.x0, was.y0, hb, vb, h, 0.0f, 0.0f, 0);
     memcpy(r2, r1, sizeof r2);
-    ed_place(r2, -1.0, r1[0], r1[1], hb, vb, h, &f2);
+    ed_place(r2, -1.0, r1[0], r1[1], hb, vb, h, 0.0f, 0.0f, &f2);
     px = f2.ox;
     py = f2.oy;
     r3[0] = r2[0];
     r3[1] = r2[1];
     r3[2] = f2.co * L + r2[0];
     r3[3] = f2.si * L + r2[1];
-    ed_place(r3, 1.0, px, py, hb, vb, h, 0);
+    ed_place(r3, 1.0, px, py, hb, vb, h, offh, offv, 0);
     f4 = ed_frame(r3[0], r3[1], r3[2], r3[3]);
 
     off = was.text ? (long)(was.text - d->text) : 0;
@@ -2270,15 +2285,18 @@ int jwc_edit_text_at(Jwc *d, long k, const char *str, int hb, int vb)
  * 1 行ずつの突き合わせはまだ）。hb=vb=0（左下）は旧実装と同じ式になるので
  * 測定済みのまま（tmp/te3.txt te2a・te3a、SAMPLE0 の `Ｈ７－Ａ００１` を
  * (300,300) へ）。hb/vb が 1・2 のときの実機確認はまだ（decomp 読みのみ・
- * 実機未確認）。横位置・縦位置の表 DS:[0x10b2]・[0x10be] は ed_place と
- * 同じく 0 のまま（①書き換えと共通の未実装分）。軸ロック・角度指定・float
- * の積み方（旧レコードとの差を足し直す）は未実装のまま。
+ * 実機未確認）。2026-10-08：横位置・縦位置の表 DS:[0x10b2]・[0x10be]
+ * （盤 ③横位置・⑤縦位置、cmd.c の te_off_h/te_off_v、既定 0.0、
+ * |値|<=50.0＝同関数 DS:[0x9b64]）を offh/offv として ed_place に足した
+ * （s と同じ掛け方——decomp の 08b3 本体でどう足しているかまでは未確認、
+ * 測定のみ）。軸ロック・角度指定・float の積み方（旧レコードとの差を
+ * 足し直す）は未実装のまま。
  *
  * 複写のレイヤは書込レイヤ（02f02f: `mov al,[0xb310]` は param_10＝複写
  * フラグ（bp+0x18）が非 0 の分岐の中だけで読まれると確認。移動側
  * （param_10==0、0x2f346 へ）はこの読みを通らない）。 */
 int jwc_move_text(Jwc *d, long k, double px, double py, int copy, int hb,
-                  int vb)
+                  int vb, float offh, float offv)
 {
     JwcText was;
     EdFrame dirf;
@@ -2303,7 +2321,7 @@ int jwc_move_text(Jwc *d, long k, double px, double py, int copy, int hb,
     r[1] = was.y0;
     r[2] = ed_x(&dirf, L, 0.0f);
     r[3] = ed_y(&dirf, L, 0.0f);
-    ed_place(r, 1.0, (float)px, (float)py, hb, vb, h, 0);
+    ed_place(r, 1.0, (float)px, (float)py, hb, vb, h, offh, offv, 0);
     if (copy) {
         JwcText *t;
         char str[256];
