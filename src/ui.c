@@ -5186,6 +5186,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 if (r->row == 25 || r->row == 30 || r->row == 0) {
                     continue;
                 }
+                if (s->command == 27 && s->top_item == 4 && s->zukei_cell > 0
+                    && ((r->row == 2 && r->col == 18) || (r->row == 5 && r->col == 20))) {
+                    continue;           /* 選んだ升は自前で描く */
+                }
                 /* 点【実点】：升の無い数字・[ESC] のあとは行 2 の `F1～F6` の札だけ消える（測定：vq2・escfz_v_15）。 */
                 if (s->command == 22 && s->pt_plain && r->row == 2) {
                     continue;
@@ -5629,6 +5633,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * the bottom (`描画中断`, kept in src/item.h as a row-0 marker),
          * and their screens have neither the full stop at row 24 nor the
          * 登録図形がありません line that ③表示's keeps. */
+        /* 図形 ⑤削除（登録図形が無いとき）は図面の領域を空にして描き直す（測定のみ：zukei_s0_c5）。 */
+        if (s->command == 27 && ((s->top_item == 5 && !s->zukei) || s->zukei_blank)) {
+            fill(v, 122, 48, 638, 383, 0);
+        }
         if (s->command == 27 && (s->again || s->top_item == 2) && s->top_item) {
             const JwItem *r;
 
@@ -5766,6 +5774,26 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             }
             for (k = 0; k <= 5; k++) {
                 fill(v, 144 + k * 96, 56, 144 + k * 96, 376, 7);
+            }
+            if (s->command == 27 && s->top_item == 4 && !s->zukei && s->zukei_cell > 0) {
+                char nm[24];
+
+                sprintf(nm, "A:ZUKEI_%d", s->zukei_cell + 1);
+                jw_ui_text(v, 18, 2, 7, 0, nm);
+            }
+            /* ④グループ変更：登録図形の枠（5×10）は空なら `--`。左上だけ白地に黒字（測定：zukei_s0_c4）。 */
+            if (s->command == 27 && s->top_item == 4 && !s->zukei) {
+                int r, c;
+
+                for (r = 0; r < 10; r++) {
+                    for (c = 0; c < 5; c++) {
+                        if (r * 5 + c == s->zukei_cell) {
+                            jw_ui_text(v, 20 + 12 * c, 5 + 2 * r, 7, 0xffffu, "   --     ");
+                        } else {
+                            jw_ui_text(v, 23 + 12 * c, 5 + 2 * r, 7, 0, "--");
+                        }
+                    }
+                }
             }
         }
         /* Then what the command has written since, stage by stage, because a

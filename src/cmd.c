@@ -5866,6 +5866,13 @@ range_items:
         }
         return 0;
     }
+    if (c->command == 27 && !c->zukei && c->pressed == 0 && c->stage == 0) {
+        if (item == 5) {
+            c->zukei_blank = c->zukei_n == 0;       /* 登録図形なしで ④⑤ を選ぶと図面の領域が空（測定：zukei_s0_c5） */
+        } else if (item == 1 || item == 2) {
+            c->zukei_blank = 0;
+        }
+    }
     /* 図形 ①登録 -- the same range 複写 takes, and then a base point and a
      * name.  src/zukei.h holds the line at each step. */
     if (c->command == 27 && c->pressed == 0 && c->stage == 0 && item == 1
@@ -8126,13 +8133,19 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->top_item = 0;
         return 1;
     }
+    /* 図形 ④グループ変更 の枠の [ESC] は最初の行へ（測定のみ：zukei_s0_c4）。 */
+    if (key == 27 && c->command == 27 && c->top_item == 4 && !c->zukei && !c->pressed) {
+        c->top_item = 0;
+        c->top_right = 0;
+        return 1;
+    }
     if (c->command == 27 && c->zukei_plain && (key == 13 || key == 10 || key == 27)) {
         c->zukei_plain = 0;         /* [Enter]・[ESC] で札が戻る（測定のみ：zukei_s0_c6_v・c1_v） */
         return 1;
     }
     /* 図形 の最初の行の升の無い数字（0・9）は行 2 の札を消す（測定のみ：zukei_s0_c6_v）。 */
     if (c->command == 27 && c->stage == 0 && !c->typing && !c->top_item && !c->zukei
-        && (key == '0' || key == '9')) {
+        && key == '0') {
         c->zukei_plain = 1;
         return 1;
     }
@@ -18898,7 +18911,18 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             }
             return 1;
         }
+        if (c->command == 27 && !c->zukei && !c->pressed && c->top_item == 4) {
+            /* ④グループ変更：枠の升を押すとその升が選ばれる（測定：zukei_s0_c4）。 */
+            if (sx >= 144 && sx < 624 && sy >= 56 && sy < 376) {
+                c->zukei_cell = (sy - 56) / 32 * 5 + (sx - 144) / 96;
+            }
+            return 1;
+        }
         if (c->command == 27 && !c->zukei && !c->pressed) {
+            if (c->zukei_blank && (c->top_item == 4 || c->top_item == 5)) {
+                c->top_item = 0;
+                c->top_right = 0;
+            }
             if (right) {
                 if (c->zukei_n == 0) {
                     c->again = 1;

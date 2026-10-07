@@ -535,6 +535,8 @@ static void sync_ui(void)
     ui.chb = cmd.chb;
     ui.ch_bad = cmd.ch_bad;
     ui.circ_bad = cmd.circ_bad;
+    ui.zukei_cell = cmd.zukei_cell;
+    ui.zukei_blank = cmd.zukei_blank;
     ui.zukei_plain = cmd.zukei_plain;
     ui.poly_esc = cmd.poly_esc;
     ui.pt_delall = cmd.pt_delall;
@@ -5172,6 +5174,10 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         && (cmd.pressed == 0 || cmd.pressed == 2) && !cmd.te5
         && !(JW_MOVE_CMD(cmd.command) && cmd.stage >= 4)) {      /* 複写・移動 の 位置を聞く段などでは [Enter] は何もしない（測定：escfz_c_2） */
         key = '1';
+    }
+    /* 図形 の最初の行の [9] は何もしない（測定のみ：zukei_s0_c9。<他図面> の升は鍵では選べない）。 */
+    if (cmd.command == 27 && key == '9' && !cmd.typing && !cmd.zukei && !cmd.top_item && !cmd.pressed) {
+        return 0;
     }
     if (cmd.command && key >= '1' && key <= '9' && !cmd.typing
         && !cmd.typing_text) {
