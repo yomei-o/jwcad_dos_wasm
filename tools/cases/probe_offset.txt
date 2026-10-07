@@ -3,3 +3,5 @@ o_h2|SAMPLE0|90 136 left|type 5|162 250 left|598 300 right|162 250 left|598 300 
 o_h3|SAMPLE0|90 136 left|type 5|type 30|key enter|162 250 left|598 300 right|162 250 left
 o_h4|SAMPLE0|90 136 left|162 250 left|300 250 left|162 250 left
 o_c1|SAMPLE0|90 136 left|400 140 left|type 1|300 250 left|162 250 left|598 300 right|350 350 left
+off_esc_first|SAMPLE0|90 136 left|400 140 left|type 20|key enter|300 250 left|key esc
+off_esc_cont|SAMPLE0|90 136 left|400 140 left|type 20|key enter|300 250 left|type 2|key esc|key esc

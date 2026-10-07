@@ -1,0 +1,2 @@
+tan_esc_stepback|SAMPLE0|30 232 left|type 3|type 3|300 200 left|400 140 left|key esc|key esc
+tan_radius_back|SAMPLE0|30 232 left|type 2|type 4|400 140 left|type 1|type 50|key esc|162 250 left
