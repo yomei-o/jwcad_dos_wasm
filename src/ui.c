@@ -4048,6 +4048,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 20, 1, 7, 0, t);
         }
         fill(v, 152 + s->typed_n * 8, 7, 159 + s->typed_n * 8, 15, 4);
+        if (s->circ_bad) {
+            jw_ui_text(v, 20, 2, 7, 0, "\x83" "f\x81[\x83^\x82\xaa\x95s\x93K\x93\x96");
+        }
     } else if (s->command == 30 && s->saved_done) {
         /* Straight after ① 実 行: the original goes back to 入出力's own
          * line with the mark at column 6, and leaves ` 登 録  完 了 ` on

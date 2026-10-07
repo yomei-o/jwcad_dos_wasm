@@ -600,6 +600,7 @@ typedef struct {
     int lc_keyed;
     int esc_gone;
     int ell_mouse;
+    int circ_bad;
     int zukei_disp, zukei_layer;
     int lc_attr;
     int dim8_plain;

@@ -8234,11 +8234,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             || (c->command == 12 && c->arc_ask))) {
         /* □・○ は 2 点で描く `始点指示 … [BS]前項` へ（測定：□ で 60,40
          * を打って [ESC] → 2 点の四角、そのあと `確定寸法=`。○ も同じ）。 */
-        if (c->command == 4 && c->box_ask) {
+        /* 何も打っていない欄の [ESC] は 2 点描きにならず、ただ欄を閉じる
+         * （測定のみ・decomp 未確認：escfz_E_91。□ の escfz_B_77 は 0 を打った後で 2 点描き）。 */
+        if (c->command == 4 && c->box_ask && (c->typed_n || c->circ_hold)) {
             c->box_mode = 1;
             c->box_fix = 0;
         }
-        if (c->command == 11 && c->circ_ask) {
+        if (c->command == 11 && c->circ_ask && (c->typed_n || c->circ_hold)) {
             c->circ_mode = 1;
             c->circ_fix = 0;
         }
@@ -8899,6 +8901,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             /* 何も打たずに [Enter] は前の半径、0 以下は受けない（測定）。 */
             double r = c->circ_r;
 
+            c->circ_bad = 0;
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
                 r = (float)field_eval(c->typed);
@@ -8906,6 +8909,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             if (r <= 0.0) {
                 c->typed[0] = 0;
                 c->typed_n = 0;
+                c->circ_bad = 1;
                 return 1;
             }
             c->circ_r = r;
@@ -19409,7 +19413,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         && c->command != 11) {
         return 0;               /* ＋ line on an axis, ／ line, □ box, ○ circle */
     }
+    if (c->command == 11 && c->circ_ask && c->typing && c->typed_n) {
+        /* 打ちかけの数があれば押しは [Enter] と同じ（測定のみ・decomp 未確認：escfz_E_91）。 */
+        jw_cmd_key(c, d, 13);
+        if (!c->circ_ask) {
+            box_unhold(c);
+        }
+        return 1;
+    }
     if (c->command == 11 && c->circ_ask && c->typing) {
+        c->circ_bad = 0;
         /* 欄の `任意寸法ﾏｳｽ(L)`・`前回と同じ ﾏｳｽ(R)`。L は 2 点で描く
          * `○ 円中心点 マウス指示 … [BS]前項` になる（測定）。 */
         c->circ_fix = right ? 1 : 0;
