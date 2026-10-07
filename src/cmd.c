@@ -55,6 +55,12 @@ void jw_cmd_pick(JwCmd *c, int command)
     c->off_prev_copy = -1;
     /* 面取's `③寸法= 30.000`, which is where the original starts. */
     c->gap_chamfer = 30.0;
+    /* 面取 丸面・楕円面 ②半径=・Ｌ面 ②(A),(B)辺= start the same way (the
+     * template line in src/ui.c shows them pre-filled with 30.000); 楕円面
+     * ③偏平率 starts at 自動 (0), from memset above. */
+    c->ch_radius = 30.0;
+    c->ch_a = 30.0;
+    c->ch_b = 30.0;
     /* ２線's `①基準線からの間隔＝ 75.000 , 75.000 (mm)`, likewise. */
     c->gap_two[0] = c->gap_two[1] = 75.0;
     /* 分割's `[2]`, the count it offers as 前回と同じ. */
@@ -5123,8 +5129,32 @@ range_items:
     if (c->command == 8 && !c->chb && c->pick_a < 0 && !c->ch_ask
         && ((item == 3 && c->chamfer == 0) || (item == 2 && (c->chamfer == 1 || c->chamfer == 3)))) {
         /* 丸面・楕円面 では ② が 半径= の欄（decomp 照合済み（調査担当が dis で確認）：escfz_R_85。ui は
-         * chamfer で `半径 =` に変える）。 */
+         * chamfer で `半径 =` に変える）。丸面・楕円面 は同じ記憶（DS:0x1042、notes/chamfer-decomp.md）。 */
         c->ch_ask = 1;
+        c->ch_ask_flat = 0;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 1;
+    }
+    /* Ｌ面 では ② が `(A),(B)辺=` の二値欄（DS:0x1046/0x104a、1 回の入力で
+     * コンマ区切りの 2 値。decomp ovl4 0x2e39f〜0x2e3cc, root ad:1305 の
+     * numin2 の field type==2、書式は root ad:1e8e/1ef8 `[%10.3f` → `,%10.3f`）。 */
+    if (c->command == 8 && !c->chb && c->pick_a < 0 && !c->ch_ask
+        && item == 2 && c->chamfer == 2) {
+        c->ch_ask = 1;
+        c->ch_ask_flat = 0;
+        c->typing = 1;
+        c->typed[0] = 0;
+        c->typed_n = 0;
+        return 1;
+    }
+    /* 楕円面 の ③ は偏平率の欄（DS:0x28ba、半径とは別の記憶。decomp ovl4
+     * 0x2e409〜0x2e425）。 */
+    if (c->command == 8 && !c->chb && c->pick_a < 0 && !c->ch_ask
+        && item == 3 && c->chamfer == 3) {
+        c->ch_ask = 1;
+        c->ch_ask_flat = 1;
         c->typing = 1;
         c->typed[0] = 0;
         c->typed_n = 0;
@@ -8445,10 +8475,15 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         return 1;
     }
-    /* 面取 ③寸法= の欄の鍵。 */
+    /* 面取 の数値欄の鍵：③寸法=（角面）、②半径=（丸面・楕円面、共有記憶）、
+     * ②(A),(B)辺=（Ｌ面、コンマ区切り二値）、③偏平率=（楕円面）。検査範囲は
+     * notes/chamfer-decomp.md「数値欄」（decomp ovl4 0x2e32b 以降・一部は
+     * [bp-0x234] の field type を root ad:1305 numin2 に渡す所まで dis 確認、
+     * 丸面が逆Ｒ(負数)を許す点だけ角・Ｌ・楕円面と違う）。 */
     if (c->command == 8 && c->ch_ask) {
         if (key == 27) {
             c->ch_ask = 0;
+            c->ch_ask_flat = 0;
             c->typing = 0;
             c->typed_n = 0;
             return 1;
@@ -8457,20 +8492,75 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
-                const double v = field_eval(c->typed);
+                if (c->chamfer == 2) {
+                    /* Ｌ面：`a,b`（コンマが無ければ ２線 の間隔欄と同じく
+                     * 両方に同じ値 -- 二値欄のコンマの扱い自体は decomp 照合
+                     * 済みだが、コンマが無いときの規則は測定のみ・decomp未確認）。 */
+                    const char *comma = strchr(c->typed, ',');
+                    const double a = field_eval(c->typed);
+                    const double b = comma ? field_eval(comma + 1) : a;
 
-                if (v > 0.0) {
-                    c->gap_chamfer = v;
+                    if (!(a >= 0.1 && a < 100000.0 && b >= 0.1 && b < 100000.0)) {
+                        c->ch_bad = 1;
+                        c->typed_n = 0;
+                        c->typed[0] = 0;
+                        return 1;
+                    }
+                    c->ch_a = a;
+                    c->ch_b = b;
+                } else if (c->chamfer == 3 && c->ch_ask_flat) {
+                    /* 楕円面 ③偏平率：0.1 未満は検査なしで 0（自動）。それ以外は
+                     * 0.1≤v<100000 のあと変換（notes/chamfer-decomp.md 幾何節）。 */
+                    double v = field_eval(c->typed);
+
+                    if (v < 0.1) {
+                        c->ch_flat = 0.0;
+                    } else if (!(v < 100000.0)) {
+                        c->ch_bad = 1;
+                        c->typed_n = 0;
+                        c->typed[0] = 0;
+                        return 1;
+                    } else {
+                        if (v >= 1000.0) {
+                            v = 0.57735;
+                        } else if (v >= 10.0) {
+                            v = sin(v * (3.14159265358979323846 / 180.0));
+                        }
+                        v = fabs(v);
+                        if (v > 1.0) {
+                            v = 1.0;
+                        }
+                        v = trunc(10000.0 * v + 0.5) * 1e-4;
+                        c->ch_flat = v;
+                    }
                 } else {
-                    /* 0 以下は `データが不適当` と出して、欄は空で開いたまま
-                     * （測定：func_all chamfer_s0_c5_v で 0 [Enter]）。 */
-                    c->ch_bad = 1;
-                    c->typed_n = 0;
-                    c->typed[0] = 0;
-                    return 1;
+                    const double v = field_eval(c->typed);
+                    double lo = 0.1, hi = 100000.0;
+                    int ok;
+
+                    if (c->chamfer == 1) {
+                        /* 丸面：負は逆Ｒ（弧の中心が交点そのものになる）。 */
+                        ok = v > -10000.0 && v < hi && fabs(v) >= lo;
+                    } else {
+                        ok = v >= lo && v < hi;
+                    }
+                    if (!ok) {
+                        /* 範囲外は `データが不適当`、欄は空で開いたまま
+                         * （測定：func_all chamfer_s0_c5_v で 0 [Enter]）。 */
+                        c->ch_bad = 1;
+                        c->typed_n = 0;
+                        c->typed[0] = 0;
+                        return 1;
+                    }
+                    if (c->chamfer == 0) {
+                        c->gap_chamfer = v;
+                    } else {
+                        c->ch_radius = v;
+                    }
                 }
             }
             c->ch_ask = 0;
+            c->ch_ask_flat = 0;
             c->typing = 0;
             c->typed_n = 0;
             return 1;
@@ -10631,15 +10721,15 @@ static void two_lines(JwCmd *c, Jwc *d)
  * corner, where `back` is half the chamfer over the sine of half the angle
  * between the two kept directions -- the cut is isoceles, so that is what
  * makes it the length the top line says. */
+/* 面取【Ｌ面】・【楕円面】の幾何は notes/chamfer-decomp.md「幾何」節（decomp
+ * ovl4、数値欄は 0x2e3a6〜0x2e425）をそのまま写す。角面・丸面は元のまま。 */
 static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
                     int sx, int sy)
 {
     double cx, cy, pax, pay, pbx, pby;
-    double adx, ady, bdx, bdy, la, lb, half, back, sn;
-    float akx, aky, bkx, bky;
+    double adx, ady, bdx, bdy, la, lb, half, sn, cs;
     long first, second;
     const double per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
-    const double want = c->gap_chamfer * per;
 
     if (!d || a < 0 || b < 0 || a >= d->n_lines || b >= d->n_lines) {
         return;
@@ -10666,74 +10756,232 @@ static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
     project_dir(&d->lines[b], &bdx, &bdy);
     half = acos(adx * bdx + ady * bdy) / 2.0;
     sn = sin(half);
+    cs = cos(half);
     if (sn <= 0.0) {
         return;
     }
-    if (c->chamfer == 1) {
-        back = want / tan(half);        /* 丸面：半径 = 寸法、接点は角から r / tan(半分)（測定：chamfer_s0_c1） */
-    } else {
-        back = c->ch_side ? want : want / 2.0 / sn;
-    }
-    akx = (float)(cx + back * adx);
-    aky = (float)(cy + back * ady);
-    bkx = (float)(cx + back * bdx);
-    bky = (float)(cy + back * bdy);
-    /* The two lines keep their far ends and stop at those points; the chamfer
-     * goes on the end.  Ａ first, the way the original's records come out. */
     first = a;
     second = b > a ? b - 1 : b;
-    /* 取り消し（[ESC]）のために元の二本を控えます。 */
-    c->co_undo[0] = d->lines[a];
-    c->co_undo[1] = d->lines[b];
-    c->co_undo_n = 2;
-    c->co_undo_new = 2;
-    c->co_undo_arc = 0;
-    keep_far(d, first, cx, cy, akx, aky);
-    keep_far(d, second, cx, cy, bkx, bky);
-    /* 作り直した二本に読取の印は残りません（測定）。 */
-    d->lines[d->n_lines - 2].rest[2] &= (unsigned char)~1u;
-    d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~1u;
-    /* 面取 **clears the last of the three bytes** on the two lines it re-cut.
-     * Measured on SAMPLE6, whose lines carry 08 there: the two come back with
-     * 00.  線伸縮 and コーナー連結 do not -- the same line through 線伸縮 keeps
-     * its 08 -- so this belongs to 面取 and is not a property of rewriting a
-     * record. */
-    d->lines[d->n_lines - 2].rest[3] = 0;
-    d->lines[d->n_lines - 1].rest[3] = 0;
-    if (c->chamfer == 1) {
-        /* 弧の中心は角から二等分線の向きに r / sin(半分)。小さいほうの弧。 */
+
+    if (c->chamfer == 2) {
+        /* Ｌ面：A'=I+dA·e_A、B'=I+dB·e_B、P=A'+B'-I。追加は再び切った二本と、
+         * 線 A'→P、線 B'→P（notes/chamfer-decomp.md、DS:0x1046/0x104a）。 */
+        const double dA = c->ch_a * per, dB = c->ch_b * per;
+        const double apx = cx + dA * adx, apy = cy + dA * ady;
+        const double bpx = cx + dB * bdx, bpy = cy + dB * bdy;
+        const double px = apx + bpx - cx, py = apy + bpy - cy;
+        const float akx = (float)apx, aky = (float)apy;
+        const float bkx = (float)bpx, bky = (float)bpy;
+
+        c->co_undo[0] = d->lines[a];
+        c->co_undo[1] = d->lines[b];
+        c->co_undo_n = 2;
+        c->co_undo_new = 2;
+        c->co_undo_arc = 0;
+        keep_far(d, first, cx, cy, akx, aky);
+        keep_far(d, second, cx, cy, bkx, bky);
+        d->lines[d->n_lines - 2].rest[2] &= (unsigned char)~1u;
+        d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~1u;
+        d->lines[d->n_lines - 2].rest[3] = 0;
+        d->lines[d->n_lines - 1].rest[3] = 0;
+        if (jwc_add_line(d, akx, aky, (float)px, (float)py,
+                         (unsigned char)d->line_type, (unsigned char)d->pen,
+                         (unsigned char)(d->write_layer))) {
+            d->lines[d->n_lines - 1].rest[1] = 0;
+            c->co_undo_new = 3;
+            if (jwc_add_line(d, bkx, bky, (float)px, (float)py,
+                             (unsigned char)d->line_type, (unsigned char)d->pen,
+                             (unsigned char)(d->write_layer))) {
+                d->lines[d->n_lines - 1].rest[1] = 0;
+                c->co_undo_new = 4;
+            }
+        }
+        return;
+    }
+
+    {
+        const double want = (c->chamfer == 0) ? c->gap_chamfer * per
+                                               : c->ch_radius * per;
+        const int rev_r = c->chamfer == 1 && want < 0.0;    /* 丸面 逆Ｒ */
+        double back;
+        float akx, aky, bkx, bky;
+        /* 二等分線の向き（世界座標）。丸面(r>0)・楕円面の中心も、楕円面の
+         * tilt（τ=bis、傾きモード未実装分）もここから。 */
         const double wx = adx + bdx, wy = ady + bdy;
         const double wl = sqrt(wx * wx + wy * wy);
+        /* 楕円面の決め手（下で使う）。失敗なら何もせず戻る（他の形と同じく
+         * 失敗時は二本の線に触らない）。 */
+        double ell_r = 0.0, ell_ccx = 0.0, ell_ccy = 0.0;
+        short ell_flat = 0;
+        long ell_tilt = 0, ell_s0 = 0, ell_s1 = 0;
+        int ell_ok = 0;
 
-        if (wl > 0.0) {
-            const double dist = (float)(want / sn);
-            const double ccx = (float)(cx + wx / wl * dist);
-            const double ccy = (float)(cy + wy / wl * dist);
-            long sa = poly_angle(ccx, ccy, akx, aky);
-            long sb = poly_angle(ccx, ccy, bkx, bky);
+        if (rev_r) {
+            back = -want;
+        } else if (c->chamfer == 1 || c->chamfer == 3) {
+            back = want / tan(half);        /* 丸面・楕円面：接点は角から R/tan(半分) */
+        } else {
+            back = c->ch_side ? want : want / 2.0 / sn;
+        }
+        akx = (float)(cx + back * adx);
+        aky = (float)(cy + back * ady);
+        bkx = (float)(cx + back * bdx);
+        bky = (float)(cy + back * bdy);
+
+        if (c->chamfer == 3 && wl <= 0.0) {
+            return;              /* 二等分線が無い退化した角：何もしない */
+        }
+        if (c->chamfer == 3) {
+            /* notes/chamfer-decomp.md「楕円面」：τ（傾きモード DS:0xcb6）は
+             * この移植では常に世界 x 軸——`[0xcb6]≠0` の分岐（独自の傾きを
+             * 持つ場合）は、対応する DGROUP 値がまだどの変数にも写せていない
+             * ため未実装（測定のみ・decomp未確認の一歩手前：式は decomp 通り
+             * だが τ≠0 の入口が無い）。 */
+            const double cosb = wx / wl, sinb = wy / wl;
+            const double R = want;
+            const double D = R / sn;
+
+            if (c->ch_flat >= 0.01) {
+                /* 偏平率を指定：中心 (D cosb, f D sinb)（τ=0）、flatten
+                 * trunc(10000f+0.5)、弧は C→A'、C→B'。 */
+                ell_ccx = cx + D * cosb;
+                ell_ccy = cy + c->ch_flat * D * sinb;
+                ell_flat = (short)floor(10000.0 * c->ch_flat + 0.5);
+                ell_r = R;
+                {
+                    long sa = poly_angle(ell_ccx, ell_ccy, akx, aky);
+                    long sb = poly_angle(ell_ccx, ell_ccy, bkx, bky);
+                    const long full = 360L << 16;
+
+                    if (((sb - sa) % full + full) % full > (180L << 16)) {
+                        const long t = sa;
+
+                        sa = sb; sb = t;
+                    }
+                    ell_s0 = sa; ell_s1 = sb;
+                }
+                ell_tilt = 0;
+                ell_ok = 1;
+            } else {
+                /* 自動：X=tan(半分)。X≤1 は 135°〜225°（tilt=bis）、X>1 は
+                 * cot(半分) を使った 45°〜135°（tilt=bis+90）。どちらも角が
+                 * 浅すぎれば失敗（notes/chamfer-decomp.md、実機で 90°・30mm
+                 * 確認済みなのは X=1 の側）。 */
+                const double X = tan(half);
+                const long bis = ang16(0.0, 0.0, wx, wy);
+
+                if (X <= 1.0) {
+                    if (X >= 0.05) {
+                        /* +0.5：90°・30mm の実機確認例が flat=10000 ちょうどなので
+                         * （notes/chamfer-decomp.md）、浮動小数の丸め誤差（tan(45°)
+                         * が 0.999999... になり得る）を飲む丸めを足した。 */
+                        ell_flat = (short)floor(10000.0 * X + 0.5);
+                        ell_ccx = cx + 1.4142135623730951 * R * cosb;
+                        ell_ccy = cy + 1.4142135623730951 * R * sinb;
+                        ell_r = R;
+                        ell_tilt = bis;
+                        ell_s0 = 135L << 16;
+                        ell_s1 = 225L << 16;
+                        ell_ok = 1;
+                    }
+                } else {
+                    const double Y = cs / sn;
+
+                    if (Y >= 0.05) {
+                        ell_flat = (short)floor(10000.0 * Y + 0.5);
+                        ell_ccx = cx + 1.4142135623730951 * R * Y * cosb;
+                        ell_ccy = cy + 1.4142135623730951 * R * Y * sinb;
+                        ell_r = R;
+                        ell_tilt = bis + (90L << 16);
+                        ell_s0 = 45L << 16;
+                        ell_s1 = 135L << 16;
+                        ell_ok = 1;
+                    }
+                }
+            }
+            if (!ell_ok) {
+                return;          /* 角が浅すぎる・鋭すぎる：データが不適当、何もしない */
+            }
+        }
+
+        /* 取り消し（[ESC]）のために元の二本を控えます。 */
+        c->co_undo[0] = d->lines[a];
+        c->co_undo[1] = d->lines[b];
+        c->co_undo_n = 2;
+        c->co_undo_new = 2;
+        c->co_undo_arc = 0;
+        keep_far(d, first, cx, cy, akx, aky);
+        keep_far(d, second, cx, cy, bkx, bky);
+        /* 作り直した二本に読取の印は残りません（測定）。 */
+        d->lines[d->n_lines - 2].rest[2] &= (unsigned char)~1u;
+        d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~1u;
+        /* 面取 **clears the last of the three bytes** on the two lines it re-cut.
+         * Measured on SAMPLE6, whose lines carry 08 there: the two come back with
+         * 00.  線伸縮 and コーナー連結 do not -- the same line through 線伸縮 keeps
+         * its 08 -- so this belongs to 面取 and is not a property of rewriting a
+         * record. */
+        d->lines[d->n_lines - 2].rest[3] = 0;
+        d->lines[d->n_lines - 1].rest[3] = 0;
+
+        if (rev_r) {
+            /* 丸面 逆Ｒ：中心は交点そのもの、半径 |r|、角度は I→A'、I→B'。 */
+            long sa = poly_angle(cx, cy, akx, aky);
+            long sb = poly_angle(cx, cy, bkx, bky);
             const long full = 360L << 16;
 
             if (((sb - sa) % full + full) % full > (180L << 16)) {
                 const long t = sa;
 
-                sa = sb;
-                sb = t;
+                sa = sb; sb = t;
             }
-            if (jwc_add_arc_at(d, (float)ccx, (float)ccy, (float)want, sa, sb,
+            if (jwc_add_arc_at(d, (float)cx, (float)cy, (float)back, sa, sb,
                                (unsigned char)d->line_type, (unsigned char)d->pen,
                                (unsigned char)(d->write_layer), 0xfc)) {
                 c->co_undo_arc = 1;
             }
+            return;
         }
-        return;
-    }
-    if (jwc_add_line(d, akx, aky, bkx, bky,
-                     (unsigned char)d->line_type, (unsigned char)d->pen,
-                     (unsigned char)(d->write_layer))) {
-        /* A chamfer carries **0** in the byte a drawn line carries 3 in.
-         * Measured, like 中心線's 2. */
-        d->lines[d->n_lines - 1].rest[1] = 0;
-        c->co_undo_new = 3;
+        if (c->chamfer == 1) {
+            /* 弧の中心は角から二等分線の向きに r / sin(半分)。小さいほうの弧。 */
+            if (wl > 0.0) {
+                const double dist = want / sn;
+                const double ccx = cx + wx / wl * dist;
+                const double ccy = cy + wy / wl * dist;
+                long sa = poly_angle(ccx, ccy, akx, aky);
+                long sb = poly_angle(ccx, ccy, bkx, bky);
+                const long full = 360L << 16;
+
+                if (((sb - sa) % full + full) % full > (180L << 16)) {
+                    const long t = sa;
+
+                    sa = sb; sb = t;
+                }
+                if (jwc_add_arc_at(d, (float)ccx, (float)ccy, (float)want, sa, sb,
+                                   (unsigned char)d->line_type, (unsigned char)d->pen,
+                                   (unsigned char)(d->write_layer), 0xfc)) {
+                    c->co_undo_arc = 1;
+                }
+            }
+            return;
+        }
+        if (c->chamfer == 3) {
+            /* 楕円面：弧の rest[1..3]=00 00 80（notes/chamfer-decomp.md）。 */
+            if (jwc_add_ellarc(d, (float)ell_ccx, (float)ell_ccy, (float)ell_r,
+                               ell_flat, ell_s0, ell_s1, ell_tilt,
+                               (unsigned char)d->line_type, (unsigned char)d->pen,
+                               (unsigned char)(d->write_layer), 0x80)) {
+                c->co_undo_arc = 1;
+            }
+            return;
+        }
+        if (jwc_add_line(d, akx, aky, bkx, bky,
+                         (unsigned char)d->line_type, (unsigned char)d->pen,
+                         (unsigned char)(d->write_layer))) {
+            /* A chamfer carries **0** in the byte a drawn line carries 3 in.
+             * Measured, like 中心線's 2. */
+            d->lines[d->n_lines - 1].rest[1] = 0;
+            c->co_undo_new = 3;
+        }
     }
 }
 
@@ -18684,8 +18932,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->missed = 0;
         c->ch_same = 0;
         /* The line above carries the chamfer length, so it has to be in the
-         * numbers the chrome fills in (src/stage.h's `③寸法=%*.*f`). */
-        c->num[0] = c->gap_chamfer;
+         * numbers the chrome fills in (src/stage.h's `③寸法=%*.*f`).  Each
+         * shape reads its own memory (notes/chamfer-decomp.md「数値欄」). */
+        c->num[0] = c->chamfer == 2 ? c->ch_a
+                  : (c->chamfer == 1 || c->chamfer == 3) ? c->ch_radius
+                  : c->gap_chamfer;
         c->dec[0] = d->decimals;
         if (c->pick_a < 0) {
             /* What was there before this run -- jw_cmd_after puts anything

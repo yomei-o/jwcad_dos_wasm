@@ -234,6 +234,10 @@ typedef struct {
     double gap;
     double gap_chamfer;
     int chamfer;                /* JwCmd.chamfer -- 面取's shape */
+    double ch_radius;           /* JwCmd.ch_radius -- 丸面・楕円面 ②半径= */
+    double ch_a, ch_b;          /* JwCmd.ch_a/ch_b -- Ｌ面 ②(A),(B)辺= */
+    double ch_flat;             /* JwCmd.ch_flat -- 楕円面 ③偏平率= (0=自動) */
+    int ch_ask_flat;            /* JwCmd.ch_ask_flat -- 楕円面は③偏平率を打っている */
     double gap_two[2];
     double ask_len;
     double ask_ang;
@@ -840,7 +844,7 @@ const char *jw_ui_guide(void);
  * nothing at all.  Anything before the first bar is not an item either.
  *
  * It reads the line jw_ui_draw last drew, so call it after that. */
-void jw_ui_band_end(VGA *v, const JwUi *s);
+void jw_ui_band_end(VGA *v, const JwUi *s);
 void jw_ui_band_last(VGA *v, const JwUi *s);
 int jw_ui_top_item(int x, int y);
 int jw_ui_top_cell_x(int n);

@@ -1,0 +1,10 @@
+# 面取 Ｌ面・楕円面（2026-10-07、幾何を追加した分）。角・座標は既存
+# chamfer_s0_c1（SAMPLE0、line5×line0 の角、(162,250)/(598,300)）と同じ。
+# ① を N 回押して形を回す：角→丸→Ｌ→楕円→角（tools/cycle.sh で確認済み）。
+chamfer_l_default|SAMPLE0|90 184 left|type 1|type 1|162 250 left|598 300 right
+chamfer_l_typed|SAMPLE0|90 184 left|type 1|type 1|type 2|type 20,50|key enter|162 250 left|598 300 right
+chamfer_l_esc|SAMPLE0|90 184 left|type 1|type 1|type 2|type 20,50|key esc|162 250 left|598 300 right
+chamfer_ell_auto|SAMPLE0|90 184 left|type 1|type 1|type 1|162 250 left|598 300 right
+chamfer_ell_flat|SAMPLE0|90 184 left|type 1|type 1|type 1|type 3|type 0.5|key enter|162 250 left|598 300 right
+chamfer_ell_flat_esc|SAMPLE0|90 184 left|type 1|type 1|type 1|type 3|type 0.5|key esc|162 250 left|598 300 right
+chamfer_ell_radius|SAMPLE0|90 184 left|type 1|type 1|type 1|type 2|type 45|key enter|162 250 left|598 300 right

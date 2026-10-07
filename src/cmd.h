@@ -856,6 +856,16 @@ typedef struct {
     /* Which of 面取's four shapes ① has come round to: 0 角面, 1 丸面,
      * 2 Ｌ面, 3 楕円面.  See src/ui.c for the line each one writes. */
     int chamfer;
+    /* 面取's memory is kept **separately per shape** (decomp, notes/chamfer-decomp.md
+     * 「数値欄」): 丸面・楕円面 share one radius word (DS:0x1042), Ｌ面 keeps two
+     * (DS:0x1046/0x104a, the `(A),(B)辺=` field, one comma-separated entry), and
+     * 楕円面's flatness ratio is a fourth, separate word (DS:0x28ba; 0 means 自動). */
+    double ch_radius;           /* 丸面・楕円面 ②半径= */
+    double ch_a, ch_b;          /* Ｌ面 ②(A),(B)辺= */
+    double ch_flat;             /* 楕円面 ③偏平率= (0 = 自動) */
+    /* 楕円面 is editing ③偏平率 rather than ②半径 (both use c->ch_ask to mean
+     * "a number field is open"; this says which of the two). */
+    int ch_ask_flat;
     /* What 線変更 took: 1 a line, 2 an arc, 0 nothing yet.  The word it writes
      * beside the counts is `線` or `円` accordingly. */
     int hit_kind;

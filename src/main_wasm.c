@@ -591,6 +591,11 @@ static void sync_ui(void)
     ui.gap = cmd.gap;
     ui.gap_chamfer = cmd.gap_chamfer;
     ui.chamfer = cmd.chamfer;
+    ui.ch_radius = cmd.ch_radius;
+    ui.ch_a = cmd.ch_a;
+    ui.ch_b = cmd.ch_b;
+    ui.ch_flat = cmd.ch_flat;
+    ui.ch_ask_flat = cmd.ch_ask_flat;
     ui.gap_two[0] = cmd.gap_two[0];
     ui.gap_two[1] = cmd.gap_two[1];
     ui.ask_len = cmd.ask_len;

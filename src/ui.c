@@ -1723,9 +1723,29 @@ static void stage_text(VGA *v, const JwStage *q, const JwUi *s, int stage)
         char out2[200];
         double n2[2];
 
-        n2[0] = n2[1] = s->gap_chamfer;
+        /* 丸面・楕円面 の半径は共有記憶 ch_radius、Ｌ面 は ch_a/ch_b が別々
+         * （notes/chamfer-decomp.md「数値欄」：記憶は形ごとに別）。 */
+        n2[0] = s->chamfer == 2 ? s->ch_a : s->ch_radius;
+        n2[1] = s->chamfer == 2 ? s->ch_b : 0.0;
         put_fixed(out2, sizeof out2, SHAPE2[s->chamfer - 1], n2,
                   s->chamfer == 2 ? 2 : 1, s->dec_drawing);
+        if (s->chamfer == 3 && s->ch_flat >= 0.01) {
+            /* 楕円面 ③偏平率：0.01 以上なら「自動」を値で置き換える
+             * （notes/chamfer-decomp.md：0.01 未満は自動、他は `=%6.4f`）。 */
+            char *at = strstr(out2, "\x8e\xa9\x93\xae");
+
+            if (at) {
+                char rest[200], buf[32];
+
+                strncpy(rest, at + 4, sizeof rest - 1);
+                rest[sizeof rest - 1] = 0;
+                sprintf(buf, "%6.4f", s->ch_flat);
+                if (at - out2 + strlen(buf) + strlen(rest) < sizeof out2) {
+                    strcpy(at, buf);
+                    strcat(at, rest);
+                }
+            }
+        }
         jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg, out2);
         return;
     }
@@ -3783,16 +3803,35 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 57, 1, 7, 0, " \x81z|");
         }
     } else if (s->command == 8 && s->ch_ask) {
-        /* 面取 ③寸法= の欄（測定：STR=1）。 */
-        char one[32];
+        /* 面取 の数値欄（測定：STR=1、角面は chamfer_s0_c2_v）。Ｌ面・楕円面③
+         * の書式は notes/chamfer-decomp.md（root ad:1e8e/1ef8 の `[%10.3f` /
+         * `,%10.3f`）に合わせたが、単位記号の有無までは測定のみ・decomp未確認。 */
+        char one[48];
 
-        /* 桁 6 は BEL ではなく `.`（測定：chamfer_s0_c2_v の 2x2 の点）。 */
-        jw_ui_text(v, 1, 1, 7, 0, (s->chamfer == 1 || s->chamfer == 3) ? "[ESC].\x94\xbc\x8c" "a =" : "[ESC].\x90\xa1\x96@ =");
+        if (s->chamfer == 2) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC].(A),(B)\x95\xd3 =");
+        } else if (s->chamfer == 3 && s->ch_ask_flat) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC].\x95\xce\x95\xbd\x97\xa6 =");
+        } else {
+            /* 桁 6 は BEL ではなく `.`（測定：chamfer_s0_c2_v の 2x2 の点）。 */
+            jw_ui_text(v, 1, 1, 7, 0, (s->chamfer == 1 || s->chamfer == 3) ? "[ESC].\x94\xbc\x8c" "a =" : "[ESC].\x90\xa1\x96@ =");
+        }
         jw_ui_text(v, 38, 1, 7, 0, "\x91O\x89\xf1\x82\xc6\x93\xaf\x82\xb6 \xcf\xb3\xbd(R) ");
-        sprintf(one, "[%10.3f", s->gap_chamfer);
+        if (s->chamfer == 2) {
+            sprintf(one, "[%10.3f,%10.3f", s->ch_a, s->ch_b);
+        } else if (s->chamfer == 3 && s->ch_ask_flat) {
+            if (s->ch_flat >= 0.01) {
+                sprintf(one, "[%10.4f", s->ch_flat);
+            } else {
+                strcpy(one, "[\x8e\xa9\x93\xae");      /* 自動 */
+            }
+        } else {
+            sprintf(one, "[%10.3f",
+                    s->chamfer == 0 ? s->gap_chamfer : s->ch_radius);
+        }
         jw_ui_text(v, 56, 1, 7, 0, one);
-        jw_ui_text(v, 67, 1, 7, 0, "mm");
-        jw_ui_text(v, 69, 1, 7, 0, "]");
+        jw_ui_text(v, s->chamfer == 2 ? 78 : 67, 1, 7, 0, "mm");
+        jw_ui_text(v, s->chamfer == 2 ? 80 : 69, 1, 7, 0, "]");
         if (s->typed_n > 0) {
             char t[96];
 
@@ -4950,9 +4989,25 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 };
                 double n[2];
 
-                n[0] = n[1] = s->gap_chamfer;
+                n[0] = s->chamfer == 2 ? s->ch_a : s->ch_radius;
+                n[1] = s->chamfer == 2 ? s->ch_b : 0.0;
                 put_fixed(out, sizeof out, SHAPE[s->chamfer - 1], n,
                           s->chamfer == 2 ? 2 : 1, s->dec_drawing);
+                if (s->chamfer == 3 && s->ch_flat >= 0.01) {
+                    char *at = strstr(out, "\x8e\xa9\x93\xae");
+
+                    if (at) {
+                        char rest[200], buf[32];
+
+                        strncpy(rest, at + 4, sizeof rest - 1);
+                        rest[sizeof rest - 1] = 0;
+                        sprintf(buf, "%6.4f", s->ch_flat);
+                        if (at - out + strlen(buf) + strlen(rest) < sizeof out) {
+                            strcpy(at, buf);
+                            strcat(at, rest);
+                        }
+                    }
+                }
                 jw_ui_text(v, p->col, p->row, (unsigned)p->fg,
                            (unsigned)p->bg, out);
                 continue;
