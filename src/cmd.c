@@ -7770,9 +7770,20 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
              * goes back to the one the item came up with, `[ESC]` in front --
              * src/typed.h, stage 2. */
             if (d && c->edit_text >= 0 && c->edit_text < d->n_texts) {
+                /* 192.168.11.37 の実機で確認（測定のみ・decomp未確認）：
+                 * 文編集①書き換え の確定は、③横位置・⑤縦位置 に値を
+                 * 打ち込んで ①確定 で閉じても、書き戻した文字の位置は
+                 * 1 画素も動かない（te_off1・te_off2、tools/cases/
+                 * probe_textedit.txt）。③⑤ の欄自体は実機でも数字キー
+                 * 3/5 でちゃんと開く（tools/probe.sh 28 … t 1 t 3 で
+                 * `ずれ位置 横 =` の欄とものさしが出る）ので、欄を開く
+                 * 条件（トリガー）は元から正しかった——間違っていたのは、
+                 * ここ（①書き換えの確定）でそのオフセットを実際の配置に
+                 * 使ってしまっていたこと。②移動・③複写（jwc_move_text、
+                 * 下の press_body）側は未変更（オフセットがそちらでも
+                 * 効くかは今回は確認していない）。 */
                 jwc_edit_text_at(d, c->edit_text, c->typed,
-                                 c->te_bh, c->te_bv,
-                                 c->te_off_h[c->te_bh], c->te_off_v[c->te_bv]);
+                                 c->te_bh, c->te_bv, 0.0f, 0.0f);
             }
             c->typing_text = 0;
             c->pressed = 0;
