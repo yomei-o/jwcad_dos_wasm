@@ -5015,8 +5015,17 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         const long t0 = drawing ? drawing->n_texts : 0;
         const int was_typing = cmd.typing;
         const int p0 = cmd.pressed;
+        const int cf0 = cmd.circ_fix || !cmd.circ_bad;
+        const int bf0 = 1;
 
         if (jw_cmd_key(&cmd, drawing, key)) {
+            /* 大きさを決めて置く状態になった [Enter] で、数え箱は 半径=／横= の行になる（測定のみ：escfz_E_73） */
+            if ((key == 13 || key == 10) && ((cmd.command == 11 && cmd.circ_fix && !cf0) || (cmd.command == 4 && cmd.box_fix && !bf0))) {
+                sync_ui();
+                ui.moved = 1;
+                present();
+                return -1;
+            }
             /* 図形：空の領域から [ESC] で範囲を抜けたら枠の左の辺だけ残る（測定のみ：zukei_s0_c2・c5）。 */
             if (key == 27 && cmd.command == 27 && p0 && !cmd.pressed && cmd.zukei_blank == 1) {
                 cmd.zukei_blank = 2;

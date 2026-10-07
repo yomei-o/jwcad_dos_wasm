@@ -9297,6 +9297,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             }
             c->circ_r = r;
             c->circ_fix = 1;
+            c->num[0] = r;
+            c->num[1] = r * 2.0;
+            c->dec[0] = c->dec[1] = 3;
             c->circ_done = 0;
             c->circ_mode = 0;
             c->typing = 0;
