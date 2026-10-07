@@ -10310,9 +10310,26 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
                 const char *comma = strchr(c->typed, ',');
+                const double sx = field_eval(c->typed);
+                const double sy = comma ? field_eval(comma + 1) : sx;
 
-                c->scale_x = field_eval(c->typed);
-                c->scale_y = comma ? field_eval(comma + 1) : c->scale_x;
+                /* `0` または絶対値 10000 超は `データが不適当`：欄を空にして
+                 * 同じ段に留まる（旧い倍率はそのまま）。実機で境目を 1 刻み
+                 * ずつ突き合わせて確認（192.168.11.37、tools/steps_table.py
+                 * 1 150 130 r 245 170 l t 3 200 300 t <値> e）：
+                 * 10000 は通り 10001 は断られ、-10000 は通り -10001 は
+                 * 断られた（対称）。0.00001 は通り、x,y 片方だけが外れた
+                 * `2,20000` も断られる（x・y 別々に検査）——欄は数値欄
+                 * （root 0ad:16d4 numin 系）としては測定のみ・decomp 未確認。 */
+                if (sx == 0.0 || sy == 0.0
+                    || !(sx >= -10000.0 && sx <= 10000.0)
+                    || !(sy >= -10000.0 && sy <= 10000.0)) {
+                    c->typed_n = 0;
+                    c->typed[0] = 0;
+                    return 1;
+                }
+                c->scale_x = sx;
+                c->scale_y = sy;
             }
             c->typing = 0;
             c->scaling = 3;
