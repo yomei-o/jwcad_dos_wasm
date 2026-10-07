@@ -6999,6 +6999,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
 
+    /* 円線接 の ③接円(3条件) の行（段 50）の [BS]`前項` は [ESC] と同じ（測定のみ：tmp の ee6）。 */
+    if (c->command == 26 && key == 8 && !c->typing && (c->stage == 50 || c->stage == 1)) {
+        c->stage = 0;               /* 円線接 の ③接円(3条件) の行の [BS]`前項` は最初の行へ（[ESC] は何もしない。測定：tmp の ee6・ee7） */
+        c->tan_tri = 0;
+        c->top_item = 0;
+        return 1;
+    }
     /* 寸法 ⑤③円周の行：ESC で ⑤ の項目の行へ。ほかの鍵は何もしない。 */
     if (c->command == 14 && c->dim5c) {
         c->dim5m = 0;               /* [ESC] は札を消すだけで行はそのまま（測定：dim_s0_c5_v） */
