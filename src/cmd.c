@@ -5122,7 +5122,7 @@ range_items:
     }
     if (c->command == 8 && !c->chb && c->pick_a < 0 && !c->ch_ask
         && ((item == 3 && c->chamfer == 0) || (item == 2 && (c->chamfer == 1 || c->chamfer == 3)))) {
-        /* 丸面・楕円面 では ② が 半径= の欄（測定のみ・decomp 未確認：escfz_R_85。ui は
+        /* 丸面・楕円面 では ② が 半径= の欄（decomp 照合済み（調査担当が dis で確認）：escfz_R_85。ui は
          * chamfer で `半径 =` に変える）。 */
         c->ch_ask = 1;
         c->typing = 1;
@@ -7045,7 +7045,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     /* 円線接 の ②１点１線・③１円１点・①１線１円 の二つ目の指示の段（33・37・41）の [ESC] は一つ目の段へ
-     * （測定のみ・decomp 未確認：escfz_e_40）。 */
+     * （decomp 照合済み（調査担当が dis で確認）：escfz_e_40）。 */
     if (c->command == 26 && key == 27 && !c->typing && c->tan_on
         && (c->stage == 33 || c->stage == 37 || c->stage == 41)) {
         c->stage--;
@@ -7073,7 +7073,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     if (c->command == 8 && c->chb && c->lyr_only && key == 8) {
         c->lyr_only = 0;            /* 札は次の鍵（[BS]）で消える（測定のみ：escfz_R_68） */
     }
-    /* ○ で円を描いたあと（段 2）の [BS]`前項` は最初の行へ（円は残る。測定のみ・decomp 未確認：escfz_E_75）。 */
+    /* ○ で円を描いたあと（段 2）の [BS]`前項` は最初の行へ（円は残る。decomp 照合済み（調査担当が dis で確認）：escfz_E_75）。 */
     if (c->command == 11 && key == 8 && !c->typing && c->stage == 2 && !c->pressed && !c->circ_fix) {
         c->stage = 0;
         c->circ_done = 0;
@@ -7362,7 +7362,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
      * から抜ける（測定：func_all curve_s1_c6 の末尾、1 回目の [ESC] で
      * 二本目が消え、2 回目の [ESC] で一本目も消えて、連続弧の外へ出る。
      * decomp 未確認・測定のみ）。 */
-    /* ⑥連続弧 の始めの段の [ESC] は一つ前の段へ（測定のみ・decomp 未確認：escfz_r_25・r_27）。 */
+    /* ⑥連続弧 の始めの段の [ESC] は一つ前の段へ（decomp 照合済み（調査担当が dis で確認）：escfz_r_25・r_27）。 */
     if (c->command == 23 && c->chain && key == 27 && !c->typing
         && (c->stage == 51 || c->stage == 52 || c->stage == 55)) {
         c->stage = c->stage == 52 ? 51 : 50;
@@ -7392,7 +7392,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     /* ①②③④⑥ の最初の行（段 10・40・30・50）の [BS]`前項` も曲線の最初の行へ
-     * （測定のみ・decomp 未確認：escfz_r_24）。 */
+     * （decomp 照合済み（調査担当が dis で確認）：escfz_r_24）。 */
     if (c->command == 23 && key == 8 && !c->typing && !c->poly && !c->hand
         && ((c->sine == 1 && c->stage == 10) || (c->sine == 3 && c->stage == 40)
             || (c->stage == 30 && (c->spl || c->chain)) || c->stage == 50)) {
@@ -7403,7 +7403,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->top_item = 0;
         return 1;
     }
-    /* ⑤手書線 の始点の行の [BS]`前項` は曲線の最初の行へ（測定のみ・decomp 未確認：escfz_r_22）。 */
+    /* ⑤手書線 の始点の行の [BS]`前項` は曲線の最初の行へ（decomp 照合済み（調査担当が dis で確認）：escfz_r_22）。 */
     if (c->command == 23 && c->hand && key == 8 && c->stage == 60 && c->hand_n == 0 && !c->typing) {
         c->hand = 0;
         c->hand_did = 0;
@@ -8125,7 +8125,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     /* 分割数の欄の [ESC] は終点の行（段 1）へ、点を作ったあと（段 4）の [ESC] は
-     * その点を取り消して始点の行（段 5）へ（測定のみ・decomp 未確認：escfz_t_8・t_9）。 */
+     * その点を取り消して始点の行（段 5）へ（decomp 照合済み（調査担当が dis で確認）：escfz_t_8・t_9）。 */
     if (c->command == 21 && key == 27 && c->typing && c->stage == 2) {
         c->typing = 0;
         c->typed_n = 0;
@@ -8274,7 +8274,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             return 1;
         }
     }
-    /* 文編集 で項目の行（top_item≠0）の [BS] は最初の行へ（測定のみ・decomp 未確認：escfz_a_61〜66）。 */
+    /* 文編集 で項目の行（top_item≠0）の [BS] は最初の行へ（decomp 照合済み（調査担当が dis で確認）：escfz_a_61〜66）。 */
     if (c->command == 28 && key == 8 && c->top_item && !c->typing && !c->typing_text && !c->te_sub
         && c->stage == 0 && !c->te5) {
         c->top_item = 0;
@@ -8332,7 +8332,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     /* 点 ③交点・④円中心・⑤仮点削除 の行の [BS]`前項` は最初の行へ戻る
-     * （測定のみ・decomp 未確認：escfz_v_14・v_17）。 */
+     * （decomp 照合済み（調査担当が dis で確認）：escfz_v_14・v_17）。 */
     if (c->command == 22 && key == 8 && !c->typing && !c->pt3 && !c->pt_delall
         && (c->pt_mode == 3 || c->pt_mode == 4 || c->pt_mode == 5)) {
         c->pt_mode = 0;
@@ -8559,7 +8559,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     /* ┣ 線伸縮：対象線を選んだあと（段 1）の [ESC] は最初の行（段 0）へ
-     * （測定のみ・decomp 未確認：escfz_T_83）。 */
+     * （decomp 照合済み（調査担当が dis で確認）：escfz_T_83）。 */
     if (key == 27 && c->command == 6 && !c->typing && c->stage == 1 && c->pick_a >= 0) {
         c->pick_a = -1;
         c->stage = 0;
@@ -8567,7 +8567,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     /* ②連続 で足した線は [ESC] で一本戻り、行は段 0 の `線指示 …` へ
-     * （測定のみ・decomp 未確認：escfz_F_80）。 */
+     * （decomp 照合済み（調査担当が dis で確認）：escfz_F_80）。 */
     if (key == 27 && c->command == 5 && !c->typing && c->stage == 3 && c->off_cont && d
         && d->n_lines > 0) {
         jwc_remove_line(d, d->n_lines - 1);
@@ -8577,7 +8577,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     /* ①間隔取得 の `◇点マウス指示`（段 5）の [ESC] は基準線の行（段 4）へ
-     * （測定のみ・decomp 未確認：escfz_F_81）。 */
+     * （decomp 照合済み（調査担当が dis で確認）：escfz_F_81）。 */
     if (key == 27 && c->command == 5 && !c->typing && c->stage == 5) {
         c->stage = 4;
         c->pick = -1;
@@ -8585,7 +8585,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         return 1;
     }
     /* ①間隔取得 の `基準線 マウス指示`（段 4）の [ESC] は段 0 の `線指示 …` へ
-     * （測定のみ・decomp 未確認：escfz_F_79）。 */
+     * （decomp 照合済み（調査担当が dis で確認）：escfz_F_79）。 */
     if (key == 27 && c->command == 5 && !c->typing && c->stage == 4 && !c->pressed) {
         c->stage = 0;
         c->pick = -1;
@@ -9103,9 +9103,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                 return 1;
             }
             /* ③数値倍率：段 18（倍率の欄）→ 17（基準点位置）→ 4（①〜⑦の一覧）
-             * （測定のみ・decomp 未確認：escfz_C_72、tmp の cm 系）。 */
+             * （decomp 照合済み（調査担当が dis で確認）：escfz_C_72、tmp の cm 系）。 */
             /* ⑤反転(10)・⑥回転(13→14)・④マウス倍率(21→22→23) も一段ずつ戻って、最初の段は
-             * ①〜⑦ の一覧へ（測定のみ・decomp 未確認：tmp の mm 系）。 */
+             * ①〜⑦ の一覧へ（decomp 照合済み（調査担当が dis で確認）：tmp の mm 系）。 */
             if (JW_MOVE_CMD(c->command)
                 && (c->stage == 10 || c->stage == 13 || c->stage == 14 || c->stage == 21
                     || c->stage == 22 || c->stage == 23)) {
@@ -16174,7 +16174,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * なって 1886 画素ずれました）。 */
         if (!c->tan_on && !c->tan_tri) {
             if (right) {
-                /* 最初の行の右押しは ②接円(半径と2条件) の行へ（測定のみ・decomp 未確認：tmp の ec2） */
+                /* 最初の行の右押しは ②接円(半径と2条件) の行へ（decomp 照合済み（調査担当が dis で確認）：tmp の ec2） */
                 if (c->stage == 0 && !c->pressed) {
                     jw_cmd_top(c, d, 2, 0);
                     return 1;
@@ -18397,7 +18397,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         }
         if (c->stage == 0) {
             if (right) {
-                /* 最初の行の右押しは `②円分割点(R)` を選ぶ（測定のみ・decomp 未確認：escfz_t_5・t_7）。 */
+                /* 最初の行の右押しは `②円分割点(R)` を選ぶ（decomp 照合済み（調査担当が dis で確認）：escfz_t_5・t_7）。 */
                 c->div2 = 2;
                 c->stage = 6;
                 return 1;
