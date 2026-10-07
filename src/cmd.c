@@ -5311,6 +5311,7 @@ range_items:
     if (c->command == 22 && item == 1) {
         c->pt_real = !c->pt_real;
         c->pt_undo = 0;                 /* 02f3f4 */
+        c->pt_plain = 0;
         c->pt_mode = 0;
         c->pt3 = 0;
         return 0;
@@ -7023,6 +7024,14 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->stage = c->hatch_n < 3 ? c->hatch_n : 3;
         }
         c->missed = 0;
+        return 1;
+    }
+    /* 点【実点】：升の無い数字（0・6〜9）は行を描き直して `F1～F6 Pen No1` の札を消す
+     * （測定のみ・decomp 未確認：escfz_v_10、tmp の vq2）。 */
+    if (c->command == 22 && c->pt_real && !c->typing && key >= '0' && key <= '9'
+        && (key == '0' || key >= '6') && c->stage == 0) {
+        c->pt_plain = 1;
+        c->top_item = 0;
         return 1;
     }
     if (c->command == 18 && !c->hatch_closed

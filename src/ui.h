@@ -601,6 +601,7 @@ typedef struct {
     int esc_gone;
     int ell_mouse;
     int circ_bad;
+    int pt_plain;
     int ch_same;
     int zukei_disp, zukei_layer;
     int lc_attr;
