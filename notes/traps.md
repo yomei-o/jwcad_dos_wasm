@@ -483,3 +483,27 @@ FUN_1def_0904();` という、全く違うセグメント（1def）の名前の�
 トグルしているか）も decompile された C では消えているので、同じ
 生アセンブリから手で読み直す必要がある。
 
+### `Buffer.from(arrayBuffer, offset, length)` は複製ではなく「窓」
+
+WASM の画面を自前の node script で比べようとして、何回キーを押しても
+前後のフレームの差分が 0 画素のまま、という偽の「無変化」に 1 時間近く
+刺された（2026-10-07、□・○・円弧の数え箱の検査）。`Buffer.from(M.HEAPU8.buffer,
+p, len)` は、渡した **引数が `ArrayBuffer` のときだけ**複製せずに同じ
+メモリを指す窓を返す——あとから `.slice()` を呼んでも、`.slice()` 自体が
+複製ではなく部分窓を返す Node の仕様なので、何も複製されない。結果、
+あとで撮った「2 枚目」の実体は 1 枚目の変数と**同じ WASM メモリ**を
+指したままで、どちらを見ても「いまの」画面になり、差が常に 0 になる。
+
+`Buffer.from(typedArray)`（`ArrayBuffer` ではなく `Uint8Array` などを渡す）
+だけが複製する。直すなら
+
+```js
+Buffer.from(new Uint8Array(M.HEAPU8.buffer, p, len))   // 複製される
+```
+
+**対策**：wasm のフレームバッファを複数回、時間をおいて比べる自前の
+script を書くときは、`Buffer.from(arrayBuffer, offset, length)` 単体を
+疑うこと。1 枚だけ撮ってすぐファイルに書く（`tools/clickshot.mjs` の形）
+なら影響しないが、複数枚をメモリ上に保持して差分を取る書き方は上の
+`new Uint8Array(...)` の形で複製すること。
+

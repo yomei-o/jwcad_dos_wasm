@@ -1,0 +1,22 @@
+# □・○・円弧：数値欄を閉じる（受理・断わり・ESC）と数え箱が標準（線数|円・文数）に
+# 戻るか、○の半径確定後の表示が作図範囲外で消えるか、円弧の途中 [Enter] の角度、
+# □の角度欄 ESC の固定解除（2026-10-07、nokori.md「まだ直していない」節のうち
+# □・○・円弧・＋／ の4件）。
+
+# 1a. □ ①寸法：一度確定して置いたあと、欄を開き直して不正な値を [Enter] で
+#     断わられたとき、数え箱が標準に戻るか（box_keep_off）。
+boxclose_a|SAMPLE0|90 120 left|type 1|type 60,40|key enter|450 330 left|type 1|type 0|key enter|move 300 250
+
+# 1b. ○ ①径寸法：同じ形（半径を確定→置く→再度開いて不正値で断わられる）。
+boxclose_b|SAMPLE0|90 232 left|type 1|type 30|key enter|450 330 left|type 1|type 0|key enter|move 300 250
+
+# 2. ○ の半径確定後、ポインタが作図範囲外（AAREA_X0..Y1 の外、ここは帯の上 y=8）
+#    なら 半径=/直径= を描かない。
+circclose_outside|SAMPLE0|90 232 left|type 1|type 30|key enter|move 300 8|move 300 250
+
+# 3. 円弧の途中 [Enter] の角度：矢がまだ動いていないときの既定位置は画面 (400,200)。
+arc_mid_enter|SAMPLE0|type N|400 140 left|350 350 left|key enter|400 140 left|key bs|key esc|key esc|key esc
+
+# 4. □ の `角度 =` 欄の ESC は角度固定を解く（②角度 を固定してから、もう一度
+#    開いて ESC、次に置く四角が自由な向きに戻るか）。
+box_angle_esc_unlock|SAMPLE0|90 120 left|type 1|type 60,40|key enter|450 330 left|type 2|type 30|key enter|type 2|key esc|move 300 250
