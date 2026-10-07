@@ -551,6 +551,9 @@ void jw_ui_band_end(VGA *v, const JwUi *s)
     if (s->command == 7 && s->ch_same == 2 && s->stage == 1) {
         jw_ui_text(v, 20, 2, 7, 0, "\x8c\x76\x8e\x5a\x95\x73\x89\xc2");
     }
+    if (s->command == 8 && s->chb && s->lyr_only && s->stage == 1) {
+        jw_ui_text(v, 60, 2, 7, 0xffffu, "\x8f\x91\x8d\x9e\x20\x83\x8c\x83\x43\x83\x84\x20\x82\xcc\x82\xdd\x91\x49\x91\xf0");
+    }
     /* 面取【辺寸法】：角を作ったあとの行（段 2）でも `②【面寸法】` の 面 は 辺（測定：chamfer_s0_c2）。 */
     if (s->command == 8 && s->ch_side && !s->chb && !s->top_item && (s->stage == 0 || s->stage == 2)) {
         jw_ui_text(v, 45, 1, 7, 0, "\x95\xd3");

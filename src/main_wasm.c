@@ -535,6 +535,7 @@ static void sync_ui(void)
     ui.chb = cmd.chb;
     ui.ch_bad = cmd.ch_bad;
     ui.circ_bad = cmd.circ_bad;
+    ui.lyr_only = cmd.lyr_only;
     ui.te_dir = cmd.te_dir;
     ui.zukei_drive = cmd.zukei_drive;
     ui.zukei_cell = cmd.zukei_cell;
@@ -4356,6 +4357,11 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* `読取可能データ無` は**次の入力イベント**で消えます（decomp：入力待ち root
      * 0x6608 の 0x66a0〜0x672c が `[0xc22]` を見てメッセージ行を塗りつぶす。
      * 外れを再び立てるのはそのキーの処理）。以前は [ESC] だけで消していた。 */
+    if (cmd.lyr_only && key == 8) {
+        cmd.lyr_only = 0;
+        sync_ui();
+        present();
+    }
     if (cmd.missed || cmd.ch_same) {
         /* 次の鍵で外れの札は消える。その鍵が何もしなくても描き直す（測定：escfz_r_26）。 */
         cmd.missed = 0;

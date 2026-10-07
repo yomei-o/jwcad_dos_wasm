@@ -5116,6 +5116,10 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         return 0;
     }
 range_items:
+    if (c->command == 8 && c->chb && c->stage == 1 && item == 1) {
+        c->lyr_only = !c->lyr_only;     /* 範囲の終点の行の ①レイヤ（測定のみ：escfz_R_68） */
+        return 1;
+    }
     if (c->command == 8 && !c->chb && c->pick_a < 0 && !c->ch_ask
         && ((item == 3 && c->chamfer == 0) || (item == 2 && (c->chamfer == 1 || c->chamfer == 3)))) {
         /* 丸面・楕円面 では ② が 半径= の欄（測定のみ・decomp 未確認：escfz_R_85。ui は
@@ -7055,6 +7059,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->typed_n = 0;
         c->stage = c->stage == 26 ? 24 : c->stage == 35 ? 32 : c->stage == 39 ? 36 : 40;
         return 1;
+    }
+    if (c->command == 8 && c->chb && c->lyr_only && key == 8) {
+        c->lyr_only = 0;            /* 札は次の鍵（[BS]）で消える（測定のみ：escfz_R_68） */
     }
     /* ○ で円を描いたあと（段 2）の [BS]`前項` は最初の行へ（円は残る。測定のみ・decomp 未確認：escfz_E_75）。 */
     if (c->command == 11 && key == 8 && !c->typing && c->stage == 2 && !c->pressed && !c->circ_fix) {
