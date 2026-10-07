@@ -7221,8 +7221,10 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->pt_plain = 1;
         return 1;
     }
-    /* 点【実点】の [ESC] も行を描き直して札を消す（測定のみ・decomp 未確認：escfz_v_15）。 */
-    if (c->command == 22 && c->pt_real && !c->typing && key == 27 && c->stage == 1 && c->top_item == 1) {
+    /* 点【実点】の [ESC] は、取り消す点が無い(n==0)ときだけ 2cb4 に飲み込まれて札が消える。n≠0 は点を取り消して札が戻る
+     * （decomp ovl20 3ab8:45ea、dis 0x2f34a〜0x2f366：引数が n==0 で 0x2710、n≠0 で 0x270f。測定 escfz_v_15 とも一致）。 */
+    if (c->command == 22 && c->pt_real && !c->typing && key == 27 && c->stage == 1 && c->top_item == 1
+        && c->pt_undo == 0) {
         c->pt_plain = 1;
         c->stage = 0;
         return 1;
