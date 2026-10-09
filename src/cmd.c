@@ -6666,7 +6666,14 @@ int jw_cmd_te_digit(JwCmd *c, int n)
         return 0;
     }
     if (c->top_item == 1 || (c->stage == 2 && c->top_item == 0)) {
-        if (n >= 1 && n <= 3) {
+        /* 文字 band2（基点指示…|①基点変|②行連続|③列連続|…）の①基点変も
+         * ここに合流する（実機確認：tools/probe.sh 13 400 140 t A e t 1 で
+         * row1 が直接「文字基準点|① 確 定 |②横【左】|③横位置 0.0 |④縦【下】
+         * |⑤縦位置 0.0 |」に変わった）。ただし band2 の②③は 行連続／列連続
+         * （cmd_top 側で別に実装・decomp/実機とも照合済み）なので、n==2/3
+         * を te_sub へ奪ってはいけない——n==2/3 の 文連結切断／疑似線文字
+         * （te_sub==2/3）は 文編集【変更】の行専用のまま。 */
+        if (n == 1 || (c->command == 28 && n >= 1 && n <= 3)) {
             c->te_sub = n;
             c->missed = 0;
             return 1;

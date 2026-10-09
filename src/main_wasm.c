@@ -5189,9 +5189,16 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         return -1;
     }
     /* 文編集【変更】の行の数字はその行の升（①基点・②文連結切断・③疑似線
-     * 文字）で、項目の行の升ではない（測定：func_all textedit_s1_c1〜c3）。 */
-    if (cmd.command == 28 && key >= '0' && key <= '9' && !cmd.typing
-        && !cmd.typing_text && jw_cmd_te_digit(&cmd, key - '0')) {
+     * 文字）で、項目の行の升ではない（測定：func_all textedit_s1_c1〜c3）。
+     * 文字 band2（点を置いたあとの「基点指示…|①基点変|②行連続|③列連続|…」）
+     * の①基点変も同じ 文字基準点 の盤（kp8）を共有するので、jw_cmd_te_digit
+     * へ同じ道で渡す（実機確認：tools/probe.sh 13 400 140 t A e t 1。
+     * jw_cmd_te_digit 側で②③を command==28 専用に絞ってあるので、文字の
+     * ②行連続・③列連続は奪われず cmd_top の既存実装（decomp/実機照合済み）
+     * のまま通る）。 */
+    if ((cmd.command == 28 || cmd.command == 13) && key >= '0' && key <= '9'
+        && !cmd.typing && !cmd.typing_text
+        && jw_cmd_te_digit(&cmd, key - '0')) {
         sync_ui();
         present();
         return -1;
