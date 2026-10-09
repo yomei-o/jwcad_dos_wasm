@@ -10757,9 +10757,30 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->typed[c->typed_n] = 0;
             if (c->typed_n) {
                 const char *comma = strchr(c->typed, ',');
+                const double sx = field_eval(c->typed);
+                const double sy = comma ? field_eval(comma + 1) : sx;
 
-                c->scale_x = field_eval(c->typed);
-                c->scale_y = comma ? field_eval(comma + 1) : c->scale_x;
+                /* 複写・移動 の同じ欄（JW_MOVE_CMD(c->command) && c->scaling==2、
+                 * 上の方）に足した検査と同じ欠けが変形にもあった（nokori.md・
+                 * 55f3a13 のコメントが未確認のまま残していた懸念）。192.168.11.37
+                 * ではなくローカルの ../dosv_emu_cpp（orig/JW_CADV.EXE）で
+                 * tools/steps_table.py 17 150 8 r 150 130 l 245 170 580 8 300 8
+                 * 200 150 t <値> e を境目ごとに踏んで確認：10000 は通り 10001 は
+                 * 断られ、-10000 は通り -10001 は断られた（符号対称）。0 は
+                 * 断られて画面に `データが不適当` の文字列がそのまま出た
+                 * （複写・移動と同じ文言）。0.00001 は通り、`2,20000`（x は
+                 * 有効・y だけ外れる）も断られる（x・y 別々に検査、複写・移動と
+                 * 同じ）。測定のみ・decomp 未確認（欄自体が root 0ad:16d4 numin
+                 * 系かどうかも複写・移動側と同様に未確認）。 */
+                if (sx == 0.0 || sy == 0.0
+                    || !(sx >= -10000.0 && sx <= 10000.0)
+                    || !(sy >= -10000.0 && sy <= 10000.0)) {
+                    c->typed_n = 0;
+                    c->typed[0] = 0;
+                    return 1;
+                }
+                c->scale_x = sx;
+                c->scale_y = sy;
             }
             c->typing = 0;
             c->scaling = 3;
