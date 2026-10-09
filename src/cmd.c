@@ -15936,6 +15936,15 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         }
         if (k >= 0) {
             c->rd_undo = d->lines[k];
+            /* pick_line() の near_mark() が矢の近くの線に rest[2] の bit 0
+             * （「探索で触れた」印、11f2:573f・近傍マークの節）を立ててから
+             * 返すので、この時点の d->lines[k] には消す前の押しで付いた印が
+             * 乗っている。本物の ESC 戻しは印の無い元のバイトに戻る（測定：
+             * 90 216 left|400 140 right|key esc、rest=410000）ので、印は
+             * 控えに残さない（測定のみ・decomp未確認：印を立てる経路自体は
+             * decomp 照合済みだが、undo の控えがどの時点のバイトを使うかは
+             * 未確認）。 */
+            c->rd_undo.rest[2] &= (unsigned char)~1u;
             c->rd_undo_on = 1;      /* 右の消去も [ESC] で一本戻る（測定のみ：tmp の ld 系） */
             jwc_remove_line(d, k);
         } else {
