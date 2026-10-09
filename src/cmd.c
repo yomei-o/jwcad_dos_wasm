@@ -6622,7 +6622,13 @@ int jw_cmd_te_digit(JwCmd *c, int n)
     /* ⑥文字種類変更：② で 変更無⇔有、③ で 無→横→縦→無（測定：steps_table
      * `28 t 6 t 3 t 3 t 3 t 2 t 2`）。升の無い数字は行を描き直して左の盤と
      * 升を下ろす（func_all textedit_s0_c6_v の `30`）。①範囲内変更 はまだ。 */
-    if (c->top_item == 6 && c->te_pick < 0) {
+    /* command==28 専用（文字 の top_item==6 は⑥縦字で、別物）。main_wasm.c が
+     * jw_cmd_te_digit を command==13 の数字鍵にも回すようにしたとき
+     * （band2 の①基点変、2026-10-09）、ここに command の絞りが無かった
+     * ため文字⑥縦字のあとの数字（行連続・①基点変など）がここに誤って
+     * 合流し、te6_layer を勝手に書き換えて返っていたバグ（tools/cmdstate.mjs
+     * `13 90 264 left t 6 t 2` で top_item が 6 のまま進まないことで発覚）。 */
+    if (c->command == 28 && c->top_item == 6 && c->te_pick < 0) {
         if (n == 2) {
             c->te6_layer ^= 1;
             c->te_plain = 0;        /* 盤と升も出し直す（tmp/te6c.txt） */
@@ -7843,16 +7849,32 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             if (c->typed_n > 0 && d) {
                 /* The far end follows from the string and the character type
                  * -- see jwc_text_length.  ①水平 lays the baseline along +x
-                 * and ②垂直 along **+y**, so a vertical string runs *up* from
-                 * the point that was pressed and jw_view draws it with the
-                 * turned routine.  ③角度指定 is not done. */
+                 * and ②垂直 along **+y** (unless ⑥縦字 was toggled on first --
+                 * see below), so a vertical string runs *up* from the point
+                 * that was pressed and jw_view draws it with the turned
+                 * routine.  ③角度指定 is not done. */
                 const double len = jwc_text_length(d, c->typed, size);
                 /* ③角度指定 の角度で基線を回す（測定：30 度で `AB` の終わりが
                  * (+4.909,+2.834)）。 */
                 const double ar = c->text_ang * 3.14159265358979323846 / 180.0;
                 const double ex = c->text_vert ? 0.0
                                 : c->text_ang != 0.0 ? len * cos(ar) : len;
-                const double ey = c->text_vert ? len
+                /* 実機確認（測定のみ・decomp未確認）：②垂直 と ⑥縦字 は
+                 * decomp 的に同じ `DS:0x4344` を読み書きする（nokori.md、
+                 * ovl15 3ab8:6467 10190〜10199 行）——band1（文字種類選択、
+                 * 点を置く前）で ⑥ を先に押してから ② を選ぶと、本物は
+                 * 基線が逆向き（+y ではなく -y）になる：`tools/probe.sh 13
+                 * t 2 400 140 t A e` は (279,323)-(279,325.616)（+y）、
+                 * `tools/probe.sh 13 t 6 t 2 400 140 t A e` は
+                 * (279,323)-(279,320.384)（-y、rest[2] に 0x20 も立つ）。
+                 * ②のあとは band が即座に基点指示（band2）へ移り band2 に
+                 * ⑥ は無い（実機で digit 6 は無効——row3 が数え箱表示に
+                 * 化けるだけ）ので、⑥→② の順しか実機で試せない（逆順
+                 * は構成できない）。c->text_tate は band1 で ② を選ぶまでの
+                 * あいだしか変わらない（選んだ瞬間に band2 へ移り ⑥ はもう
+                 * 押せない）ので、コミット時点の text_tate をそのまま見て
+                 * 符号を決めてよい。 */
+                const double ey = c->text_vert ? (c->text_tate ? -len : len)
                                 : c->text_ang != 0.0 ? len * sin(ar) : 0.0;
 
                 if (jwc_add_text(d, (float)c->x0, (float)c->y0,
