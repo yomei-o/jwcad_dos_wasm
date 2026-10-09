@@ -36,3 +36,6 @@ te5f|SAMPLE0|30 264 left|type 5|150 140 left|255 420 right|200 300 left
 te5g|SAMPLE0|30 264 left|type 5|150 140 left|255 420 right|type 2|type 0|key enter|200 300 left
 te_off1|SAMPLE0|30 264 left|400 140 left|type 1|type 3|type 10|key enter|type 1|190 152 left|key enter
 te_off2|SAMPLE0|30 264 left|400 140 left|type 1|type 3|type -5.5|key enter|type 5|type 7|key enter|type 1|190 152 left|key enter
+te_move_off|SAMPLE0|30 264 left|400 140 right|type 1|type 3|type 10|key enter|type 1|190 152 right|300 300 left
+te_move_off2|SAMPLE0|30 264 left|400 140 right|type 1|type 3|type -5.5|key enter|type 5|type 7|key enter|type 1|190 152 right|300 300 left
+te_copy_off|SAMPLE0|30 264 left|type 3|type 1|type 3|type 10|key enter|type 1|190 152 left|300 300 left

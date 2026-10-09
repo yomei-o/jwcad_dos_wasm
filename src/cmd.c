@@ -9496,6 +9496,35 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->stage = 23;
         return 1;
     }
+    /* 寸法 ⑤一括 段21〜23（始線・終線・追加線･除外線）の [ESC]：
+     * `python tools/steps_table.py 14 400 150 300 250 450 330 600 5 esc`
+     * （段21、何も拾っていない）は [ESC] のあと帯が段3（①小数点以下[1]桁
+     * |②半径|③直径|④累寸|⑤一括| の行）と同じ文言に戻る——⑤一括ごと
+     * 中止（②中止 と同じ）。`... 300 140 esc`（段22、始線だけ拾った
+     * あと）は段21（始線 のマウス指示）の文言に戻る。
+     * `... 300 140 162 200 esc`（段23、始線+終線を拾って
+     * 追加線･除外線 の帯）も段21の文言に戻る——追加線･除外線を
+     * いくつ拾っていても同じ（`300 140 162 200 400 419 esc` で確認）。
+     * [BS] はどの段でも帯に `[BS]` の札が出ず、実機で押しても何も
+     * 変わらない（同じ `steps_table.py` に `bs` を渡すと段21・22・23
+     * とも画面に変化なし）。**decomp（ovl27 FUN_3ab8_206c、11148
+     * バイト）は未解決のまま**——local_170==5 の入力待ちがこの３段を
+     * まとめて扱っていると見られる箇所は読んだが、x87 スタックの
+     * 壊れで ESC/BS の分岐とこの３段の対応が番地まで裏取りできて
+     * いない（notes/decomp-audit.md 10-i 参照）。**測定のみ・decomp未確認**。 */
+    if (key == 27 && d && c->command == 14 && c->dim_lot
+        && c->stage >= 21 && c->stage <= 23 && !c->typing) {
+        if (c->dim_lot_n == 0) {
+            c->dim_lot = 0;
+            c->dim_lot_n = 0;
+            c->dim_lot_done = 0;
+            c->stage = 3;
+        } else {
+            c->dim_lot_n = 0;
+            c->stage = 21;
+        }
+        return 1;
+    }
     /* **取り消し。** 何も持っていないときの [ESC] は、直前の押しで足した
      * ものを消して、その押しの前の段へ戻ります（本物は `＊お待ち下さい＊`
      * のあと描き直す）。一度だけ：控えは使ったら捨てる。 */
@@ -19065,9 +19094,25 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 c->missed = 1;  /* `[F3]` の代わりに 読取可能データ無（te2c） */
                 return 1;
             }
-            jwc_move_text(d, c->te_pick, px, py, c->top_item == 3,
-                          c->te_bh, c->te_bv,
-                          c->te_off_h[c->te_bh], c->te_off_v[c->te_bv]);
+            /* 192.168.11.37 の実機で確認（測定のみ・decomp未確認）：②移動・
+             * ③複写 では、①書き換え（offh/offv を 0.0f に外した）と違って
+             * オフセットは実際に効く——ただし欄に打った mm をそのまま足すの
+             * ではなく、他の mm 欄（複写②数値位置・複線の間隔等、上の
+             * `mm * unit_mm / denom` の注記）と同じ換算が要る。SAMPLE0
+             * （unit_mm 1.744108）で横位置 10 → 実機は 300→317.441
+             * （10*1.744108=17.441、旧実装は 300→310.000 のまま換算せず
+             * ずれていた）、横 -5.5・縦 7 → 実機は 290.407,287.791
+             * （-5.5/7 * 1.744108 と一致）。tools/cases/probe_textedit.txt
+             * の te_move_off2・te_move_off3 で確認。 */
+            {
+                const double per = d->unit_mm > 0.0f
+                                    ? (double)d->unit_mm / d->denom : 1.0;
+
+                jwc_move_text(d, c->te_pick, px, py, c->top_item == 3,
+                              c->te_bh, c->te_bv,
+                              (float)(c->te_off_h[c->te_bh] * per),
+                              (float)(c->te_off_v[c->te_bv] * per));
+            }
             c->te_pick = -1;
             c->te_esc = 1;
             return 1;
