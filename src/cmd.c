@@ -19727,6 +19727,19 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;
         }
         c->missed = 0;
+        /* pick_line() の near_mark() がこの押しの近くの線に rest[2] の
+         * bit 0（「探索で触れた」印）を立てる。線切断・コーナー連結の
+         * どちらも拾った線をそのまま次のレコードへ写す（下の memcpy・
+         * jwc_relink_line の `*l = d->lines[k]`）ので、ここで消しておか
+         * ないと印が切った後・連結した後の線に乗ったまま残る（＜ の
+         * 既知の不一致、nokori.md 参照。消去・線消でも同じ根本原因の
+         * バグが見つかって直した——測定のみ・decomp未確認）。Ａ（既に
+         * 持っている側）も同様に消す：今回の押しの近傍に入っていなければ
+         * 既に 0 のはずだが、念のため。 */
+        d->lines[k].rest[2] &= (unsigned char)~1u;
+        if (c->pick_a >= 0 && c->pick_a < d->n_lines) {
+            d->lines[c->pick_a].rest[2] &= (unsigned char)~1u;
+        }
         if (right) {
             /* **線切断 ﾏｳｽ(R)**：押した点を線に下ろした所で二本に分けます。
              * 元の線を抜き、始点側・終点側の順に最後へ（測定：右の辺を
