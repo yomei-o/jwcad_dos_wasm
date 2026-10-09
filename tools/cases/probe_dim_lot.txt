@@ -12,6 +12,15 @@
 dim_lot_esc_after_exec|SAMPLE0|90 280 left|400 150 left|300 250 left|450 330 left|600 5 left|300 140 left|162 200 left|type 1|key esc
 dim_lot_bs_after_exec|SAMPLE0|90 280 left|400 150 left|300 250 left|450 330 left|600 5 left|300 140 left|162 200 left|type 1|key bs
 dim_lot_bs_twice_noop|SAMPLE0|90 280 left|400 150 left|300 250 left|450 330 left|600 5 left|300 140 left|162 200 left|type 1|key bs|key bs
-# 段23（追加線･除外線、実行前）の [ESC] はまだ配線していない（今回の
-# 修正は段24だけ）——このケースは現状維持の記録用（stage は 23 のまま）。
+# 段21〜23 の [ESC] は 10-09（10-i）で配線済み（notes/decomp-audit.md 参照）。
 dim_lot_esc_stage23_still_open|SAMPLE0|90 280 left|400 150 left|300 250 left|450 330 left|600 5 left|300 140 left|162 200 left|key esc
+# 段24（①一括処理実行の直後）の digit キー ①連続入力／②終了（2026-10-09）。
+# tools/steps_table.py（192.168.11.37、実機）で確認：digit '1' は段21の
+# 「始線（始線）マウス指示」の帯へ、digit '2' は段3（①小数点以下[1]桁
+# |②半径|③直径|④累寸|⑤一括|）の帯へ戻る——どちらも保存されるファイルの
+# 中身は変わらない（追加の線・円弧・文字を作らない）ので、functest.sh の
+# 「same」は元から一致するはずの弱い検査——段の着地は tools/cmdstate.mjs
+# で確認した（nokori.md 参照、cmd.stage が digit '1' で 21、digit '2' で
+# 3 になる）。
+dim_lot_digit1_continue|SAMPLE0|90 280 left|400 150 left|300 250 left|450 330 left|600 5 left|300 140 left|162 200 left|type 1|type 1
+dim_lot_digit2_end|SAMPLE0|90 280 left|400 150 left|300 250 left|450 330 left|600 5 left|300 140 left|162 200 left|type 1|type 2
