@@ -5696,7 +5696,18 @@ range_items:
     if (c->command == 14 && c->dim_ck && c->stage == 9) {
         /* ④円･角 ①円径's own line, `|①矢印【内】|②値【内】|③書込角度|`:
          * the first two change over where they stand and the third opens
-         * an angle field (段 10). */
+         * an angle field (段 10). nokori.md had this item down as "疑い
+         * （マウスの列クリックのみ）" -- checked with tools/cmdstate.mjs
+         * (2026-10-09): digit keys already reach here through the
+         * ordinary route (src/main_wasm.c jw_key -> jw_ui_top_cell_x ->
+         * jw_click(x,8,0) -> jw_cmd_top -> here), same as any other
+         * command's `|①...|` band. `type 1` at stage 0 item 4's own
+         * sub-row (`|①円径(L) |②円周(R) |③角度 |`, src/main_wasm.c:3533
+         * -- that one IS mouse-column-only, hardcoded on `x` rather than
+         * routed through cmd_top) already lands on stage 9, and `type 1`
+         * / `type 3` at stage 9 already change dim_ck_out / open the
+         * angle field exactly like a column click would. No code change
+         * was needed; this was a false alarm in nokori.md, not a gap. */
         if (item == 1) {
             c->dim_ck_out = !c->dim_ck_out;
             return 1;
