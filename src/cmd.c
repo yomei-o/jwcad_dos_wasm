@@ -21413,6 +21413,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         box_corners(c, d, x, y, X, Y);
         box_corners_rot(c, x, y, X, Y);
         for (k = 0; k < 4; k++) {
+            if (X[k] == X[k + 1] && Y[k] == Y[k + 1] && d->pen < 0x5a) {
+                continue;       /* 長さの無い辺は引かない（上の □ と同じ） */
+            }
             if (!jwc_add_line(d, X[k], Y[k], X[k + 1], Y[k + 1],
                               (unsigned char)d->line_type,
                               (unsigned char)d->pen,
@@ -21557,6 +21560,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         }
 
         for (k = 0; k < 4; k++) {
+            /* 長さの無い辺は引かない（測定：functest dfz_B_27、高さ 0 の
+             * □ は本物は横の 2 本だけ。／ の「長さの無い線は引きません」
+             * と同じ 11f2:67fa）。 */
+            if (cx[k] == cx[k + 1] && cy[k] == cy[k + 1] && d->pen < 0x5a) {
+                continue;
+            }
             if (!jwc_add_line(d, cx[k], cy[k], cx[k + 1], cy[k + 1], t, p, g)) {
                 return 0;
             }

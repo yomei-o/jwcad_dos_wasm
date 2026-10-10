@@ -24,7 +24,7 @@ while IFS= read -r line; do
     # 手順を | で割って引数に
     old_ifs=$IFS; IFS='|'; set -- $steps; IFS=$old_ifs
     # 件ごとに自分の場所で（同時に走らせても tmp/func を取り合わない）。
-    out=$(FUNCID="${FUNCID_PREFIX:-fc$$}" DRAWING="$drawing" SHOW=6 sh tools/functest.sh "$@" 2>&1)
+    out=$(FUNCID="${FUNCID_PREFIX:-fc$$}_$name" DRAWING="$drawing" SHOW=6 sh tools/functest.sh "$@" 2>&1)
     rc=$?
     case $rc in
     0) ok=$((ok + 1)); printf '  ok    %-28s %s\n' "$name" "${out#*: }" ;;
