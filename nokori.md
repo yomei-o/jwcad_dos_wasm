@@ -650,3 +650,8 @@ tools/cases/func_all.txt`。tmp を消したので origcache の作り直し後�
   すべて測定のみ・decomp 未確認（`tools/probe.sh 25 …` の帯で確認）。`tools/cases/probe_erase.txt` の
   `er_escbug_no_premature_delete`・`er_escbug_open_question_no_delete_even_after_3_clicks` は、本物の線 0・5 が
   rest[2] の bit0・bit1（`0x03`）を持つのに移植は 0 という印だけの差で、2026-10-10 の変更前からある。
+* drawfuzz 280 件（H X c d N R S、2026-10-10 夜〜10-11）のまとめ：座標が食い違った差は直したか個別に記録済み。
+  残りは**印だけ**の差：複写・面取の範囲で記録に付く rest[2]（bit0 探索／bit1 範囲）・rest[3]（面取一括の
+  端の 1/2）。dfz_c_5・R_9・R_10・R_21（面取の範囲で結果の線の rest が `0x03`/`0x01` 等で本物と違う）、
+  dfz_R_5（面取 ②丸面で文字の rest[2] bit1 を本物は落とす＝本物は文字の探索で全文字の bit1 を落とす疑い）、
+  dfz_R_19（面取の座標の最後の 1 ビット）。図面の見た目・働きには影響しない。
