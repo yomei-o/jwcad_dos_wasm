@@ -200,3 +200,21 @@ sh tools/snap.sh   # 長い比較は移植の写し（STEPSHOTS=tmp/snap/tools/s
 | `notes/draw.md` `edit.md` `dim.md` `ui.md` | 作図・編集・寸法・画面の解析メモ（`notes/INDEX.md` に目次） |
 
 > **残りの作業は `nokori.md` に書く**（ここは経緯と手順）。
+
+## 付録：2026-10-10〜11 の検査環境メモ（ローカルだけで実機照合する手順）
+
+* ビルド機（192.168.6.14）の鍵が無い PC でも、`../dosv_emu_cpp` に本物を動かさせて照合できる。
+  `export NODE=/c/prog/emsdk/emsdk/node/24.19.0_64bit/node.exe`、ビルドは
+  `export EMSDK_PYTHON=C:/Users/yomei/AppData/Local/Python/bin/python.exe; sh tools/build_wasm.sh`
+  （`python` が Windows の Store 用の偽物に当たると emcc が「Python was not found」で止まり、wasm が更新されない。
+  成否は `built jwcad.js` の行と jwcad.wasm の更新時刻で確かめる）。
+* 乱数手順：`python tools/drawfuzz.py N SEED OUT.txt 鍵…` → `FUNCID_PREFIX=pN sh tools/funccases.sh OUT.txt`
+  （1 件 約 1 分、同時に 2 本走らせない＝`tmp/sroot.lock`）。件ごとの結果は `tmp/func/<prefix>_<名前>/{orig,port}.txt`
+  （`diff orig.txt port.txt`：`<` が本物、`>` が移植）。「the save did not happen」は手順の終わりに本物が
+  入力待ちのまま保存できなかっただけで、移植の差ではない。
+* 差の種類の見分け：座標・本数の差は直す。`rest[2]` の bit0（探索で触れた）・bit1（範囲）・`rest[3]` の端の印だけの差は
+  見た目に出ないので後回し（nokori.md に分類）。本物の帯は `sh tools/probe.sh <コマンド番号> t 3 400 140 e …`
+  （`x`＝[ESC]、`e`＝[Enter]）で段ごとに採る。decomp（`decomp/JW_CADV.unp.exe` は `python tools/unexepack.py
+  orig/JW_CADV.EXE decomp/JW_CADV.unp.exe` で作る、`pip install capstone` が要る）を先に読み、読み切れなければ
+  「測定のみ・decomp 未確認」と書く。
+* 10-10〜11 の成果と未解決は nokori.md の先頭近く「2026-10-10 のまとめ」と各命令の節にある。
