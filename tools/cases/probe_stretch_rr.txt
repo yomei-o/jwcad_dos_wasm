@@ -52,3 +52,14 @@
 #   -> 1 発目の右押しで cutting=1 stage=2、2 発目（同位置）で cutting=0
 #      stbase=1（stage は 2 のまま）。nl（線の本数）は変わらず、線切断は
 #      実行されない。
+
+# 2026-10-10 基準線を実際に選んでの伸縮を実装（stretch_to_base）。実機（ローカル
+# dosv_emu_cpp）で測定し、tools/functest.sh で本物とレコード一致（same）を確認：
+#   RR='90 152 left|220 157 right|220 157 right'  （基準線＝SAMPLE0 の線 5）
+#   stb_keep_lo   $RR|162 300 left      押した側が残る（線 0 を下側で押す）
+#   stb_keep_hi   $RR|162 148 left      同（上側で押す）
+#   stb_extend    $RR|380 410 left      交点が線の外なら近い端が交点まで伸びる
+#   stb_two       $RR|380 410 left|432 410 left   続けて次の対象線（モードは続く）
+#   stb_par       $RR|400 140 left      平行：`計算不可`、線は変わらず
+#   stb_esc       $RR|380 410 left|key esc        ESC は指定点モードと同じ取り消し
+# 基準線モードでもう一度 RR すると切り替えではなく、その線が新しい基準線になる。

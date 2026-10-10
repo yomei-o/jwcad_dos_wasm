@@ -11921,6 +11921,61 @@ static int stretch_to(JwCmd *c, Jwc *d, const JwView *w, long k,
     return 1;
 }
 
+/* 線伸縮 の基準線モード（RR のあと）：押した対象線を基準線との交点まで
+ * 伸縮します。**残るのは押した側**で、交点が線の外にあるときは交点に
+ * 近い端が交点まで伸びる（コーナー連結の片側と同じ規則）。記録は並びの
+ * 最後へ、端点の並び（始点・終点）は保つ。実機測定（2026-10-10、
+ * `SAVE=1 sh tools/probe.sh 6 r 220 157 r 220 157 l X Y`、基準線は
+ * SAMPLE0 の線 5＝記録 y=305.616 の横線）：
+ *
+ *   線 0 (40.973,44)-(40.973,323.057) を y=163 で押す → (..,44)-(..,305.616)
+ *   同じ線を y=315 で押す                             → (..,305.616)-(..,323.057)
+ *   線 8 (258.987,61.441)-(..,44) を y=53 で押す       → (..,305.616)-(..,44)
+ *
+ * 一本目と二本目は「近い端が動く」指定点モード（stretch_to）とは逆の
+ * 結果になる押し方で、押した側を残す規則だと確かめた。平行で交点が
+ * 無いときは 0 を返す（`計算不可`、decomp FUN_3ab8_2514 の DS:0x402）。
+ * 測定のみ・decomp の幾何は未確認（x87 の崩れで読めていない）。 */
+static int stretch_to_base(JwCmd *c, Jwc *d, const JwView *w, long k,
+                           int sx, int sy)
+{
+    double cx, cy, px, py, dx, dy, n, tc, tp;
+    JwcLine l;
+    int keep0;
+
+    if (!d || k < 0 || k >= d->n_lines) {
+        return 1;
+    }
+    l = d->lines[k];
+    if (!cross_at(&l, &c->st_base, &cx, &cy)) {
+        return 0;
+    }
+    dx = l.x1 - l.x0;
+    dy = l.y1 - l.y0;
+    n = dx * dx + dy * dy;
+    if (n <= 0.0) {
+        return 0;
+    }
+    jw_cmd_at(w, sx, sy, &px, &py);
+    tc = ((cx - l.x0) * dx + (cy - l.y0) * dy) / n;
+    tp = ((px - l.x0) * dx + (py - l.y0) * dy) / n;
+    if (tc <= 0.0) {
+        keep0 = 0;              /* 交点が始点の外：始点が伸びる */
+    } else if (tc >= 1.0) {
+        keep0 = 1;              /* 交点が終点の外：終点が伸びる */
+    } else {
+        keep0 = tp <= tc;       /* 交点が線の中：押した側を残す */
+    }
+    c->st_undo = l;
+    c->st_undo_on = 1;
+    if (keep0) {
+        jwc_relink_line(d, k, l.x0, l.y0, (float)cx, (float)cy);
+    } else {
+        jwc_relink_line(d, k, (float)cx, (float)cy, l.x1, l.y1);
+    }
+    return 1;
+}
+
 /* コーナー連結's second press: cut both lines back to their crossing and move
  * the two records to the end of the list, Ａ first. */
 static void corner_join(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
@@ -19801,8 +19856,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             const long k = pick_line(d, w, sx, sy);
 
             if (k < 0) {
-                /* 外れると行は `[ESC]` の無い段 0 に戻ります（測定）。 */
+                /* 外れると行は `[ESC]` の無い段 0 に戻ります（測定）。
+                 * 基準線モードでも同じで、帯は「基準線へ」のまま（測定：
+                 * `tools/probe.sh 6 r 220 157 r 220 157 l 324 300`）。 */
                 c->missed = 1;
+                c->st_par = 0;
                 c->stage = 0;
                 return 0;
             }
@@ -19834,6 +19892,22 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 c->cutting = 1;
                 return 1;
             }
+            if (c->st_base_mode) {
+                /* 基準線モード：押した線をその場で基準線まで伸縮し、
+                 * 同じ帯（段 2）で次の対象線を待つ。平行なら `計算不可`
+                 * （測定：平行のときは探索の印 rest[2] bit0 が残ったまま、
+                 * 伸縮した線には残らない）。 */
+                if (!stretch_to_base(c, d, w, k, sx, sy)) {
+                    c->missed = 1;
+                    c->st_par = 1;
+                    c->stage = 2;
+                    return 0;
+                }
+                d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~1u;
+                c->st_par = 0;
+                c->stage = 2;
+                return 1;
+            }
             c->pick_a = k;
             c->pick_x = sx;
             c->pick_y = sy;
@@ -19846,13 +19920,19 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * モードへの切り替え（実機 192.168.11.37 `tools/probe.sh 6
          * r 220 157 r 220 157` で確認：切断は実行されず、対象線選びへ
          * 戻って帯の文言が「指定点へ」から「基準線へ」に変わる）。
-         * 基準線を選んでの交点計算そのものは未実装（nokori.md ┣ 参照、
-         * 測定のみ・decomp のモードフラグは未特定のため、二点目の押しは
-         * 従来どおり stretch_to() を呼ぶ）。 */
+         * RR した線が基準線になり、以後の左押しは stretch_to_base()
+         * （上の段 0 の節）。測定のみ・decomp のモードフラグは未特定。 */
         if (c->cutting && right && sx == c->pick_x && sy == c->pick_y) {
             c->cutting = 0;
+            if (c->pick_a >= 0 && c->pick_a < d->n_lines) {
+                c->st_base = d->lines[c->pick_a];
+            }
             c->pick_a = -1;
-            c->st_base_mode = !c->st_base_mode;
+            /* 切り替えではない：基準線モードでもう一度 RR すると、その線が
+             * 新しい基準線になって帯は「基準線へ」のまま（測定：`tools/probe.sh
+             * 6 r 220 157 r 220 157 r 220 157 r 220 157`）。抜けるのは命令の
+             * 選び直し（jw_cmd_pick の memset）。 */
+            c->st_base_mode = 1;
             c->stage = 2;
             return 1;
         }

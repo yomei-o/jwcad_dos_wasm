@@ -700,6 +700,7 @@ typedef struct {
     /* 線伸縮 の RR：「基準線へ」モードに切り替わっている（src/cmd.h
      * JwCmd.st_base_mode と同じ意味、測定のみ）。 */
     int st_base_mode;
+    int st_par;                 /* ┣ 基準線モード：平行で `計算不可` */
     /* 文字 is taking a string: the port draws it at column 1 of row 2. */
     int typing_text;
     /* 文字's own numbers: the character type selected for writing and that

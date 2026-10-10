@@ -25,6 +25,7 @@
 #     t  the next word is typed, one character at a time
 #     e  [Enter]
 #     b  [BS]
+#     x  [ESC]
 #     f2 [F2] -- any f<n> the emulator knows
 #
 # Everything lands in tmp/probe.
@@ -61,6 +62,7 @@ my=$((64 + 16 * row + 8))
             shift; continue;;
         e)  printf 'key enter\nwait 30000000\n'; shift; continue;;
         b)  printf 'key backspace\nwait 8000000\n'; shift; continue;;
+        x)  printf 'key esc\nwait %s\n' "$WAIT"; shift; continue;;
         f[0-9]*) printf 'key %s\nwait %s\n' "$1" "$WAIT"; shift; continue;;
         esac
         [ $# -ge 2 ] || break

@@ -1344,11 +1344,29 @@ static void put_metres(char *out, size_t cap, const char *text, double m,
     out[o] = 0;
 }
 
+/* ┣ 線伸縮 の RR のあとの帯（%s の中身が「指定点」→「基準線」）。
+ * 192.168.11.37 `tools/probe.sh 6 r 220 157 r 220 157` の生の文字列ログから
+ * 起こしたバイト列（decomp の sprintf 引数そのものは未確認）。 */
+#define ST_BASE_BAND \
+    "\x81" "\x9b" "\x8a" "\xee" "\x8f" "\x80" "\x90" "\xfc" \
+    "\x82" "\xd6" "\x90" "L" "\x8f" "k" "\x82" "\xb7" "\x82" \
+    "\xe9" "\x91" "\xce" "\x8f" "\xdb" "\x90" "\xfc" "\x8e" \
+    "w" "\x8e" "\xa6" "(" "\xcf" "\xb3" "\xbd" "-L) " "\x81" \
+    "\x9e" "\x90" "\xfc" "\x90" "\xd8" "\x92" "f(" "\xcf" \
+    "\xb3" "\xbd" "-R)" "\x81" "y" "\x8a" "\xee" "\x8f" "\x80" \
+    "\x90" "\xfc" "\x8e" "w" "\x8e" "\xa6" "(" "\xcf" "\xb3" \
+    "\xbd" "-RR)" "\x81" "z"
+
 static void stage_text_1(VGA *v, const JwStage *q, const JwUi *s, int stage)
 {
     char out[160];
 
     if (q->command != s->command || q->stage != stage) {
+        return;
+    }
+    if (q->command == 6 && s->st_base_mode && q->stage == 2 && q->col == 8) {
+        jw_ui_text(v, q->col, q->row, (unsigned)q->fg, (unsigned)q->bg,
+                   ST_BASE_BAND);
         return;
     }
     /* ②範囲外消去 has no `＿` in front of its 追加･除外 line. */
@@ -6835,24 +6853,17 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 8, 1, 7, 0, one);
                 jw_ui_text(v, 73, 1, 7, 0, "[BS]\x91O\x8d\x80");
             }
-            /* ┣ 線伸縮 の RR：「基準線へ」モードに切り替わったあとの段 2
-             * （対象線をもう一度待つ）の帯は、stage.h の既存行（指定点へ
-             * …）を実機測定の文言（基準線へ…）で上書きする。%s の中身が
-             * 替わるだけで他は同じ（192.168.11.37 `tools/probe.sh 6
-             * r 220 157 r 220 157` の生の文字列ログから直接起こした
-             * バイト列。decomp の sprintf 引数そのものは未確認）。 */
+            /* ┣ 線伸縮 の基準線モード：外れたあと（段 0）も帯は「基準線へ」の
+             * まま、[ESC] は無い（測定：`tools/probe.sh 6 r 220 157 r 220 157
+             * l 324 300`）。段 2 の帯は stage_text_1 が ST_BASE_BAND に替える。 */
             if (s->command == 6 && s->st_base_mode && i == s->stage
-                && s->stage == 2 && !s->cutting) {
+                && s->stage == 0 && !s->cutting) {
                 jw_ui_text(v, 6, 1, 7, 0, "\x81" "E");
-                jw_ui_text(v, 8, 1, 7, 0,
-                    "\x81" "\x9b" "\x8a" "\xee" "\x8f" "\x80" "\x90" "\xfc"
-                    "\x82" "\xd6" "\x90" "L" "\x8f" "k" "\x82" "\xb7" "\x82"
-                    "\xe9" "\x91" "\xce" "\x8f" "\xdb" "\x90" "\xfc" "\x8e"
-                    "w" "\x8e" "\xa6" "(" "\xcf" "\xb3" "\xbd" "-L) " "\x81"
-                    "\x9e" "\x90" "\xfc" "\x90" "\xd8" "\x92" "f(" "\xcf"
-                    "\xb3" "\xbd" "-R)" "\x81" "y" "\x8a" "\xee" "\x8f" "\x80"
-                    "\x90" "\xfc" "\x8e" "w" "\x8e" "\xa6" "(" "\xcf" "\xb3"
-                    "\xbd" "-RR)" "\x81" "z");
+                jw_ui_text(v, 8, 1, 7, 0, ST_BASE_BAND);
+            }
+            /* 対象線が基準線と平行：`計算不可`（測定：同 `l 400 140`）。 */
+            if (s->command == 6 && s->st_par && s->missed && i == s->stage) {
+                jw_ui_text(v, 20, 2, 7, 0, "\x8c\x76\x8e\x5a\x95\x73\x89\xc2");
             }
             /* ③書込角度's own field (段 10): the same `角度 =` line
              * ③任意方向 has, with its own 前回と同じ at column 50. */

@@ -467,6 +467,7 @@ static void sync_ui(void)
     ui.hit_kind = cmd.hit_kind;
     ui.cutting = cmd.cutting;
     ui.st_base_mode = cmd.st_base_mode;
+    ui.st_par = cmd.st_par;
     ui.divisions = cmd.divisions;
     ui.meas_total = cmd.meas_total;
     ui.meas_last = cmd.meas_last;
