@@ -66,3 +66,4 @@ cm_copy_attr_esc_no_apply|SAMPLE0|90 72 left|150 130 left|245 170 right|type 7|t
 cm_move_attr_group_move|SAMPLE0|30 72 left|150 130 left|245 170 right|type 7|type 1
 cm_move_attr_layer_move|SAMPLE0|30 72 left|150 130 left|245 170 right|type 7|type 2
 cm_move_attr_cancel|SAMPLE0|30 72 left|150 130 left|245 170 right|type 7|type 3
+copy_numpos_press_enter|SAMPLE0|type C|162 420 right|300 250 left|280 160 right|598 420 right|450 330 left|type 45|300 350 left|key enter|type 2|type 8|598 420 right

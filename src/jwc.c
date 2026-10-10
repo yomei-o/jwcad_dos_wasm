@@ -1861,7 +1861,9 @@ int jwc_dup_text(Jwc *d, long k, float dx, float dy)
     }
     free(keep);
     t = &d->texts[d->n_texts - 1];
-    t->rest[2] = was.rest[2];
+    /* 複写でできた文字にも線と同じく範囲の印・読み取りの印は無い（測定：functest
+     * dfz_C_22、原図形の rest[2]=02 に対し複写は 00）。 */
+    t->rest[2] = (unsigned char)(was.rest[2] & ~3u);
     t->rest[3] = was.rest[3];
     return 1;
 }

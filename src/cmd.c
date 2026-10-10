@@ -20308,6 +20308,13 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 1;
         }
         if (JW_MOVE_CMD(c->command) && c->stage == 7) {
+            /* 打ちかけの数があれば押しは [Enter] と同じ（numin の共通の規則。
+             * functest dfz_C_22：`type 2|type 8|598 420 right` で本物は 8 mm
+             * ずらす。前は覚えている距離で置いていた）。 */
+            if (c->typing && c->typed_n) {
+                jw_cmd_key(c, d, 13);
+                return 1;
+            }
             /* 前回と同じ ﾏｳｽ(R): copy at the distance it remembers. */
             if (!right) {
                 return 0;
