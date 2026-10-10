@@ -11479,8 +11479,18 @@ static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
     }
 
     {
-        const double want = (c->chamfer == 0) ? c->gap_chamfer * per
-                                               : c->ch_radius * per;
+        /* 面取の寸法（紙の mm × 1 mm の長さ）は float に丸めて持つ（測定：drawfuzz の
+         * R_1・R_6・R_19 で `30 * per` を double のまま使うと線の端が 1 ULP ずれ、
+         * float に丸めると 3 件とも実機とビット一致。複写の ③連続の距離と同じ
+         * 型。decomp 未確認）。 */
+        static const double PAPER_W[5] = { 1189.0, 841.0, 594.0, 420.0, 297.0 };
+        /* 1 mm の長さは 518/用紙幅 を **double** のまま（複写の copy_by_mm と同じ。
+         * float の unit_mm から割ると 145 mm の面取で 1 ULP ずれた：drawfuzz3 R_1）。 */
+        const double per2 = d->paper >= 0 && d->paper < 5
+                          ? 518.0 / PAPER_W[d->paper] / d->denom : per;
+        const double want = (double)(float)((c->chamfer == 0)
+                                            ? c->gap_chamfer * per2
+                                            : c->ch_radius * per2);
         const int rev_r = c->chamfer == 1 && want < 0.0;    /* 丸面 逆Ｒ */
         double back;
         float akx, aky, bkx, bky;
