@@ -12,3 +12,4 @@ corner_cut_keep_a|SAMPLE0|90 160 left|220 157 left|598 300 right|598 163 left
 corner_cut_same_as_a|SAMPLE0|90 160 left|220 157 left|220 157 right|598 163 left
 corner_join_plain|SAMPLE0|90 160 left|220 157 left|598 163 left
 corner_same_data|SAMPLE0|90 160 left|220 157 left|220 157 left|598 163 left
+corner_join_x0|SAMPLE0|90 160 left|380 410 left|220 157 left

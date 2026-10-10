@@ -11063,7 +11063,11 @@ static void corner_cut(const JwcLine *l, double cx, double cy,
     /* Keep the end that leaves the pressed point inside what is left.  With
      * the corner beyond both ends neither piece holds it, and the far end is
      * the one that does not move. */
-    const int keep0 = (tp <= tc) == (t0 <= tc);
+    /* 交点が始点の外（tc<0）なら、押した場所によらず終点が残って始点が
+     * 交点まで伸びる（測定：functest `90 160 left|380 410 left|220 157
+     * left`、本物は線 8 を (157.384)-(419) に伸ばす。以前は押した点が
+     * 交点より先にあると始点側を残していて逆向きに伸びていた）。 */
+    const int keep0 = tc < 0.0 ? 0 : (tp <= tc) == (t0 <= tc);
 
     *kx = keep0 ? l->x0 : l->x1;
     *ky = keep0 ? l->y0 : l->y1;
@@ -19980,10 +19984,17 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * 既知の不一致、nokori.md 参照。消去・線消でも同じ根本原因の
          * バグが見つかって直した——測定のみ・decomp未確認）。Ａ（既に
          * 持っている側）も同様に消す：今回の押しの近傍に入っていなければ
-         * 既に 0 のはずだが、念のため。 */
-        d->lines[k].rest[2] &= (unsigned char)~1u;
-        if (c->pick_a >= 0 && c->pick_a < d->n_lines) {
-            d->lines[c->pick_a].rest[2] &= (unsigned char)~1u;
+         * 既に 0 のはずだが、念のため。
+         * **ただし何も切らず連結もしない押し（Ａとして持つだけ・同データ・
+         * 計算不可）は印を残す**（測定：functest `corner_cut_same_as_a`・
+         * `corner_same_data`、本物は線 2 の rest が 410100 のまま）。 */
+        if (right || (c->pick_a >= 0 && k != c->pick_a
+                      && cross_at(&d->lines[c->pick_a], &d->lines[k],
+                                  &(double){0}, &(double){0}))) {
+            d->lines[k].rest[2] &= (unsigned char)~1u;
+            if (c->pick_a >= 0 && c->pick_a < d->n_lines) {
+                d->lines[c->pick_a].rest[2] &= (unsigned char)~1u;
+            }
         }
         if (right) {
             /* **線切断 ﾏｳｽ(R)**：押した点を線に下ろした所で二本に分けます。
