@@ -20584,6 +20584,22 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;
         }
         if (c->pressed == 1) {
+            /* 消去 ①②の升から始めた範囲の終点は `(L)free (R)Read`：右の押しは
+             * 範囲確定ではなく点の読みで、読む点が無ければ `読取可能データ無`
+             * のまま終点を待つ（測定：functest dfz_d_8、右の (250,200) で本物は
+             * 範囲を閉じない。decomp 未確認）。 */
+            if (c->command == 25 && c->er_pt && right) {
+                double rx, ry;
+
+                if (!take(c, d, w, sx, sy, 1, &rx, &ry)) {
+                    c->missed = 1;
+                    return 0;
+                }
+                c->missed = 0;
+                x = rx;
+                y = ry;
+                right = 0;
+            }
             c->x1 = x;
             c->y1 = y;
             c->pressed = 2;

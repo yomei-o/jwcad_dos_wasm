@@ -36,3 +36,4 @@ er_cancel_item2_then_second_click_deletes|SAMPLE0|30 216 left|150 130 left|245 1
 # 期待値——DIFF 扱いは tools/funccases.sh 側の都合で、同じのではなく
 # こちらが「不一致」を示すために置いてある）。
 er_escbug_open_question_no_delete_even_after_3_clicks|SAMPLE0|30 216 left|150 130 left|245 170 right|160 150 left|key esc|150 130 left|245 170 right|160 150 left|160 150 left|160 150 left
+erase_item_end_right_read|SAMPLE0|type d|type 1|move 500 200|598 420 left|type 12|type 3|250 200 right|key enter|move 300 250|280 160 right
