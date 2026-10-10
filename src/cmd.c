@@ -21478,7 +21478,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         return 1;
     }
     if ((c->command == 2 || c->command == 3) && c->ask_kind == 2
-        && c->typing) {
+        && c->typing && !c->typed_n) {
         /* `角度 =` の欄では、／ の `任意角度(L)` は向きの固定をやめ、
          * `前回と同じ ﾏｳｽ(R)` は前の角度で固定します。＋ の (L) は
          * `0 度` です（どちらも本物の上の行の字。0 度 の働きは未測定）。 */
@@ -21507,7 +21507,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         return 1;
     }
     if ((c->command == 2 || c->command == 3) && c->ask_kind == 1
-        && c->typing) {
+        && c->typing && !c->typed_n) {
         /* `寸法 = ` の欄が開いているときの押しは点ではなく答えです：
          * `任意寸法 ﾏｳｽ(L)` は長さの固定をやめ、`前回と同じ ﾏｳｽ(R)` は
          * 前に決めた長さ（`[  1000.000mm]` の数）で固定します。 */
