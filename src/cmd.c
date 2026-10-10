@@ -21323,6 +21323,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             a0 = a1;
             a1 = t;
         }
+        /* 始点と終点の角が同じ円弧は作らない（測定：functest dfz_N_11、
+         * 同じ点を二度押すと本物は何も記録しない。線の長さ 0 と同じ）。 */
+        if (fixed16(a0) == fixed16(a1)) {
+            return 0;
+        }
         return jwc_add_arc_at(d, (float)c->x0, (float)c->y0,
                               c->arc_rfix
                               ? (float)c->arc_r / jwc_zukei_scale(d)
