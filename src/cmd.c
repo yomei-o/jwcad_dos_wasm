@@ -24,6 +24,7 @@ void jw_cmd_pick(JwCmd *c, int command)
     const double keep_aa = c->arc_ang;
     const double keep_ar = c->arc_r;
     const double keep_ea = c->ell_a, keep_eb = c->ell_b, keep_ee = c->ell_ang;
+    const double keep_tpa = c->text_prev_set ? c->text_prev_ang : -90.0;
     const double keep_rg0 = c->rep_gap[0], keep_rg1 = c->rep_gap[1];
     double keep_gh[5];
 
@@ -34,6 +35,10 @@ void jw_cmd_pick(JwCmd *c, int command)
     free(c->sel_text);
     memset(c, 0, sizeof(*c));
     c->command = command;
+    /* 文字 ③角度指定 の `前回と同じ` は覚えていて、最初は -90 度（測定：どの
+     * 図面でも `[ -90.000ﾟ]`。functest dfz_A_29）。 */
+    c->text_prev_ang = keep_tpa;
+    c->text_prev_set = 1;
     /* 複線 remembers the interval between runs, and its line says so before
      * anything has been typed: `(R)同じ寸法[    1000.000]`.  A thousand is
      * what the original had when src/prompt.h was captured -- the program's
@@ -7981,8 +7986,12 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
                                 : c->text_ang != 0.0 ? len * sin(ar) : 0.0;
 
                 if (jwc_add_text(d, (float)c->x0, (float)c->y0,
-                                 (float)(c->x0 + ex),
-                                 (float)(c->y0 + ey),
+                                 c->text_ang != 0.0 && !c->text_vert
+                                     ? (float)c->x0 + (float)ex
+                                     : (float)(c->x0 + ex),
+                                 c->text_ang != 0.0 && !c->text_vert
+                                     ? (float)c->y0 + (float)ey
+                                     : (float)(c->y0 + ey),
                                  c->typed, size, layer)) {
                     if (c->text_tate) {
                         d->texts[d->n_texts - 1].rest[2] |= 0x20;
@@ -8938,6 +8947,7 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         if (key == 13 || key == 10) {
             c->typed[c->typed_n] = 0;
             c->text_ang = c->typed_n ? field_eval(c->typed) : 0.0;
+            c->text_prev_ang = c->text_ang;
             c->text_vert = 0;
             c->text_ang_ask = 0;
             c->typing = 0;
@@ -16209,7 +16219,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * `AB` [Enter] は何も書かない）。 */
         if (!right) {
             c->text_ang = 0.0;
+        } else {
+            c->text_ang = c->text_prev_ang;
         }
+        c->text_prev_ang = c->text_ang;
         c->text_vert = 0;
         c->text_ang_ask = 0;
         c->typing = 0;

@@ -39,3 +39,4 @@ te_off2|SAMPLE0|30 264 left|400 140 left|type 1|type 3|type -5.5|key enter|type 
 te_move_off|SAMPLE0|30 264 left|400 140 right|type 1|type 3|type 10|key enter|type 1|190 152 right|300 300 left
 te_move_off2|SAMPLE0|30 264 left|400 140 right|type 1|type 3|type -5.5|key enter|type 5|type 7|key enter|type 1|190 152 right|300 300 left
 te_copy_off|SAMPLE0|30 264 left|type 3|type 1|type 3|type 10|key enter|type 1|190 152 left|300 300 left
+text_ang_prev_vert|SAMPLE0|type A|type 3|162 140 right|162 420 right|type 100|type 6|type 2|162 140 left|550 250 left|type 5|type 2|450 330 left
