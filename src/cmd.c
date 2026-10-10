@@ -15425,7 +15425,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                 }
             }
             for (k = 0; k < d->n_texts && k < c->n0_texts; k++) {
-                if (takes_text(c) && picked_text(c, d, k)) {
+                /* 面取 の一括処理の範囲は文字に印を付けない（測定：functest dfz_R_2、
+                 * 表題の文字 0 の rest[2] は 00 のまま。移植は 02 を付けていた）。 */
+                if (takes_text(c) && c->command != 8 && picked_text(c, d, k)) {
                     d->texts[k].rest[2] |= 2u;
                 } else {
                     d->texts[k].rest[2] &= (unsigned char)~2u;
