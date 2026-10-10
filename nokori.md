@@ -645,3 +645,8 @@ tools/cases/func_all.txt`。tmp を消したので origcache の作り直し後�
   実行して文字 0（(172,152) の表題）を消す。[Enter]・追加･除外・二度押し確認のどこで確認帯に入るかの遷移が違う
   （`tools/probe.sh 25 t 6 162 140 e e 550 250 e r 250 200 l 430 180 …` で段ごとの帯を採ること。本物の帯は
   描き直しの途中で重なって見える）。
+* 消去（キー d）：dfz_d_4・d_15・d_8 は解消。確認の段（`復活出来ません |①実行(L)|②中止(R)|`）の [Enter] は
+  何も起きない／図面の右押しは ②中止／①②の升から始めた範囲の終点の右押しは点の読み（範囲確定ではない）。
+  すべて測定のみ・decomp 未確認（`tools/probe.sh 25 …` の帯で確認）。`tools/cases/probe_erase.txt` の
+  `er_escbug_no_premature_delete`・`er_escbug_open_question_no_delete_even_after_3_clicks` は、本物の線 0・5 が
+  rest[2] の bit0・bit1（`0x03`）を持つのに移植は 0 という印だけの差で、2026-10-10 の変更前からある。

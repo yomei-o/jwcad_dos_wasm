@@ -20758,6 +20758,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * 押しで確かめたのは ① の升だけ）。 */
             return jw_cmd_top(c, d, right ? 2 : 1, 0);
         }
+        if (c->command == 25 && c->stage == 2 && right) {
+            /* `復活出来ません |①実行(L)|②中止(R)|` の図面の右押しは ②中止
+             * （測定：functest dfz_d_4、probe.sh 25 …e r 250 200 で帯が
+             * 範囲の始点指示へ戻る。decomp 未確認）。 */
+            return jw_cmd_top(c, d, 2, 0);
+        }
         if (c->command == 25 && c->stage == 2 && !right) {
             /* `復活出来ません |①実行(L)|②中止(R)|` で図面を左で押すと、まず
              * `消去 再度(L)`、もう一度左で消す（測定：STR と記録）。 */

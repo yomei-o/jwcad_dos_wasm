@@ -5226,6 +5226,14 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         && !cmd.typing_text && drawing && cmd.stage >= 1 && mouse_x >= AREA_X0 && mouse_y >= AREA_Y0) {
         return jw_click(mouse_x, mouse_y, 0);
     }
+    /* 消去 の `復活出来ません |①実行(L)|②中止(R)|` の段（範囲確定のあと）の [Enter] は
+     * 何も起きない：消さないし `消去 再度(L)` も出ない（測定：functest dfz_d_4・
+     * d_15 と probe.sh 25 …e e、二度目の [Enter] の帯は一度目と同じ。そのあとの
+     * 図面の左押しで初めて `消去 再度(L)`）。decomp 未確認。 */
+    if ((key == 13 || key == 10) && cmd.command == 25 && cmd.stage == 2
+        && cmd.pressed == 2 && !cmd.typing && !cmd.typing_text && drawing) {
+        return -1;
+    }
     if ((key == 13 || key == 10) && cmd.command != 17 && (JW_RANGE(&cmd) || (cmd.command == 24 && cmd.top_item == 3)
          || (cmd.command == 25 && cmd.span))
         && !cmd.typing && !cmd.typing_text

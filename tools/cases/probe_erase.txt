@@ -37,3 +37,5 @@ er_cancel_item2_then_second_click_deletes|SAMPLE0|30 216 left|150 130 left|245 1
 # こちらが「不一致」を示すために置いてある）。
 er_escbug_open_question_no_delete_even_after_3_clicks|SAMPLE0|30 216 left|150 130 left|245 170 right|160 150 left|key esc|150 130 left|245 170 right|160 150 left|160 150 left|160 150 left
 erase_item_end_right_read|SAMPLE0|type d|type 1|move 500 200|598 420 left|type 12|type 3|250 200 right|key enter|move 300 250|280 160 right
+erase_confirm_enter_noop|SAMPLE0|type d|430 180 right|350 350 left|162 420 left|move 280 160|300 350 left|key enter|key enter|550 250 left|type 5|430 180 right
+erase_confirm_right_abort|SAMPLE0|type d|type 6|162 140 left|key enter|key enter|550 250 left|key enter|250 200 right|430 180 left|430 180 left|key enter|162 250 left
