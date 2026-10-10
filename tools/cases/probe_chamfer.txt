@@ -15,3 +15,4 @@ chb_n|SAMPLE0|90 184 left|type 4|225 150 left|move 240 165|240 165 left|type 1|t
 chb_o|SAMPLE0|90 184 left|type 4|580 120 left|move 620 150|620 150 left|type 1|type 1
 chb_p|SAMPLE0|90 184 left|type 1|type 3|150 120 left|move 175 150|175 150 left|type 1|type 1
 chamfer_batch_text_unmarked|SAMPLE0|type R|type 4|162 140 left|type 4|300 250 left|598 300 left|162 250 left|type 8|450 330 left|type 8
+chamfer_size_press_enter|SAMPLE0|type R|type 3|type 1|type 45|430 180 left|162 140 left|key enter|move 400 140|type 3|400 140 right

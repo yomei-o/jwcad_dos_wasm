@@ -19765,6 +19765,13 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     if (c->command == 8 && c->ch_ask) {
         /* ③寸法= の欄：左は効かず（本物は行を出し直すだけ）、右は前回と同じ。
          * どちらでも `データが不適当` は消える（測定）。 */
+        /* 打ちかけの数があれば押しは [Enter] と同じ：欄を閉じるだけで、押した所は
+         * 線の指示にならない（測定：functest dfz2_R_1、probe.sh 8 t 3 t 1 t 45
+         * 430 180 で `対象線(Ａ)マウス指示 … ③寸法=145.000`、次の押しがＡ）。 */
+        if (c->typing && c->typed_n) {
+            jw_cmd_key(c, d, 13);
+            return 1;
+        }
         c->ch_bad = 0;
         if (!right) {
             return 0;
