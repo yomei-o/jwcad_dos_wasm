@@ -5125,6 +5125,13 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     /* 文編集 ⑦消去 も [Enter] は同じ所の押し（測定：func_all
      * textedit_s0_c7_v で 読取可能データ無）。②移動・③複写 では言葉が
      * 出ない（c2_v・c3_v）ので入れていない。 */
+    /* 円弧 ③半楕円 の 3 点目（中間点）の段の [Enter] は何も起きない：1・2 点目では
+     * (400,200) の押しだが、3 点目では押しにならない（測定：functest dfz2_N_1 と
+     * probe の e2〜e4、[Enter] のあとの左押しで普通に弧ができる。decomp 未確認）。 */
+    if ((key == 13 || key == 10) && cmd.command == 12 && cmd.arc3 == 3
+        && cmd.arc3_kind == 3 && !cmd.typing && !cmd.typing_text) {
+        return -1;
+    }
     if ((key == 13 || key == 10)
         && ((cmd.command == 12 && (cmd.arc3 || (cmd.pressed == 1 && !cmd.arc_ask)))
             /* 中心を取ったあとの [Enter] は (400,200) の押し（測定：dfz_N_4・
