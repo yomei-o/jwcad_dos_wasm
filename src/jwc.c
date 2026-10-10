@@ -888,7 +888,11 @@ unsigned char *jwc_bytes(const Jwc *d, long *out_len, const char **why)
         r[26] = d->arcs[k].type;
         r[27] = d->arcs[k].pen;
         r[28] = d->arcs[k].layer;
-        memcpy(r + 29, d->arcs[k].rest + 1, 3);
+        /* 円弧の rest[1] は保存で 0 になる（測定：SAMPLE6 を何もせず保存すると、
+         * 本物は円弧の `24`・`4f`・`49`・`4c`・`5c`・`98` を `00` にする。線・点・文字は
+         * そのまま。図形の書出し（上の jwc_bytes）と同じ規則）。 */
+        r[29] = 0;
+        memcpy(r + 30, d->arcs[k].rest + 2, 2);
     }
     for (k = 0; k < d->n_texts; k++, p += TEXT_SIZE) {
         unsigned char *r = out + p;

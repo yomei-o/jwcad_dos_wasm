@@ -10,6 +10,11 @@
  * length and the two far pointers on the fourth line come back out saying what
  * they said.
  *
+ * **Drawings with arcs also change once** (2026-10-11): the original zeroes an
+ * arc's rest[1] when it saves (SAMPLE6's `24`, `4f`, `98`... come out `00`;
+ * functest "move 400 250" on SAMPLE1/2/3/6 and TEST1 matches bit for bit), so
+ * those say "settles" -- the second save changes nothing.
+ *
  * TEST7 is the one drawing that must NOT come back the same: it was saved on
  * an 800x600 screen, and the reader multiplies every coordinate by 518/678 on
  * the way in.  The original does exactly the same and writes 518 back (see
