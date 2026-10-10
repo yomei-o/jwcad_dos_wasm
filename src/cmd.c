@@ -6826,6 +6826,39 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
         c->n0_lines = d->n_lines;
         c->n0_arcs = d->n_arcs;
         c->n0_texts = d->n_texts;
+        /* 範囲を取り始めたことになるので、範囲の印（rest[2] bit1）は全部
+         * 落ちて、前の範囲に入るものだけに立つ（測定：functest `type c|
+         * type 1` だけで、本物は SAMPLE0 のレイヤ 1 の 0x02 が全部落ちる。
+         * jw_cmd_press の範囲を閉じる節と同じ規則）。 */
+        {
+            long k;
+
+            c->range_marked = 1;
+            for (k = 0; k < d->n_lines; k++) {
+                if (prev_range_ok && picked_line(c, d, k)) {
+                    d->lines[k].rest[2] |= 2u;
+                } else {
+                    d->lines[k].rest[2] &= (unsigned char)~2u;
+                }
+            }
+            for (k = 0; k < d->n_arcs; k++) {
+                if (prev_range_ok && picked_arc(c, d, k)) {
+                    d->arcs[k].rest[2] |= 2u;
+                } else {
+                    d->arcs[k].rest[2] &= (unsigned char)~2u;
+                }
+            }
+            for (k = 0; k < d->n_points; k++) {
+                d->points[k].rest[2] &= (unsigned char)~2u;
+            }
+            for (k = 0; k < d->n_texts; k++) {
+                if (prev_range_ok && takes_text(c) && picked_text(c, d, k)) {
+                    d->texts[k].rest[2] |= 2u;
+                } else {
+                    d->texts[k].rest[2] &= (unsigned char)~2u;
+                }
+            }
+        }
         return 1;
     }
 

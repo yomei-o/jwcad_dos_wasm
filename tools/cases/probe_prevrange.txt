@@ -1,0 +1,2 @@
+copy_prev_range_marks|SAMPLE0|type c|type 1
+copy_prev_range_full|SAMPLE0|type c|type 1|550 250 left|450 330 left|type 8|type 8|key enter|450 330 right
