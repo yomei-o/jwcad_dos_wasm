@@ -12715,7 +12715,8 @@ static void dimension(JwCmd *c, Jwc *d, double x1)
                      DIM_X(x1, y), DIM_Y(x1, y), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = (unsigned char)
             (c->dim_lot_run ? 0x00
-             : c->dim_circle ? 0xa2 : uy == 0.0 && ux > 0.0 ? 0x80 : 0x00);
+             : c->dim_circle ? 0xa2
+             : uy == 0.0 && ux > 0.0 && x1 > x0 ? 0x80 : 0x00);   /* 右から左へ引く線は 0x00（測定：functest dfz_S_24。decomp 未確認） */
         d->lines[d->n_lines - 1].rest[3] = 0x20;
         /* 寸法設定 ②寸法線端部 が【点】（[0x1126] == 0）なら、寸法線の
          * **両端に実点**。本物は 3ab8:0dba（ovl27、リンク時 0x2bd67〜

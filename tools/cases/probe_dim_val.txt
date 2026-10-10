@@ -49,3 +49,4 @@ dim_val_bs_at_wait_returns_to_item_row|SAMPLE0|90 280 left|600 450 left|162 140 
 # 必要も無い）。
 dim_val_esc_at_wait_is_noop|SAMPLE0|90 280 left|600 450 left|162 140 left|300 110 left|162 140 right|598 140 right|90 280 left|type 8|key esc|380 108 left|type 1|key enter
 dim_samepoint_end_refused|SAMPLE0|type S|type 1|450 330 left|key enter|162 420 left|162 420 left|162 420 left
+dim_h_reverse_a_byte|SAMPLE0|type S|598 300 left|380 200 left|type 3|type 3|162 250 left|400 140 right|598 140 left|key enter|type 4|key enter|162 140 left
