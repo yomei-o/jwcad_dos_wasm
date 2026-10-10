@@ -4949,6 +4949,13 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->missed = 0;
         return 1;
     }
+    /* 基準線の段（`|①指定解除|` だけの帯）では ① 以外の升は無い：数字キーは
+     * 何も起こさない（測定：functest dfz_X_37、`④` のあとの `2` で本物は
+     * 寸法の欄を開かない）。 */
+    if ((c->command == 2 || c->command == 3) && item != 1
+        && (c->ask_kind == 3 || c->ask_kind == 4)) {
+        return 1;
+    }
     if ((c->command == 2 || c->command == 3) && item == 1 && c->stage == 0) {
         jw_cmd_pick(c, c->command == 2 ? 3 : 2);
         return 1;
