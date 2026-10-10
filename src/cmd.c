@@ -15938,6 +15938,14 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
     }
     if (c->command == 11 && c->ell) {
         /* ○ ②楕円 の押し。 */
+        if (c->typing && c->typed_n && (c->ell == 2 || c->ell == 4)) {
+            /* 打ちかけの数があれば押しは [Enter] と同じ（numin の共通の規則。
+             * 実機：`type E|type 2|type 1|200 300 left|type 4|500 200 right`
+             * で `長径,短径 =` の 4 が確定し `長軸の平行線をマウス指示` へ。
+             * functest dfz_E_19）。 */
+            jw_cmd_key(c, d, 13);
+            return 1;
+        }
         if (c->ell == 1) {
             if (!take_point(c, d, w, sx, sy, right, &x, &y)) {
                 c->missed = 1;
