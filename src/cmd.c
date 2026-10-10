@@ -11633,9 +11633,13 @@ static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
         if (c->chamfer == 1) {
             /* 弧の中心は角から二等分線の向きに r / sin(半分)。小さいほうの弧。 */
             if (wl > 0.0) {
-                const double dist = want / sn;
-                const double ccx = cx + wx / wl * dist;
-                const double ccy = cy + wy / wl * dist;
+                /* 中心までの長さも中心も float に丸めてから角度を出す（測定：functest
+                 * で 丸面 の弧の始終角が 0／90 ちょうどになる。double のままだと
+                 * 1/65536 度ずれる。一括処理と同じ：chb_p）。 */
+                const double wantf = (double)(float)want;
+                const double dist = wantf / sn;
+                const double ccx = (float)(cx + wx / wl * dist);
+                const double ccy = (float)(cy + wy / wl * dist);
                 long sa = poly_angle(ccx, ccy, akx, aky);
                 long sb = poly_angle(ccx, ccy, bkx, bky);
                 const long full = 360L << 16;
@@ -11645,9 +11649,11 @@ static void chamfer(JwCmd *c, Jwc *d, const JwView *w, long a, long b,
 
                     sa = sb; sb = t;
                 }
+                /* 弧の最後のバイトは 0x01（測定：functest で 丸面 を二本の線に
+                 * 掛けた記録。一括処理の丸面は 0xfc）。 */
                 if (jwc_add_arc_at(d, (float)ccx, (float)ccy, (float)want, sa, sb,
                                    (unsigned char)d->line_type, (unsigned char)d->pen,
-                                   (unsigned char)(d->write_layer), 0xfc)) {
+                                   (unsigned char)(d->write_layer), 0x01)) {
                     c->co_undo_arc = 1;
                 }
             }
