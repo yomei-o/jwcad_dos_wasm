@@ -21099,6 +21099,30 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 /* 長半径が短半径より短くなる中間点（二点を直径とする円の内側）
                  * は受け付けない（測定：func_all arc_s0_c3_v で、本物は
                  * `半楕円の中間点マウス指示` のまま）。0 や無限大も。 */
+                if (a < b && a > 0.0) {
+                    /* 中間点が二点を直径とする円の内側：二点が長軸になり、短半径は
+                     * 中間点から（測定：dfz_N_20、(430,180)→(162,250)→(200,300) が
+                     * 中心 (175,248)、r 138.4955＝二点の距離の半分、flatten 7422、
+                     * tilt 194.6383＝中心→終点の向き、弧 0..180）。前は断っていた
+                     * ——測定が足りなかった（decomp 未確認）。 */
+                    const short fl2 = (short)(a / b * 10000.0);
+                    long t2 = (t + (270L << 16)) % full;
+
+                    if (fl2 <= 0) {
+                        return 0;
+                    }
+                    if (!jwc_add_ellarc(d, (float)ux, (float)uy, (float)b, fl2,
+                                        0L, 180L << 16, t2,
+                                        (unsigned char)d->line_type,
+                                        (unsigned char)d->pen,
+                                        (unsigned char)(d->write_layer), 0x12)) {
+                        return 0;
+                    }
+                    c->arc3_rmm = (float)b * jwc_zukei_scale(d);
+                    c->arc3 = 1;
+                    c->arc3_done = 1;
+                    return 1;
+                }
                 if (!(a >= b) || a > 1e7) {
                     return 0;
                 }
