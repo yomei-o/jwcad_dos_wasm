@@ -8,3 +8,6 @@ enter_f|SAMPLE6|90 248 left|type 1|key enter|400 300 left|350 330 left
 enter_g|SAMPLE0|90 248 left|type 1|300 320 left|350 340 left|key enter|key enter|key enter|400 300 left
 line_angle_field_press_enter|SAMPLE0|type X|type 3|type 6|380 200 left|type 5|550 250 left|key enter|380 200 right|162 140 left|move 400 140|type 5
 line_refstage_digit_ignored|SAMPLE0|type X|598 420 left|type 4|type 2|type 7|type 2|200 300 right|380 200 left|type 9|598 420 right|move 450 330
+arc_center_enter_start|SAMPLE0|type N|type 7|200 300 left|key enter|type 4|350 350 left|350 350 left|type 6|move 162 250
+arc_center_enter_start2|SAMPLE0|type N|598 420 left|type 4|key enter|type 6|598 140 right|400 140 right|162 140 right|type 9|162 140 left
+arc_enter_before_center|SAMPLE0|type N|key enter|450 330 left|300 250 left

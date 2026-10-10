@@ -5126,7 +5126,12 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * textedit_s0_c7_v で 読取可能データ無）。②移動・③複写 では言葉が
      * 出ない（c2_v・c3_v）ので入れていない。 */
     if ((key == 13 || key == 10)
-        && ((cmd.command == 12 && cmd.arc3)
+        && ((cmd.command == 12 && (cmd.arc3 || (cmd.pressed == 1 && !cmd.arc_ask)))
+            /* 中心を取ったあとの [Enter] は (400,200) の押し（測定：dfz_N_4・
+             * N_6・N_21、前回の半径・始点の代わりに画面 (400,200) の点が始点に
+             * なり、次の押しが終点）。中心の前の [Enter] は何も起きない。
+             * decomp 未確認（FUN_4000_138d の入力、0xc122/0xc124 は座標系の
+             * 値で前回の点ではなかった）。 */
             || (cmd.command == 28 && cmd.top_item == 7)
             /* □ ③平行・多角形 ①の A/B 点も点の読みを待つ行：[Enter] は同じ所の押し
              * （測定：box_s0_c5_v・polygon_s0_c1_v）。 */
