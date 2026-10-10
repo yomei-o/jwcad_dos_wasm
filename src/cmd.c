@@ -11698,7 +11698,8 @@ static void chamfer_bulk(JwCmd *c, Jwc *d)
     unsigned char *used, *pick;
     long *pa, *pb, np = 0, i, j, k, rest_n = 0;
     float *px, *py;
-    JwcLine *la_s, *lb_s;
+    JwcLine *la_s, *lb_s, *cur = NULL, *chl = NULL;
+    unsigned char *emitted = NULL, *chok = NULL;
 
     if (n0 <= 0) {
         return;
@@ -11711,30 +11712,45 @@ static void chamfer_bulk(JwCmd *c, Jwc *d)
     py = (float *)calloc((size_t)n0, sizeof *py);
     la_s = (JwcLine *)calloc((size_t)n0, sizeof *la_s);
     lb_s = (JwcLine *)calloc((size_t)n0, sizeof *lb_s);
-    if (!used || !pick || !pa || !pb || !px || !py || !la_s || !lb_s) {
+    cur = (JwcLine *)calloc((size_t)n0, sizeof *cur);
+    chl = (JwcLine *)calloc((size_t)n0 + 1, sizeof *chl);
+    emitted = (unsigned char *)calloc((size_t)n0, 1);
+    chok = (unsigned char *)calloc((size_t)n0 + 1, 1);
+    if (!used || !pick || !pa || !pb || !px || !py || !la_s || !lb_s
+        || !cur || !chl || !emitted || !chok) {
         goto done;
     }
     for (i = 0; i < n0; i++) {
         pick[i] = (unsigned char)picked_line(c, d, i);
     }
-    /* 角の組を先に全部集める（線の順に、範囲の中の端どうし）。 */
+    /* 角の組を先に全部集める。**線を前から見て、後の線 i の各端が手前の線 j の端と
+     * 同じ点なら組**（測定：functest chb_h・chb_f。枠の下の辺 3 が右下の角で線 2 と、
+     * 左下の角で線 0 と組になるので右下が先、chb_f では線 1（始点側の角）の組が
+     * 線 6（別の角）の組より先）。使ったかは端ごとのビット（一本の線の両端が別々の
+     * 角で切られうる）。 */
     for (i = 0; i < n0; i++) {
         int ei;
 
-        for (ei = 0; ei < 2 && pick[i] && !used[i]; ei++) {
+        for (ei = 0; ei < 2 && pick[i]; ei++) {
             const float ex = ei ? d->lines[i].x1 : d->lines[i].x0;
             const float ey = ei ? d->lines[i].y1 : d->lines[i].y0;
 
+            if ((used[i] >> ei) & 1) {
+                continue;
+            }
             if (!jw_cmd_in_range(c, ex, ey, ex, ey)) {
                 continue;
             }
-            for (j = i + 1; j < n0; j++) {
+            for (j = 0; j < i; j++) {
                 int ej;
 
-                if (!pick[j] || used[j]) {
+                if (!pick[j]) {
                     continue;
                 }
                 for (ej = 0; ej < 2; ej++) {
+                    if ((used[j] >> ej) & 1) {
+                        continue;
+                    }
                     if ((ej ? d->lines[j].x1 : d->lines[j].x0) == ex
                         && (ej ? d->lines[j].y1 : d->lines[j].y0) == ey) {
                         break;
@@ -11743,23 +11759,38 @@ static void chamfer_bulk(JwCmd *c, Jwc *d)
                 if (ej == 2) {
                     continue;
                 }
-                /* Ｂ = 角を始点に持つほう（どちらもなら先の線）。 */
-                if (ei == 0 || ej != 0) {
-                    pb[np] = i;
-                    pa[np] = j;
-                } else {
-                    pb[np] = j;
-                    pa[np] = i;
+                /* Ｂ = 角から遠い端の x が大きいほうの線（右へ伸びるほう。同じなら y が
+                 * 大きいほう）。測定：functest chb_f・chb_h の三つの角（面取の線は
+                 * 常に x の大きい側の切り口から小さい側へ、切った線は Ｂ・Ａ の順）。
+                 * 前の「角を始点に持つほう」は一つの角しか測っておらず、枠の右下・左下の
+                 * 角で向きが逆になった。decomp 未確認。 */
+                {
+                    const float jfx = ej ? d->lines[j].x0 : d->lines[j].x1;
+                    const float jfy = ej ? d->lines[j].y0 : d->lines[j].y1;
+                    const float ifx = ei ? d->lines[i].x0 : d->lines[i].x1;
+                    const float ify = ei ? d->lines[i].y0 : d->lines[i].y1;
+                    const int j_is_b = jfx > ifx || (jfx == ifx && jfy > ify)
+                                       || (jfx == ifx && jfy == ify);
+
+                    if (j_is_b) {
+                        pb[np] = j;
+                        pa[np] = i;
+                    } else {
+                        pb[np] = i;
+                        pa[np] = j;
+                    }
                 }
                 px[np] = ex;
                 py[np] = ey;
-                lb_s[np] = d->lines[pb[np]];
-                la_s[np] = d->lines[pa[np]];
                 np++;
-                used[i] = used[j] = 1;
+                used[i] |= (unsigned char)(1 << ei);
+                used[j] |= (unsigned char)(1 << ej);
                 break;
             }
         }
+    }
+    for (k = 0; k < n0; k++) {
+        cur[k] = d->lines[k];
     }
     /* 範囲で取った線は角に関わらなくても全部抜き、角の分を組の順に足して
      * から、残りを元の順で末尾へ（測定：chb_h で枠の下の内の線 4・7〜10 が
@@ -11780,7 +11811,7 @@ static void chamfer_bulk(JwCmd *c, Jwc *d)
         rest_n = nr;
     }
     for (k = 0; k < np; k++) {
-        const JwcLine lb = lb_s[k], la = la_s[k];
+        const JwcLine lb = cur[pb[k]], la = cur[pa[k]];   /* 共有する線は前の組で切った形 */
         const double ex = px[k], ey = py[k];
         const int b_at0 = lb.x0 == px[k] && lb.y0 == py[k];
         const int a_at0 = la.x0 == px[k] && la.y0 == py[k];
@@ -11816,18 +11847,12 @@ static void chamfer_bulk(JwCmd *c, Jwc *d)
             q.x0 = lb.x1; q.y0 = lb.y1; q.x1 = lb.x0; q.y1 = lb.y0;
             q.rest[2] = 0;
             q.rest[3] = 0;
-            if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen,
-                             q.layer)) {
-                d->lines[d->n_lines - 1] = q;
-            }
+            cur[pb[k]] = q;
             q = la;
             q.x0 = la.x1; q.y0 = la.y1; q.x1 = la.x0; q.y1 = la.y0;
             q.rest[2] = 0;
             q.rest[3] = 0;
-            if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen,
-                             q.layer)) {
-                d->lines[d->n_lines - 1] = q;
-            }
+            cur[pa[k]] = q;
             continue;
         }
         {
@@ -11842,27 +11867,19 @@ static void chamfer_bulk(JwCmd *c, Jwc *d)
                 q.x0 = bkx; q.y0 = bky; q.x1 = akx; q.y1 = aky;
                 q.rest[2] = 0;
                 q.rest[3] = 0;
-                if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen,
-                                 q.layer)) {
-                    d->lines[d->n_lines - 1] = q;
-                }
+                chl[k] = q;
+                chok[k] = 1;
             }
             q = lb;
             q.x0 = bkx; q.y0 = bky; q.x1 = (float)bfx; q.y1 = (float)bfy;
             q.rest[2] = 0;
             q.rest[3] = 0;
-            if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen,
-                             q.layer)) {
-                d->lines[d->n_lines - 1] = q;
-            }
+            cur[pb[k]] = q;
             q = la;
             q.x0 = akx; q.y0 = aky; q.x1 = (float)afx; q.y1 = (float)afy;
             q.rest[2] = 0;
             q.rest[3] = 0;
-            if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen,
-                             q.layer)) {
-                d->lines[d->n_lines - 1] = q;
-            }
+            cur[pa[k]] = q;
             if (c->chamfer == 1) {
                 /* 弧の中心は角から二等分線の向きに r / sin(半分)。 */
                 const double wx = adx + bdx, wy = ady + bdy;
@@ -11888,6 +11905,32 @@ static void chamfer_bulk(JwCmd *c, Jwc *d)
                     /* 一括処理の丸面の弧は最後のバイトが 0xfc（測定）。 */
                     jwc_add_arc_at(d, (float)cx, (float)cy, (float)r, sa, sb,
                                    lb.type, lb.pen, lb.layer, 0xfc);
+                }
+            }
+        }
+    }
+    /* 並べる順（測定：functest chb_h）：全部の角の面取の線、そのあと切った線を組の順に
+     * （Ｂ・Ａ。二つの組に入った線は一本のまま両端が切れた形で、最初に出る所に一度だけ）。 */
+    for (k = 0; k < np; k++) {
+        if (chok[k] && jwc_add_line(d, chl[k].x0, chl[k].y0, chl[k].x1,
+                                    chl[k].y1, chl[k].type, chl[k].pen,
+                                    chl[k].layer)) {
+            d->lines[d->n_lines - 1] = chl[k];
+        }
+    }
+    for (k = 0; k < np; k++) {
+        long w;
+
+        for (w = 0; w < 2; w++) {
+            const long idx = w ? pa[k] : pb[k];
+
+            if (!emitted[idx]) {
+                const JwcLine q = cur[idx];
+
+                emitted[idx] = 1;
+                if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen,
+                                 q.layer)) {
+                    d->lines[d->n_lines - 1] = q;
                 }
             }
         }
