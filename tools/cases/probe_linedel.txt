@@ -23,3 +23,4 @@ ld_esc_once_only|SAMPLE0|90 216 left|400 140 left|300 250 left|450 330 left|key 
 
 # --- 右押しの全消を [ESC] で戻すとき rest は元のまま（0 にしない） ---
 ld_rd_undo_keeps_rest|SAMPLE0|90 216 left|400 140 right|key esc
+linedel_enter_cut|SAMPLE0|type D|162 140 left|250 200 left|type 4|key enter

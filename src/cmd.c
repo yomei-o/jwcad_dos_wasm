@@ -612,6 +612,7 @@ static double shown_angle(double x1, double y1, double x2, double y2)
 static void two_lines(JwCmd *c, Jwc *d);
 static int pt2_make(JwCmd *c, Jwc *d);
 static int cross_at(const JwcLine *a, const JwcLine *b, double *x, double *y);
+static void ld_cut(JwCmd *c, Jwc *d, float u0, float u1);
 static int take(JwCmd *c, const Jwc *d, const JwView *w, int sx, int sy,
                 int right, double *x, double *y);
 
@@ -7408,6 +7409,17 @@ static void box_unhold(JwCmd *c);
 int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
+
+    /* 線消 部分消去 の終点指示（段 3）での [Enter]：始点の所で線を二本に切る
+     * （線切断。測定：functest dfz_D_1、`type D|162 140 left|250 200 left|
+     * type 4|key enter` で本物は線 0 が (250,200) の線上の足で二本になる）。 */
+    if (c->command == 10 && c->stage == 3 && key == 13 && !c->typing
+        && !c->ld_ask && d && c->ld_line >= 0 && c->ld_line < d->n_lines) {
+        ld_cut(c, d, c->ld_u0, c->ld_u0);
+        c->pressed = 0;
+        c->stage = 1;
+        return 1;
+    }
 
     /* 円線接 の ③接円(3条件) の行（段 50）の [BS]`前項` は [ESC] と同じ（測定のみ：tmp の ee6）。 */
     if (c->command == 26 && key == 8 && !c->typing && (c->stage == 50 || c->stage == 1)) {
@@ -15252,6 +15264,47 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
 
 /* 押しの前後で、作図の命令が足した実体の数を数え、取り消しに備えます。
  * 足さなかった押し（始点を取っただけなど）は取り消しの控えを捨てます。 */
+/* 線消 部分消去：線 c->ld_line の u0〜u1（線の始点から測った長さ、float）の間を
+ * 消して、元の線を抜き、始点側・終点側の順に最後へ足す。u0==u1 は線切断
+ * （実機：二点目の終点指示で [Enter] を押すと、始点の所で線が二本に切れる）。 */
+static void ld_cut(JwCmd *c, Jwc *d, float u0, float u1)
+{
+    const long k = c->ld_line;
+    const JwcLine l = d->lines[k];
+    const double dx = (double)l.x1 - l.x0, dy = (double)l.y1 - l.y0;
+    const double len = sqrt(dy * dy + dx * dx);
+    const float cs = (float)(dx / len), sn = (float)(dy / len);
+    const float ox = l.x0, oy = l.y0;
+    const float ue = (float)(((double)l.y1 - oy) * sn + ((double)l.x1 - ox) * cs);
+    const float a = u0 < u1 ? u0 : u1;
+    const float b = u0 < u1 ? u1 : u0;
+
+    c->ld_undo = l;
+    c->ld_undo_on = 1;
+    c->ld_undo_n = 0;
+    jwc_remove_line(d, k);
+    if (a > 0.0f) {
+        const float ax = (float)((double)cs * a + ox);
+        const float ay = (float)((double)sn * a + oy);
+
+        if (jwc_add_line(d, l.x0, l.y0, ax, ay, l.type, l.pen, l.layer)) {
+            d->lines[d->n_lines - 1].rest[1] = 0;
+            d->lines[d->n_lines - 1].rest[3] = 0;
+            c->ld_frag[c->ld_undo_n++] = d->lines[d->n_lines - 1];
+        }
+    }
+    if (b < ue) {
+        const float bx = (float)((double)cs * b + ox);
+        const float by = (float)((double)sn * b + oy);
+
+        if (jwc_add_line(d, bx, by, l.x1, l.y1, l.type, l.pen, l.layer)) {
+            d->lines[d->n_lines - 1].rest[1] = 0;
+            d->lines[d->n_lines - 1].rest[3] = 0;
+            c->ld_frag[c->ld_undo_n++] = d->lines[d->n_lines - 1];
+        }
+    }
+}
+
 int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
 {
     const long nl = d ? d->n_lines : 0, na = d ? d->n_arcs : 0;
@@ -16126,41 +16179,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 3;
             return 1;
         }
-        ue = (float)(((double)l.y1 - oy) * sn + ((double)l.x1 - ox) * cs);
-        {
-            const float a = c->ld_u0 < u ? c->ld_u0 : u;
-            const float b = c->ld_u0 < u ? u : c->ld_u0;
-
-            if (a == b) {
-                return 0;       /* 線切断：まだ */
-            }
-            c->ld_undo = l;
-            c->ld_undo_on = 1;
-            c->ld_undo_n = 0;
-            jwc_remove_line(d, k);
-            if (a > 0.0f) {
-                const float ax = (float)((double)cs * a + ox);
-                const float ay = (float)((double)sn * a + oy);
-
-                if (jwc_add_line(d, l.x0, l.y0, ax, ay, l.type, l.pen,
-                                 l.layer)) {
-                    d->lines[d->n_lines - 1].rest[1] = 0;
-                    d->lines[d->n_lines - 1].rest[3] = 0;
-                    c->ld_frag[c->ld_undo_n++] = d->lines[d->n_lines - 1];
-                }
-            }
-            if (b < ue) {
-                const float bx = (float)((double)cs * b + ox);
-                const float by = (float)((double)sn * b + oy);
-
-                if (jwc_add_line(d, bx, by, l.x1, l.y1, l.type, l.pen,
-                                 l.layer)) {
-                    d->lines[d->n_lines - 1].rest[1] = 0;
-                    d->lines[d->n_lines - 1].rest[3] = 0;
-                    c->ld_frag[c->ld_undo_n++] = d->lines[d->n_lines - 1];
-                }
-            }
+        if (c->ld_u0 == u) {
+            return 0;           /* 線切断（同じ所を再び押す）：まだ */
         }
+        ld_cut(c, d, c->ld_u0, u);
         c->pressed = 0;
         c->stage = 1;
         return 1;
