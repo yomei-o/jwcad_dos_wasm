@@ -21307,8 +21307,18 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                     ux = fx;
                     uy = fy;
                 }
-                /* 半径は中心から中間点まで（測定：始点までだと 1 ビット大きい）。 */
-                r = hypot_of(x - ux, y - uy);
+                /* 半径は**三点を通る円の double の正確な外心**から（測定：functest
+                 * enter_g、float の中心から出すと 1 ULP 大きい。中心の記録だけが
+                 * 1bb4:3cd1 と同じ float の交点）。decomp 未確認。 */
+                {
+                    const double ex = (ax * ax + ay * ay) * (by - y)
+                                    + (bx * bx + by * by) * (y - ay)
+                                    + (x * x + y * y) * (ay - by);
+                    const double ey = (ax * ax + ay * ay) * (x - bx)
+                                    + (bx * bx + by * by) * (ax - x)
+                                    + (x * x + y * y) * (bx - ax);
+                    r = hypot_of(x - ex / den, y - ey / den);
+                }
                 sa = ang16(ux, uy, ax, ay);
                 sb = ang16(ux, uy, bx, by);
                 sm = ang16(ux, uy, x, y);

@@ -13,3 +13,4 @@ arc_center_enter_start2|SAMPLE0|type N|598 420 left|type 4|key enter|type 6|598 
 arc_enter_before_center|SAMPLE0|type N|key enter|450 330 left|300 250 left
 arc_semiellipse_enter_third_noop|SAMPLE0|type N|type 3|430 180 left|162 140 left|key enter|400 200 left
 arc_semiellipse_enter_first_press|SAMPLE0|type N|type 3|key enter|430 180 left|162 140 left|400 200 left
+arc_threepoint_enter_third_noop|SAMPLE0|type N|type 1|300 320 left|350 340 left|key enter
