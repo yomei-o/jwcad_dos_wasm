@@ -23,3 +23,4 @@ box_angle_esc_unlock|SAMPLE0|90 120 left|type 1|type 60,40|key enter|450 330 lef
 box_zero_height|SAMPLE0|type B|type 6|key enter|162 250 left|300 250 left|598 300 left|162 140 right|type 6
 arc_same_angle_none|SAMPLE0|type N|250 200 right|move 300 350|move 200 300|type 6|300 350 left|type 8|280 160 left|280 160 left
 arc_semiellipse_inside|SAMPLE0|type N|type 3|430 180 left|162 250 left|200 300 left|type 4|type 9|type 1|move 250 200|key enter
+circle_zero_radius_none|SAMPLE0|type E|380 200 left|type 8|key enter|300 250 right|380 200 left|type 8

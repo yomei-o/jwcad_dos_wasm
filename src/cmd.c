@@ -21710,6 +21710,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         const int n = c->circ_multi > 1 ? c->circ_multi : 1;
         int k, ok = 1;
 
+        /* 半径 0 の円は作らない（測定：functest dfz3_E_4、同じ点を二度押すと
+         * 本物の記録は変わらない。移植は壊れた円を足していた）。 */
+        if (!(r > 0.0f)) {
+            return 0;
+        }
         if (c->circ_dia) {
             c->x0 = (c->x0 + x) / 2.0;
             c->y0 = (c->y0 + y) / 2.0;
