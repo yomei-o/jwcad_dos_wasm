@@ -48,3 +48,4 @@ dim_val_bs_at_wait_returns_to_item_row|SAMPLE0|90 280 left|600 450 left|162 140 
 # 段 7 の [ESC] は本物・移植とも無反応のまま一致（直していない・直す
 # 必要も無い）。
 dim_val_esc_at_wait_is_noop|SAMPLE0|90 280 left|600 450 left|162 140 left|300 110 left|162 140 right|598 140 right|90 280 left|type 8|key esc|380 108 left|type 1|key enter
+dim_samepoint_end_refused|SAMPLE0|type S|type 1|450 330 left|key enter|162 420 left|162 420 left|162 420 left

@@ -16938,6 +16938,14 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 c->missed = 1;
                 return 0;
             }
+            /* 値の始点と同じ所を終点に読むと、長さ 0 の寸法で、本物は受け付けず
+             * 何も書かないまま終点を待つ（測定：functest dfz_S_32、probe.sh 14
+             * t 1 450 330 e 162 420 162 420 162 420 の 3 度目が `.サーチ` のまま）。
+             * decomp 未確認。 */
+            if ((float)(x * c->dim_ux + y * c->dim_uy) == (float)c->dim_x0) {
+                c->missed = 1;
+                return 0;
+            }
             c->missed = 0;
             c->n0_lines = d->n_lines;
             c->n0_arcs = d->n_arcs;

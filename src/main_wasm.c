@@ -5140,6 +5140,12 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
              * decomp 未確認（FUN_4000_138d の入力、0xc122/0xc124 は座標系の
              * 値で前回の点ではなかった）。 */
             || (cmd.command == 28 && cmd.top_item == 7)
+            /* 寸法 ①横方向 の点の読み（引出し線の始点・寸法線位置）の [Enter] も
+             * (400,200) の押し（測定：probe.sh 14 t 1 450 330 e で帯が
+             * `寸法線 位置 マウス指示` へ進む。decomp 未確認）。 */
+            || (cmd.command == 14 && cmd.pressed == 1 && cmd.stage >= 1
+                && cmd.stage <= 2 && !cmd.dim_ck && !cmd.dim_lot
+                && !cmd.dim_prog)
             /* □ ③平行・多角形 ①の A/B 点も点の読みを待つ行：[Enter] は同じ所の押し
              * （測定：box_s0_c5_v・polygon_s0_c1_v）。 */
             || (cmd.command == 4 && cmd.box_refask)
