@@ -16179,9 +16179,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 3;
             return 1;
         }
-        if (c->ld_u0 == u) {
-            return 0;           /* 線切断（同じ所を再び押す）：まだ */
-        }
+        /* 始点と同じ所をもう一度押すと線切断：その所で二本に切る（測定：
+         * functest dfz_D_7、始点と終点が線の上の同じ足になる二押し）。
+         * ld_cut は u0==u1 のとき間を消さずに切るだけ。 */
         ld_cut(c, d, c->ld_u0, u);
         c->pressed = 0;
         c->stage = 1;
