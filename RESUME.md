@@ -46,7 +46,7 @@ WASM で動かすリポジトリです。概要は [README.md](README.md)。**�
 サブエージェントに渡す文面の型：「命令 X の入力まわりの完全な状態遷移表を decomp から起こす。ファイルは編集しない。読む場所は
 notes/decomp-audit.md の X の節・notes/tools.md・decomp/ovlNN/all.c・tmp/dis（`python tools/disasm.py --ovl N 0 0x10000` で作る）・
 `tools/altlift.py`・`tools/strref.py`。共通の仕組みは上の表。成果物は段ごとの表＋番地＋移植との一致/不一致」。
-（10-07 に出した報告の要点は nokori.md の「decomp 照合の結果」にある。）
+（10-07 に出した報告の要点は notes/nokori-log.md の「decomp 照合の結果」にある。）
 
 ### 10-07 に decomp で照合・修正した命令（番地は各コメント・notes/decomp-audit.md 追記を参照）
 円線接（BS は `[0xc2c]` が立つ段だけ、ESC の戻り）、点（札・BS・全仮点削除）、分割、曲線（連線・連続弧・BS）、面取（半径欄・同じ線・平行、
@@ -64,7 +64,7 @@ DS:0x4344 と `c->text_tate` が同じ意味かは未確認。別に見つけた
 （間に右押しの全消を挟んだときは消さない、`linedel_s1_c1` と矛盾しないことを確認）。線消 右押しの全消を [ESC] で戻すとき
 rest を 0 にしていたのも直した（実機は rest を元のまま戻す）。消去（command==25）は `erase_again` 回りの既存の修正・
 `outside`/`in_reach_layer` の記録削除ループを再チェックしたのみ（不一致なし、decomp のレコード削除本体はまだ未読——
-notes/decomp-audit.md 10-c/10-d・nokori.md 参照）。
+notes/decomp-audit.md 10-c/10-d・notes/nokori-log.md 参照）。
 **まだ表を起こしていない（次）**：寸法の残り（⑤一括の段21〜23の ESC・`①連続入力`/`②終了` の着地、④円角の digit キー、⑥点・⑦矢印の decomp 番地）、
 消去の在／外判定とレコード削除本体（ovl27 3ab8:740f 以降）、面取の一括処理（Ｌ面・楕円面には元々出ない）と傾きモード `[0xcb6]`、
 複写・移動の置く計算、文字の④設定・①基点変・行連続／列連続・⑤文書 の入口（上で部分的に読んだだけ）。
@@ -78,12 +78,12 @@ notes/decomp-audit.md 10-c/10-d・nokori.md 参照）。
 裏取りし、現状のまま（Enter 用の分岐なし）で正しいと確認。**⑦属性変更 は未着手**（実機で選ぶと
 `|①確定|②グループ|③レイヤ|④線色|⑤線種|` という別の帯に入ることだけ確認——`src/cmd.c` の段4ハンドラに item==7 の分岐が無い）。
 変形 ①パラメトリック変形 の同じ倍率欄（`c->command==17 && c->stage==18`）には同じ入力検査を足していない（スコープ外、同じ欠けが
-残っている可能性あり）。`tools/cases/probe_copymove.txt` に回帰 4 件を追加、192.168.11.37 で 17/17 一致を確認。詳細は nokori.md 参照。
+残っている可能性あり）。`tools/cases/probe_copymove.txt` に回帰 4 件を追加、192.168.11.37 で 17/17 一致を確認。詳細は notes/nokori-log.md 参照。
 **10-07 深夜（4 回目、escaudit10）**：上の (3) が複写側しか直していなかった、移動＋⑤⑥③④ の ESC 取り消しを実装。
 `move_range(-dx,-dy)` と同じ流儀で、`mirror_range`/`turn_range`/`scale_range` を基準点⇄置く点を入れ替え・角度を逆／倍率を
 逆数にしてもう一度呼ぶ（`place_undo`）。最初に「変形前の値を控えて書き戻す」方式を試したが、192.168.11.37 の実機と生バイトで
 比べると合わず（`notes/traps.md` 新しい罠）、上の「同じ関数を呼び直す」方式に直してビット一致を確認（⑤⑥③④ の `functest.sh`
-が `same`）。基準点と置く点の y が同じになる置き方だけ、共有頂点の 1 座標が最後の 1 ビット違う既知の残り（nokori.md 参照）。
+が `same`）。基準点と置く点の y が同じになる置き方だけ、共有頂点の 1 座標が最後の 1 ビット違う既知の残り（notes/nokori-log.md 参照）。
 `tools/cases/probe_copymove.txt` に回帰 5 件を追加。
 **10-07 深夜（5 回目、attr7）**：複写・移動 ⑦ を実装。実機で調べ直すと複写と移動の⑦は別機能だった——複写 ⑦属性変更（新設の
 段 26、`|①確定|②グループ|③レイヤ|④線色|⑤線種|`、②③は layer バイトの排他トグル・④⑤は独立トグルで自由に組み合わさる、
@@ -102,13 +102,13 @@ notes/decomp-audit.md 10-c/10-d・nokori.md 参照）。
 段」から `tan_r_back`（欄を開いた段）へ、角度欄(段12)・②円周点(段16)・③指定点(段4) の [ESC] で引いた
 接線を全部戻す処理を追加。全部 192.168.11.37 の `tools/functest.sh`/`tools/cmdstate.mjs` で実機突き合わせ
 済み（円線接の段12/16/4 は測定のみ・decomp未確認）。複線の「`点指示 or 間隔=` 欄の ESC」の記述は実機で
-再現できず未解決のまま（nokori.md 参照）。
-**10-08（7 回目、box_angle_esc_unlock 解消）**：□ の懸案 `box_angle_esc_unlock`（nokori.md）を解決。
+再現できず未解決のまま（notes/nokori-log.md 参照）。
+**10-08（7 回目、box_angle_esc_unlock 解消）**：□ の懸案 `box_angle_esc_unlock`（notes/nokori-log.md）を解決。
 正体は「角度欄 ESC が保留中の箱を確定している」ではなく、②角度 を確定する [Enter] が `box_fix`
 （寸法確定・即置きモード）を無条件で解いていたバグ——実機は確定後も升つきの同じ帯のままなのに、
 移植は升の無い帯に落ちて 2 回目の `②角度` が無反応になり、続く [ESC] が別の汎用取り消し節に
 先取りされて確定済みの箱を消してしまっていた（詳細は `notes/traps.md` の新しい項、
-nokori.md の該当節）。`box_fix` を解かない修正に加え、大きさ固定＋回転確定後の単発クリック配置が
+notes/nokori-log.md の該当節）。`box_fix` を解かない修正に加え、大きさ固定＋回転確定後の単発クリック配置が
 軸並行のままだった副作用も修正（`box_corners_rot()` 新設、回す符号は実機測定から逆算・decomp未確認）。
 `tools/functest.sh` で確認（`box_angle_esc_unlock` は record 差分 0、新しい単発回転配置は小数 3 桁一致・
 生バイトは最後の数ビットのみ既知の丸め差）。
@@ -213,8 +213,8 @@ sh tools/snap.sh   # 長い比較は移植の写し（STEPSHOTS=tmp/snap/tools/s
   （`diff orig.txt port.txt`：`<` が本物、`>` が移植）。「the save did not happen」は手順の終わりに本物が
   入力待ちのまま保存できなかっただけで、移植の差ではない。
 * 差の種類の見分け：座標・本数の差は直す。`rest[2]` の bit0（探索で触れた）・bit1（範囲）・`rest[3]` の端の印だけの差は
-  見た目に出ないので後回し（nokori.md に分類）。本物の帯は `sh tools/probe.sh <コマンド番号> t 3 400 140 e …`
+  見た目に出ないので後回し（notes/nokori-log.md に分類）。本物の帯は `sh tools/probe.sh <コマンド番号> t 3 400 140 e …`
   （`x`＝[ESC]、`e`＝[Enter]）で段ごとに採る。decomp（`decomp/JW_CADV.unp.exe` は `python tools/unexepack.py
   orig/JW_CADV.EXE decomp/JW_CADV.unp.exe` で作る、`pip install capstone` が要る）を先に読み、読み切れなければ
   「測定のみ・decomp 未確認」と書く。
-* 10-10〜11 の成果と未解決は nokori.md の先頭近く「2026-10-10 のまとめ」と各命令の節にある。
+* 10-10〜11 の成果の履歴は notes/nokori-log.md、いまの残件は nokori.md（残件の表）にある。

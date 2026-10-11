@@ -601,7 +601,7 @@ c->dim_lot_done` の節）。decomp が示す「一度でも実行していれ�
   とした——dim.md 4.26k にはこの段の [BS]前項 の着地先そのものの
   測定が無く、他コマンドとの類推であることを明記する。
 - `①連続入力`／`②終了`（digit 1/2）そのものの実装はまだ無い
-  （nokori.md に未解決として記載のまま）。
+  （notes/nokori-log.md に未解決として記載のまま）。
 
 ポート内部の段遷移は `tools/cmdstate.mjs`（実機不要）で確認済み
 （`tools/cases/probe_dim_lot.txt`）：`type 1`（実行）→段24→`key esc`
