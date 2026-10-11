@@ -53,3 +53,4 @@ dim_h_reverse_a_byte|SAMPLE0|type S|598 300 left|380 200 left|type 3|type 3|162 
 dim_enter_no_press|SAMPLE0|type S|type 1|350 350 left|key enter|598 140 left|162 140 left|598 420 left
 dim_prog_basic_real_point|SAMPLE0|type S|type 1|350 350 left|598 140 left|type 4|162 140 left|598 420 left
 dim_prog_two_values|SAMPLE0|type S|type 1|350 350 left|598 140 left|type 4|162 140 left|598 420 left|400 400 left
+dim_prog_esc_undo|SAMPLE0|type S|type 1|type 6|type 4|280 160 left|280 160 left|162 250 left|type 4|162 140 left|598 140 left|move 300 350|key esc|key esc

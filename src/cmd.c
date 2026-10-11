@@ -9541,6 +9541,31 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->moved = 0;
         return 1;
     }
+    /* 累進の寸法（④）の寸法値終点（段 4）の [ESC]：最後に入れた一組を消して段 4 のまま、
+     * もう一度で寸法値始点指示（段 3）へ（測定のみ・decomp 未確認：functest dfz_S_1、
+     * `寸法値終点指示` の帯のまま文字数 14→13、次の [ESC] で `寸法値始点指示`）。 */
+    if (key == 27 && d && c->command == 14 && !c->typing && c->dim_prog
+        && c->stage == 4) {
+        if (c->dim_undo && c->dim_prog_n > 0) {
+            while (d->n_lines > c->dim_ul) {
+                jwc_remove_line(d, d->n_lines - 1);
+            }
+            while (d->n_points > c->dim_up) {
+                jwc_remove_point(d, d->n_points - 1);
+            }
+            while (d->n_texts > c->dim_ut) {
+                jwc_remove_text(d, d->n_texts - 1);
+            }
+            jwc_ink_clear(d);
+            c->dim_undo = 0;
+            c->dim_prog_n--;
+            c->dim_texts = d->n_texts;
+        } else {
+            c->stage = 3;
+        }
+        c->moved = 0;
+        return 1;
+    }
     /* **寸法 の [ESC]。** 本物は段ごとに一つ前へ戻ります（ovl27 3ab8:206c、
      * 0x2e020〜0x2e16d、測定も同じ）：
      *   寸法を入れた直後 → その寸法（線・実点・文字）を消して 寸法値始点指示
@@ -12380,6 +12405,11 @@ static void dimension_prog(JwCmd *c, Jwc *d, double a)
 
 #define DIM_X(aa, bb) ((float)((aa) * ux + (bb) * vx))
 #define DIM_Y(aa, bb) ((float)((aa) * uy + (bb) * vy))
+    /* [ESC] で戻せるのは最後の一組だけ（測定のみ・decomp 未確認：functest dfz_S_1） */
+    c->dim_ul = d->n_lines;
+    c->dim_up = d->n_points;
+    c->dim_ut = d->n_texts;
+    c->dim_undo = 1;
     if (dim_add_line(d, DIM_X(a0, y), DIM_Y(a0, y),
                      DIM_X(a, y), DIM_Y(a, y), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x80;
