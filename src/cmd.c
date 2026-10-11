@@ -21898,6 +21898,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         const float bx = (float)x, by = (float)y;
         float cx[5] = { ax, ax, bx, bx, ax };
         float cy[5] = { ay, by, by, ay, ay };
+        const long nl0 = d->n_lines;
         int k;
 
         if (c->box_rot) {
@@ -21915,6 +21916,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 return 0;
             }
             d->lines[d->n_lines - 1].rest[1] = 0x41;
+        }
+        if (d->n_lines == nl0) {
+            /* 四辺とも長さが無く何も足さなかった□は、取り消しの控えを 0 にする
+             * （／の零長と同じ 67fa 経由。測定のみ・decomp 未確認：functest dfz_B_3、
+             * □ を描いたあと同じ点を 2 度押すと [ESC] 二回でも前の□は消えない）。 */
+            c->undo_lines = c->undo_arcs = c->undo_texts = 0;
         }
         c->box_drawn = 1;
         c->box_last[0] = c->num[0];
