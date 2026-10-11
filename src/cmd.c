@@ -19947,14 +19947,32 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * The new line is drawn with the writing pen and line type, and the
          * command goes straight back to its own first line (no `[ESC]` and no
          * `・` in front of it). */
+        if (c->cl_pts == 1 && !right) {
+            /* 点（１）を取ったあとの左押しは **線（Ｂ）を探す**（測定：probe.sh 20
+             * `r 598 420 l 250 200` は読めず待つ、`l 598 140`（右辺の線上）は
+             * 拾えて `○ 始点指示` へ）。点と線の組み合わせの中心線の幾何は
+             * 未測定なので、段だけ進めて線は作らない（cl_pts=3）。 */
+            const long k = pick_line(d, w, sx, sy);
+
+            if (k < 0) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->cl_pts = 3;
+            c->stage = 2;
+            return 1;
+        }
         if (c->cl_pts == 1 || (c->stage == 0 && right && c->pick_a < 0)) {
             /* 最初を右で押すと点を読む：二点の中心線（測定：center_pts）。
-             * 二つ目は (L)free (R)Read。 */
+             * 二つ目の点は (R)Read（左は上で線を探す）。 */
             double qx, qy;
 
             if (!take(c, d, w, sx, sy, right, &qx, &qy)) {
-                return 1;
+                c->missed = 1;
+                return 0;
             }
+            c->missed = 0;
             if (c->cl_pts == 0) {
                 c->cl_x1 = qx;
                 c->cl_y1 = qy;
@@ -19968,6 +19986,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->pick_a = c->pick_b = 0;  /* 以下の点の段へ */
             c->stage = 2;
             return 1;
+        }
+        if (c->cl_pts == 3) {
+            c->pick_a = c->pick_b = 0;      /* 混合：点の段へ（線は作らない） */
         }
         if (c->pick_a < 0 || c->pick_b < 0) {
             const long k = pick_line(d, w, sx, sy);
@@ -20005,7 +20026,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 c->stage = 3;
                 return 1;
             }
-            centre_line(c, d, w, px, py);
+            if (c->cl_pts != 3) {
+                centre_line(c, d, w, px, py);
+            }
             c->pick_a = -1;
             c->pick_b = -1;
             c->cl_pts = 0;

@@ -60,3 +60,15 @@ henkei_s0_c4(6px)・tangent_s1_c4(29px)・chamfer 等の端の画素・dim_val_b
 * テストは関係する群だけ回す（全件は区切りごと）。作ったら commit → pull → push。
 * 環境：`export NODE=/c/prog/emsdk/emsdk/node/24.19.0_64bit/node.exe`、ビルドは `EMSDK_PYTHON=C:/Users/yomei/AppData/Local/Python/bin/python.exe sh tools/build_wasm.sh`
   （`python` が Windows ストアの偽物に当たると wasm が更新されない。`built jwcad.js` の行で成否を確認）。
+
+## 7. 2026-10-11 夜の新規（未解決）
+
+* **分割（t）dfz6_t_0**（A 区分・座標の差）：`type t|200 300 left|type 7|598 420 right|550 250 right|250 200 left|162 140 right|key enter|300 350 left`
+  で、実機は**線を 1 本**（(379.987,300)-(379.987,250)、`rest[1]=2` ＝中心線と同じ印）足し、移植は何も足さない。仮点（P）の増減は
+  同じ。分割の ④２線間の等分割線の道（2 本の線から等分割線を引く）に入っているらしい。保存に至る最短の手順は未特定
+  （途中までの手順では実機が入力待ちのまま保存できない）。`tools/cases/probe_divide*.txt` の d2_/d4_ 系を見直すこと。
+* **中心線（f）dfz6_f_1**（A 区分）：`type f|type 4|598 140 left|162 420 left|key enter|type 5|350 350 left|300 350 left|key enter` で、
+  B（線）の指示が失敗する位置（`162 420`）のあとの [Enter] で実機は `○ 始点指示` へ進み、移植は B が取れた扱いで進んだうえ
+  長さ 0 の線を 1 本足す。B の探索条件と [Enter] の働き（B 段で押しが拾えなかったとき）。dfz6_f_0 は解消済み
+  （点（１）のあとの左押しは線 B を探す。`cl_pts==1 && !right`）。
+* 測定（Q）dfz6_Q_5・Q_7・変形 ⑧記号まわり：印（rest の bit）だけ（B 区分）。
