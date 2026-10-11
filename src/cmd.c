@@ -16327,6 +16327,12 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->stage = 1;
         return 1;
     }
+    if (c->command == 13 && c->text_ang_ask && c->typing && c->typed_n) {
+        /* 打ちかけの数があれば押しは [Enter] と同じ：その数が角度になる（測定：
+         * functest dfz_A_31、`type 3|type 3|250 200 left` で文字は 3.00 度）。 */
+        jw_cmd_key(c, d, 13);
+        return 1;
+    }
     if (c->command == 13 && c->text_ang_ask) {
         /* ③角度指定 の欄での押し：左は `0 度`、右は `前回と同じ`。どちらも
          * 基点にはならず、行は ①水平 のものへ（測定：text_c3 で押したあと
