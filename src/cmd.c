@@ -16070,8 +16070,18 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             /* 打ちかけの数があれば押しは [Enter] と同じ（numin の共通の規則。
              * 実機：`type E|type 2|type 1|200 300 left|type 4|500 200 right`
              * で `長径,短径 =` の 4 が確定し `長軸の平行線をマウス指示` へ。
-             * functest dfz_E_19）。 */
+             * functest dfz_E_19）。**押しで確定したときは打った文字が欄の外にも
+             * 残り**、次の `角度指定` の欄の初めの値になる（実機：probe.sh 11 t 2 t 1
+             * 200 300 t 4 r 500 200 l 450 330 r 550 250 の帯 `…指示4  角度指定|`）。 */
+            char keep[sizeof c->typed];
+            int keep_n = c->typed_n;
+
+            memcpy(keep, c->typed, sizeof keep);
             jw_cmd_key(c, d, 13);
+            if (c->ell == 3) {
+                memcpy(c->ell_keep, keep, sizeof keep);
+                c->ell_keep_n = keep_n;
+            }
             return 1;
         }
         if (c->ell == 1) {
@@ -16177,6 +16187,16 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
 
             if (k < 0) {
                 c->missed = 1;
+                /* 右押し（(R)Read）で線が読めなかったときは `角度指定` の欄が開き、
+                 * 直前に押しで確定した数が欄に入っている（測定：functest
+                 * dfz_E_19、probe.sh 11 … r 550 250）。 */
+                if (right && c->ell_keep_n > 0) {
+                    memcpy(c->typed, c->ell_keep, sizeof c->typed);
+                    c->typed_n = c->ell_keep_n;
+                    c->ell = 4;
+                    c->typing = 1;
+                    c->ell_keep_n = 0;
+                }
                 return 0;
             }
             return ellipse_put(c, d, (double)ang16(d->lines[k].x0,

@@ -788,6 +788,8 @@ typedef struct {
      * では対象線を左で押すたびに `stretch_to_base()` がその線を基準線
      * まで伸縮する（2026-10-10 実機測定、nokori.md ┣）。 */
     int st_base_mode;
+    char ell_keep[96];          /* ○ 楕円：押しで確定した欄の数（次の 角度指定 の欄へ持ち越す） */
+    int ell_keep_n;
     double text_prev_ang;       /* 文字 ③角度指定 の `前回と同じ`（最初は -90°、実機） */
     int text_prev_set;
     JwcLine st_base;            /* 　　　　基準線（RR した線の写し） */
