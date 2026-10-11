@@ -1,0 +1,8 @@
+#④⑤の中で左の盤の 線種・紙・縮尺・図面名・ｸﾞﾙｰﾌﾟ の語を押したときの画面。実機はそれぞれの入力（線種の盤、用紙サイズの欄 …）を
+#小窓の上に出す。移植は何もしない（未実装）。LIST=tools/cases/optsub_screens_todo.txt sh tools/optsubcheck.sh
+b1_pen|type s|type 4|type 4|60 312 left
+b1_paper|type s|type 4|type 4|30 328 left
+b1_scale|type s|type 4|type 4|80 328 left
+b1_name|type s|type 4|type 4|30 344 left
+b1_gword|type s|type 4|type 4|90 344 left
+g1_pen|type s|type 4|type 5|type 1|60 312 left

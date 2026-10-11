@@ -1,0 +1,105 @@
+#名前|手順…（tools/optsubcheck.sh で本物と画面を比べる）
+b1|type s|type 4|type 4
+b2_1|type s|type 4|type 4|type 1
+b2_2|type s|type 4|type 4|type 2
+b2_3|type s|type 4|type 4|type 3
+b2_esc|type s|type 4|type 4|type 1|key esc
+b1_esc|type s|type 4|type 4|key esc
+b1_bs|type s|type 4|type 4|key bs
+b1_c|type s|type 4|type 4|type c
+b1_end|type s|type 4|type 4|type 4
+b1_click3|type s|type 4|type 4|360 8 left
+g0|type s|type 4|type 5
+g0_esc|type s|type 4|type 5|key esc
+g0_3|type s|type 4|type 5|type 3
+g1|type s|type 4|type 5|type 1
+g1_2|type s|type 4|type 5|type 2
+g1_esc|type s|type 4|type 5|type 1|key esc
+g1_name1|type s|type 4|type 5|type 1|type 1
+g1_name2|type s|type 4|type 5|type 1|type 1|type 1
+g1_name3|type s|type 4|type 5|type 1|type 1|type 1|type 1
+g1_lname1|type s|type 4|type 5|type 2|type 2
+g1_click|type s|type 4|type 5|type 1|340 8 left
+g2_1|type s|type 4|type 5|type 1|300 80 left
+g2_15|type s|type 4|type 5|type 1|600 450 left
+g2_esc|type s|type 4|type 5|type 1|300 80 left|key esc
+g2_cancel|type s|type 4|type 5|type 1|300 80 left|type 2
+g2_rclick|type s|type 4|type 5|type 1|300 80 left|500 300 right
+g2_lclick|type s|type 4|type 5|type 1|300 80 left|500 300 left
+g0_b|type s|type 4|type 5|type b
+g0_c|type s|type 4|type 5|type c
+g1_b|type s|type 4|type 5|type 1|type b
+g1_c|type s|type 4|type 5|type 1|type c
+g2_b|type s|type 4|type 5|type 1|300 80 left|type b
+b1_x|type s|type 4|type 4|type x
+b2_c|type s|type 4|type 4|type 1|type c
+g0_x|type s|type 4|type 5|type x
+g1_menu|type s|type 4|type 5|type 1|40 120 left
+b1_menu|type s|type 4|type 4|40 120 left
+e_x255|type s|type 4|type 5|type 1|255 60 left
+e_x256|type s|type 4|type 5|type 1|256 60 left
+e_x127|type s|type 4|type 5|type 1|127 140 left
+e_x129|type s|type 4|type 5|type 1|129 140 left
+e_x130|type s|type 4|type 5|type 1|130 140 left
+e_x383|type s|type 4|type 5|type 1|383 60 left
+e_x384|type s|type 4|type 5|type 1|384 60 left
+e_y127|type s|type 4|type 5|type 1|300 127 left
+e_y128|type s|type 4|type 5|type 1|300 128 left
+e_y129|type s|type 4|type 5|type 1|300 129 left
+e_y16|type s|type 4|type 5|type 1|300 17 left
+e_x639|type s|type 4|type 5|type 1|639 400 left
+e_y239|type s|type 4|type 5|type 1|300 239 left
+e_y240|type s|type 4|type 5|type 1|300 240 left
+e_x638|type s|type 4|type 5|type 1|638 400 left
+e_x637|type s|type 4|type 5|type 1|637 400 left
+e_y470|type s|type 4|type 5|type 1|600 470 left
+e_y463|type s|type 4|type 5|type 1|600 463 left
+e_y462|type s|type 4|type 5|type 1|600 462 left
+b1_layer_r|type s|type 4|type 4|58 360 right
+b1_layer_l|type s|type 4|type 4|30 360 left
+b1_layer_l2|type s|type 4|type 4|10 360 left
+b1_sub|type s|type 4|type 4|60 392 left
+b1_calc|type s|type 4|type 4|30 470 left
+b1_range|type s|type 4|type 4|80 470 left
+b1_draw|type s|type 4|type 4|400 250 left
+b2_layer_r|type s|type 4|type 4|type 1|58 360 right
+g0_grp_r|type s|type 4|type 5|44 360 right
+g0_grp_l|type s|type 4|type 5|30 360 left
+g0_draw|type s|type 4|type 5|400 250 left
+g1_grp_r|type s|type 4|type 5|type 1|44 360 right
+g1_gword|type s|type 4|type 5|type 1|90 344 left
+g1_sub|type s|type 4|type 5|type 1|60 392 left
+g1_calc|type s|type 4|type 5|type 1|30 470 left
+g2_grp_l|type s|type 4|type 5|type 1|300 80 left|30 360 left
+g2_bottom|type s|type 4|type 5|type 1|300 80 left|600 470 left
+g2_x639|type s|type 4|type 5|type 1|300 80 left|639 300 left
+
+b2_bs|type s|type 4|type 4|type 1|key bs
+
+b2_enter|type s|type 4|type 4|type 1|key enter
+
+b1_enter|type s|type 4|type 4|key enter
+
+b1_5|type s|type 4|type 4|type 5
+
+b2_2|type s|type 4|type 4|type 1|type 2
+
+g0_4|type s|type 4|type 5|type 4
+
+g0_bs|type s|type 4|type 5|key bs
+
+g0_enter|type s|type 4|type 5|key enter
+
+g1_bs|type s|type 4|type 5|type 1|key bs
+
+g1_enter|type s|type 4|type 5|type 1|key enter
+
+g1_3|type s|type 4|type 5|type 1|type 3
+
+g2_bs|type s|type 4|type 5|type 1|300 80 left|key bs
+
+g2_enter|type s|type 4|type 5|type 1|300 80 left|key enter
+
+g2_3|type s|type 4|type 5|type 1|300 80 left|type 3
+
+b1_cont|type s|type 4|type 4|type 1|type 1|type 2|type 1

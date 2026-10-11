@@ -264,6 +264,15 @@ typedef struct {
     double opt_inner;
     double opt_gap;
     long opt_line;
+    /* ｵﾌﾟｼｮﾝ ④一括処理 の ④ﾚｲﾔ整理・⑤ｸﾞﾙｰﾌﾟ整理（notes/spec-opt4-cde.md）。
+     * opt_stage が JW_OPT_LAY_* / JW_OPT_GRP_* のあいだ、作図範囲は 16 枚の
+     * 小窓（レイヤ／グループのデータ表示と同じ絵）で、左の盤は残ります。
+     * opt_sub：④は B2 の種類（1 線･円 2 実 点 3 文 字）、⑤は方法（0 移動 1 複写）。
+     * opt_sg：⑤で指した元グループ。opt_gname・opt_lname：⑤のグループ名・レイヤ名の
+     * 扱い（0 移動 1 複写 2 変更無）。jw_ui_from が全部消すので、持ち主は main_wasm.c。 */
+    int opt_sub;
+    int opt_sg;
+    int opt_gname, opt_lname;
     int io_stage;
     /* ⑦INDEX's list.  The original keeps it in `JW_FILE0.000`, one
      * `A:\NAME` a line with CRLF between, and rewrites it as drawings are
@@ -494,6 +503,17 @@ typedef struct {
 
 /* ｵﾌﾟｼｮﾝ's own menus, JwUi.opt_stage. */
 #define JW_OPT_PLAN 1           /* ①建具平面 -> 建具選択 の一覧        */
+/* ④一括処理 の ④ﾚｲﾔ整理（B1 項目の帯、B2 確認の帯）と ⑤ｸﾞﾙｰﾌﾟ整理（G0 方法、
+ * G1 元グループ指示、G2 確認、G2S 縮尺の確認）。JW_OPT_BASE..BASE2（1〜4）は
+ * 建具平面の道なので、重ならない数にしてあります。 */
+#define JW_OPT_LAY_B1  10
+#define JW_OPT_LAY_B2  11
+#define JW_OPT_GRP_G0  20
+#define JW_OPT_GRP_G1  21
+#define JW_OPT_GRP_G2  22
+#define JW_OPT_GRP_G2S 23
+/* ④⑤ のどれかの段にいるか（上の行と作図範囲が 16 枚の小窓になる）。 */
+#define JW_OPT_SUB(s) ((s)->command == 29 && (s)->opt_stage >= JW_OPT_LAY_B1)
 /* JW_OPT_BASE and JW_OPT_WHERE are in src/optplan.h, beside the lines they
  * put up. */
 
@@ -751,6 +771,7 @@ typedef struct {
     int layer;                  /* the one being written to, highlighted */
     long work_seconds;          /* 作業時間 -- the thin bar down the menu */
     const char *name;           /* what the write layer is called, or NULL */
+    const char *gname;          /* what the write group is called, or NULL */
     const char *guide;          /* the line of guidance, or NULL */
 } JwUi;
 

@@ -846,6 +846,21 @@ unsigned char *jwc_bytes(const Jwc *d, long *out_len, const char **why)
         memcpy(out + DATA_AT + d->data_at + span, d->raw + tail_at,
                (size_t)tail_len);
     }
+    /* The names are in memory now: the 図面名 box changes one and ｵﾌﾟｼｮﾝ
+     * ⑤ｸﾞﾙｰﾌﾟ整理 moves them (サマリ: notes/spec-opt4-cde.md 5.3, measured with
+     * tools/cases/probe_opt4_layer.txt opt5_t6_names_*).  The tail is 256 layer
+     * names of eight bytes and 16 group names of sixteen; what was read goes
+     * back byte for byte unless somebody has changed it. */
+    if (tail_len >= 2048 + 256) {
+        unsigned char *nm = out + DATA_AT + d->data_at + span;
+
+        for (k = 0; k < 256; k++) {
+            memcpy(nm + k * 8, d->layer_name[k], 8);
+        }
+        for (k = 0; k < 16; k++) {
+            memcpy(nm + 2048 + k * 16, d->group_name[k], 16);
+        }
+    }
 
     /* the counts, and the width the coordinates are now in */
     read_header(src, d->raw, 1);
