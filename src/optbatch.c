@@ -23,6 +23,7 @@ static float ob_x1, ob_y1, ob_x2, ob_y2;/* トレース線の両端 */
 static int ob_same;                     /* 始線を右で押した（同種線選択） */
 static unsigned char ob_pen1, ob_type1, ob_layer1;
 static int ob_ex, ob_ey;                /* 終線の段に入った押しの画面位置（ゴム線は動くまで出ない） */
+static int ob_prot;                     /* 885:4 の `ﾌﾟﾛﾃｸﾄﾚｲﾔ`（桁 36、黄地・黒字） */
 static int ob_msg;                      /* 行 2 の言葉：0 無し、1 データが不適当(桁20)、2 曲線不可(桁24) */
 
 /* ------------------------------------------------------------ 計算の精度 */
@@ -144,7 +145,14 @@ static int in_range(float x, float y)
 /* 885:0004：`layer_edit[layer]&6` か `group_edit[layer>>4]&6` が非 0 なら保護（spec §2）。 */
 static int layer_block(const Jwc *d, unsigned layer)
 {
-    return (d->layer_edit[layer & 255] & 6) || (d->group_edit[(layer >> 4) & 15] & 6);
+    const int b = (d->layer_edit[layer & 255] & 6) || (d->group_edit[(layer >> 4) & 15] & 6);
+
+    /* 本物の 885:4 は、`[0xc22]` が 0（ほかの言葉が出ていない）のときだけ言葉を出す。
+     * 測定：PROT0（レイヤ 0 を保護）で始線を押すと桁 36 に黄地の `ﾌﾟﾛﾃｸﾄﾚｲﾔ`。 */
+    if (b && !ob_msg && !ob_prot) {
+        ob_prot = 1;
+    }
+    return b;
 }
 
 /* 11f2:06d1：レイヤが表示中か。`layer_edit[layer]&1 && group_edit[layer>>4]&1`（jwc.c が
@@ -178,9 +186,9 @@ static void append_line(Jwc *d, const JwcLine *r)
      * opt4ab_1 で、足した 2 本の rest[2] が 00。複写の dup_line と同じ。spec 6 の
      * 「印は付いたまま」は違った）。bit4 は jwc_put_line が付け直す。 */
     t.rest[2] &= (unsigned char)~3u;
-    /* rest[3] の bit3（0x08）も落ちる（測定：SAMPLE6 の追加線 54 本が 08→00、0x20 の 3 本は
-     * そのまま。0x80・0x40 は未測定）。 */
-    t.rest[3] &= (unsigned char)~0x08u;
+    /* rest[3] は 0 になる（測定：SAMPLE2 で追加した 13 本は元が 0x80 でも全部 00、SAMPLE6 で追加した
+     * 61 本は元が 0x08 でも 00。触らなかった選択線は 0x20・0x80 のまま残る）。 */
+    t.rest[3] = 0;
     jwc_put_line(d, &t);
 }
 
@@ -313,12 +321,14 @@ static void select_all(Jwc *d)
 void jw_optbatch_reset(void)
 {
     ob_msg = 0;
+    ob_prot = 0;
 }
 
 void jw_optbatch_open(int item, int *opt_stage)
 {
     ob_m = item == 2 ? 2 : 1;
     ob_msg = 0;
+    ob_prot = 0;
     *opt_stage = JW_OPT_BATCH;
 }
 
@@ -406,6 +416,7 @@ int jw_optbatch_click(Jwc *d, const JwView *w, int x, int y, int right,
         return JW_OB_NONE;
     }
     ob_msg = 0;                                 /* 行 2 の言葉は次の押しで消える（2a18） */
+    ob_prot = 0;
     /* 上の行 */
     if (y >= 0 && y <= 15) {
         if (stage == JW_OPT_BATCH_ADD) {
@@ -540,6 +551,7 @@ int jw_optbatch_key(Jwc *d, int key, int *opt_stage, int *leave_band)
         return JW_OB_NONE;
     }
     ob_msg = 0;
+    ob_prot = 0;
     if (key == 8) {                             /* BS は O4-1・O4-2a だけ。ほかは捨てる */
         return stage == JW_OPT_BATCH ? do_back(opt_stage, leave_band) : JW_OB_TAKEN;
     }
@@ -596,6 +608,7 @@ static const char S_ADD[] =
     "\x95\x9c\x8a\x88\x8fo\x97\x88\x82\xdc\x82\xb9\x82\xf1 ";
 static const char S_BS[] = "[BS]\x91O\x8d\x80";
 static const char S_BAD[] = "\x83" "f\x81[\x83^\x82\xaa\x95s\x93K\x93\x96";
+static const char S_PROT[] = "\xcc\xdf\xdb\xc3\xb8\xc4\xda\xb2\xd4";
 static const char S_CURVE[] = "\x8b\xc8\x90\xfc\x95s\x89\xc2";
 
 void jw_optbatch_text(VGA *v, int opt_stage)
@@ -623,6 +636,9 @@ void jw_optbatch_text(VGA *v, int opt_stage)
         break;
     default:
         break;
+    }
+    if (ob_prot) {
+        jw_ui_text(v, 36, 2, 6, 0xffffu, S_PROT);
     }
     if (ob_msg == 1) {
         jw_ui_text(v, 20, 2, 7, 0, S_BAD);
