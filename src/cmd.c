@@ -11978,6 +11978,27 @@ static void centre_line(JwCmd *c, Jwc *d, const JwView *w, double px, double py)
         dy = c->cl_x2 - c->cl_x1;
         goto have_axis;
     }
+    if (d && c->cl_pts == 3 && c->cl_lb >= 0 && c->cl_lb < d->n_lines) {
+        /* 点（１）＋線（Ｂ）：点とその線への垂線の足の中点を通り、線に平行
+         * （測定のみ・decomp 未確認：functest dfz6_f_4、点 (598,420) と左枠線で
+         * (379.987,300)-(379.987,420)）。 */
+        const JwcLine *lb = &d->lines[c->cl_lb];
+        const double ex = (double)lb->x1 - lb->x0, ey = (double)lb->y1 - lb->y0;
+        const double en = ex * ex + ey * ey;
+        double tt, fx, fy;
+
+        if (en <= 0.0) {
+            return;
+        }
+        tt = ((c->cl_x1 - lb->x0) * ex + (c->cl_y1 - lb->y0) * ey) / en;
+        fx = lb->x0 + tt * ex;
+        fy = lb->y0 + tt * ey;
+        ox = (c->cl_x1 + fx) * 0.5;
+        oy = (c->cl_y1 + fy) * 0.5;
+        dx = ex;
+        dy = ey;
+        goto have_axis;
+    }
     if (!d || c->pick_a < 0 || c->pick_b < 0
         || c->pick_a >= d->n_lines || c->pick_b >= d->n_lines) {
         return;
@@ -12014,6 +12035,11 @@ have_axis:
      * line against `01 02 00 03 00 00` for a line.  What the byte means is
      * still not known, so it is copied and not reasoned about. */
     d->lines[d->n_lines - 1].rest[1] = 2;
+    if (c->cl_pts == 3 && c->cl_lb >= 0 && c->cl_lb < d->n_lines - 1) {
+        /* 点＋線 の中心線は線（Ｂ）の rest[1] を受け継ぐ（測定のみ・decomp 未確認：
+         * functest 点＋枠線 4 通りで 0x41、中心線の 2 ではない）。 */
+        d->lines[d->n_lines - 1].rest[1] = d->lines[c->cl_lb].rest[1];
+    }
     c->cl_undo = 1;
 }
 
@@ -20004,6 +20030,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             }
             c->missed = 0;
             c->cl_pts = 3;
+            c->cl_lb = k;
             c->stage = 2;
             return 1;
         }
@@ -20070,9 +20097,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 c->stage = 3;
                 return 1;
             }
-            if (c->cl_pts != 3) {
-                centre_line(c, d, w, px, py);
-            }
+            centre_line(c, d, w, px, py);
             c->pick_a = -1;
             c->pick_b = -1;
             c->cl_pts = 0;

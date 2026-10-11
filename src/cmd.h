@@ -593,6 +593,7 @@ typedef struct {
     int mv_xform;
     long mv_mirror_axis;
     int cl_pts;                 /* 中心線の 2 点指示：読んだ点の数 */
+    long cl_lb;                 /* 中心線 点＋線：線（Ｂ）の番号 */
     int cl_undo;                /* 中心線で線を 1 本引いた（段 4 の [ESC] で消す） */
     double cl_x1, cl_y1, cl_x2, cl_y2;
     int text_ang_ask;           /* 文字 ③角度指定 の欄 */
