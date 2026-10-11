@@ -63,3 +63,6 @@
 #   stb_par       $RR|400 140 left      平行：`計算不可`、線は変わらず
 #   stb_esc       $RR|380 410 left|key esc        ESC は指定点モードと同じ取り消し
 # 基準線モードでもう一度 RR すると切り替えではなく、その線が新しい基準線になる。
+stretch_cut_undo_esc|SAMPLE0|type T|598 300 right|move 380 200|key esc
+stretch_cut_then_left_press|SAMPLE0|type T|400 140 right|400 140 left|move 162 250
+stretch_undo_cleared_by_press|SAMPLE0|type T|400 140 left|162 140 left|598 300 left|key esc|key esc

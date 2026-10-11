@@ -856,6 +856,9 @@ typedef struct {
      * original says `□ 線切断はマウス移動` until it does and then puts its
      * own line back, so this is what picks src/stage.h's stage 11 over
      * stage 2. */
+    JwcLine cut_line;           /* ┣ 線切断の右押しで拾った線（押しのあとで番号が動いても探せる）*/
+    int cut_undo;               /* ┣ 線切断 を実行した（[ESC] で元の線に戻す） */
+    JwcLine cut_orig;           /* 切る前の線 */
     int cutting;
     /* Where 線切断 will cut, in drawing units, while it waits for the move. */
     double cut_x, cut_y;

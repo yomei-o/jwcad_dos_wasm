@@ -686,8 +686,32 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
          * That is what the line above means by `□ 線切断はマウス移動`. */
         if (c->cutting) {
             c->cutting = 0;
-            if (d && c->pick_a >= 0 && c->pick_a < d->n_lines) {
-                jwc_split_line(d, c->pick_a, (float)c->cut_x, (float)c->cut_y);
+            if (d) {
+                /* 切る線は右押しで拾ったもの。間に左押しが入って pick_a が替わって
+                 * も切る（測定のみ・decomp 未確認：functest dfz_T_3、右押しのあと同じ所を
+                 * 左で押してから矢を動かすと、線は切れる）。 */
+                long k = -1, i;
+
+                for (i = d->n_lines - 1; i >= 0; i--) {
+                    const JwcLine *m = &d->lines[i];
+
+                    if (m->x0 == c->cut_line.x0 && m->y0 == c->cut_line.y0
+                        && m->x1 == c->cut_line.x1 && m->y1 == c->cut_line.y1) {
+                        k = i;
+                        break;
+                    }
+                }
+                if (k >= 0) {
+                    const JwcLine was = d->lines[k];
+
+                    if (jwc_split_line(d, k, (float)c->cut_x, (float)c->cut_y)) {
+                        c->cut_orig = was;
+                        c->cut_undo = 1;
+                        /* 切った 2 本に探索の印は残らない（測定：rest=410000） */
+                        d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~1u;
+                        d->lines[d->n_lines - 2].rest[2] &= (unsigned char)~1u;
+                    }
+                }
             }
             c->pick_a = -1;
         }
@@ -9212,6 +9236,24 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* ┣ 線伸縮：対象線を選んだあと（段 1）の [ESC] は最初の行（段 0）へ
      * （decomp 照合済み（調査担当が dis で確認）：escfz_T_83）。 */
+    /* ┣ 線切断のあとの [ESC] は切った 2 本を消して元の線を戻す（測定のみ・decomp 未確認：
+     * functest dfz_T_0、切断のあと [ESC] で線数 31→30、記録は元の線 1 本）。一度だけ。 */
+    if (key == 27 && d && c->command == 6 && !c->typing && c->cut_undo
+        && c->pick_a < 0 && !c->cutting && d->n_lines >= 2) {
+        JwcLine q = c->cut_orig;
+        q.rest[2] &= (unsigned char)~1u;      /* 探索の印は戻さない（測定：rest=410000） */
+
+        jwc_remove_line(d, d->n_lines - 1);
+        jwc_remove_line(d, d->n_lines - 1);
+        if (jwc_add_line(d, q.x0, q.y0, q.x1, q.y1, q.type, q.pen, q.layer)) {
+            d->lines[d->n_lines - 1] = q;
+        }
+        jwc_ink_clear(d);
+        c->cut_undo = 0;
+        c->stage = 0;
+        c->moved = 0;
+        return 1;
+    }
     if (key == 27 && c->command == 6 && !c->typing && c->stage == 1 && c->pick_a >= 0) {
         c->pick_a = -1;
         c->stage = 0;
@@ -20173,6 +20215,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
          * The third one crosses the other end and the record simply keeps the
          * new pair, back to front.  The record moves to the end of the list,
          * like コーナー連結's, and the counts do not change. */
+        c->cut_undo = 0;        /* 切断の [ESC] 取り消しは次の押しまで（測定のみ：functest dfz_T_3） */
+        c->st_undo_on = 0;      /* 伸縮の取り消しも次の押しまで（測定のみ：functest dfz_T_5） */
         if (c->pick_a < 0) {
             const long k = pick_line(d, w, sx, sy);
 
@@ -20201,6 +20245,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 }
                 t = ((px - l->x0) * dx + (py - l->y0) * dy) / n;
                 c->pick_a = k;
+                c->cut_line = *l;
                 c->cut_x = l->x0 + t * dx;
                 c->cut_y = l->y0 + t * dy;
                 /* RR（同位置のもう一度の右押し）を見分けるため、この
@@ -20255,6 +20300,14 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
              * 選び直し（jw_cmd_pick の memset）。 */
             c->st_base_mode = 1;
             c->stage = 2;
+            return 1;
+        }
+        /* 線切断の右押しのあと、矢が動く前の左押しは伸縮にならず、切断はそのあとの矢の
+         * 動きで行われる（測定のみ・decomp 未確認：functest dfz_T_3、右押しのあと同じ所を
+         * 左で押して矢を動かすと線は切れる、伸縮はされない。帯は [ESC] 付きの
+         * `○ 線伸縮の 指定点`）。 */
+        if (c->cutting && !right) {
+            c->stage = 1;
             return 1;
         }
         /* 読取が外れたら同じ段のまま待ちます（測定：`サーチ`
