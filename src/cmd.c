@@ -11823,6 +11823,13 @@ static void chamfer_bulk(JwCmd *c, Jwc *d)
                 if (!pick[j]) {
                     continue;
                 }
+                /* 組になるのは線種・ペン・レイヤ（レコード +0x10〜+0x12）が同じ線どうしだけ
+                 * （decomp ovl04 0x2c8fc〜0x2c91a、調査担当が dis で確認）。 */
+                if (d->lines[j].type != d->lines[i].type
+                    || d->lines[j].pen != d->lines[i].pen
+                    || d->lines[j].layer != d->lines[i].layer) {
+                    continue;
+                }
                 for (ej = 0; ej < 2; ej++) {
                     if ((used[j] >> ej) & 1) {
                         continue;
@@ -12447,7 +12454,7 @@ static void dimension_prog(JwCmd *c, Jwc *d, double a)
 
 #define DIM_X(aa, bb) ((float)((aa) * ux + (bb) * vx))
 #define DIM_Y(aa, bb) ((float)((aa) * uy + (bb) * vy))
-    /* [ESC] で戻せるのは最後の一組だけ（測定のみ・decomp 未確認：functest dfz_S_1） */
+    /* [ESC] で戻せるのは最後の一組だけ（decomp 照合済み：ovl27 3ab8:206c の 02e020〜02e16d、[bp-0x72] が 0 でなければ線・実点・文字を消して累進のまま、0 なら段 3 へ。functest dfz_S_1 も一致） */
     c->dim_ul = d->n_lines;
     c->dim_up = d->n_points;
     c->dim_ut = d->n_texts;
@@ -21798,7 +21805,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         return 1;
     }
     if (c->command == 4 && c->box_ask == 1 && c->typing && c->typed_n) {
-        /* 数を打ちかけの欄での押しは [Enter] と同じ（測定のみ・decomp 未確認：escfz_B_77 は
+        /* 数を打ちかけの欄での押しは [Enter] と同じ（numin 0ad:16d4 の 262f で decomp 照合済み。escfz_B_77 は
          * 0 を断られて欄が空に、escfz_X_76 は 1 が長さになる）。 */
         jw_cmd_key(c, d, 13);
         if (c->box_ask) {
