@@ -21495,11 +21495,23 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             return 0;
         }
         if (c->pressed == 1) {
+            /* 始点が中心と同じ所では半径 0：受け付けない（測定のみ・decomp 未確認：
+             * functest dfz5_N_4、同じ点を 3 度押しても記録は変わらない）。 */
+            if ((float)x == (float)c->x0 && (float)y == (float)c->y0) {
+                c->missed = 0;
+                return 0;
+            }
             c->x1 = x;
             c->y1 = y;
             c->pressed = 2;
             c->stage = 2;
             measure(c, d, x, y);
+            return 0;
+        }
+        /* 中心と同じ所を終点に押しても弧は描かない（測定のみ・decomp 未確認：functest
+         * dfz_N_5、中心 (280,160) をもう一度押しても弧は増えず、次の押しが終点になる）。 */
+        if ((float)x == (float)c->x0 && (float)y == (float)c->y0) {
+            c->missed = 0;
             return 0;
         }
         a0 = angle_at(c->x1 - c->x0, c->y1 - c->y0);

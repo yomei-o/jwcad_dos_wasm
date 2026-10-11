@@ -26,3 +26,4 @@ arc_semiellipse_inside|SAMPLE0|type N|type 3|430 180 left|162 250 left|200 300 l
 circle_zero_radius_none|SAMPLE0|type E|380 200 left|type 8|key enter|300 250 right|380 200 left|type 8
 arc_undo_after_center|SAMPLE0|type N|250 200 right|162 420 left|250 200 right|550 250 left|type 9|key enter|450 330 left|300 250 left|key esc|key esc
 circle_undo_after_miss|SAMPLE0|type E|162 140 left|350 350 left|key enter|350 350 left|type 2|400 140 left|550 250 right|key esc|key esc
+arc_end_at_center_refused|SAMPLE0|type N|280 160 left|300 250 right|key enter|280 160 left|300 250 left|200 300 left|key esc|key esc
