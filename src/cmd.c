@@ -7417,17 +7417,6 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
 {
     static const double F[5] = { 1000.0, 100.0, 200.0, 300.0, 500.0 };
 
-    /* 線消 部分消去 の終点指示（段 3）での [Enter]：始点の所で線を二本に切る
-     * （線切断。測定：functest dfz_D_1、`type D|162 140 left|250 200 left|
-     * type 4|key enter` で本物は線 0 が (250,200) の線上の足で二本になる）。 */
-    if (c->command == 10 && c->stage == 3 && key == 13 && !c->typing
-        && !c->ld_ask && d && c->ld_line >= 0 && c->ld_line < d->n_lines) {
-        ld_cut(c, d, c->ld_u0, c->ld_u0);
-        c->pressed = 0;
-        c->stage = 1;
-        return 1;
-    }
-
     /* 円線接 の ③接円(3条件) の行（段 50）の [BS]`前項` は [ESC] と同じ（測定のみ：tmp の ee6）。 */
     if (c->command == 26 && key == 8 && !c->typing && (c->stage == 50 || c->stage == 1)) {
         c->stage = 0;               /* 円線接 の ③接円(3条件) の行の [BS]`前項` は最初の行へ（[ESC] は何もしない。測定：tmp の ee6・ee7） */
