@@ -16293,6 +16293,15 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
 
         if (k < 0 && j < 0) {
             c->missed = 1;      /* nothing within reach; the drawing stands */
+            /* 外れた押しでも、部分消去の [ESC] 取り消しの控えは捨てる（測定のみ・
+             * decomp 未確認：functest dfz_D_7、`…162 420 left|200 300 right` の
+             * あと [ESC] 二回で、切った線は戻らない）。ただし右押しの全消を挟んだあとの
+             * 左の外れ押しでは捨てない（ld_esc_keep_fragments_after_rd）。右の外れ
+             * 押しだけ・全消を挟まない場合だけ測っている。 */
+            if (right && !c->rd_undo_on) {
+                c->ld_undo_on = 0;
+                c->ld_undo_n = 0;
+            }
             return 0;
         }
         c->missed = 0;
