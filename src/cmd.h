@@ -1124,4 +1124,8 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
  * `(x - ox) * scale + ax`, so this is that read backwards. */
 void jw_cmd_at(const JwView *w, int sx, int sy, double *x, double *y);
 
+/* 押した点に近い線（11f2:5670）。全部の rest[2] の bit0 を落として近いものに付け直し、
+ * いちばん近い線の番号か -1 を返す（src/optbatch.c）。 */
+long jw_cmd_pick_line(Jwc *m, const JwView *w, int sx, int sy);
+
 #endif

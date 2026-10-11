@@ -21,6 +21,7 @@
 #include "esc.h"
 #include "zukei.h"
 #include "optplan.h"
+#include "optbatch.h"
 #include "item.h"
 #include "tategu.h"
 
@@ -5245,7 +5246,14 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          *                   and ` 内法 ` at 55, and two pairs of spaces in
          *                   colour 6 at 68 and 77
          */
-        if (s->command == 29 && s->opt_stage >= JW_OPT_BASE) {
+        /* ｵﾌﾟｼｮﾝ ④一括処理 ①②の行（src/optbatch.c が字を持つ）。 */
+        if (s->command == 29 && s->opt_stage >= JW_OPT_BATCH) {
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
+            jw_optbatch_text(v, s->opt_stage);
+        }
+        if (s->command == 29 && s->opt_stage >= JW_OPT_BASE
+            && s->opt_stage < JW_OPT_BATCH) {
             const JwOptPlan *q;
             char one[32];
 

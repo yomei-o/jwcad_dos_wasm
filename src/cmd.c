@@ -2171,6 +2171,12 @@ static long pick_line(Jwc *m, const JwView *w, int sx, int sy)
     return jw_cmd_line_at(m, w, sx, sy);
 }
 
+/* ｵﾌﾟｼｮﾝ ④一括処理（src/optbatch.c）が使う pick_line の入口。 */
+long jw_cmd_pick_line(Jwc *m, const JwView *w, int sx, int sy)
+{
+    return pick_line(m, w, sx, sy);
+}
+
 /* Where a press says its point is, before any snap: the left button takes the
  * pointer and the right one reads what is already drawn.  Returns 0 when the
  * right button found nothing, which is when the original says 読取可能データ無

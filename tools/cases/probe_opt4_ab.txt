@@ -1,0 +1,20 @@
+# ｵﾌﾟｼｮﾝ ④一括処理 ①直線伸縮・②直線部分消（src/optbatch.c、仕様 notes/spec-opt4-ab.md）。
+#   sh tools/funccases.sh tools/cases/probe_opt4_ab.txt          保存した記録を本物と比べる
+#   画面の段ごとの比べ：tools/seqcheck.sh に手順を 1 手ずつ延ばして渡す（画面 0 画素差）
+# SAMPLE0 の見える線（レイヤ 0）：L0 左の縦 x=161、L2 右の縦 x=597（どちらも y 139〜419）、L1 下の枠（y=140）、
+#   L3 上の枠（y=419）、L4 上の帯の底（y=401）、L5 左下の短い横（y=157、x 161〜231）、L6 その右の縦（x=231、y 140〜157）、
+#   L7〜L10 上の帯の仕切り（x=196,380,432,510、y 402〜419）。レイヤ 1（L11〜L29）は隠れている。
+# ①：基準線 A →始線→終線。A に交わる向きに、選んだ線を伸ばす／縮める。
+opt4ab_1|SAMPLE0|type s|type 4|type 1|300 402 left|161 300 left|597 300 left|type 1
+opt4ab_1x|SAMPLE0|type s|type 4|type 1|300 140 left|196 410 left|510 410 left|type 1
+opt4ab_1s|SAMPLE0|type s|type 4|type 1|300 419 left|231 148 left|190 157 left|type 1
+opt4ab_1t|SAMPLE0|type s|type 4|type 1|300 402 left|161 300 left|597 300 left|597 300 left|type 1
+opt4ab_1a|SAMPLE0|type s|type 4|type 1|300 402 left|161 300 left|597 300 left|196 410 left|type 1
+opt4ab_1r|SAMPLE0|type s|type 4|type 1|300 402 left|161 300 right|597 300 left|type 1
+opt4ab_1e|SAMPLE0|type s|type 4|type 1|300 402 left|161 300 left|597 300 left|key enter
+# ②：消し始め基準線 B・消し終り基準線 C →始線→終線。選んだ線の B〜C の間を消す。
+opt4ab_2a|SAMPLE0|type s|type 4|type 2|300 402 left|200 157 left|161 300 left|597 300 left|type 1
+opt4ab_2l|SAMPLE0|type s|type 4|type 2|200 157 left|300 140 left|161 300 left|597 300 left|type 1
+opt4ab_2r|SAMPLE0|type s|type 4|type 2|300 419 left|300 402 left|161 300 left|597 300 left|type 1
+opt4ab_2x|SAMPLE0|type s|type 4|type 2|300 419 left|300 140 left|161 300 left|597 300 left|type 1
+opt4ab_2b|SAMPLE0|type s|type 4|type 2|300 140 left|200 157 left|161 300 left|597 300 left|type 1
