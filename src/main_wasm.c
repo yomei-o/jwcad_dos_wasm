@@ -2535,16 +2535,18 @@ static void hand_abandon(void)
  * ------------------------------------------------------------------- */
 
 /* 保護レイヤ判定 1885:0004（spec 0.1）：DS:[0xc170+字節] か DS:[0xb6c+群] の bit1|bit2。
- * 移植の layer_on／group_on がその 2 つの表（jwc.c の注）。 */
+ * その 2 つの表は移植では **layer_edit／group_edit**（jwc.c の注：先の写しが 06d1 の読む表、
+ * layer_on／group_on は描き直しの読む表）。左の盤の表示切替は layer_on だけを動かすので、
+ * 表示を入れたレイヤでも ④ の読取可は変わらない（測定：probe_opt4_layer の opt4_l_pen1）。 */
 static int opt_prot(const Jwc *d, int lb)
 {
-    return (d->layer_on[lb & 255] & 6) || (d->group_on[(lb >> 4) & 15] & 6);
+    return (d->layer_edit[lb & 255] & 6) || (d->group_edit[(lb >> 4) & 15] & 6);
 }
 
 /* 読取可レイヤ判定 21f2:06d1：両方の bit0。 */
 static int opt_readable(const Jwc *d, int lb)
 {
-    return (d->layer_on[lb & 255] & 1) && (d->group_on[(lb >> 4) & 15] & 1);
+    return (d->layer_edit[lb & 255] & 1) && (d->group_edit[(lb >> 4) & 15] & 1);
 }
 
 static void opt_refresh(void)
@@ -2734,10 +2736,10 @@ static void opt5_run(int m, int sg)
 
         memcpy(buf, d->group_name[sg], 16);
         buf[16] = 0;
-        if (!(d->group_on[wg] & 6)) {
+        if (!(d->group_edit[wg] & 6)) {
             memcpy(d->group_name[wg], buf, 16);
         }
-        if (opt_gname == 0 && !(d->group_on[sg] & 6)) {
+        if (opt_gname == 0 && !(d->group_edit[sg] & 6)) {
             buf[0] = 0;
             memcpy(d->group_name[sg], buf, 16);
         }
@@ -2914,6 +2916,12 @@ static int opt_sub_click(int x, int y, int right)
     }
     /* 作図範囲：⑤の G1 は小窓のグループを指す（spec 5.2：g = ((y-0x10)/高さ)*4 + (x-0x80)/幅）。
      * G2 は左押しで実行・右押しで中止（spec G2、dis 0x2e500〜0x2e51e）。 */
+    /* 範囲は x ≤ 638・y ≤ 462（x=639 と下の帯の y ≥ 463 は何も起きない。測定：e_x639・e_y463）。 */
+    if (x > 638 || y > 462) {
+        sync_ui();
+        present();
+        return -1;
+    }
     if (ui.opt_stage == JW_OPT_GRP_G1 && x > 0x80 && y > 0x10) {
         const int g = ((y - 0x10) / 112) * 4 + (x - 0x80) / 128;
 

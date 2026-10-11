@@ -36,3 +36,22 @@ b2_c|type s|type 4|type 4|type 1|type c
 g0_x|type s|type 4|type 5|type x
 g1_menu|type s|type 4|type 5|type 1|40 120 left
 b1_menu|type s|type 4|type 4|40 120 left
+e_x255|type s|type 4|type 5|type 1|255 60 left
+e_x256|type s|type 4|type 5|type 1|256 60 left
+e_x127|type s|type 4|type 5|type 1|127 140 left
+e_x129|type s|type 4|type 5|type 1|129 140 left
+e_x130|type s|type 4|type 5|type 1|130 140 left
+e_x383|type s|type 4|type 5|type 1|383 60 left
+e_x384|type s|type 4|type 5|type 1|384 60 left
+e_y127|type s|type 4|type 5|type 1|300 127 left
+e_y128|type s|type 4|type 5|type 1|300 128 left
+e_y129|type s|type 4|type 5|type 1|300 129 left
+e_y16|type s|type 4|type 5|type 1|300 17 left
+e_x639|type s|type 4|type 5|type 1|639 400 left
+e_y239|type s|type 4|type 5|type 1|300 239 left
+e_y240|type s|type 4|type 5|type 1|300 240 left
+e_x638|type s|type 4|type 5|type 1|638 400 left
+e_x637|type s|type 4|type 5|type 1|637 400 left
+e_y470|type s|type 4|type 5|type 1|600 470 left
+e_y463|type s|type 4|type 5|type 1|600 463 left
+e_y462|type s|type 4|type 5|type 1|600 462 left
