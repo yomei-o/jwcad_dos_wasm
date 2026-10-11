@@ -18,6 +18,16 @@ D=tmp/func
 [ -z "$FUNCID" ] || D="tmp/func/$FUNCID"
 mkdir -p "$D"
 DRAWING="${DRAWING:-SAMPLE0}"
+# TAIL_ESC=N：手順の最後に [ESC] を N 回足す（命令を抜けてから保存させる。本物が入力待ちの
+# まま保存に入れず `the save did not happen` になる手順を保存まで届かせる。手順の配列に
+# 足すので実機にも移植にも同じものが渡る。2026-10-11）。
+if [ -n "$TAIL_ESC" ]; then
+    _i=0
+    while [ "$_i" -lt "$TAIL_ESC" ]; do
+        set -- "$@" "key esc"
+        _i=$((_i + 1))
+    done
+fi
 BOOT="${BOOT:-40000000}"
 WAIT="${WAIT:-26000000}"
 NODE="${NODE:-}"
