@@ -19,3 +19,5 @@ center_undo_after_make|SAMPLE0|type f|380 200 right|500 200 left|598 420 left|16
 center_pt_line_bottom|SAMPLE0|type f|598 140 right|400 419 left|300 300 left|450 250 left
 center_pt_line_right|SAMPLE0|type f|162 420 right|598 300 left|200 200 left|500 350 left
 center_pt_line_top|SAMPLE0|type f|598 420 right|380 140 left|300 200 left|450 300 left
+center_line_pt_right|SAMPLE0|type f|598 300 left|162 420 right|300 200 left|450 300 left
+center_line_pt_top|SAMPLE0|type f|400 140 left|598 420 right|300 200 left|450 300 left

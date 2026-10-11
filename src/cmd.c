@@ -20058,8 +20058,27 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->stage = 2;
             return 1;
         }
+        if (c->pick_a >= 0 && c->pick_b < 0 && right && c->cl_pts == 0) {
+            /* 線（Ａ）のあとの右押しは `●対象点（２）` を読む（測定のみ：probe.sh 20
+             * `l 598 300` の帯 `◆対象線（Ｂ）指示 ﾏｳｽ(L) ●対象点（２）ﾏｳｽ(R)`）。点と線の
+             * 中心線は点（１）＋線（Ｂ）と同じ幾何（centre_line の cl_pts==3）。 */
+            double qx, qy;
+
+            if (!take(c, d, w, sx, sy, 1, &qx, &qy)) {
+                c->missed = 1;
+                return 0;
+            }
+            c->missed = 0;
+            c->cl_x1 = qx;
+            c->cl_y1 = qy;
+            c->cl_lb = c->pick_a;
+            c->cl_pts = 3;
+            c->pick_b = 0;
+            c->stage = 2;
+            return 1;
+        }
         if (c->cl_pts == 3) {
-            c->pick_a = c->pick_b = 0;      /* 混合：点の段へ（線は作らない） */
+            c->pick_a = c->pick_b = 0;      /* 混合：点の段へ */
         }
         if (c->pick_a < 0 || c->pick_b < 0) {
             const long k = pick_line(d, w, sx, sy);
