@@ -15428,9 +15428,10 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
         }
         /* 何も足さない押し（次の始点など）では、＋・／・□ は控えを捨てません：
          * 本物は次に何かを足すまで最後の一つを取り消せます（測定：＋ で線を
-         * 引き、次の始点を押してから [ESC] 二回で、その線が消える）。○・（ は
-         * 捨てます（測定：次の中心を押したあとの [ESC] 二回で円は残る）。 */
-        else if (c->command == 11 || c->command == 12) {
+         * 引き、次の始点を押してから [ESC] 二回で、その線が消える）。○ は
+         * 捨てます（測定：次の中心を押したあとの [ESC] 二回で円は残る）。（ は
+         * 捨てない（測定：functest dfz_N_7、弧を描いて次の中心を押し、[ESC] 二回で弧が消える）。 */
+        else if (c->command == 11) {
             c->undo_lines = c->undo_arcs = c->undo_texts = 0;
         }
     }

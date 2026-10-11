@@ -91,5 +91,4 @@ henkei_s0_c4(6px)・tangent_s1_c4(29px)・chamfer 等の端の画素・dim_val_b
     別位置への右押しの扱い。
   * dfz_T_5：`type T|type 8|162 140 left|type 6|type 2|500 200 left|type 6|400 140 right|200 300 right|type 4`。実機は線 30 に
     (400,139.943)-(598,139.943) を作る（移植は左枠線のまま）。
-* 新シード 7011（優先命令 X B E N A S D R c d T V 各 8 件、96 件）：座標差は上の T 3 件のほか N_1・N_7（円弧 `（` を移植が 1 本余計に作る。
-  N_7：`type N|250 200 right|162 420 left|250 200 right|550 250 left|type 9|key enter|450 330 left|300 250 left`）。残りは印のみ。
+* 新シード 7011（優先命令 X B E N A S D R c d T V 各 8 件、96 件）：座標差は上の T 3 件のほか N_1・N_7（円弧 `（` の取り消し：次の中心を押したあとも弧の [ESC] 取り消しが残る。**解消**）。残りは印のみ。
