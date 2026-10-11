@@ -1145,6 +1145,7 @@ void jw_ui_from(JwUi *s, const Jwc *d)
                     ? d->grid_y / d->unit_mm : 5.0;
     s->group = d->write_layer >> 4;
     s->name = d->layer_name[(s->group << 4) | (s->layer & 15)];
+    s->gname = d->group_name[s->group & 15];
     s->work_seconds = d->work_seconds;
     s->dec[0] = s->dec[1] = d->decimals;
     s->dec_drawing = d->decimals;
@@ -2890,6 +2891,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * panel's right edge at x=120 on the first of those rows, ｸﾞﾙｰﾌﾟ
          * does not -- one pixel, measured both ways. */
         fill(v, 1, 305, s->calc ? 119 : 120, 319, 0);
+        /* ｸﾞﾙｰﾌﾟ shows the write group's name where the pen was: column 2, row 20
+         * (測定：TEST6 の ｸﾞﾙｰﾌﾟ 指示 と ⑤ｸﾞﾙｰﾌﾟ整理 で `　敷地・建物`)。 */
+        if (s->group_mode && s->gname && *s->gname) {
+            jw_ui_text(v, 2, 20, 7, 0, s->gname);
+        }
     } else {
     jw_ui_text(v, 1, 20, 7, 0, "               ");
     pen_name(buf, s->pen, s->line_type);

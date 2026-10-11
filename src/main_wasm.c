@@ -2916,16 +2916,14 @@ static int opt_sub_click(int x, int y, int right)
     }
     /* 作図範囲：⑤の G1 は小窓のグループを指す（spec 5.2：g = ((y-0x10)/高さ)*4 + (x-0x80)/幅）。
      * G2 は左押しで実行・右押しで中止（spec G2、dis 0x2e500〜0x2e51e）。 */
-    /* 範囲は x ≤ 638・y ≤ 462（x=639 と下の帯の y ≥ 463 は何も起きない。測定：e_x639・e_y463）。 */
-    if (x > 638 || y > 462) {
-        sync_ui();
-        present();
-        return -1;
-    }
+    /* 小窓の升は幅 511/4、高さ 447/4（小窓の縮尺 92/447 と同じ紙の大きさ）で、実機は
+     * x=638・y=462 までを受け、x=639・y≥463 は何も起きない（測定：optsub_screens の
+     * e_x637〜e_x639・e_y462・e_y463）。整数で (x-128)*4/511 と (y-16)*4/447。 */
     if (ui.opt_stage == JW_OPT_GRP_G1 && x > 0x80 && y > 0x10) {
-        const int g = ((y - 0x10) / 112) * 4 + (x - 0x80) / 128;
+        const int col = (x - 0x80) * 4 / 511, row = (y - 0x10) * 4 / 447;
+        const int g = row * 4 + col;
 
-        if (g >= 0 && g <= 15 && g != ((drawing->write_layer >> 4) & 15)) {
+        if (col < 4 && row < 4 && g != ((drawing->write_layer >> 4) & 15)) {
             ui.opt_sg = g;
             opt_enter(JW_OPT_GRP_G2);
             return -1;

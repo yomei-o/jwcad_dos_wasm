@@ -771,6 +771,7 @@ typedef struct {
     int layer;                  /* the one being written to, highlighted */
     long work_seconds;          /* 作業時間 -- the thin bar down the menu */
     const char *name;           /* what the write layer is called, or NULL */
+    const char *gname;          /* what the write group is called, or NULL */
     const char *guide;          /* the line of guidance, or NULL */
 } JwUi;
 

@@ -55,3 +55,51 @@ e_x637|type s|type 4|type 5|type 1|637 400 left
 e_y470|type s|type 4|type 5|type 1|600 470 left
 e_y463|type s|type 4|type 5|type 1|600 463 left
 e_y462|type s|type 4|type 5|type 1|600 462 left
+b1_layer_r|type s|type 4|type 4|58 360 right
+b1_layer_l|type s|type 4|type 4|30 360 left
+b1_layer_l2|type s|type 4|type 4|10 360 left
+b1_sub|type s|type 4|type 4|60 392 left
+b1_calc|type s|type 4|type 4|30 470 left
+b1_range|type s|type 4|type 4|80 470 left
+b1_draw|type s|type 4|type 4|400 250 left
+b2_layer_r|type s|type 4|type 4|type 1|58 360 right
+g0_grp_r|type s|type 4|type 5|44 360 right
+g0_grp_l|type s|type 4|type 5|30 360 left
+g0_draw|type s|type 4|type 5|400 250 left
+g1_grp_r|type s|type 4|type 5|type 1|44 360 right
+g1_gword|type s|type 4|type 5|type 1|90 344 left
+g1_sub|type s|type 4|type 5|type 1|60 392 left
+g1_calc|type s|type 4|type 5|type 1|30 470 left
+g2_grp_l|type s|type 4|type 5|type 1|300 80 left|30 360 left
+g2_bottom|type s|type 4|type 5|type 1|300 80 left|600 470 left
+g2_x639|type s|type 4|type 5|type 1|300 80 left|639 300 left
+
+b2_bs|type s|type 4|type 4|type 1|key bs
+
+b2_enter|type s|type 4|type 4|type 1|key enter
+
+b1_enter|type s|type 4|type 4|key enter
+
+b1_5|type s|type 4|type 4|type 5
+
+b2_2|type s|type 4|type 4|type 1|type 2
+
+g0_4|type s|type 4|type 5|type 4
+
+g0_bs|type s|type 4|type 5|key bs
+
+g0_enter|type s|type 4|type 5|key enter
+
+g1_bs|type s|type 4|type 5|type 1|key bs
+
+g1_enter|type s|type 4|type 5|type 1|key enter
+
+g1_3|type s|type 4|type 5|type 1|type 3
+
+g2_bs|type s|type 4|type 5|type 1|300 80 left|key bs
+
+g2_enter|type s|type 4|type 5|type 1|300 80 left|key enter
+
+g2_3|type s|type 4|type 5|type 1|300 80 left|type 3
+
+b1_cont|type s|type 4|type 4|type 1|type 1|type 2|type 1
