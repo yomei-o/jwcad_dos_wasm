@@ -8122,6 +8122,20 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     }
     /* 中心線 の [ESC]：一段ずつ戻る（終点 → 始点 → 対象直線（Ｂ）→ …。
      * 測定：center_plain の 11・13 段目）。 */
+    /* 中心線 の線を引いた直後（段 4）の [ESC] は、その線を取り消して最初の行へ
+     * （測定のみ・decomp 未確認：functest dfz_f_0、`＊お待ち下さい＊` のあと
+     * `中心線 終点指示 直線（Ａ）`、数え箱は 31 → 30）。 */
+    if (c->command == 20 && key == 27 && !c->typing && c->stage == 4
+        && c->cl_undo && d && d->n_lines > 0) {
+        jwc_remove_line(d, d->n_lines - 1);
+        c->cl_undo = 0;
+        c->stage = 0;
+        c->pressed = 0;
+        c->pick_a = c->pick_b = -1;
+        c->cl_pts = 0;
+        c->moved = 0;
+        return 1;
+    }
     if (c->command == 20 && key == 27 && !c->typing && c->stage >= 1) {
         c->stage--;
         if (c->stage == 0) {
@@ -12000,6 +12014,7 @@ have_axis:
      * line against `01 02 00 03 00 00` for a line.  What the byte means is
      * still not known, so it is copied and not reasoned about. */
     d->lines[d->n_lines - 1].rest[1] = 2;
+    c->cl_undo = 1;
 }
 
 /* 線伸縮's second press: the end of the line nearer the first press moves to
