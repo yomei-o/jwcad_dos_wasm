@@ -1,6 +1,6 @@
 # ｵﾌﾟｼｮﾝ ④一括処理 ①直線伸縮・②直線部分消（src/optbatch.c、仕様 notes/spec-opt4-ab.md）。
 #   sh tools/funccases.sh tools/cases/probe_opt4_ab.txt          保存した記録を本物と比べる
-#   画面の段ごとの比べ：tools/seqcheck.sh に手順を 1 手ずつ延ばして渡す（画面 0 画素差）
+#   画面の段ごとの比べ：python tools/seqprefix.py 3 "type s" "type 4" "type 1" ...（1 手ずつ延ばして画面を比べる。0 画素差）
 # SAMPLE0 の見える線（レイヤ 0）：L0 左の縦 x=161、L2 右の縦 x=597（どちらも y 139〜419）、L1 下の枠（y=140）、
 #   L3 上の枠（y=419）、L4 上の帯の底（y=401）、L5 左下の短い横（y=157、x 161〜231）、L6 その右の縦（x=231、y 140〜157）、
 #   L7〜L10 上の帯の仕切り（x=196,380,432,510、y 402〜419）。レイヤ 1（L11〜L29）は隠れている。
@@ -18,3 +18,13 @@ opt4ab_2l|SAMPLE0|type s|type 4|type 2|200 157 left|300 140 left|161 300 left|59
 opt4ab_2r|SAMPLE0|type s|type 4|type 2|300 419 left|300 402 left|161 300 left|597 300 left|type 1
 opt4ab_2x|SAMPLE0|type s|type 4|type 2|300 419 left|300 140 left|161 300 left|597 300 left|type 1
 opt4ab_2b|SAMPLE0|type s|type 4|type 2|300 140 left|200 157 left|161 300 left|597 300 left|type 1
+# 斜めの線・円弧のある図面で float の丸めと探索の隔たりを突き合わせる（実機の isect 引数 DOSEMU_BP root 1bb4:3cd1 で採った式。
+# 斜めの基準線では倍精度の式が 3 ulp ずれる）。①の基準線 A が斜め、選ぶ線が多い。
+opt4ab_1t4|TEST4|type s|type 4|type 1|549 187 left|585 139 left|557 434 left|type 1
+opt4ab_1s3|SAMPLE3|type s|type 4|type 1|262 266 left|294 362 left|316 369 left|type 1
+opt4ab_1s6|SAMPLE6|type s|type 4|type 1|563 332 left|313 296 left|560 85 left|type 1
+opt4ab_1s2|SAMPLE2|type s|type 4|type 1|269 381 left|309 382 left|406 382 left|type 1
+opt4ab_1s1r|SAMPLE1|type s|type 4|type 1|426 232 left|354 307 right|377 197 left|type 1
+opt4ab_2t4|TEST4|type s|type 4|type 2|558 198 left|565 173 left|581 140 left|523 343 left|type 1
+opt4ab_2s5|SAMPLE5|type s|type 4|type 2|389 334 left|386 333 left|363 332 left|385 341 left|type 1
+opt4ab_2s6|SAMPLE6|type s|type 4|type 2|561 85 left|382 146 left|189 332 left|561 86 left|type 1
