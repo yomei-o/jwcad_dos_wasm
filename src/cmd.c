@@ -12348,6 +12348,13 @@ static void dimension_prog(JwCmd *c, Jwc *d, double a)
         d->lines[d->n_lines - 1].rest[1] = 0x80;
         d->lines[d->n_lines - 1].rest[3] = 0x20;
     }
+    /* 寸法線端部が【点】なら、最初の寸法の始点に実点が一つ足される（同じ所に
+     * 点が既にあれば足されない。測定：functest の累進寸法 w1・w2・w3、
+     * `type S|type 1|350 350 left|598 140 left|type 4|162 140 left|598 420 left`）。
+     * 矢は【点】でも描かれる。decomp 未確認。 */
+    if (!c->dim_end && !c->dim_prog_n) {
+        (void)dim_point(c, d, DIM_X(a0, y), DIM_Y(a0, y), layer);
+    }
     if (dim_add_line(d, DIM_X(a, b), DIM_Y(a, b),
                      DIM_X(a, ye), DIM_Y(a, ye), type, pen, layer)) {
         d->lines[d->n_lines - 1].rest[1] = 0x59;
