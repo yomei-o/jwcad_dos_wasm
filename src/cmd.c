@@ -21587,7 +21587,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         if (c->pressed == 1) {
             /* 始点が中心と同じ所では半径 0：受け付けない（測定のみ・decomp 未確認：
              * functest dfz5_N_4、同じ点を 3 度押しても記録は変わらない）。 */
-            if ((float)x == (float)c->x0 && (float)y == (float)c->y0) {
+            if (fabs(x - c->x0) + fabs(y - c->y0) < 0.001) {
+                /* decomp ovl04 dis 0x318bb〜0x318cc：1bb4:27ea が |dx|+|dy| < 0.001 で 0 を
+                 * 返し、始点指示のまま（BEL と `データが不適当` は未実装）。 */
                 c->missed = 0;
                 return 0;
             }
