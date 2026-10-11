@@ -21,6 +21,7 @@
 #include "esc.h"
 #include "zukei.h"
 #include "optplan.h"
+#include "optsub.h"
 #include "item.h"
 #include "tategu.h"
 
@@ -2981,7 +2982,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
     }
     }
 
-    if (s->group_mode) {
+    if (s->group_mode && !JW_OPT_SUB(s)) {
+        /* ⑤ｸﾞﾙｰﾌﾟ整理 は サブ画面表示 を残す（実機：tools/pshot.sh 29 t 4 t 5）。 */
         jw_ui_text(v, 2, 25, 6, 0, GROUP_ALL);
     } else {
         jw_ui_text(v, 1, 25, 7, 0, " \x83\x54\x83\x75\x89\xe6\x96\xca \x95\x5c\x8e\xa6 ");
@@ -5245,7 +5247,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          *                   and ` 内法 ` at 55, and two pairs of spaces in
          *                   colour 6 at 68 and 77
          */
-        if (s->command == 29 && s->opt_stage >= JW_OPT_BASE) {
+        if (s->command == 29 && s->opt_stage >= JW_OPT_BASE
+            && s->opt_stage < JW_OPT_LAY_B1) {
             const JwOptPlan *q;
             char one[32];
 
@@ -5270,6 +5273,11 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 68, 2, 6, 0, "  ");
                 jw_ui_text(v, 77, 2, 6, 0, "  ");
             }
+        }
+        /* ④⑤ の段は上の行を jw_ui_data が自分で書く（小窓と一緒に）。 */
+        if (JW_OPT_SUB(s)) {
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
         }
         if (s->top_item && !(s->command == 29
                              && s->opt_stage >= JW_OPT_BASE)) {
@@ -7813,9 +7821,69 @@ no_dot:
  * (234,34), which is where the scale comes from.
  *
  * The strip along the bottom and the panel below the menu go with it. */
+/* ｵﾌﾟｼｮﾝ ④一括処理 の ④ﾚｲﾔ整理・⑤ｸﾞﾙｰﾌﾟ整理 の上の行。字面・桁・色は
+ * 実機から採った（src/optsub.h）。段の遷移は notes/spec-opt4-cde.md。 */
+static const char *opt5_label(int n)
+{
+    return n == 0 ? JW_OPT5_L_MOVE : n == 1 ? JW_OPT5_L_COPY : JW_OPT5_L_NONE;
+}
+
+static char opt5_char(int g)
+{
+    return (char)(g < 10 ? '0' + g : 'A' + g - 10);
+}
+
+static void opt_sub_top(VGA *v, const JwUi *s)
+{
+    char buf[128];
+
+    top_clear();
+    switch (s->opt_stage) {
+    case JW_OPT_LAY_B1:
+        jw_ui_text(v, 8, 1, 7, 0, JW_OPT4_B1);
+        break;
+    case JW_OPT_LAY_B2:
+        jw_ui_text(v, 1, 1, 7, 0,
+                   s->opt_sub == 2 ? JW_OPT4_B2_2
+                   : s->opt_sub == 3 ? JW_OPT4_B2_3 : JW_OPT4_B2_1);
+        break;
+    case JW_OPT_GRP_G0:
+        jw_ui_text(v, 16, 1, 7, 0, JW_OPT5_G0_TITLE);
+        jw_ui_text(v, 40, 1, 7, 0, JW_OPT5_G0_BAND);
+        break;
+    case JW_OPT_GRP_G1:
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        sprintf(buf, "%s%s", opt5_label(s->opt_sub), JW_OPT5_G1_DATA);
+        jw_ui_text(v, 8, 1, 7, 0, buf);
+        sprintf(buf, "%s%s%s%s)|", JW_OPT5_G1_BAND1, opt5_label(s->opt_gname),
+                JW_OPT5_G1_BAND2, opt5_label(s->opt_lname));
+        jw_ui_text(v, 42, 1, 7, 0, buf);
+        break;
+    case JW_OPT_GRP_G2:
+    case JW_OPT_GRP_G2S:
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        if (s->opt_stage == JW_OPT_GRP_G2S) {
+            jw_ui_text(v, 8, 1, 7, 0, JW_OPT5_G2S_TEXT);
+        } else {
+            jw_ui_text(v, 12, 1, 7, 0, opt5_label(s->opt_sub));
+            sprintf(buf, " %c ", opt5_char(s->opt_sg));
+            jw_ui_text(v, 20, 1, 2, 0xffffu, buf);
+            jw_ui_text(v, 23, 1, 7, 0, JW_OPT5_G2_ARROW);
+            sprintf(buf, " %c ", opt5_char(s->group & 15));
+            jw_ui_text(v, 35, 1, 5, 0xffffu, buf);
+            jw_ui_text(v, 38, 1, 7, 0, JW_OPT5_G2_GROUP);
+        }
+        jw_ui_text(v, 50, 1, 7, 0, JW_OPT5_G2_BAND);
+        break;
+    default:
+        break;
+    }
+}
+
 void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
 {
     int k;
+    const int sub = JW_OPT_SUB(s);
 
     if (!d) {
         return;
@@ -7897,7 +7965,7 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
     if (!s->data_screen) {
         return;
     }
-    if (s->data_screen == JW_DATA_GROUP) {
+    if (s->data_screen == JW_DATA_GROUP && !sub) {
         fill(v, 0, 305, 121, 305, 7);
     }
     fill(v, 122, 17, 638, 462, 0);
@@ -7905,12 +7973,15 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
      * group boxes are still there -- but the pen's row, 紙 and the scale,
      * and サブ画面表示 all go.  And so does everything the strip along the
      * bottom has right of the panel. */
-    if (s->data_screen == JW_DATA_GROUP) {
+    if (s->data_screen == JW_DATA_GROUP && !sub) {
         /* ｸﾞﾙｰﾌﾟ's screen empties the pen's row and 紙's; レイヤ's keeps
          * them both. */
         fill(v, 1, 306, 120, 335, 0);
     }
-    fill(v, 1, 416, 120, 462, 0);
+    /* ④⑤ は 盤の下（サブ画面表示 など）を残す（実機：tools/pshot.sh）。 */
+    if (!sub) {
+        fill(v, 1, 416, 120, 462, 0);
+    }
     fill(v, 122, 463, 638, 478, 0);
     for (k = 0; k < 16; k++) {
         JwView w;
@@ -7987,7 +8058,12 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
         } else {
             one[0] = (char)(k < 10 ? '0' + k : 'A' + k - 10);
             one[1] = 0;
-            jw_ui_text(v, col, row, 7, 0xffffu, one);
+            /* ⑤：書込グループの札は 5（青緑）、G2 で指した元グループは 2（赤）。 */
+            jw_ui_text(v, col, row,
+                       sub && k == (s->group & 15) ? 5
+                       : sub && s->opt_stage >= JW_OPT_GRP_G2
+                         && k == s->opt_sg ? 2 : 7,
+                       0xffffu, one);
             jw_ui_text(v, col + 1, row, 7, 0, d->group_name[k]);
         }
     }
@@ -8002,6 +8078,10 @@ void jw_ui_data(VGA *v, const JwUi *s, const Jwc *d)
     v->clip_x1 = v->width - 1;
     v->clip_y1 = v->height - 1;
     fill(v, 0, 0, 639, 15, 0);
+    if (sub) {
+        opt_sub_top(v, s);
+        return;
+    }
     if (s->data_screen == JW_DATA_LAYER) {
         jw_ui_text(v, 17, 1, 7, 0, "\x83\x8c\x83\x43\x83\x84");
         jw_ui_text(v, 23, 1, 7, 0,

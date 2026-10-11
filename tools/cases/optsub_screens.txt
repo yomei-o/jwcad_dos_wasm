@@ -1,0 +1,38 @@
+#名前|手順…（tools/optsubcheck.sh で本物と画面を比べる）
+b1|type s|type 4|type 4
+b2_1|type s|type 4|type 4|type 1
+b2_2|type s|type 4|type 4|type 2
+b2_3|type s|type 4|type 4|type 3
+b2_esc|type s|type 4|type 4|type 1|key esc
+b1_esc|type s|type 4|type 4|key esc
+b1_bs|type s|type 4|type 4|key bs
+b1_c|type s|type 4|type 4|type c
+b1_end|type s|type 4|type 4|type 4
+b1_click3|type s|type 4|type 4|360 8 left
+g0|type s|type 4|type 5
+g0_esc|type s|type 4|type 5|key esc
+g0_3|type s|type 4|type 5|type 3
+g1|type s|type 4|type 5|type 1
+g1_2|type s|type 4|type 5|type 2
+g1_esc|type s|type 4|type 5|type 1|key esc
+g1_name1|type s|type 4|type 5|type 1|type 1
+g1_name2|type s|type 4|type 5|type 1|type 1|type 1
+g1_name3|type s|type 4|type 5|type 1|type 1|type 1|type 1
+g1_lname1|type s|type 4|type 5|type 2|type 2
+g1_click|type s|type 4|type 5|type 1|340 8 left
+g2_1|type s|type 4|type 5|type 1|300 80 left
+g2_15|type s|type 4|type 5|type 1|600 450 left
+g2_esc|type s|type 4|type 5|type 1|300 80 left|key esc
+g2_cancel|type s|type 4|type 5|type 1|300 80 left|type 2
+g2_rclick|type s|type 4|type 5|type 1|300 80 left|500 300 right
+g2_lclick|type s|type 4|type 5|type 1|300 80 left|500 300 left
+g0_b|type s|type 4|type 5|type b
+g0_c|type s|type 4|type 5|type c
+g1_b|type s|type 4|type 5|type 1|type b
+g1_c|type s|type 4|type 5|type 1|type c
+g2_b|type s|type 4|type 5|type 1|300 80 left|type b
+b1_x|type s|type 4|type 4|type x
+b2_c|type s|type 4|type 4|type 1|type c
+g0_x|type s|type 4|type 5|type x
+g1_menu|type s|type 4|type 5|type 1|40 120 left
+b1_menu|type s|type 4|type 4|40 120 left

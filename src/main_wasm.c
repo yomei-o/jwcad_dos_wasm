@@ -84,6 +84,9 @@ static int band_x = 200, band_y = 200;
 static int circ_fresh;
 /* □ の ① の欄を開いたとき、その前は段 1（横=・縦= の箱）だった。 */
 static int box_keep;
+/* ⑤ｸﾞﾙｰﾌﾟ整理 のグループ名・レイヤ名の扱い（0 移動 1 複写 2 変更無）。⑤を出入りしても
+ * 保たれる（spec 5.2、初期値 2）。jw_ui_from が ui を消すので持ち主はこちら。 */
+static int opt_gname = 2, opt_lname = 2;
 
 EMSCRIPTEN_KEEPALIVE int jw_width(void)  { return vga.width; }
 EMSCRIPTEN_KEEPALIVE int jw_height(void) { return vga.height; }
@@ -502,6 +505,8 @@ static void sync_ui(void)
                             : cmd.stage == 3 ? JW_ZUKEI_ADD : 3)
              : 0;
     ui.top_item = cmd.top_item;
+    ui.opt_gname = opt_gname;
+    ui.opt_lname = opt_lname;
     ui.band_off = cmd.band_off;
     ui.top_right = cmd.top_right;
     ui.ask_kind = cmd.ask_kind;
@@ -875,6 +880,9 @@ static int panel_up(void)
     }
     if (ui.command == 29 && ui.top_item >= 1 && ui.top_item <= 3
         && ui.opt_stage == JW_OPT_PLAN) {
+        return 1;
+    }
+    if (JW_OPT_SUB(&ui)) {
         return 1;
     }
     return 0;
@@ -2172,6 +2180,7 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
     /* レイヤ変更 ends by itself: its own line says
      * `［終了］マウスを作図範囲に移動`, and that is the whole of it. */
     if ((ui.layer_mode || ui.group_mode || ui.pen_board || ui.data_screen)
+        && !JW_OPT_SUB(&ui)
         && x >= AREA_X0 && x <= AREA_X1
         && y >= AREA_Y0 && y <= AREA_Y1) {
         ui.layer_mode = 0;
@@ -2511,10 +2520,430 @@ static void hand_abandon(void)
     }
 }
 
+/* ---------------------------------------------------------------------
+ * ｵﾌﾟｼｮﾝ ④一括処理 の ④ﾚｲﾔ整理・⑤ｸﾞﾙｰﾌﾟ整理
+ *
+ * decomp の読み：notes/spec-opt4-cde.md（④ ovl30 3ab8:2947、⑤ 3ab8:3328、
+ * 入口 ovl17 3ab8:7a02）。上の行の字面・桁・色は実機から採った
+ * （src/optsub.h、tools/pshot.sh）。
+ *
+ *   ④  B1 項目の帯 --①②③--> B2 確認の帯 --実行--> B1   終了 --> 小帯へ
+ *   ⑤  G0 方法の帯 --①②--> G1 元グループ指示 --グループを押す--> G2 確認 --実行--> G0
+ *
+ * 持ち主は ui.opt_stage（JW_OPT_LAY_B1 以降）。作図範囲は 16 枚の小窓
+ * （レイヤ／グループのデータ表示）で、左の盤は残る。
+ * ------------------------------------------------------------------- */
+
+/* 保護レイヤ判定 1885:0004（spec 0.1）：DS:[0xc170+字節] か DS:[0xb6c+群] の bit1|bit2。
+ * 移植の layer_on／group_on がその 2 つの表（jwc.c の注）。 */
+static int opt_prot(const Jwc *d, int lb)
+{
+    return (d->layer_on[lb & 255] & 6) || (d->group_on[(lb >> 4) & 15] & 6);
+}
+
+/* 読取可レイヤ判定 21f2:06d1：両方の bit0。 */
+static int opt_readable(const Jwc *d, int lb)
+{
+    return (d->layer_on[lb & 255] & 1) && (d->group_on[(lb >> 4) & 15] & 1);
+}
+
+static void opt_refresh(void)
+{
+    const int st = ui.opt_stage, sub = ui.opt_sub, sg = ui.opt_sg;
+    const int cm = ui.command, scr = ui.data_screen, gm = ui.group_mode;
+
+    if (drawing) {
+        jw_ui_from(&ui, drawing);
+    }
+    ui.command = cm;
+    ui.opt_stage = st;
+    ui.opt_sub = sub;
+    ui.opt_sg = sg;
+    ui.data_screen = scr;
+    ui.group_mode = gm;
+    sync_ui();
+    present();
+}
+
+static void opt_enter(int stage)
+{
+    ui.opt_stage = stage;
+    if (stage >= JW_OPT_GRP_G0) {
+        ui.data_screen = JW_DATA_GROUP;
+        ui.group_mode = 1;
+    } else {
+        ui.data_screen = JW_DATA_LAYER;
+        ui.group_mode = 0;
+    }
+    ui.layer_mode = 0;
+    opt_refresh();
+}
+
+/* 命令の鍵や左の盤の命令の押しは、オプションを抜けて命令を選ぶ（共通入力が
+ * [0x158] を立てて ④⑤ごと抜ける。spec 4.2）。 */
+static void opt_leave_quiet(void)
+{
+    ui.opt_stage = 0;
+    ui.opt_sub = 0;
+    ui.data_screen = 0;
+    ui.group_mode = 0;
+    ui.layer_mode = 0;
+}
+
+/* ④／⑤を終わる：小帯（5 項目）へ戻る（spec 4.2 終了処理、5.3 ⑤を終わる）。 */
+static void opt_leave(void)
+{
+    opt_leave_quiet();
+    opt_refresh();
+}
+
+/* ④ 実行（spec 4.3）：書込グループの中の、書込線色（と線種）が同じデータを書込レイヤへ。
+ * kind 1=線･円 2=実 点 3=文 字。保護レイヤのデータは触らない（移す先は見ない）。 */
+static void opt4_run(int kind)
+{
+    Jwc *d = drawing;
+    const int wl = d->write_layer & 255;
+    const int g = wl >> 4;
+    const int pen = d->pen, type = d->line_type;
+    long i;
+
+    if (kind == 1) {
+        for (i = 0; i < d->n_lines; i++) {
+            JwcLine *l = &d->lines[i];
+
+            if (opt_readable(d, l->layer) && (l->layer >> 4) == g
+                && l->pen == pen && l->type == type && !opt_prot(d, l->layer)) {
+                l->layer = (unsigned char)wl;
+            }
+        }
+        for (i = 0; i < d->n_arcs; i++) {
+            JwcArc *a = &d->arcs[i];
+
+            if (opt_readable(d, a->layer) && (a->layer >> 4) == g
+                && a->pen == pen && a->type == type && !opt_prot(d, a->layer)) {
+                a->layer = (unsigned char)wl;
+            }
+        }
+    } else if (kind == 2) {
+        for (i = 0; i < d->n_points; i++) {
+            JwcPoint *p = &d->points[i];
+
+            if (opt_readable(d, p->layer) && (p->layer >> 4) == g
+                && p->rest[0] == pen && !opt_prot(d, p->layer)) {
+                p->layer = (unsigned char)wl;
+            }
+        }
+    } else if (kind == 3) {
+        for (i = 0; i < d->n_texts; i++) {
+            JwcText *t = &d->texts[i];
+
+            if (opt_readable(d, t->layer) && (t->layer >> 4) == g
+                && t->size <= 10 && d->text_pen[t->size] == pen
+                && !opt_prot(d, t->layer)) {
+                t->layer = (unsigned char)wl;
+            }
+        }
+    }
+}
+
+/* ⑤ 実行（spec 5.3）：元グループ sg の全データを書込グループへ移す（m=0）か写す（m=1）。
+ * レイヤ番号は保つ。個数は走査の前に控える（複写で増えた分は見ない）。
+ * 範囲印・曲線印・読取可は見ない。移動は保護レイヤを飛ばし、複写は検査しない。 */
+static void opt5_run(int m, int sg)
+{
+    Jwc *d = drawing;
+    const int wg = (d->write_layer >> 4) & 15;
+    const long nl = d->n_lines, na = d->n_arcs;
+    const int nt = d->n_texts, np = d->n_points;
+    long i;
+    int k;
+
+    for (i = 0; i < nl; i++) {
+        JwcLine l = d->lines[i];
+
+        if (l.pen < 0x5a && (l.layer >> 4) == sg) {
+            const unsigned char nw = (unsigned char)((l.layer & 15) + (wg << 4));
+
+            if (m == 0) {
+                if (!opt_prot(d, l.layer)) {
+                    d->lines[i].layer = nw;
+                }
+            } else {
+                l.layer = nw;
+                jwc_put_line(d, &l);
+            }
+        }
+    }
+    for (i = 0; i < na; i++) {
+        JwcArc a = d->arcs[i];
+
+        if (a.pen < 0x5a && (a.layer >> 4) == sg) {
+            const unsigned char nw = (unsigned char)((a.layer & 15) + (wg << 4));
+
+            if (m == 0) {
+                if (!opt_prot(d, a.layer)) {
+                    d->arcs[i].layer = nw;
+                }
+            } else {
+                a.layer = nw;
+                jwc_put_arc(d, &a);
+            }
+        }
+    }
+    for (k = 0; k < nt; k++) {
+        JwcText t = d->texts[k];
+
+        if ((t.layer >> 4) == sg) {
+            const unsigned char nw = (unsigned char)((t.layer & 15) + (wg << 4));
+
+            if (m == 0) {
+                if (!opt_prot(d, t.layer)) {
+                    d->texts[k].layer = nw;
+                }
+            } else {
+                /* jwc_put_text が文字列をプールへ足すので、足す前に自分の持ち物へ写す。 */
+                char *s = t.text ? strdup(t.text) : NULL;
+
+                t.text = s ? s : "";
+                t.layer = nw;
+                jwc_put_text(d, &t);
+                free(s);
+            }
+        }
+    }
+    for (k = 0; k < np; k++) {
+        JwcPoint p = d->points[k];
+
+        if (p.rest[0] < 0x5a && (p.layer >> 4) == sg) {
+            const unsigned char nw = (unsigned char)((p.layer & 15) + (wg << 4));
+
+            if (m == 0) {
+                if (!opt_prot(d, p.layer)) {
+                    d->points[k].layer = nw;
+                }
+            } else {
+                p.layer = nw;
+                jwc_put_point(d, &p);
+            }
+        }
+    }
+    /* 名前の移動／複写（spec 5.3、dis 0x2e9f6〜0x2eadf）。グループ名の保護は
+     * DS:[0xb6c+g] の bit1|bit2 を直接、レイヤ名は 1885:0004。 */
+    if (opt_gname < 2) {
+        char buf[17];
+
+        memcpy(buf, d->group_name[sg], 16);
+        buf[16] = 0;
+        if (!(d->group_on[wg] & 6)) {
+            memcpy(d->group_name[wg], buf, 16);
+        }
+        if (opt_gname == 0 && !(d->group_on[sg] & 6)) {
+            buf[0] = 0;
+            memcpy(d->group_name[sg], buf, 16);
+        }
+    }
+    if (opt_lname < 2) {
+        for (k = 0; k < 16; k++) {
+            char buf[9];
+
+            memcpy(buf, d->layer_name[sg * 16 + k], 8);
+            buf[8] = 0;
+            if (!opt_prot(d, wg * 16 + k)) {
+                memcpy(d->layer_name[wg * 16 + k], buf, 8);
+            }
+            if (opt_lname == 0 && !opt_prot(d, sg * 16 + k)) {
+                buf[0] = 0;
+                memcpy(d->layer_name[sg * 16 + k], buf, 8);
+            }
+        }
+    }
+}
+
+/* 帯の項目 n（升をクリックしたか、数字の鍵）。段ごとの動き（spec 4.2、5.2）。 */
+static void opt_sub_item(int n)
+{
+    switch (ui.opt_stage) {
+    case JW_OPT_LAY_B1:
+        if (n >= 1 && n <= 3) {
+            ui.opt_sub = n;
+            opt_enter(JW_OPT_LAY_B2);
+        } else if (n == 4) {
+            opt_leave();
+        }
+        break;
+    case JW_OPT_LAY_B2:
+        if (n == 1 && drawing) {
+            opt4_run(ui.opt_sub);
+            ui.opt_sub = 0;
+            opt_enter(JW_OPT_LAY_B1);
+        }
+        break;
+    case JW_OPT_GRP_G0:
+        if (n == 1 || n == 2) {
+            ui.opt_sub = n - 1;
+            opt_enter(JW_OPT_GRP_G1);
+        } else if (n == 3) {
+            opt_leave();
+        }
+        break;
+    case JW_OPT_GRP_G1:
+        if (n == 1) {
+            opt_gname = (opt_gname + 1) % 3;
+            opt_enter(JW_OPT_GRP_G1);
+        } else if (n == 2) {
+            opt_lname = (opt_lname + 1) % 3;
+            opt_enter(JW_OPT_GRP_G1);
+        }
+        break;
+    case JW_OPT_GRP_G2:
+        if (n == 1 && drawing) {
+            opt5_run(ui.opt_sub, ui.opt_sg);
+            opt_enter(JW_OPT_GRP_G0);
+        } else if (n == 2) {
+            opt_enter(JW_OPT_GRP_G1);
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+/* [ESC]：B1 は捨てる、B2→B1、G1→G0、G2→G1。**G0 も何も起きない**（spec 5.2 は「⑤を終わる」と
+ * 読んでいたが、実機は G0 のまま。測定：optsubcheck の g0_esc。decomp との食い違いは未解明）。 */
+static void opt_sub_esc(void)
+{
+    switch (ui.opt_stage) {
+    case JW_OPT_LAY_B2:
+        ui.opt_sub = 0;
+        opt_enter(JW_OPT_LAY_B1);
+        break;
+    case JW_OPT_GRP_G1:
+        opt_enter(JW_OPT_GRP_G0);
+        break;
+    case JW_OPT_GRP_G2:
+        opt_enter(JW_OPT_GRP_G1);
+        break;
+    default:
+        break;
+    }
+}
+
+/* 鍵。扱ったら -1、扱わない（命令の鍵として先へ流す）なら -2。 */
+static int opt_sub_key(int key)
+{
+    if (!JW_OPT_SUB(&ui)) {
+        return -2;
+    }
+    if (key == 27) {
+        opt_sub_esc();
+        return -1;
+    }
+    if (key >= '1' && key <= '9') {
+        opt_sub_item(key - '0');
+        return -1;
+    }
+    /* spec は `b`・`c` を「小窓を描き直す」と読んでいたが、実機は B1・G0 でも `c`（移動）・
+     * `b`（多角形）が命令を選ぶ（測定：optsubcheck の b1_c・g0_b・g0_c）。命令の鍵は下で抜ける。 */
+    if (key == 8 || key == 13 || key == 10) {
+        return -1;
+    }
+    if (key >= 0 && key < 256 && jw_ui_key_command(key)) {
+        opt_leave_quiet();
+        return -2;
+    }
+    return -1;
+}
+
+/* 押し。扱ったら戻り値（-1）、扱わないなら -2。 */
+static int opt_sub_click(int x, int y, int right)
+{
+    const int pick = jw_ui_menu_hit(x, y);
+
+    if (!JW_OPT_SUB(&ui)) {
+        return -2;
+    }
+    if (pick) {
+        opt_leave_quiet();
+        return -2;
+    }
+    mouse_x = x;
+    mouse_y = y;
+    if (y >= 0 && y <= 15) {
+        const int item = jw_ui_top_item(x, y);
+
+        if (item) {
+            opt_sub_item(item);
+        } else {
+            sync_ui();
+            present();
+        }
+        return -1;
+    }
+    /* 左の盤の 16 の升（レイヤ／グループの切替は既存の動きのまま）。④はレイヤ、
+     * ⑤はグループの表示切替・書込選択。データ表示は開かない。 */
+    if (drawing && x <= 121 && layer_at(x, y) >= 0) {
+        const int n = layer_at(x, y);
+
+        if (ui.opt_stage >= JW_OPT_GRP_G0) {
+            const int was_write = drawing->write_layer >> 4;
+
+            if (right) {
+                drawing->write_layer =
+                    (unsigned char)((n << 4) | (drawing->write_layer & 15));
+                drawing->group_on[n] = 1;
+            } else if (n != was_write) {
+                drawing->group_on[n] = !drawing->group_on[n];
+            }
+        } else {
+            const int full = (ui.group << 4) | n;
+
+            if (right) {
+                drawing->write_layer = full;
+                drawing->layer_on[full] = 1;
+            } else if (full != drawing->write_layer) {
+                drawing->layer_on[full] = !drawing->layer_on[full];
+            }
+        }
+        opt_refresh();
+        return -1;
+    }
+    if (x < AREA_X0 || !drawing) {
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* 作図範囲：⑤の G1 は小窓のグループを指す（spec 5.2：g = ((y-0x10)/高さ)*4 + (x-0x80)/幅）。
+     * G2 は左押しで実行・右押しで中止（spec G2、dis 0x2e500〜0x2e51e）。 */
+    if (ui.opt_stage == JW_OPT_GRP_G1 && x > 0x80 && y > 0x10) {
+        const int g = ((y - 0x10) / 112) * 4 + (x - 0x80) / 128;
+
+        if (g >= 0 && g <= 15 && g != ((drawing->write_layer >> 4) & 15)) {
+            ui.opt_sg = g;
+            opt_enter(JW_OPT_GRP_G2);
+            return -1;
+        }
+    } else if (ui.opt_stage == JW_OPT_GRP_G2 && y > 0x10) {
+        opt_sub_item(right ? 2 : 1);
+        return -1;
+    }
+    sync_ui();
+    present();
+    return -1;
+}
+
 EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 {
     const int pick = jw_ui_menu_hit(x, y);
     const int bar = jw_ui_bar_item(x, y);
+
+    /* ｵﾌﾟｼｮﾝ ④ﾚｲﾔ整理・⑤ｸﾞﾙｰﾌﾟ整理 の中の押し。 */
+    if (JW_OPT_SUB(&ui)) {
+        const int r = opt_sub_click(x, y, right);
+
+        if (r != -2) {
+            return r;
+        }
+    }
 
     /* 行 2 の `表示範囲 記憶` は**次の押しか鍵で消えます**（矢を動かす
      * だけなら残ります——測定）。押した釦がまた 範囲記憶 なら、下で
@@ -3836,6 +4265,20 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         present();
         return -1;
     }
+    /* ④一括処理 の小帯（①直線伸縮 |②直線部分消 |③ﾃﾞｰﾀ整理 |④ﾚｲﾔ整理 |⑤ｸﾞﾙｰﾌﾟ整理 |）の
+     * ④ と ⑤。ほかの升（①②③）は別の担当で、下の道のまま。 */
+    if (ui.command == 29 && ui.opt_stage == 0 && ui.top_item == 4
+        && y >= 0 && y <= 15 && drawing
+        && (jw_ui_top_item(x, y) == 4 || jw_ui_top_item(x, y) == 5)) {
+        const int five = jw_ui_top_item(x, y) == 5;
+
+        mouse_x = x;
+        mouse_y = y;
+        ui.opt_sub = 0;
+        ui.opt_sg = 0;
+        opt_enter(five ? JW_OPT_GRP_G0 : JW_OPT_LAY_B1);
+        return -1;
+    }
     /* ｵﾌﾟｼｮﾝ's top line.  ①建具平面 puts up the library's sixteen shapes;
      * the rest are not built yet and leave the line as it was. */
     if (ui.command == 29 && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
@@ -4337,6 +4780,14 @@ static int lc_msg_was;
 
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
+    /* ｵﾌﾟｼｮﾝ ④ﾚｲﾔ整理・⑤ｸﾞﾙｰﾌﾟ整理 の中の鍵。 */
+    if (JW_OPT_SUB(&ui)) {
+        const int r = opt_sub_key(key);
+
+        if (r != -2) {
+            return r;
+        }
+    }
     /* 線変更：押したあとの最初の鍵で `線`／`円` の札が消える（測定：linechg_s1_c4〜c9）。 */
     if (cmd.command == 24 && cmd.hit_kind && !cmd.lc_keyed) {
         cmd.lc_keyed = 1;
@@ -5388,6 +5839,8 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * 別のコマンドの src/item.h の行が出る。測定：文字 ③ のあと `AB` で
      * □ に替わると本物は `・□ 始点指示…`）。 */
     ui.top_item = cmd.top_item;
+    ui.opt_gname = opt_gname;
+    ui.opt_lname = opt_lname;
     present();
     return pick;
 }
