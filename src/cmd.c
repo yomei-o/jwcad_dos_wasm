@@ -15431,7 +15431,9 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
          * 引き、次の始点を押してから [ESC] 二回で、その線が消える）。○ は
          * 捨てます（測定：次の中心を押したあとの [ESC] 二回で円は残る）。（ は
          * 捨てない（測定：functest dfz_N_7、弧を描いて次の中心を押し、[ESC] 二回で弧が消える）。 */
-        else if (c->command == 11) {
+        /* 読取の外れた押し（missed）は捨てない（測定：functest dfz_E_4、半径固定の○で
+         * 円を描いたあと、点の無い所を右で押して [ESC] 二回で、その円が消える）。 */
+        else if (c->command == 11 && !c->missed) {
             c->undo_lines = c->undo_arcs = c->undo_texts = 0;
         }
     }
