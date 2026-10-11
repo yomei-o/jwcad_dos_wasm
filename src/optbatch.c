@@ -24,14 +24,25 @@ static int ob_same;                     /* 始線を右で押した（同種線�
 static unsigned char ob_pen1, ob_type1, ob_layer1;
 static int ob_ex, ob_ey;                /* 終線の段に入った押しの画面位置（ゴム線は動くまで出ない） */
 static int ob_msg;                      /* 行 2 の言葉：0 無し、1 データが不適当(桁20)、2 曲線不可(桁24) */
-static int ob_search;                   /* 押しの直後の行 2 の `サーチ` */
+
+/* ------------------------------------------------------------ 計算の精度 */
+/* **本物は浮動小数点をソフトウェアの実行時ライブラリ（セグメント 22b2）で計算し、演算は
+ * 型ごとに float 用・double 用に分かれる。** isect（root 1bb4:3cd1）は引数も途中の変数も
+ * float なので、演算を 1 つずつ float に丸める。測定：isect の引数を実機の DOSEMU_BP
+ * （root 1bb4:3cd1 のスタック）で採り、保存した記録の座標と突き合わせると、倍精度で解く
+ * 式（spec 5.1）は斜めの基準線で 3 ulp ずれ、float の演算だと TEST4 の 9 点・SAMPLE6 の
+ * 61 点・SAMPLE3 の 1 点が全部ビット一致した（rest ... tmp の fit2/fit3.py）。
+ * 一括選択の交差判定（5.3）は double のまま（float にすると始線の端が選択線に
+ * ほぼ乗る場合に本物が選ぶ線を落とす：obf_SAMPLE3_11_0）。座標系は spec どおり double。 */
+#pragma STDC FP_CONTRACT OFF
 
 /* ----------------------------------------------------------------- 座標系 */
 /* root 1bb4:27ea・2981・2a18（spec 5.2）。float の大域に置く。 */
 static float fr_ox, fr_oy, fr_ux, fr_uy;
 
-/* 27ea(x1,y1,x2,y2)：成功 1／失敗 0。**原点は先に置く**（失敗しても置かれる）。
- * 失敗のとき本物は BEL と `データが不適当`（桁 20）を出して [0xc22]=1。 */
+/* 27ea(x1,y1,x2,y2)（引数は float を double にしたもの）：成功 1／失敗 0。
+ * **原点は先に置く**（失敗しても置かれる）。失敗のとき本物は BEL と `データが不適当`
+ * （桁 20）を出して [0xc22]=1。 */
 static int frame_set(double x1, double y1, double x2, double y2)
 {
     double dx, dy, len;
@@ -76,18 +87,21 @@ static float fr_Y(double u, double v)
 
 /* ------------------------------------------------------------------ 交点 */
 /* root 1bb4:3cd1（decomp/lift/root_1bb4_3cd1_isect.txt、spec 5.1）。A は基準側、
- * B は求める側（点は B の上で測る）。0 は平行だけ。①②は 0 かどうかしか見ない。 */
+ * B は求める側（点は B の上で測る）。0 は平行だけ。①②は 0 かどうかしか見ない。
+ * 演算は上の注のとおり 1 つずつ float に丸める。 */
 static int isect(const JwcLine *A, const JwcLine *B, float *X, float *Y)
 {
-    const float dyA = (float)((double)A->y1 - A->y0);
-    const float dxA = (float)((double)A->x1 - A->x0);
-    const float dxB = (float)((double)B->x1 - B->x0);
-    const float dyB = (float)((double)B->y1 - B->y0);
-    const float c18 = (float)(((double)A->x1 - A->x0) * ((double)B->y0 - A->y0)
-                              - ((double)B->x0 - A->x0) * (double)dyA);
-    const float c1c = (float)(((double)B->y1 - A->y0) * (double)dxA
-                              - ((double)B->x1 - A->x0) * (double)dyA);
-    float t;
+    const float dyA = A->y1 - A->y0;
+    const float dxA = A->x1 - A->x0;
+    const float dxB = B->x1 - B->x0;
+    const float dyB = B->y1 - B->y0;
+    const float p1 = (A->x1 - A->x0) * (B->y0 - A->y0);
+    const float p2 = (B->x0 - A->x0) * dyA;
+    const float c18 = p1 - p2;
+    const float q1 = (B->y1 - A->y0) * dxA;
+    const float q2 = (B->x1 - A->x0) * dyA;
+    const float c1c = q1 - q2;
+    float t, tx, ty;
 
     if (c18 == 0.0f && c1c == 0.0f) {
         *X = 0.0f;
@@ -100,18 +114,19 @@ static int isect(const JwcLine *A, const JwcLine *B, float *X, float *Y)
         return 0;
     }
     {
-        const double d = fabs((double)c18 - (double)c1c);
+        const float d = fabsf(c18 - c1c);
 
-        if (d < 1.0 && fabs((double)c18) > d * 1e10) {   /* ほぼ平行 */
+        if (d < 1.0f && fabsf(c18) > d * 1e10f) {   /* ほぼ平行 */
             *X = 10.0f;
             *Y = 10.0f;
             return 0;
         }
     }
-    t = (float)((double)c18 / ((double)c18 - (double)c1c));
-    *X = (float)(((double)c18 / ((double)c18 - (double)c1c)) * (double)dxB
-                 + (double)B->x0);
-    *Y = (float)((double)t * (double)dyB + (double)B->y0);
+    t = c18 / (c18 - c1c);
+    tx = t * dxB;
+    ty = t * dyB;
+    *X = tx + B->x0;
+    *Y = ty + B->y0;
     if (A->x0 == A->x1) *X = A->x0;
     if (A->y1 == A->y0) *Y = A->y0;
     if (B->x0 == B->x1) *X = B->x0;
@@ -132,10 +147,12 @@ static int layer_block(const Jwc *d, unsigned layer)
     return (d->layer_edit[layer & 255] & 6) || (d->group_edit[(layer >> 4) & 15] & 6);
 }
 
-/* 11f2:06d1：レイヤが表示中か（`[0xc16]`・`[0xc17]` は既定 0 と推測）。 */
+/* 11f2:06d1：レイヤが表示中か。`layer_edit[layer]&1 && group_edit[layer>>4]&1`（jwc.c が
+ * 読む 2 組のうちの先の組。本物の再描画 21f2:0680 が見る後の組 layer_on とは TEST7 の
+ * レイヤ C・D・E だけ違う）。`[0xc16]`・`[0xc17]` は既定 0 と推測（spec §2【推】）。 */
 static int layer_shown(const Jwc *d, unsigned layer)
 {
-    return jwc_visible(d, (unsigned char)layer);
+    return (d->layer_edit[layer & 255] & 1) && (d->group_edit[(layer >> 4) & 15] & 1);
 }
 
 /* 7a6:0066・7a6:0111：線・円弧・点・文字の rest[2] の bit1 を全部落とす。 */
@@ -161,6 +178,9 @@ static void append_line(Jwc *d, const JwcLine *r)
      * opt4ab_1 で、足した 2 本の rest[2] が 00。複写の dup_line と同じ。spec 6 の
      * 「印は付いたまま」は違った）。bit4 は jwc_put_line が付け直す。 */
     t.rest[2] &= (unsigned char)~3u;
+    /* rest[3] の bit3（0x08）も落ちる（測定：SAMPLE6 の追加線 54 本が 08→00、0x20 の 3 本は
+     * そのまま。0x80・0x40 は未測定）。 */
+    t.rest[3] &= (unsigned char)~0x08u;
     jwc_put_line(d, &t);
 }
 
@@ -268,9 +288,11 @@ static void select_all(Jwc *d)
 
         if (!layer_shown(d, R->layer)) continue;
         if (R->rest[2] & 0xC0) { curve = 1; continue; }
+        /* 第一の検査：R の両端がトレース線の両側（または線上）。DX・DY は float に丸めた値。 */
         cA = ((double)R->y1 - ob_y1) * ob_dx - ((double)R->x1 - ob_x1) * ob_dy;
         cB = ((double)R->y0 - ob_y1) * ob_dx - ((double)R->x0 - ob_x1) * ob_dy;
         if (!(cA * cB <= 0.0)) continue;
+        /* 第二の検査：トレース線の両端が R の直線の両側（または線上）。 */
         rdx = (double)R->x1 - R->x0;
         rdy = (double)R->y1 - R->y0;
         f1 = ((double)ob_y2 - R->y0) * rdx - ((double)ob_x2 - R->x0) * rdy;
@@ -291,14 +313,12 @@ static void select_all(Jwc *d)
 void jw_optbatch_reset(void)
 {
     ob_msg = 0;
-    ob_search = 0;
 }
 
 void jw_optbatch_open(int item, int *opt_stage)
 {
     ob_m = item == 2 ? 2 : 1;
     ob_msg = 0;
-    ob_search = 0;
     *opt_stage = JW_OPT_BATCH;
 }
 
@@ -364,7 +384,6 @@ int jw_optbatch_click(Jwc *d, const JwView *w, int x, int y, int right,
         return JW_OB_NONE;
     }
     ob_msg = 0;                                 /* 行 2 の言葉は次の押しで消える（2a18） */
-    ob_search = 0;
     /* 上の行 */
     if (y >= 0 && y <= 15) {
         if (stage == JW_OPT_BATCH_ADD) {
@@ -393,7 +412,6 @@ int jw_optbatch_click(Jwc *d, const JwView *w, int x, int y, int right,
         const long n = find_line(d, w, x, y);
 
         if (n < 0) {
-            ob_search = 1;                      /* 外れたときだけ `サーチ` が残る（測定） */
             *missed = 1;                        /* 読取可能データ無＋BEL */
             return JW_OB_TAKEN;
         }
@@ -412,10 +430,10 @@ int jw_optbatch_click(Jwc *d, const JwView *w, int x, int y, int right,
     if (stage == JW_OPT_BATCH_START) {
         const long n = find_line(d, w, x, y);
         JwcLine *R1;
-        double px, py, u1;
+        double px, py;
+        float u1;
 
         if (n < 0) {
-            ob_search = 1;                      /* 外れたときだけ `サーチ` が残る（測定） */
             *missed = 1;
             return JW_OB_TAKEN;
         }
@@ -428,8 +446,8 @@ int jw_optbatch_click(Jwc *d, const JwView *w, int x, int y, int right,
         }
         jw_cmd_at(w, x, y, &px, &py);
         u1 = fr_u((float)px, (float)py);
-        ob_p1x = fr_X((float)u1, 0.0);
-        ob_p1y = fr_Y((float)u1, 0.0);
+        ob_p1x = fr_X(u1, 0.0);
+        ob_p1y = fr_Y(u1, 0.0);
         ob_same = right ? 1 : 0;
         ob_pen1 = R1->pen;
         ob_type1 = R1->type;
@@ -446,7 +464,6 @@ int jw_optbatch_click(Jwc *d, const JwView *w, int x, int y, int right,
         double px, py;
 
         if (n < 0) {
-            ob_search = 1;                      /* 外れたときだけ `サーチ` が残る（測定） */
             *missed = 1;
             return JW_OB_TAKEN;
         }
@@ -473,16 +490,13 @@ int jw_optbatch_click(Jwc *d, const JwView *w, int x, int y, int right,
         const long n = find_line(d, w, x, y);
 
         if (n < 0) {
-            ob_search = 1;                      /* 外れたときだけ `サーチ` が残る（測定） */
             *missed = 1;
             return JW_OB_TAKEN;
         }
         if (layer_block(d, d->lines[n].layer)) {
             return JW_OB_TAKEN;
         }
-        if (d->lines[n].rest[2] & 0xC0) {       /* 曲線の連なりは BEL で同じ段 */
-            ob_search = 1;                      /* 外れたときだけ `サーチ` が残る（測定） */
-            *missed = 1;
+        if (d->lines[n].rest[2] & 0xC0) {       /* 曲線の連なりは BEL だけで同じ段（字は出ない） */
             return JW_OB_TAKEN;
         }
         d->lines[n].rest[2] ^= 0x02;            /* 印のトグル（左右同じ） */
@@ -500,7 +514,6 @@ int jw_optbatch_key(Jwc *d, int key, int *opt_stage, int *leave_band)
         return JW_OB_NONE;
     }
     ob_msg = 0;
-    ob_search = 0;
     if (key == 8) {                             /* BS は O4-1・O4-2a だけ。ほかは捨てる */
         return stage == JW_OPT_BATCH ? do_back(opt_stage, leave_band) : JW_OB_TAKEN;
     }
@@ -556,7 +569,6 @@ static const char S_ADD[] =
     "|\x87@\x88\xea\x8a\x87\x8f\x88\x97\x9d\x8e\xc0\x8ds |\x87" "A \x92\x86\x8e~ | "
     "\x95\x9c\x8a\x88\x8fo\x97\x88\x82\xdc\x82\xb9\x82\xf1 ";
 static const char S_BS[] = "[BS]\x91O\x8d\x80";
-static const char S_SEARCH[] = "\x83T\x81[\x83`";
 static const char S_BAD[] = "\x07\x83" "f\x81[\x83^\x82\xaa\x95s\x93K\x93\x96";
 static const char S_CURVE[] = "\x8b\xc8\x90\xfc\x95s\x89\xc2";
 
@@ -585,9 +597,6 @@ void jw_optbatch_text(VGA *v, int opt_stage)
         break;
     default:
         break;
-    }
-    if (ob_search) {
-        jw_ui_text(v, 18, 2, 7, 0, S_SEARCH);
     }
     if (ob_msg == 1) {
         jw_ui_text(v, 20, 2, 7, 0, S_BAD);
