@@ -16396,7 +16396,11 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         }
         /* (L)free (R)Read：右は点を読み、無ければ `読取可能データ無` で欄は
          * 開かない（測定：text_plain の (598,300) 右）。 */
-        if (!take(c, d, w, sx, sy, right, &x, &y)) {
+        if (!take(c, d, w, sx, sy, right, &x, &y)
+            /* 連続書 の基点の押しは、右で点が無くても欄を開く（測定のみ・decomp 未確認：
+             * dfz_A_34、`type 3|162 250 right|380 200 left` で 2 度目の押しが欄を閉じる）。
+             * 基点は押した所（自由点）として扱う。 */
+            && !(c->text_rep && right && take(c, d, w, sx, sy, 0, &x, &y))) {
             c->missed = 1;
             return 1;
         }
