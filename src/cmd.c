@@ -11981,6 +11981,13 @@ have_axis:
     }
     t0 = ((c->x0 - ox) * dx + (c->y0 - oy) * dy) / n;
     t1 = ((px - ox) * dx + (py - oy) * dy) / n;
+    /* 長さの無い中心線は引かない（測定：functest dfz6_f_1、始点と終点が二等分線の
+     * 同じ所に落ちるとき、本物の記録は変わらない。／の「長さの無い線は引きません」
+     * と同じ）。 */
+    if ((float)(ox + t0 * dx) == (float)(ox + t1 * dx)
+        && (float)(oy + t0 * dy) == (float)(oy + t1 * dy)) {
+        return;
+    }
     if (!jwc_add_line(d, (float)(ox + t0 * dx), (float)(oy + t0 * dy),
                       (float)(ox + t1 * dx), (float)(oy + t1 * dy),
                       (unsigned char)d->line_type, (unsigned char)d->pen,
