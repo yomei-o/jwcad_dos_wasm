@@ -334,9 +334,27 @@ static void to_base(int *opt_stage)
     *opt_stage = JW_OPT_BATCH;
 }
 
-/* O4-3 の入口：印を全部落とす。 */
-static void to_start(Jwc *d, int *opt_stage)
+/* 選んだ線の強調を消す（7a6:0635(0)・033b(n,0)）：印の付いた線を普通の色で描き直す。
+ * 本物は黒で消してから描き直すので、**文字などの上に線が重なる**（測定：SAMPLE3 の
+ * obf_SAMPLE3_11_0、実行のあと x=309 の縦線が文字の枠の上）。移植は墨の記録に
+ * 「描いた」を積んで、次の描き直しで最後に重ねる。 */
+static void unhilite(Jwc *d)
 {
+    long k;
+
+    for (k = 0; k < d->n_lines; k++) {
+        if ((d->lines[k].rest[2] & 0x02) && layer_shown(d, d->lines[k].layer)) {
+            jwc_ink_note(d, 0, JW_INK_LINE, &d->lines[k]);
+        }
+    }
+}
+
+/* O4-3 の入口：印を全部落とす。 */
+static void to_start(Jwc *d, int *opt_stage, int redraw)
+{
+    if (redraw) {
+        unhilite(d);
+    }
     marks_clear(d);
     ob_same = 0;
     *opt_stage = JW_OPT_BATCH_START;
@@ -350,6 +368,10 @@ static int do_run(Jwc *d, int *opt_stage)
     } else {
         run_erase(d);
     }
+    /* 残った選択線（範囲外・平行などで触らなかったもの）の強調を消す。本物は実行の前に
+     * 全部を描き直してから消す・足すが、移植の墨は「消し → 足し」の順に揃えられるので、
+     * 消した線を描き直さないよう、実行のあとで残ったものだけを描く。 */
+    unhilite(d);
     to_base(opt_stage);
     return JW_OB_CHANGED;
 }
@@ -391,6 +413,7 @@ int jw_optbatch_click(Jwc *d, const JwView *w, int x, int y, int right,
                 return do_run(d, opt_stage);
             }
             if (top_cell == 2) {
+                unhilite(d);
                 to_base(opt_stage);
                 return JW_OB_TAKEN;
             }
@@ -417,10 +440,10 @@ int jw_optbatch_click(Jwc *d, const JwView *w, int x, int y, int right,
         }
         if (stage == JW_OPT_BATCH_END) {
             ob_C = d->lines[n];
-            to_start(d, opt_stage);
+            to_start(d, opt_stage, 0);
         } else if (ob_m == 1) {
             ob_A = d->lines[n];
-            to_start(d, opt_stage);
+            to_start(d, opt_stage, 0);
         } else {
             ob_B = d->lines[n];
             *opt_stage = JW_OPT_BATCH_END;
@@ -500,6 +523,9 @@ int jw_optbatch_click(Jwc *d, const JwView *w, int x, int y, int right,
             return JW_OB_TAKEN;
         }
         d->lines[n].rest[2] ^= 0x02;            /* 印のトグル（左右同じ） */
+        if (!(d->lines[n].rest[2] & 0x02)) {
+            jwc_ink_note(d, 0, JW_INK_LINE, &d->lines[n]);     /* 外した線は普通の色で描き直す */
+        }
         return JW_OB_TAKEN;
     }
     return JW_OB_NONE;
@@ -529,7 +555,7 @@ int jw_optbatch_key(Jwc *d, int key, int *opt_stage, int *leave_band)
             break;
         case JW_OPT_BATCH_TRACE:
         case JW_OPT_BATCH_ADD:
-            if (d) to_start(d, opt_stage);      /* O4-3 の入口（印を全部落とす） */
+            if (d) to_start(d, opt_stage, 1);   /* O4-3 の入口（印を全部落とす） */
             break;
         default:
             break;
@@ -569,7 +595,7 @@ static const char S_ADD[] =
     "|\x87@\x88\xea\x8a\x87\x8f\x88\x97\x9d\x8e\xc0\x8ds |\x87" "A \x92\x86\x8e~ | "
     "\x95\x9c\x8a\x88\x8fo\x97\x88\x82\xdc\x82\xb9\x82\xf1 ";
 static const char S_BS[] = "[BS]\x91O\x8d\x80";
-static const char S_BAD[] = "\x07\x83" "f\x81[\x83^\x82\xaa\x95s\x93K\x93\x96";
+static const char S_BAD[] = "\x83" "f\x81[\x83^\x82\xaa\x95s\x93K\x93\x96";
 static const char S_CURVE[] = "\x8b\xc8\x90\xfc\x95s\x89\xc2";
 
 void jw_optbatch_text(VGA *v, int opt_stage)
@@ -607,8 +633,8 @@ void jw_optbatch_text(VGA *v, int opt_stage)
 
 /* ------------------------------------------------------------------ 図 */
 /* 基準線の強調（3ab8:5ab6）：黒で消してから、ペン 7（色 2）・線種 0（点線 0x5555）。
- * 選んだ線の強調（7a6:033b）：消さずに、ペン 7（色 2）の**実線**で重ねる（測定：
- * probe_opt4_ab の opt4a_1 の 5 手め。始線は縦線 x=161 が y 139〜419 の全部赤）。
+ * 選んだ線の強調（7a6:033b）：消さずに、ペン 7（色 2）で**その線の線種のまま**重ねる
+ * （測定：opt4ab_1 の 5 手め、始線の実線の縦線が全部赤。SAMPLE3 の一点鎖線は赤の一点鎖線）。
  * 本物は図面の線と同じ描き（0EFF:17BB）なので、移植も jw_view_line に記録のペン・線種だけ
  * 替えた写しを通す（jw_view_mark は端の丸めが違い、縦線の点線の位相が 1 つずれる）。 */
 static void hilite(VGA *v, const Jwc *d, const JwView *w, const JwcLine *l, int base)
@@ -619,7 +645,9 @@ static void hilite(VGA *v, const Jwc *d, const JwView *w, const JwcLine *l, int 
         jw_view_mark(v, w, l->x0, l->y0, l->x1, l->y1, 0, JW_STYLE_SOLID, ROP_REPLACE);
     }
     t.pen = 7;
-    t.type = base ? 0 : 1;
+    if (base) {
+        t.type = 0;
+    }                           /* 選んだ線は自分の線種のまま（SAMPLE3 の一点鎖線は赤の一点鎖線） */
     jw_view_line(v, d, &t, w, 0);
 }
 
