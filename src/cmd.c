@@ -21681,6 +21681,13 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         c->circ_done = 1;
         return 1;
     }
+    if (c->command == 4 && c->box_ask == 2 && c->typing && c->typed_n) {
+        /* 数を打ちかけの `角度 =` の欄での押しは [Enter] と同じ（numin の共通の規則。
+         * 測定のみ・decomp 未確認：functest dfz_B_0、`type 2|type 6|380 200 right` で
+         * 角度 6 度の □ になる）。 */
+        jw_cmd_key(c, d, 13);
+        return 1;
+    }
     if (c->command == 4 && c->box_ask == 2 && c->typing) {
         /* `｜0 度 ﾏｳｽ(L)｜前回と同じ ﾏｳｽ(R)｜`（＋ と同じ欄）。box_fix が
          * 立っていたとき（寸法を決めて置いているあいだに ②角度 を押した
@@ -21834,6 +21841,10 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         && d->pen < 0x5a) {
         c->fix_done = 0;
         c->zero_len = 1;
+        /* 零長を断わると取り消しの控え（件数）が 0 になる（decomp ovl23 0x2e672〜
+         * 0x2e69f：67fa を呼ぶ前に取り消し件数を 0 にする。functest dfz_X_0：前の線は
+         * 以後の [ESC] で消えない）。 */
+        c->undo_lines = c->undo_arcs = c->undo_texts = 0;
         c->fix_mode = 1;        /* 行は `始点指示 … [BS]前項`（桁 6 の ・、[ESC] 無し。測定：escfz_H_74） */
         c->stage = 2;
         return 1;

@@ -21,3 +21,5 @@ center_pt_line_right|SAMPLE0|type f|162 420 right|598 300 left|200 200 left|500 
 center_pt_line_top|SAMPLE0|type f|598 420 right|380 140 left|300 200 left|450 300 left
 center_line_pt_right|SAMPLE0|type f|598 300 left|162 420 right|300 200 left|450 300 left
 center_line_pt_top|SAMPLE0|type f|400 140 left|598 420 right|300 200 left|450 300 left
+slash_zero_len_clears_undo|SAMPLE0|type X|300 350 left|598 140 left|300 350 left|300 350 left|450 330 left|key esc|key esc|key esc
+box_angle_press_typed|SAMPLE0|type B|type 2|type 6|380 200 right|380 200 left|400 140 left
