@@ -347,6 +347,8 @@ static int layer_used(const Jwc *d, int k)
 typedef struct {
     JwcArc a;                           /* A'：元の円弧 */
     float z;                            /* B'.cy：高さ */
+    int flag;                           /* B' の +0x1c：0＝水平面の円、1＝立面の（垂直面の）円 */
+    float bang;                         /* B'.cx：立面の底辺の向き（ラジアン、float） */
     float cx, cy;                       /* C' の中心（recompute が決める） */
     long tilt;                          /* C' の傾き */
 } Arc3;
@@ -721,6 +723,26 @@ static long build(const Jwc *d, int unit, int mode)
                 hv[1] = 0.0;
                 hv[2] = (double)lh;
             }
+            if (mode == 3 && E.elev && !found
+                && (float)(((float)(a->cy + a->r)) - (float)E.pt6y) < (float)E.sy) {
+                /* 立面のレイヤの円（高さの文字なし）：底辺の枠の中へ置いた円弧、B' に底辺の向き（198b の立面側） */
+                const double ud = (double)a->cx - E.pt6x;
+                const float hh = (float)((double)a->cy - E.pt6y);
+                const float ur = (float)ud;
+                Arc3 *c;
+
+                (void)ur;
+                v_arc = (Arc3 *)realloc(v_arc, (size_t)(v_narc + 1) * sizeof(Arc3));
+                c = &v_arc[v_narc++];
+                memset(c, 0, sizeof *c);
+                c->a = *a;
+                c->a.cx = fr_X(ud, 0.0);
+                c->a.cy = fr_Y((double)(float)ud, 0.0);
+                c->flag = 1;
+                c->bang = (float)atan2((double)fr_uy, (double)fr_ux);
+                c->z = (float)((double)hh + (((double)h_f * hv[1]) + E.zbase));
+                continue;
+            }
             if (mode == 3 && na < 2 && !E.elev) {      /* アイソメの真円（198b）：高さだけ付けて円弧のまま持つ */
                 v_arc = (Arc3 *)realloc(v_arc, (size_t)(v_narc + 1) * sizeof(Arc3));
                 memset(&v_arc[v_narc], 0, sizeof(Arc3));
@@ -867,7 +889,8 @@ static void recompute(void)
 
         c->cx = (float)(fr_u((double)c->a.cx, (double)c->a.cy) + 250.0f);
         c->cy = fr_v((double)c->a.cx, (double)c->a.cy);
-        c->tilt = norm360((long)((unsigned long)c->a.tilt - ((unsigned long)(dir & 0xffff) << 16)));
+        c->tilt = c->flag ? c->a.tilt
+                          : norm360((long)((unsigned long)c->a.tilt - ((unsigned long)(dir & 0xffff) << 16)));
     }
 }
 
@@ -1041,13 +1064,45 @@ static void project_all(const Jwc *d)
         for (i = 0; i < v_narc; i++) {
             const Arc3 *c = &v_arc[i];
             JwcArc R = c->a;
-            const double sy = -(double)fr_uy;
+            double sy = -(double)fr_uy;
 
-            if (fabs(sy) < 0.001) continue;
             R.cx = c->cx;
             R.cy = c->cy;
             R.tilt = c->tilt;
-            ell_scale(&R, 1.0, sy);
+            if (!c->flag) {
+                if (fabs(sy) < 0.001) continue;
+                ell_scale(&R, 1.0, sy);
+            } else {
+                const double D2R = 0.017453292519943295;
+                const double alpha = (double)c->bang - (double)g_dir * D2R;
+                const double sa = sin(alpha), ca = cos(alpha);
+                const double ux = (double)fr_ux, muy = -(double)fr_uy;
+                double th0 = 0.0, th1 = 0.0, s2;
+
+                if (!(fabs(sa) < 1e-10)) {
+                    if (fabs(ux) < 1e-10) continue;                       /* sy = 0 */
+                    if (fabs(muy) < 1e-20) {
+                        th0 = th1 = D2R * 90.0;
+                    } else {
+                        const double t = sa / muy;
+
+                        th0 = atan2(t, ca);
+                        th1 = atan2(t * ux, 1.0);
+                    }
+                } else {
+                    continue;                                              /* 本物は前の値が残る（未確認） */
+                }
+                {
+                    const double num = -((muy * sa) * cos(th0) - sin(th0) * ca);
+
+                    s2 = sin(th1);
+                    sy = fabs(s2) > 1e-10 ? num / s2 : 1.0;
+                }
+                if (fabs(sy) < 0.001) continue;
+                R.tilt = norm360((long)((unsigned long)R.tilt - ((unsigned long)((long)(th1 / D2R) & 0xffff) << 16)));
+                ell_scale(&R, 1.0, sy);
+                R.tilt = norm360((long)((unsigned long)R.tilt + ((unsigned long)((long)(th0 / D2R) & 0xffff) << 16)));
+            }
             R.cy = v_yoff + fr_v((double)R.cy, (double)c->z);
             R.layer = (unsigned char)d->write_layer;
 #ifdef O25_TRACE
