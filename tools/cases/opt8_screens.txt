@@ -126,3 +126,8 @@ v1_k2_bs7|type s|type 8|type 1|type 2|type 7|key bs
 v1_k2_long|type s|type 8|type 1|type 2|type 12345678901234567890123456789
 v3_k2_73e|type s|type 8|type 3|type 2|type 7|type ,|type 3|key enter
 v3_k2_7|type s|type 8|type 3|type 2|type 7
+# ④ 円・円弧（DRAWING=SAMPLE1：円 4 が書込レイヤ 0 の (162.4,160.6) r=1.74）
+h4c|type s|type 8|type 4|286 303 left
+h4c_t|type s|type 8|type 4|286 303 left|type 1|type 2
+h4c_wrong|type s|type 8|type 4|286 303 right
+h4c_none|type s|type 8|type 4|600 440 left

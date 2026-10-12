@@ -44,6 +44,7 @@
  * （5c55 0x3080b〜0x30831：負なら 1、縮尺の分母が 10 より大きければそのまま、
  * でなければ 0）。以後はプログラムの間ずっと持つ（⑥で切替）。 */
 static int o25_unit = -1;
+static int o25_circ;            /* ④で押したのが円・円弧（円データ。文字は中心から +x 向き） */
 /* 入力欄の長さ：018e 0x2ae26 の 11f2:10c3 に渡す最大 0x14（測定：g5_long・g5_long21）。 */
 #define O25_FIELD 20
 static char o25_buf[48];
@@ -227,10 +228,24 @@ static int ht_press(Jwc *d, const JwView *w, int x, int y, int right, int *opt_s
     o25_msg = 0;
     if (btn == 2 && !(o25_prev[0] && !o25_del)) return JW_O25_TAKEN;     /* 右押しは「前回と同じ」のときだけ */
     n = jw_cmd_pick_line(d, w, x, y);
+    o25_circ = 0;
     if (n < 0) {
-        o25_missed = 1;
-        return JW_O25_TAKEN;
-    }
+        /* 線が無ければ円・円弧（5670 が負を返す。円データは中心に書く：018e 0x2b294〜） */
+        k = jw_cmd_arc_at(d, w, x, y);
+        if (k < 0) {
+            o25_missed = 1;
+            return JW_O25_TAKEN;
+        }
+        if (d->arcs[k].layer != d->write_layer) {
+            o25_msg = 1;
+            return JW_O25_TAKEN;
+        }
+        o25_circ = 1;
+        o25_ox = d->arcs[k].cx;
+        o25_oy = d->arcs[k].cy;
+        o25_ux = 1.0;                             /* 27ea(cx,cy,cx+10,cy) */
+        o25_uy = 0.0;
+    } else {
     L = d->lines[n];
     if (L.layer != d->write_layer) {
         o25_msg = 1;
@@ -255,6 +270,7 @@ static int ht_press(Jwc *d, const JwView *w, int x, int y, int right, int *opt_s
             o25_ux = 1.0;
             o25_uy = 0.0;
         }
+    }
     }
     for (k = 0; k < d->n_texts; k++) {
         const JwcText *t = &d->texts[k];
@@ -724,7 +740,8 @@ void jw_opt25_text(VGA *v, int opt_stage, int layer)
     if (opt_stage == JW_OPT25_HT_IN) {
         char t[64];
 
-        sprintf(t, S_HAIN "(%s) =", o25_unit ? S_M1 : "mm");
+        if (o25_circ) strcpy(t, "    ~f[^   =");          /* `    円データ  ` + ` =` */
+        else sprintf(t, S_HAIN "(%s) =", o25_unit ? S_M1 : "mm");
         jw_ui_text(v, 1, 1, 7, 0, t);
         if (o25_repl) jw_ui_text(v, 70, 1, 7, 0, S_SAME);
         jw_ui_text(v, 18, 1, 7, 0, o25_buf);

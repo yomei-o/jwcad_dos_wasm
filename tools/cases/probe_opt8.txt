@@ -21,3 +21,5 @@ o8_v2_run|SAMPLE0|type s|type 8|type 2|type 1|type 1|key bs
 o8_v3_esc|SAMPLE0|type s|type 8|type 3|type 1|type 1|key esc|key bs
 o8_v3_k4|SAMPLE0|type s|type 8|type 3|type 4|type 4|type 1|type 1|key bs
 o8_v1_k5|SAMPLE0|type s|type 8|type 1|type 5|type 5|type 1|type 1|key bs
+o8_h4_circ|SAMPLE1|type s|type 8|type 4|286 303 left|type 5|key enter|key bs|key bs
+o8_h4_circ2|SAMPLE1|type s|type 8|type 4|286 303 left|type 1|type 0|type ,|type 3|key enter|key bs|key bs
