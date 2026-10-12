@@ -77,6 +77,8 @@ void jw_hk_entry(Jwc *d)
 
 static int hk_base;                     /* [0x11e]：④の指定点の通し番号の基点 */
 static int hk_iso_err = 1;              /* [0x7638]：ラベルに「時間 誤差…」を付ける */
+static int hk_iso_hide;                 /* 行 2 の誤差・書込の文字を出さない（BS・取り消すものの無い ESC のあと） */
+static int hk_iso_esc;                  /* 直前の描きを取り消せる（行 1 に [ESC]） */
 static long hk_iso_l0, hk_iso_t0;       /* 直前に等時間線を引く前の線・文字の数（ESC で戻す） */
 static int pt_n;                        /* 足した指定点の数 */
 static float pt_x[64], pt_y[64];
@@ -197,21 +199,28 @@ void jw_hk_text(VGA *v, int stage)
         jw_ui_text(v, 8, 1, 7, 0, HK_RESP);
         return;
     case JW_OPT_HK_IS:
-        strcpy(buf, HK_ISA);
-        for (i = 0; i < 6; i++) {
-            static const char *VAL[6] = { "1.5 |", "2.0 |", "2.5 |", "3.0 |", "4.0 |", "5.0 |" };
-
-            strcat(buf, VAL[i]);
+        if (hk_iso_esc) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
         }
-        strcat(buf, HK_ISB);
-        jw_ui_text(v, 8, 1, 7, 0, buf);
-        break;
+        jw_ui_text(v, 8, 1, 7, 0, HK_ISA);
+        if (hk_iso_hide) {
+            return;
+        }
+        jw_ui_text(v, 48, 2, 7, 0, jw_hk_iso_errtxt());
+        if (!hk_iso_err) {
+            jw_ui_text(v, 67, 2, 7, 0xffffu, HK_ISN);
+        }
+        jw_ui_text(v, 69, 2, 7, 0xffffu, HK_ISW);
+        return;
+    case JW_OPT_HK_IC:
+        jw_ui_text(v, 8, 1, 7, 0, HK_ICA);
+        return;
     case JW_OPT_HK_ISF:
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
         jw_ui_text(v, 8, 1, 7, 0, HK_ISF);
-        jw_ui_text(v, 25, 1, 7, 0, hk_buf);
+        jw_ui_text(v, 23, 1, 7, 0, hk_buf);
         for (i = 7; i <= 15; i++) {
-            const int x0 = 8 * (24 + hk_n);
+            const int x0 = 8 * (22 + hk_n);
 
             jw_line(v, x0, i, x0 + 7, i, 4, ROP_REPLACE, JW_STYLE_SOLID);
         }
@@ -324,6 +333,29 @@ void jw_hk_overlay(VGA *v, const Jwc *d, const JwView *w)
     v->clip_y1 = cy1;
 }
 
+/* ③の描いた直後の絵：本物は線とラベルを描いたあとで行 2 の文字を書くので、行 2・行 3 にはみ出した跡が残る。 */
+void jw_hk_iso_overlay(VGA *v, const Jwc *d, const JwView *w)
+{
+    long k;
+
+    if (!hk_remnant || !hk_iso_esc || !d) {
+        return;
+    }
+    for (k = hk_iso_l0; k < d->n_lines; k++) {
+        jw_view_line(v, d, &d->lines[k], w, jw_view_pen_colour(d->lines[k].pen));
+    }
+    for (k = hk_iso_t0; k < d->n_texts; k++) {
+        jw_view_text(v, d, &d->texts[k], w, jw_view_text_colour(d, d->texts[k].size));
+    }
+    if (!hk_iso_hide) {
+        jw_ui_text(v, 48, 2, 7, 0, jw_hk_iso_errtxt());
+        if (!hk_iso_err) {
+            jw_ui_text(v, 67, 2, 7, 0xffffu, HK_ISN);
+        }
+        jw_ui_text(v, 69, 2, 7, 0xffffu, HK_ISW);
+    }
+}
+
 void jw_hk_top_text(VGA *v)
 {
     if (hk_topmsg) {
@@ -375,10 +407,10 @@ static int iso_draw(Jwc *d, double level)
 {
     hk_iso_l0 = d->n_lines;
     hk_iso_t0 = d->n_texts;
-    jwc_ink_hold(d, 1);
     jw_hk_iso_draw(d, level, hk_iso_err);
-    jwc_ink_hold(d, 0);
-    jwc_ink_clear(d);
+    hk_iso_esc = d->n_lines > hk_iso_l0;
+    hk_iso_hide = 0;
+    hk_remnant = 1;
     return JW_HK_CHANGED;
 }
 
@@ -404,6 +436,8 @@ static int iso_start(Jwc *d, int m, int *stage)
     }
     hk_iso_l0 = d->n_lines;
     hk_iso_t0 = d->n_texts;
+    hk_iso_esc = 0;
+    hk_iso_hide = 0;
     *stage = JW_OPT_HK_IS;
     return JW_HK_CHANGED;
 }
@@ -955,6 +989,9 @@ int jw_hk_click(Jwc *d, const JwView *w, int x, int y, int right,
         hk_remnant = 0;
         return st == JW_OPT_HK_RES ? pt_result(d, w, x, y, right, stage) : pt_add(d, w, x, y, right, stage);
     }
+    if (st == JW_OPT_HK_IC && d && y > 15 && x >= area_x0 && x <= area_x1 && y >= area_y0 && y <= area_y1) {
+        return jw_hk_key(d, right ? '2' : '1', stage);
+    }
     if (st < JW_OPT_HK_IN || !d) {
         return JW_HK_NONE;
     }
@@ -1026,6 +1063,8 @@ int jw_hk_key(Jwc *d, int key, int *stage)
 {
     int st = *stage;
 
+    hk_remnant = 0;
+
     if (st == JW_OPT_HK_ISF) {
         if (key == 27) {
             *stage = JW_OPT_HK_IS;
@@ -1054,8 +1093,27 @@ int jw_hk_key(Jwc *d, int key, int *stage)
         }
         return JW_HK_TAKEN;
     }
+    if (st == JW_OPT_HK_IC) {
+        if (key == '1') {
+            *stage = JW_OPT_HK_P3;
+            hk_iso_esc = 0;
+            if (d) {
+                jwc_ink_clear(d);                /* 抜けると全面を描き直す（文字が線の上に戻る） */
+            }
+            return JW_HK_TAKEN;
+        }
+        if (key == '2') {
+            *stage = JW_OPT_HK_IS;
+            return JW_HK_TAKEN;
+        }
+        return JW_HK_TAKEN;
+    }
     if (st == JW_OPT_HK_IS) {
         hk_nmsg = 0;
+        if (key == 8 || key == 127) {
+            hk_iso_hide = 1;
+            return JW_HK_TAKEN;
+        }
         if (key >= '1' && key <= '6' && d) {
             const int k = key - '0';
             const float lv = k < 4 ? (float)((double)k * 0.5 + 1.0) : (float)(k - 1);
@@ -1070,13 +1128,19 @@ int jw_hk_key(Jwc *d, int key, int *stage)
         }
         if (key == '8') {
             hk_iso_err = !hk_iso_err;
+            hk_iso_hide = 0;
             return JW_HK_TAKEN;
         }
         if (key == '9') {
-            *stage = JW_OPT_HK_P3;
+            *stage = JW_OPT_HK_IC;
+            return JW_HK_TAKEN;
+        }
+        if (key == 27 && d && !hk_iso_esc) {
+            hk_iso_hide = 1;
             return JW_HK_TAKEN;
         }
         if (key == 27 && d) {
+            hk_iso_hide = 0;
             jwc_ink_hold(d, 1);
             while (d->n_texts > hk_iso_t0) {
                 jwc_remove_text(d, d->n_texts - 1);
@@ -1086,6 +1150,7 @@ int jw_hk_key(Jwc *d, int key, int *stage)
             }
             jwc_ink_hold(d, 0);
             jwc_ink_clear(d);
+            hk_iso_esc = 0;
             return JW_HK_CHANGED;
         }
         return JW_HK_TAKEN;
