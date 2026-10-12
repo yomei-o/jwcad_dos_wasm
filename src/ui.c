@@ -5266,6 +5266,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             top_clear();
             jw_hk_text(v, s->opt_stage);
         }
+        if (s->command == 29 && s->top_item == 5 && s->opt_stage == 0) {
+            jw_hk_top_text(v);
+        }
         /* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理 G0（項目の帯、src/optdata.c）。 */
         if (s->command == 29 && s->opt_stage == JW_OPT_DATA_G0) {
             fill(v, 0, 0, 639, 15, 0);

@@ -13,6 +13,7 @@
 #include "draw.h"
 #include "read.h"
 #include "ui.h"
+#include "opthikage_calc.h"
 
 #pragma STDC FP_CONTRACT OFF
 
@@ -26,6 +27,9 @@ static int hk_mode = 1;                 /* 1 入力、2 変更（段 74） */
 static int hk_added;                    /* 入力で足した直後（ESC が効く） */
 static char hk_buf[40];                 /* 数値欄 */
 static int hk_n;
+static int hk_esc;                      /* ②の頁：足した線がある（[ESC] が効き、桁 1 に札） */
+static long hk_run_l, hk_run_t;         /* 実行の直前の線・文字の数（ESC で戻す） */
+static const char *hk_topmsg;           /* 入口の帯に出す失敗の言葉（行 3 桁 20） */
 static int hk_nonote;                   /* 押しでない鍵（ESC・数字）のあと、行 3 の注意書きが消える（測定） */
 static struct { int col, row; const char *text; } hk_msg[4];
 static int hk_nmsg;
@@ -120,6 +124,9 @@ void jw_hk_text(VGA *v, int stage)
         jw_ui_text(v, 8, 1, 7, 0, HK_BLD);
         break;
     case JW_OPT_HK_P2:
+        if (hk_esc) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        }
         jw_ui_text(v, 8, 1, 7, 0, HK_P2);
         break;
     case JW_OPT_HK_P3:
@@ -214,8 +221,32 @@ void jw_hk_text(VGA *v, int stage)
     }
 }
 
+int jw_hk_page_esc(Jwc *d)
+{
+    if (!hk_esc || !d) {
+        return 0;
+    }
+    while (d->n_texts > hk_run_t) {
+        jwc_remove_text(d, d->n_texts - 1);
+    }
+    while (d->n_lines > hk_run_l) {
+        jwc_remove_line(d, d->n_lines - 1);
+    }
+    hk_esc = 0;
+    return 1;
+}
+
+void jw_hk_top_text(VGA *v)
+{
+    if (hk_topmsg) {
+        jw_ui_text(v, 20, 3, 7, 0, hk_topmsg);
+    }
+}
+
 int jw_hk_enter(int n)
 {
+    hk_topmsg = NULL;
+    hk_esc = 0;
     return n >= 1 && n <= 4 ? JW_OPT_HK_BLD + n - 1 : 0;
 }
 
@@ -226,6 +257,42 @@ void jw_hk_page_key(int key, int stage)
     if (key == 27 || (key >= '1' && key <= '9' && key - '0' > items)) {
         hk_nonote = 1;                  /* 測定：効かない鍵で行 2 の条件が消える */
     }
+}
+
+static int run_shadow(Jwc *d, double p, int *stage)
+{
+    HkCond c;
+    const char *err = NULL;
+    int rc;
+
+    c.lat = hk_lat;
+    c.decl = hk_decl;
+    c.height = hk_height;
+    c.time915 = hk_time;
+    hk_run_l = d->n_lines;
+    hk_run_t = d->n_texts;
+    rc = jw_hk_run_shadow(d, &c, p, &err);
+    if (rc < 0 && err) {
+        hk_topmsg = err;               /* 失敗：入口の帯へ戻って行 3 に言葉を出す */
+        *stage = 0;
+        return JW_HK_CHANGED;
+    }
+    hk_esc = d->n_lines > hk_run_l;
+    return JW_HK_CHANGED;
+}
+
+int jw_hk_page_run(Jwc *d, int n, int *stage)
+{
+    hk_topmsg = NULL;
+    if (*stage == JW_OPT_HK_P2 && d && (n == 1 || n == 2)) {
+        return run_shadow(d, n == 1 ? -1.0 : 1.0, stage);
+    }
+    return JW_HK_NONE;
+}
+
+const char *jw_hk_top_msg(void)
+{
+    return hk_topmsg;
 }
 
 int jw_hk_page_item(int n, int *stage)

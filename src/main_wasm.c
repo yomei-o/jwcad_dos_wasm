@@ -3109,7 +3109,7 @@ static void hk_goto(int stage)
 static void hk_after(int r, int x, int y, int miss)
 {
     cmd.missed = miss;
-    cmd.top_item = 0;
+    cmd.top_item = ui.opt_stage ? 0 : 5;
     cmd.top_right = 0;
     if (x >= 0) {
         mouse_x = x;
@@ -3142,6 +3142,11 @@ static int hk_item(int n)
     if (ui.opt_stage >= JW_OPT_HK_P2 && ui.opt_stage <= JW_OPT_HK_P4) {
         int st = ui.opt_stage;
 
+        if (drawing && jw_hk_page_run(drawing, n, &st) == JW_HK_CHANGED) {
+            ui.opt_stage = st;
+            hk_after(JW_HK_CHANGED, -1, 0, 0);
+            return -1;
+        }
         if (jw_hk_page_item(n, &st)) {
             ui.opt_stage = st;
         }
@@ -3171,6 +3176,10 @@ static int hk_key(int key)
 {
     if (!hk_active()) {
         return -2;
+    }
+    if (ui.opt_stage == JW_OPT_HK_P2 && key == 27 && drawing && jw_hk_page_esc(drawing)) {
+        hk_after(JW_HK_CHANGED, -1, 0, 0);
+        return -1;
     }
     if (ui.opt_stage >= JW_OPT_HK_P2 && ui.opt_stage <= JW_OPT_HK_P4) {
         jw_hk_page_key(key, ui.opt_stage);

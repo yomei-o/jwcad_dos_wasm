@@ -38,6 +38,13 @@ int jw_hk_bld_item(int n, int *stage);
 /* ②③④の頁の項目 n（4＝測定高･緯度）。段を替えたら 1。 */
 int jw_hk_page_item(int n, int *stage);
 
+/* ②の頁の項目 1・2 を実行する。JW_HK_CHANGED／JW_HK_NONE。失敗は *stage を 0 にして jw_hk_top_msg に言葉。 */
+int jw_hk_page_run(Jwc *d, int n, int *stage);
+const char *jw_hk_top_msg(void);
+void jw_hk_top_text(VGA *v);
+/* ②の頁の [ESC]：直前の実行を取り消す。取り消したら 1。 */
+int jw_hk_page_esc(Jwc *d);
+
 /* 頁（71〜73）で効かない鍵を受けたとき。 */
 void jw_hk_page_key(int key, int stage);
 

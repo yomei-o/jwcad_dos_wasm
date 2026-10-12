@@ -19,6 +19,17 @@ hk_dlg_w|SAMPLE0|type s|type 5|type 2|type 4|type 5|300 300 left|type 1|key bs
 hk_dlg_w2|SAMPLE0|type s|type 5|type 2|type 4|type 2|type 3|type 5|key enter|type 4|type 5|300 300 left|type 1|key bs
 hk_dlg_wesc|SAMPLE0|type s|type 5|type 2|type 4|type 5|300 300 left|key esc|type 1|key bs
 hk_dlg_lat|SAMPLE0|type s|type 5|type 3|type 4|type 3|type 4|type 1|type .|type 5|key enter|type 2|type 1|key bs
+hk_s1_test1|TEST1|type s|type 5|type 2|type 1|key bs
+hk_s2_test1|TEST1|type s|type 5|type 2|type 2|key bs
+hk_s2_test2|TEST2|type s|type 5|type 2|type 2|key bs
+hk_s2_test3|TEST3|type s|type 5|type 2|type 2|key bs
+hk_s2_test4|TEST4|type s|type 5|type 2|type 2|key bs
+hk_s2_test5|TEST5|type s|type 5|type 2|type 2|key bs
+hk_s2_sample3|SAMPLE3|type s|type 5|type 2|type 2|key bs
+hk_s2_test1_summer|TEST1|type s|type 5|type 2|type 4|type 4|type 4|type 1|type 2|key bs
+hk_s2_test1_lat|TEST1|type s|type 5|type 2|type 4|type 3|type 4|type 0|key enter|type 1|type 2|key bs
+hk_s2_test1_esc|TEST1|type s|type 5|type 2|type 2|key esc|key bs
+hk_s2_none|SAMPLE0|type s|type 5|type 2|type 2|key bs
 hk_del_old|SAMPLE0|type s|type 5|type 1|type 3|230 200 left|key bs
 hk_nth_top|SAMPLE0|type s|type 5|type 1|type 4|161 145 left|key bs
 hk_nth_bottom|SAMPLE0|type s|type 5|type 1|type 4|161 400 left|key bs
