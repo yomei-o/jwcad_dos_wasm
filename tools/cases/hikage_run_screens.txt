@@ -1,4 +1,4 @@
-#名前|手順…（DRAWING=TEST1 LIST=tools/cases/hikage_run_screens.txt sh tools/optsubcheck.sh。②日影図を実行したあとの画面）
+#名前|手順…（DRAWING=TEST1 LIST=tools/cases/hikage_run_screens.txt sh tools/optsubcheck.sh。②日影図を実行したあとの画面）（pt_ で始まる件は WAIT=250000000 で）
 run1|type s|type 5|type 2|type 1
 run2|type s|type 5|type 2|type 2
 run2_esc|type s|type 5|type 2|type 2|key esc

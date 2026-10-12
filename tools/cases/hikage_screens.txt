@@ -81,7 +81,6 @@ p3_esc|type s|type 5|type 3|key esc
 p4_2|type s|type 5|type 4|type 2
 p4_esc|type s|type 5|type 4|key esc
 bld_6|type s|type 5|type 1|type 6
-bld_5|type s|type 5|type 1|type 5
 dlg_p4|type s|type 5|type 4|type 1
 dlg_p4_ok|type s|type 5|type 4|type 1|type 1
 run_none|type s|type 5|type 2|type 2

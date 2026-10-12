@@ -1,0 +1,11 @@
+#名前|手順…（DRAWING=TEST7 LIST=tools/cases/hikage_wall_screens.txt sh tools/optsubcheck.sh。⑤壁面日影の壁面線の指示。TEST7：建物 x 340〜451・y 20.8〜86.8 の右の辺が (572,376)〜(572,442)）
+w_top|type s|type 5
+w_5|type s|type 5|type 5
+w_5_esc|type s|type 5|type 5|key esc
+w_5_bs|type s|type 5|type 5|key bs
+w_5_miss|type s|type 5|type 5|600 100 left
+w_5_pick|type s|type 5|type 5|572 410 left
+w_5_pick_bs|type s|type 5|type 5|572 410 left|key bs
+w_5_pick_2|type s|type 5|type 5|572 410 left|type 2
+w_5_pick_5|type s|type 5|type 5|572 410 left|type 5
+w_5_pick_5b|type s|type 5|type 5|572 410 left|type 5|key esc

@@ -70,6 +70,16 @@ void jw_hk_entry(Jwc *d)
     for (k = 0; k < d->n_points; k++) {
         d->points[k].rest[2] &= (unsigned char)~0x02u;
     }
+    /* 本物は入るとき、横書きの文字の終点を長さから作り直す（測定：TEST3 の 2 つの文字の x1 が float 1 ビット動く）。 */
+    for (k = 0; k < d->n_texts; k++) {
+        JwcText *T = &d->texts[k];
+
+        if (T->y1 == T->y0 && T->x1 > T->x0 && T->size < 0x5a && T->text) {
+            const double ln = jwc_ed_text_length(d, T->text, T->size, 0);
+
+            T->x1 = (float)(ln + (double)T->x0);
+        }
+    }
     for (k = 0; k < d->n_texts; k++) {
         d->texts[k].rest[2] &= (unsigned char)~0x02u;
     }
