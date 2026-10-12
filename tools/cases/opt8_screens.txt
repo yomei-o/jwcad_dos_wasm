@@ -53,3 +53,6 @@ h4_in_dd|type s|type 8|type 4|400 140 left|type 5|type .|type .|type 3
 h4_done|type s|type 8|type 4|400 140 left|type 5|key enter
 h4_done_r|type s|type 8|type 4|400 140 left|type 5|key enter|400 140 right
 h4_again|type s|type 8|type 4|400 140 left|type 5|key enter|400 140 left
+v1|type s|type 8|type 1
+v2|type s|type 8|type 2
+v3|type s|type 8|type 3

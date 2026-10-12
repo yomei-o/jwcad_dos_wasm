@@ -56,6 +56,7 @@ static int o25_repl;            /* ④ 既存の文字を消して欄の既定�
 static int o25_msg;             /* ④ 行 2：1 ＝ レイヤが違います（桁 22） */
 static int o25_missed;          /* 押した所に線が無い（読取可能データ無） */
 static double o25_ox, o25_oy, o25_ux, o25_uy;   /* 文字を置く端と、遠い端へ向かう単位ベクトル */
+static const Jwc *o25_d;        /* 視点画面の行 2 が縮尺を見る */
 static int o25_cur = -1;        /* 入力欄の緑のカーソルの桁（text が決める） */
 
 static char hexch(int n)
@@ -74,7 +75,7 @@ void jw_opt25_reset(void)
 
 int jw_opt25_covers(int opt_stage)
 {
-    return opt_stage >= JW_OPT25_WAIT && opt_stage <= JW_OPT25_ASK;
+    return opt_stage >= JW_OPT25_WAIT && opt_stage <= JW_OPT25_ASK;     /* VIEW・ASK など */
 }
 
 /* ------------------------------------------------------------------ 入口 */
@@ -289,6 +290,14 @@ static void item_pick(Jwc *d, int n, int *opt_stage)
         }
         *opt_stage = JW_OPT25_GH;
         break;
+    case 1:
+    case 2:
+    case 3:                                     /* ①透視図・②鳥瞰図・③ｱｲｿﾒ（src/opt25v.c） */
+        o25_d = d;
+        if (jw_o25v_enter(d, n, o25_unit)) {
+            *opt_stage = JW_OPT25_VIEW;
+        }
+        break;
     case 4:                                     /* ④ 線･円の高さ奥行（018e の flag=0） */
         o25_del = 0;
         o25_msg = 0;
@@ -320,6 +329,23 @@ int jw_opt25_click(Jwc *d, const JwView *w, int x, int y, int right, int cell,
         if (y >= 0 && y <= 15) {
             /* [BS]前項 は桁 73〜80。項目でない所の押し（測定：m_click_blank は何も起きない）。 */
             return JW_O25_TAKEN;
+        }
+        return JW_O25_TAKEN;
+    }
+    if (*opt_stage == JW_OPT25_VIEW) {
+        if (y >= 0 && y <= 15) {
+            if (cell >= 3 && cell <= 9) {
+                jw_o25v_item(d, cell);
+            } else if (cell == 1 || cell == 2) {
+                /* ①作図・②変更間隔：未実装（spec-opt8-view §2.4・§3.3） */
+            }
+            return JW_O25_TAKEN;
+        }
+        if (w && x >= w->x0 && x <= w->x1 && y >= w->y0 && y <= w->y1) {
+            double px, py;
+
+            jw_cmd_at(w, x, y, &px, &py);
+            jw_o25v_press(d, px, py);
         }
         return JW_O25_TAKEN;
     }
@@ -408,6 +434,21 @@ int jw_opt25_key(Jwc *d, int key, int *opt_stage, int *leave)
         }
         field_edit(key);
         return JW_O25_TAKEN;
+    case JW_OPT25_VIEW:
+        if (key == 27) {                        /* 視点画面の ESC：メニューへ（作図の取り消しではない） */
+            jw_o25v_free();
+            o25_lab = 1;
+            *opt_stage = JW_OPT25_MENU;
+            return JW_O25_TAKEN;
+        }
+        if (key >= '3' && key <= '9') {
+            jw_o25v_item(d, key - '0');
+            return JW_O25_TAKEN;
+        }
+        if (key >= 0 && key < 256 && key != 13 && key != 10 && jw_ui_key_command(key)) {
+            return JW_O25_NONE;
+        }
+        return JW_O25_TAKEN;
     case JW_OPT25_HT:
         if (key == 8) {
             if (o25_del) {
@@ -468,6 +509,37 @@ void jw_opt25_text(VGA *v, int opt_stage, int group)
         o25_cur = 26 + o25_pos;     /* 欄は桁 27（1 始まり）、x = 桁*8 */
         return;
     }
+    if (opt_stage == JW_OPT25_VIEW) {
+        /* 行 1（§2.3 (c)）：|作 図 |変更間隔 |左回転|右回転| 上 | 下 | 前 | 後 |面|（アイソメは `0,0 |等角 |`）に番号 */
+        static const char *const lab[] = {
+            "\x8d\xec \x90}" " ", "\x95\xcf\x8dX\x8a\xd4\x8a\x75" " ", "\x8d\xb6\x89\xf1\x93]",
+            "\x89" "E\x89\xf1\x93]", " \x8f\xe3 ", " \x89\xba ", " \x91O ", " \x8c\xe3 ", "\x96\xca" };
+        char t[200];
+        int i;
+
+        t[0] = 0;
+        for (i = 0; i < 9; i++) {
+            char c[4];
+
+            if (jw_o25v_mode() == 3 && i == 6) {
+                strcat(t, "|\x87" "F0,0 |\x87" "G\x93\x99\x8a" "p |");
+                break;
+            }
+            c[0] = '|';
+            c[1] = (char)0x87;
+            c[2] = (char)(0x40 + i);
+            c[3] = 0;
+            strcat(t, c);
+            strcat(t, lab[i]);
+            if (i == 8) strcat(t, "|");
+        }
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, t);
+        if (o25_d) jw_o25v_row2(v, o25_d, o25_unit);
+        jw_ui_text(v, 4, 2, 0, 2, "\x8e\x8b\x90\xfc  \x95\xfb\x8c\xfc");
+        jw_ui_text(v, 4, 3, 0, 2, "\x83}\x83" "E\x83X\x8ew\x8e\xa6 ");
+        return;
+    }
     if (opt_stage == JW_OPT25_HT) {
         jw_ui_text(v, 8, 1, 7, 0, S_HT);
         if (o25_del) {
@@ -509,8 +581,7 @@ void jw_opt25_text(VGA *v, int opt_stage, int group)
 
 void jw_opt25_overlay(VGA *v, const Jwc *d, const JwView *w, int opt_stage)
 {
-    (void)v;
-    (void)d;
-    (void)w;
-    (void)opt_stage;
+    if (opt_stage == JW_OPT25_VIEW) {
+        jw_o25v_draw(v, d, w);
+    }
 }

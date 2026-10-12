@@ -1115,6 +1115,8 @@ static void present(void)
     memcpy(ui.dim_typed, dim_typed, sizeof ui.dim_typed);
     if (!drawing) {
         memset(vga.plane, 0, sizeof vga.plane);
+    } else if (ui.command == 29 && jw_opt25_covers(ui.opt_stage)) {
+        memset(vga.plane, 0, sizeof vga.plane);       /* 2.5D の視点画面は図面を出さない */
     } else {
         jw_view_draw(&vga, drawing, &view);
         jw_cmd_before(&cmd, &vga, drawing, &view);
@@ -1193,6 +1195,9 @@ static void present(void)
          * the whole of TEST1 registered and then ②読込 pressed, the string
          * the registered line crosses is on top again (7 pixels). */
         zukei_left_on = 0;
+        if (ui.command == 29 && jw_opt25_covers(ui.opt_stage) && drawing) {
+            jw_opt25_overlay(&vga, drawing, &view, ui.opt_stage);
+        }
     }
     /* the line a half-finished command drags, then the pointer -- both
      * exclusive-or, and both after everything else */

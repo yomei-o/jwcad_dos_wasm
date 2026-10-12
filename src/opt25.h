@@ -58,4 +58,13 @@ int jw_opt25_covers(int opt_stage);
 /* 命令を離れたときなど、状態を捨てる。単位 [0x11ea] だけは本物もプログラム中ずっと持つ。 */
 void jw_opt25_reset(void);
 
+/* 視点画面（src/opt25v.c）。 */
+int jw_o25v_enter(const Jwc *d, int m, int unit);
+void jw_o25v_free(void);
+void jw_o25v_draw(VGA *v, const Jwc *d, const JwView *w);
+void jw_o25v_row2(VGA *v, const Jwc *d, int unit);
+int jw_o25v_item(const Jwc *d, int n);
+void jw_o25v_press(const Jwc *d, double px, double py);
+int jw_o25v_mode(void);
+
 #endif

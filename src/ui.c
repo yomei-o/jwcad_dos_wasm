@@ -5276,6 +5276,9 @@ void jw_ui_draw(VGA *v, const JwUi *s)
 
             fill(v, 0, 0, 639, 15, 0);
             top_clear();
+            if (s->opt_stage == JW_OPT25_VIEW) {
+                fill(v, 1, 17, 120, 47, 4);           /* 行 2・3 の左を緑で塗る（1def:0000、色 4） */
+            }
             jw_opt25_text(v, s->opt_stage, (s->layer >> 4) & 15);
             c = jw_opt25_cursor();
             if (c >= 0) {
