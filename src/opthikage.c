@@ -75,8 +75,13 @@ void jw_hk_entry(Jwc *d)
     }
 }
 
+static int hk_base;                     /* [0x11e]：④の指定点の通し番号の基点 */
+static int pt_n;                        /* 足した指定点の数 */
+static float pt_x[64], pt_y[64];
+
 void jw_hk_reset(void)
 {
+    pt_n = 0;
     hk_added = 0;
     hk_n = 0;
     hk_nmsg = 0;
@@ -135,7 +140,9 @@ void jw_hk_text(VGA *v, int stage)
         jw_ui_text(v, 8, 1, 7, 0, HK_P3);
         break;
     case JW_OPT_HK_P4:
-        jw_ui_text(v, 8, 1, 7, 0, HK_P4A HK_P4);
+        sprintf(buf, "%s%d%s50) ", HK_PTA, hk_base + 1, HK_PTB);
+        strcat(buf, HK_P4);
+        jw_ui_text(v, 8, 1, 7, 0, buf);
         break;
     case JW_OPT_HK_IN:
         if (hk_mode == 1 && hk_added) {
@@ -176,6 +183,17 @@ void jw_hk_text(VGA *v, int stage)
     case JW_OPT_HK_NTH:
         jw_ui_text(v, 8, 1, 7, 0, HK_NTHP);
         break;
+    case JW_OPT_HK_PT:
+        if (pt_n > 0) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        }
+        sprintf(buf, "%s%d%s%d%s", HK_PTA, hk_base + pt_n + 1, HK_PTB, 50 - pt_n, HK_PTC);
+        jw_ui_text(v, 8, 1, 7, 0, buf);
+        return;
+    case JW_OPT_HK_RES:
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, HK_RESP);
+        return;
     case JW_OPT_HK_TM:
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
         jw_ui_text(v, 8, 1, 7, 0, HK_TMF);
@@ -750,6 +768,101 @@ static void dlg_commit(void)
     }
 }
 
+/* ④指定点の入力（ovl33 0x3075d〜0x30d40、spec-opt5-ui.md 7.2）。 */
+static int pt_cancel_last(Jwc *d)
+{
+    long k;
+
+    if (pt_n < 1) {
+        return 0;
+    }
+    if (d->n_points > 0) {
+        jwc_remove_point(d, d->n_points - 1);
+    }
+    for (k = d->n_texts - 1; k >= 0; k--) {
+        if (!(d->texts[k].rest[2] & 0x80)) {
+            jwc_remove_text(d, k);
+            break;
+        }
+    }
+    pt_n--;
+    return 1;
+}
+
+static int pt_add(Jwc *d, const JwView *w, int x, int y, int right, int *stage)
+{
+    double px, py;
+    JwcPoint p;
+    char b[24];
+
+    if (right) {
+        if (!jw_read(d, w, x, y, &px, &py)) {
+            return JW_HK_TAKEN;
+        }
+    } else {
+        jw_cmd_at(w, x, y, &px, &py);
+    }
+    memset(&p, 0, sizeof p);
+    p.x = (float)px;
+    p.y = (float)py;
+    p.layer = (unsigned char)d->write_layer;
+    p.rest[0] = (unsigned char)d->write_layer;
+    p.rest[1] = (unsigned char)(d->dim_pen_point ? d->dim_pen_point : 1);   /* 測定：寸法設定の点のペン */
+    p.rest[3] = 0x1d;
+    jwc_put_point(d, &p);
+    pt_n++;
+    pt_x[pt_n] = (float)px;
+    pt_y[pt_n] = (float)py;
+    sprintf(b, "No%d", hk_base + pt_n);
+    frame_set(px, py, px + 10.0, py);
+    add_text(d, b, 2, 0);
+    *stage = pt_n >= 50 ? JW_OPT_HK_RES : JW_OPT_HK_PT;
+    return JW_HK_CHANGED;
+}
+
+static int pt_result(Jwc *d, const JwView *w, int x, int y, int right, int *stage)
+{
+    double px, py;
+    HkCond c;
+    const char *err = NULL;
+    int rc;
+
+    if (right) {
+        if (!jw_read(d, w, x, y, &px, &py)) {
+            return JW_HK_TAKEN;
+        }
+    } else {
+        jw_cmd_at(w, x, y, &px, &py);
+    }
+    memset(&c, 0, sizeof c);
+    c.lat = hk_lat;
+    c.decl = hk_decl;
+    c.height = hk_height;
+    c.time915 = hk_time;
+    rc = jw_hk_run_points(d, &c, hk_base, pt_n, pt_x, pt_y, (float)px, (float)py, &err);
+    if (rc >= 0) {
+        hk_base += pt_n;
+        pt_n = 0;
+        *stage = JW_OPT_HK_P4;
+        return JW_HK_CHANGED;
+    }
+    while (pt_n > 0) {
+        pt_cancel_last(d);
+    }
+    msg(20, 3, HK_M_CALCNG);
+    *stage = JW_OPT_HK_P4;
+    return JW_HK_CHANGED;
+}
+
+int jw_hk_pt_item(int n, int *stage)
+{
+    if (*stage == JW_OPT_HK_PT && n == 1) {
+        *stage = JW_OPT_HK_RES;
+        return 1;
+    }
+    return 0;
+}
+
 int jw_hk_click(Jwc *d, const JwView *w, int x, int y, int right,
                 int area_x0, int area_y0, int area_x1, int area_y1,
                 int *stage, int *missed)
@@ -772,6 +885,13 @@ int jw_hk_click(Jwc *d, const JwView *w, int x, int y, int right,
             return JW_HK_CHANGED;
         }
         return JW_HK_TAKEN;
+    }
+    if ((st == JW_OPT_HK_P4 || st == JW_OPT_HK_PT || st == JW_OPT_HK_RES) && d && y > 15
+        && x >= area_x0 && x <= area_x1 && y >= area_y0 && y <= area_y1) {
+        hk_nmsg = 0;
+        hk_nonote = 0;
+        hk_remnant = 0;
+        return st == JW_OPT_HK_RES ? pt_result(d, w, x, y, right, stage) : pt_add(d, w, x, y, right, stage);
     }
     if (st < JW_OPT_HK_IN || !d) {
         return JW_HK_NONE;
@@ -844,6 +964,22 @@ int jw_hk_key(Jwc *d, int key, int *stage)
 {
     int st = *stage;
 
+    if (st == JW_OPT_HK_PT || st == JW_OPT_HK_RES) {
+        hk_nmsg = 0;
+        if (key == 27 && d) {
+            if (st == JW_OPT_HK_RES && pt_n < 50) {
+                *stage = JW_OPT_HK_PT;
+                return JW_HK_CHANGED;
+            }
+            pt_cancel_last(d);
+            *stage = pt_n < 1 ? JW_OPT_HK_P4 : JW_OPT_HK_PT;
+            return JW_HK_CHANGED;
+        }
+        if (key == '1' && st == JW_OPT_HK_PT) {
+            *stage = JW_OPT_HK_RES;
+        }
+        return JW_HK_TAKEN;
+    }
     if (st == JW_OPT_HK_TM) {
         if (key == 27) {
             *stage = JW_OPT_HK_P2;

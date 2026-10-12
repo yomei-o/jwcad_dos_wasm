@@ -1049,6 +1049,43 @@ static void mark_other_groups(int r, int D, int Aprev, int Bcur, int ip, int ic)
     }
 }
 
+/* ④指定点：影の外周の辺ごとに、各点の巻き数を足す（2e4d4、calc-b 4.2）。 */
+static float WPU[64], WPV[64];
+static int WCNT[64], w_n;
+
+static void pt_winding(float x1, float y1, float x2, float y2)
+{
+    int k;
+
+    if (y2 == y1) {
+        return;
+    }
+    for (k = 1; k <= w_n; k++) {
+        const float px = WPU[k], py = WPV[k];
+        float cr;
+
+        if (y2 < y1) {
+            if (!(py >= y2 && py < y1)) {
+                continue;
+            }
+        } else {
+            if (!(py >= y1 && py < y2)) {
+                continue;
+            }
+        }
+        cr = (float)(((double)py - y1) * ((double)x2 - x1) - ((double)px - x1) * ((double)y2 - y1));
+        if (y2 < y1) {
+            if (cr > 0.0f) {
+                WCNT[k]++;
+            }
+        } else {
+            if (cr < 0.0f) {
+                WCNT[k]--;
+            }
+        }
+    }
+}
+
 /* 2c53d：影の外周を作って線にする（②：w>0、壁面なし）。1＝完了、−2＝線が多すぎる。 */
 static int shadow_main(int w, double X, double Y, int m, int n, int D, double C)
 {
@@ -1116,6 +1153,9 @@ static int shadow_main(int w, double X, double Y, int m, int n, int D, double C)
             next_edge(P2, Q2, st2, A, B, E, stv, &A, &B, &E, &stv, s, m + 1);
             x1f = (float)((double)SX[ic] * (double)sc);
             y1f = (float)((double)SY[ic] * (double)sc);
+            if (w < 0) {
+                pt_winding(x0f, y0f, x1f, y1f);
+            }
             if (w > 0) {
                 if (PH[Aprev] > 0.01 || PH[Bcur] > 0.01) {
                     if (emit_line(w, &conn, (double)x0f, (double)y0f, (double)x1f, (double)y1f) == 0) {
@@ -1212,5 +1252,140 @@ int jw_hk_run_shadow(Jwc *d, const HkCond *c, double p, const char **err)
         }
     }
     (void)cur_c;
+    return 1;
+}
+
+/* ④指定点日影時間（ovl34 3ab8:5df6、calc-b 6）。base は No の起点、n は点の数（1〜50）、
+ * (rx,ry) は結果の文字を書く位置。戻り：1＝書いた、−1＝不備（*err）、−2＝帯が多すぎる。 */
+int jw_hk_run_points(Jwc *d, const HkCond *c, int base, int n, const float *xs, const float *ys,
+                     float rx, float ry, const char **err)
+{
+    Gather g;
+    int nb, i, k, t_n, col;
+    static unsigned char table[64][500];
+    Sun sun;
+    const float b4a2 = paper_b4a2(d);
+
+    cur_d = d;
+    cur_layer = (unsigned char)d->write_layer;
+    *err = NULL;
+    memset(&g, 0, sizeof g);
+    nb = gather(d, c, &g);
+    if (nb <= 0) {
+        *err = errbuf;
+        return -1;
+    }
+    w_n = n;
+    for (i = 1; i <= n; i++) {
+        WPU[i] = fr_u(xs[i], ys[i]);
+        WPV[i] = fr_v(xs[i], ys[i]);
+    }
+    t_n = c->time915 ? 360 : 480;
+    sun_coeffs(c->lat, c->decl, &sun);
+    for (col = 0; col <= t_n; col++) {
+        const int16_t t = (int16_t)(-(c->time915 ? 10800 : 14400) + 60 * col);
+        float sx, sy;
+        int rc;
+
+        for (i = 1; i <= n; i++) {
+            WCNT[i] = 0;
+        }
+        sun_shadow(t, &sun, &sx, &sy);
+        rc = shadow_main(-1, (double)sx, (double)sy, g.ne, g.np, g.nblk, (double)g.scale);
+        if (rc < 0) {
+            if (rc == -2) {
+                strcpy(errbuf, HK_E_BAD);
+                *err = errbuf;
+            }
+            return -1;
+        }
+        for (i = 1; i <= n; i++) {
+            table[i][col] = (unsigned char)(WCNT[i] != 0);
+        }
+    }
+    {
+        const int h0 = c->time915 ? 9 : 8;
+        const float chf = (float)((double)(int16_t)(d->text_gap[3] + d->text_w[3]) / b4a2 * 0.1);
+
+        for (i = 1; i <= n; i++) {
+            int start[24], end[24], nseg = 0, total = 0, in = 0, err_n, j;
+            char head[80], tmp[80], band[80];
+            float x, y;
+
+            unsigned char A[512], B[512];
+
+            memset(A, 0, sizeof A);
+            memset(B, 0, sizeof B);
+            for (k = 0; k <= t_n; k++) {
+                if (table[i][k]) {
+                    A[k] = 1;
+                    B[k + 1] = 1;
+                    if (k > 0) {
+                        A[k - 1] = 1;
+                    }
+                }
+            }
+            B[t_n + 1] = 0;
+            for (k = 0; k <= t_n; k++) {
+                if (!A[k]) {
+                    if (in) {
+                        in = 0;
+                        end[nseg - 1] = k;
+                    }
+                    continue;
+                }
+                if (!in) {
+                    in = 1;
+                    if (nseg >= 20) {
+                        strcpy(errbuf, HK_E_MANY);
+                        *err = errbuf;
+                        return -2;
+                    }
+                    start[nseg] = k;
+                    end[nseg] = -1;
+                    nseg++;
+                }
+            }
+            if (nseg > 0 && end[nseg - 1] < 0) {
+                end[nseg - 1] = t_n;
+            }
+            for (j = 0; j < nseg; j++) {
+                total += end[j] - start[j];     /* 測定：合計は帯の長さの和（開いた帯の終わりは N） */
+            }
+            err_n = 2 * nseg;
+            if (nseg > 0 && start[0] == 0) {
+                err_n--;
+            }
+            if (nseg > 0 && end[nseg - 1] == t_n) {
+                err_n--;
+            }
+            if (err_n <= 0) {
+                err_n = 1;
+            }
+            sprintf(head, "No%d", base + i);
+            if (base + i < 10) {
+                strcat(head, " ");
+            }
+            sprintf(tmp, " [%2d:%2d \x81\x7d%d]", total / 60, total % 60, err_n);
+            strcat(head, tmp);
+            y = (float)((double)(float)((double)(int16_t)((i - 1) * d->text_h[3]) / b4a2) * -0.15 + ry);   /* 測定：商だけ float */
+            x = rx;
+            {
+                const double w1 = jwc_ed_text_length(d, head, 3, 0);
+
+                jwc_add_text(d, x, y, (float)((double)w1 + x), y, head, 3, cur_layer);
+            }
+            x = (float)(10.0f * chf + rx);
+            for (j = 0; j < nseg; j++) {
+                const int s0 = start[j], e0 = end[j];
+                double w1;
+
+                sprintf(band, "(%2d:%2d)\x81\x60(%2d:%2d)", s0 / 60 + h0, s0 % 60, e0 / 60 + h0, e0 % 60);
+                w1 = jwc_ed_text_length(d, band, 3, 0);
+                jwc_add_text(d, x, y, (float)((double)w1 + x), y, band, 3, cur_layer);
+                x = (float)((double)chf * 8.5 + x);
+            }
+        }
+    }
     return 1;
 }

@@ -21,7 +21,9 @@
 #define JW_OPT_HK_NTH 77
 #define JW_OPT_HK_DLG 78        /* 測定条件ダイアログ（小段は opthikage.c の hk_sub） */
 #define JW_OPT_HK_TM  79        /* ②③指定時間の数値欄 */
-#define JW_OPT_HK(s)  ((s) >= JW_OPT_HK_BLD && (s) <= JW_OPT_HK_TM)
+#define JW_OPT_HK_PT  80        /* ④指定点の入力 */
+#define JW_OPT_HK_RES 81        /* ④結果表示位置 */
+#define JW_OPT_HK(s)  ((s) >= JW_OPT_HK_BLD && (s) <= JW_OPT_HK_RES)
 
 #define JW_HK_NONE    0         /* この道のものではない */
 #define JW_HK_TAKEN   1         /* 受けた（画面は描き直す） */
@@ -48,6 +50,9 @@ void jw_hk_top_text(VGA *v);
 void jw_hk_overlay(VGA *v, const Jwc *d, const JwView *w);
 /* ②の頁の [ESC]：直前の実行を取り消す。取り消したら 1。 */
 int jw_hk_page_esc(Jwc *d);
+
+/* ④指定点の入力の帯の項目 n（1＝入力終了）。 */
+int jw_hk_pt_item(int n, int *stage);
 
 /* 頁（71〜73）で効かない鍵を受けたとき。 */
 void jw_hk_page_key(int key, int stage);

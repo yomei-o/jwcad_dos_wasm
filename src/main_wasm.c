@@ -3156,6 +3156,15 @@ static int hk_item(int n)
         hk_after(JW_HK_TAKEN, -1, 0, 0);
         return -1;
     }
+    if (ui.opt_stage == JW_OPT_HK_PT || ui.opt_stage == JW_OPT_HK_RES) {
+        int st = ui.opt_stage;
+
+        if (jw_hk_pt_item(n, &st)) {
+            ui.opt_stage = st;
+        }
+        hk_after(JW_HK_TAKEN, -1, 0, 0);
+        return -1;
+    }
     if (ui.opt_stage == JW_OPT_HK_DLG) {
         int st = ui.opt_stage;
 
@@ -3257,7 +3266,7 @@ static int hk_click(int x, int y, int right)
         mouse_y = y;
         return hk_item(jw_ui_top_item(x, y));
     }
-    if (ui.opt_stage >= JW_OPT_HK_IN && drawing) {
+    if ((ui.opt_stage >= JW_OPT_HK_IN || ui.opt_stage == JW_OPT_HK_P4) && drawing) {
         int st = ui.opt_stage, miss = 0;
         const int r = jw_hk_click(drawing, &view, x, y, right, AREA_X0, AREA_Y0,
                                   AREA_X1, AREA_Y1, &st, &miss);

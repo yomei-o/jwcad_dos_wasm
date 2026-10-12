@@ -16,4 +16,8 @@ typedef struct {
  * 図面に線と文字を足す（足した数は d->n_lines・n_texts の増分）。 */
 int jw_hk_run_shadow(Jwc *d, const HkCond *c, double p, const char **err);
 
+/* ④指定点日影時間。xs・ys は 1 始まりの配列。 */
+int jw_hk_run_points(Jwc *d, const HkCond *c, int base, int n, const float *xs, const float *ys,
+                     float rx, float ry, const char **err);
+
 #endif
