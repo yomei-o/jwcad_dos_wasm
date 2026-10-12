@@ -53,3 +53,13 @@ x_run4|type s|type 4|type 3|type 4|150 120 left|move 260 200|260 200 right|type 
 x_run_bs|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|type 1|key bs
 x_prev_add|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|key esc|type 1|300 250 left
 x_prev_mv|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|key esc|type 1|move 300 250
+y_g0_c|type s|type 4|type 3|type c
+y_g0_b|type s|type 4|type 3|type b
+y_g0_menu|type s|type 4|type 3|60 120 left
+y_r1_c|type s|type 4|type 3|type 1|type c
+y_r1_menu|type s|type 4|type 3|type 1|60 120 left
+y_c_c|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|type c
+y_c_menu|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|60 120 left
+y_add_menu|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 left|60 120 left
+y_back_band|type s|type 4|type 3|key bs|type 3
+y_g0_again|type s|type 4|type 3|type 1|key esc|type 2

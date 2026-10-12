@@ -149,4 +149,5 @@ henkei_s0_c4(6px)・tangent_s1_c4(29px)・chamfer 等の端の画素・dim_val_b
 
 ## オプション④一括処理（取り込み済み）
 - ①直線伸縮・②直線部分消（src/optbatch.c）、④ﾚｲﾔ整理・⑤ｸﾞﾙｰﾌﾟ整理（src/optsub.h ほか）を実装し、実機と画面・保存結果が一致（probe_opt4_ab 20 件、optsubcheck 89 件）。
-- 未実装：③データ整理、④ファイル(.JWL)、⑤の縮尺確認、④⑤中の左盤の線種・紙・縮尺などの入力。opt_stage は ①② が 30 番台、④⑤が 10〜23。
+- ③データ整理（src/optdata.c・src/optdata_run.c、opt_stage は 40・41）：帯・範囲・確定の画面（optdata_screens 48 件・optdata_run_screens 13 件）と、重複線整理・連結･重複線整理・ソート・同一文字整理の保存結果（probe_opt4_data 23 件）が実機と一致。測った直しと残りは notes/opt4-data-measured.md。
+- 未実装：④ファイル(.JWL)、⑤の縮尺確認、④⑤中の左盤の線種・紙・縮尺などの入力、③の取り消し用の自動保存・隠し項目。opt_stage は ①② が 30 番台、③が 40 番台、④⑤が 10〜23。

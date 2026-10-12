@@ -24,4 +24,7 @@ void jw_optdata_range(VGA *v, const JwUi *s);
  * 範囲の印（rest[2] の bit1）が付いたものだけが対象。図面が変わったら 1。 */
 int jw_optdata_run(Jwc *d, int mode);
 
+/* ソートの「前回の並べ終わりの位置」を 1 に戻す（小帯から ③ に入るたび）。 */
+void jw_optdata_sort_reset(void);
+
 #endif

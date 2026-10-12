@@ -10,6 +10,16 @@ const createJwcad = require('../jwcad.js');
 const [path, ...steps] = process.argv.slice(2);
 const M = await createJwcad();
 M._jw_init();
+/* 焼き込んでない図面（tools/mkdata.py の TEST9 など）はディスクから入れる（tools/seqshot.mjs と同じ）。 */
+try {
+    const { readFileSync, existsSync } = await import('node:fs');
+    if (existsSync(path)) {
+        const at = path.startsWith('/') ? path : '/' + path;
+        const dir = at.slice(0, at.lastIndexOf('/'));
+        try { M.FS.mkdirTree(dir); } catch { /* もうある */ }
+        M.FS.writeFile(at, new Uint8Array(readFileSync(path)));
+    }
+} catch { /* ブラウザでは何もしません */ }
 const n = M.lengthBytesUTF8(path) + 1, buf = M._malloc(n);
 M.stringToUTF8(path, buf, n);
 M._jw_open(buf);

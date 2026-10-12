@@ -1,0 +1,29 @@
+# ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理（src/optdata.c・src/optdata_run.c、仕様 notes/spec-opt4-cde.md ③、測った直し notes/opt4-data-measured.md）。
+#   先に sh tools/mkdata.sh（TEST9・TEST8・TEST6A を作って本物に一度保存させる。測ったら orig/ のそれらは消す）
+#   sh tools/funccases.sh tools/cases/probe_opt4_data.txt          保存した記録を本物と比べる
+# 範囲 (150,60)-(400,330) に TEST9 の重複の例が全部入る（(200,350) の対は外）。TEST8 のソートの範囲は (385,60)-(525,335)。
+# 1 手め：type s|type 4|type 3 = ④一括処理 ③データ整理。type 1〜4 = 重複線整理・連結･重複線整理・ソート・同一文字整理。
+# 範囲の取り方：始点 left、move、終点 right（＝範囲確定）→ type 1 で ①実行。終点 left は 追加･除外 の段（type 1 で範囲確定）。
+opt4d_dup|TEST9|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 right|type 1
+opt4d_conn|TEST9|type s|type 4|type 3|type 2|150 60 left|move 400 330|400 330 right|type 1
+opt4d_text|TEST9|type s|type 4|type 3|type 4|150 60 left|move 400 330|400 330 right|type 1
+opt4d_sel|TEST9|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 right
+opt4d_excl_line|TEST9|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 left|203 120 left|type 1|type 1
+opt4d_excl_text|TEST9|type s|type 4|type 3|type 4|150 60 left|move 400 330|400 330 left|210 100 left|type 1|type 1
+opt4d_excl_arc_pt|TEST9|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 left|180 280 left|300 100 left|type 1|type 1
+opt4d_pt_near|TEST9|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 left|305 100 left|type 1|type 1
+opt4d_pt_below|TEST9|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 left|320 106 left|type 1|type 1
+opt4d_pt_far|TEST9|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 left|309 100 left|type 1|type 1
+opt4d_prev|TEST9|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 right|key esc|type 1|type 1|type 1
+opt4d_run_left_click|TEST9|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 right|300 400 left
+opt4d_sort|TEST8|type s|type 4|type 3|type 3|385 60 left|move 525 335|525 335 right|type 1
+opt4d_sort2|TEST8|type s|type 4|type 3|type 3|385 60 left|move 525 335|525 335 right|type 1|type 3|150 40 left|move 530 440|530 440 right|type 1
+opt4d_arcs1|TEST6A|type s|type 4|type 3|type 1|130 20 left|move 635 445|635 445 right|type 1
+opt4d_arcs2|TEST6A|type s|type 4|type 3|type 2|130 20 left|move 635 445|635 445 right|type 1
+opt4d_t1_1|TEST1|type s|type 4|type 3|type 1|130 20 left|move 635 445|635 445 right|type 1
+opt4d_t1_2|TEST1|type s|type 4|type 3|type 2|130 20 left|move 635 445|635 445 right|type 1
+opt4d_t1_3|TEST1|type s|type 4|type 3|type 3|130 20 left|move 635 445|635 445 right|type 1
+opt4d_t1_4|TEST1|type s|type 4|type 3|type 4|130 20 left|move 635 445|635 445 right|type 1
+opt4d_t4_1|TEST4|type s|type 4|type 3|type 1|130 20 left|move 635 445|635 445 right|type 1
+opt4d_t4_3|TEST4|type s|type 4|type 3|type 3|130 20 left|move 635 445|635 445 right|type 1
+opt4d_t2_3|TEST2|type s|type 4|type 3|type 3|130 20 left|move 635 445|635 445 right|type 1

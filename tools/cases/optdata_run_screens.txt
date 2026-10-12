@@ -1,0 +1,15 @@
+#名前|手順…（DRAWING=TEST9 ORIGCACHE=tmp/oc9 LIST=tools/cases/optdata_run_screens.txt sh tools/optsubcheck.sh。TEST9 は tools/mkdata.py）
+# ③データ整理：線や円を含む図面での範囲・確定・実行後の画面
+u_c1|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 right
+u_c4|type s|type 4|type 3|type 4|150 60 left|move 400 330|400 330 right
+u_add1|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 left
+u_add_press|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 left|203 120 left
+u_add_press2|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 left|203 120 left|203 120 left
+u_add_arc|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 left|180 280 left
+u_add_text|type s|type 4|type 3|type 4|150 60 left|move 400 330|400 330 left|210 100 left
+u_run1|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 right|type 1
+u_run2|type s|type 4|type 3|type 2|150 60 left|move 400 330|400 330 right|type 1
+u_run3|type s|type 4|type 3|type 3|150 60 left|move 400 330|400 330 right|type 1
+u_run4|type s|type 4|type 3|type 4|150 60 left|move 400 330|400 330 right|type 1
+u_abort|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 right|type 2
+u_run1_prev|type s|type 4|type 3|type 1|150 60 left|move 400 330|400 330 right|type 1|type 1|type 1

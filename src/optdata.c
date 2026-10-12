@@ -101,10 +101,3 @@ void jw_optdata_range(VGA *v, const JwUi *s)
     }
 }
 
-/* ------------------------------------------------------------------ 実行 */
-int jw_optdata_run(Jwc *d, int mode)
-{
-    (void)d;
-    (void)mode;
-    return 0;
-}

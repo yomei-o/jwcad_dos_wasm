@@ -24,6 +24,7 @@
 #define JW_FLIP_LINE 0
 #define JW_FLIP_ARC  1
 #define JW_FLIP_TEXT 2
+#define JW_FLIP_POINT 3
 
 /* How many points 測定 keeps for drawing its legs.  The original's own limit
  * is not known; this is enough for any run a check makes. */

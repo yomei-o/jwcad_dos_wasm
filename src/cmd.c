@@ -2653,6 +2653,15 @@ static int picked_arc(const JwCmd *c, const Jwc *d, long k)
            && arc_in_range(c, &d->arcs[k]) != flipped(c, JW_FLIP_ARC, k);
 }
 
+/* ｵﾌﾟｼｮﾝ ③データ整理：点は届くレイヤで枠の中なら範囲に入る（追加･除外の対象には数えない）。 */
+static int picked_point(const JwCmd *c, const Jwc *d, long k)
+{
+    const JwcPoint *p = &d->points[k];
+
+    return in_reach_layer(d, p->layer) && jw_cmd_in_range(c, p->x, p->y, p->x, p->y)
+           != flipped(c, JW_FLIP_POINT, k);
+}
+
 static int picked_text(const JwCmd *c, const Jwc *d, long k)
 {
     if (c->sel_text) {
@@ -4170,8 +4179,13 @@ void jw_cmd_marked(const JwCmd *c, VGA *v, const Jwc *d, const JwView *w)
         const JwcPoint *p = &d->points[k];
         int px, py;
 
-        if (!in_reach_layer(d, p->layer)
-            || !jw_cmd_in_range(c, p->x, p->y, p->x, p->y)) {
+        if (c->command == 29 && c->dr) {
+            /* ③データ整理：点も追加･除外する。同一文字整理の範囲は文字だけ（測定：u_c4）。 */
+            if (c->dr == 4 || !picked_point(c, d, k)) {
+                continue;
+            }
+        } else if (!in_reach_layer(d, p->layer)
+                   || !jw_cmd_in_range(c, p->x, p->y, p->x, p->y)) {
             continue;
         }
         at_screen(w, p->x, p->y, &px, &py);
@@ -6949,7 +6963,11 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
                 }
             }
             for (k = 0; k < d->n_points; k++) {
-                d->points[k].rest[2] &= (unsigned char)~2u;
+                if (c->command == 29 && c->dr != 4 && prev_range_ok && picked_point(c, d, k)) {
+                    d->points[k].rest[2] |= 2u;
+                } else {
+                    d->points[k].rest[2] &= (unsigned char)~2u;
+                }
             }
             for (k = 0; k < d->n_texts; k++) {
                 if (prev_range_ok && takes_text(c) && picked_text(c, d, k)) {
@@ -15678,6 +15696,16 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
                     d->arcs[k].rest[2] &= (unsigned char)~2u;
                 }
             }
+            /* ③データ整理は点も範囲に入れる（decomp ovl17 3ab8:3557：点の rest[2] bit1）。 */
+            if (c->command == 29 && c->dr && c->dr != 4) {
+                for (k = 0; k < d->n_points; k++) {
+                    if (picked_point(c, d, k)) {
+                        d->points[k].rest[2] |= 2u;
+                    } else {
+                        d->points[k].rest[2] &= (unsigned char)~2u;
+                    }
+                }
+            }
             for (k = 0; k < d->n_texts && k < c->n0_texts; k++) {
                 /* 面取 の一括処理の範囲は文字に印を付けない（測定：functest dfz_R_2、
                  * 表題の文字 0 の rest[2] は 00 のまま。移植は 02 を付けていた）。 */
@@ -21155,7 +21183,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             long k, j;
 
             /* 文編集 ⑤ は文字だけなので左も文字（行が `（文字）`）。 */
-            if (right || c->command == 28 || c->command == 13) { /* 文字(R) */
+            if (right || c->command == 28 || c->command == 13
+                || (c->command == 29 && c->dr == 4)) { /* 文字(R) */
                 k = jw_cmd_text_at(d, w, sx, sy);
                 if (k < 0) {
                     c->missed = 1;
@@ -21164,6 +21193,35 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                 c->missed = 0;
                 flip(c, JW_FLIP_TEXT, k);
                 return 1;
+            }
+            /* ③データ整理の追加･除外は点も取る：先に矢の周り（読みと同じ菱形、8 ドット）の
+             * いちばん近い点を探し、あれば線・円弧の読み取りの印には触らず、その点を足す／除く
+             * （測定：optdata の h 系。印を付け直す探索は点が無いときだけ）。 */
+            if (c->command == 29 && c->dr && c->dr != 4) {
+                long best = -1;
+                double ax, ay, bestd;
+                long q;
+
+                jw_cmd_at(w, sx, sy, &ax, &ay);
+                bestd = JW_READ_REACH / w->scale;
+                for (q = 0; q < d->n_points; q++) {
+                    const JwcPoint *pq = &d->points[q];
+                    double dd;
+
+                    if (!in_reach_layer(d, pq->layer) || pq->rest[1] >= 0x5a) {
+                        continue;
+                    }
+                    dd = fabs((double)pq->x - ax) + fabs((double)pq->y - ay);
+                    if (dd < bestd) {
+                        bestd = dd;
+                        best = q;
+                    }
+                }
+                if (best >= 0) {
+                    c->missed = 0;
+                    flip(c, JW_FLIP_POINT, best);
+                    return 1;
+                }
             }
             /* 線の探索は読み取りの印を付け直す（pick_line と同じ。測定：
              * copy_s_add で (598,300) を押すと線 2 に 0x01、線 11 の 0x01 は

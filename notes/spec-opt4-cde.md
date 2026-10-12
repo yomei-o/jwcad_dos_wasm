@@ -77,6 +77,8 @@ if (byte[0x7e] != 0 && byte[0xd14] != 4 && byte[0x84] >= 2) {
 
 # ③ データ整理（ovl17 `3ab8:566c`、dis 0x301ec〜0x30635）
 
+**実装と実機で測った直し：`notes/opt4-data-measured.md`**（`src/optdata.c`・`src/optdata_run.c`）。3.5 のソートの読みは粗かったので、命令列（dis 0x2fb95〜0x301ec）から書き直した（上の記録に違いを書いた）。点は追加･除外でも取れる。
+
 ## 3.1 付属文書
 
 * `JW_CADV.HLP` 1764-1772 行：

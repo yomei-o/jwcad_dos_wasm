@@ -4448,6 +4448,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         cmd.top_item = 0;
         cmd.top_right = 0;
         ui.opt_stage = JW_OPT_DATA_G0;
+        jw_optdata_sort_reset();
         sync_ui();
         present();
         return -1;
