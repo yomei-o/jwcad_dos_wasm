@@ -42,3 +42,14 @@ g5_pre|type s|type 8|type 5|type 3|key enter|type 5
 g5_pre_t|type s|type 8|type 5|type 3|key enter|type 5|type 4
 g5_pre_bs|type s|type 8|type 5|type 3|key enter|type 5|key bs
 g5_pre_esc|type s|type 8|type 5|type 3|key enter|type 5|key esc|type 5
+h4_miss|type s|type 8|type 4|300 350 left
+h4_line|type s|type 8|type 4|400 140 left
+h4_line_r|type s|type 8|type 4|400 140 right
+h4_del|type s|type 8|type 4|type 1
+h4_del_bs|type s|type 8|type 4|type 1|key bs
+h4_in1|type s|type 8|type 4|400 140 left|type 5
+h4_in2|type s|type 8|type 4|400 140 left|type 5|type ,|type 3
+h4_in_dd|type s|type 8|type 4|400 140 left|type 5|type .|type .|type 3
+h4_done|type s|type 8|type 4|400 140 left|type 5|key enter
+h4_done_r|type s|type 8|type 4|400 140 left|type 5|key enter|400 140 right
+h4_again|type s|type 8|type 4|400 140 left|type 5|key enter|400 140 left

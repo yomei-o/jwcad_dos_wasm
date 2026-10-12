@@ -5120,6 +5120,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * what is under it: SAMPLE0's frame runs down x 161 from y 139 to
          * y 419 and the original shows it again only from y 299.  The strip
          * along the bottom of the screen goes with it. */
+        /* ｵﾌﾟｼｮﾝ ⑧ ④の高さ･奥行の入力欄：下の帯と枠は消える（測定：h4_line）。 */
+        if (s->command == 29 && s->opt_stage == JW_OPT25_HT_IN) {
+            fill(v, 0, 464, 639, 479, 0);
+        }
         if ((s->command == 13 || s->command == 28) && s->top_item == 4) {
             fill(v, 0, 464, 639, 479, 0);
             fill(v, 147, 87, 612, 298, 0);

@@ -8,3 +8,10 @@ o8_g5_empty|SAMPLE0|type s|type 8|type 5|key enter
 o8_g5_twice|SAMPLE0|type s|type 8|type 5|type 3|key enter|type 5|key enter
 o8_g5_twice2|SAMPLE0|type s|type 8|type 5|type 3|key enter|type 5|type 4|key enter
 o8_g5_lead|SAMPLE0|type s|type 8|type 5|type 0|type 0|type 7|key enter
+o8_h4_a|SAMPLE0|type s|type 8|type 4|400 140 left|type 5|key enter|key bs|key bs
+o8_h4_two|SAMPLE0|type s|type 8|type 4|400 140 left|type 1|type 0|type ,|type 3|key enter|key bs|key bs
+o8_h4_rep|SAMPLE0|type s|type 8|type 4|400 140 left|type 5|key enter|400 140 left|type 7|key enter|key bs|key bs
+o8_h4_prev|SAMPLE0|type s|type 8|type 4|400 140 left|type 5|key enter|300 140 right|key bs|key bs
+o8_h4_del|SAMPLE0|type s|type 8|type 4|400 140 left|type 5|key enter|type 1|400 140 left|key bs|key bs|key bs
+o8_h4_far|SAMPLE0|type s|type 8|type 4|450 140 left|type 2|key enter|key bs|key bs
+o8_h4_v|SAMPLE0|type s|type 8|type 4|400 140 left|type 1|type v|key enter|key bs|key bs

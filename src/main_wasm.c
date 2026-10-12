@@ -2638,7 +2638,7 @@ static void batch_after(int r, int leave, int miss, int x, int y)
 /* src/opt25.c が受けた押し・鍵のあとの後始末：帯の行・数え箱・画面。 */
 static void o25_after(int r, int leave, int x, int y)
 {
-    cmd.missed = 0;
+    cmd.missed = jw_opt25_missed();
     cmd.top_item = 0;
     cmd.top_right = 0;
     if (leave) {

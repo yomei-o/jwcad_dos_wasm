@@ -46,6 +46,9 @@ void jw_opt25_text(VGA *v, int opt_stage, int group);
 int jw_opt25_cursor(void);
 int jw_opt25_cursor_char(void);
 
+/* 押した所に線が無かった（`読取可能データ無`）なら 1（読むと降りる）。 */
+int jw_opt25_missed(void);
+
 /* 図の上書き：視点画面の線画。present の最後のほうで。 */
 void jw_opt25_overlay(VGA *v, const Jwc *d, const JwView *w, int opt_stage);
 
