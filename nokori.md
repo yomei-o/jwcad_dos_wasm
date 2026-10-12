@@ -1,6 +1,6 @@
 # nokori.md — 完成までに残っていること
 
-最終更新：2026-10-11。**ここは残件だけ**を書く。やったこと・測定の詳細・decomp を追った経緯は
+最終更新：2026-10-13。**ここは残件だけ**を書く。やったこと・測定の詳細・decomp を追った経緯は
 [notes/nokori-log.md](notes/nokori-log.md) に原文のまま移した（コードのコメントが指す「nokori.md の ○○ の節」は
 そちらにある）。やり方は [RESUME.md](RESUME.md)（付録に 2026-10 の検査環境メモ）。
 
@@ -32,7 +32,7 @@
 | **B 印だけの差**（見た目・働きに影響なし） | 範囲の印 `rest[2] bit1`・端の印 `rest[3]` | 複写・面取の範囲、文字の探索マーク（変形 `henkei_*` 6 件・面取 R_9/R_10/R_21・複写 c_5・C_7・消去 `er_escbug_*` 2 件・E_19 の線 2・変形 ⑧記号の実体探索 5 件） | 3〜4 h（規則を決めれば一括で直る） |
 | | 1 ビットの丸め | 複写・移動 ⑥回転の `cm_move_rotate_esc_degenerate_ulp`、⑧値変 [BS] 後の `dim_val_bs_after_*`（保留 D） | 0（やらない） |
 | **C 画面の差**（C 節の 4 件） | 曲線 c7・＋ c3_v・接線 s1_c4 | 原本はクリック時にカーソルが出ない？／ESC 後の数え箱／「前回と同じ」角度の更新規則 | 3〜4 h |
-| **D 作っていない機能** | オプション ④一括処理・⑤日影図・⑥各設定・⑧2.5D（⑧は項目の行・④⑤⑥・視点画面・①作図・②変更間隔まで実装、高さデータの読み取り・円は SAMPLE0〜6・TEST1〜6 で 0 画素差、残りは円データの螺旋・#k・TEST7：notes/spec-opt8-data.md §6） | ④は項目の行までは一致、下の小項目が未実装。**一番最後（ユーザー指示）** | 12〜20 h |
+| **D 作っていない機能** | オプション ⑤日影図の仕上げ（①〜④⑥⑧は取り込み済み、下の「オプションの状態」） | ⑤日影図は別ブランチで作業中（③等時間図・⑤壁面日影まで実機と一致、②の計算・①の高さ入力などの残りあり）。**一番最後（ユーザー指示）** | 3〜6 h |
 | | HELP・プリンタ・変形⑤外部の `*.bat` | **やらない**（ユーザー指示） | — |
 | **E decomp の裏取り**（ほぼ完了） | 「測定のみ・decomp 未確認」の規則 | 読めた規則は全部確認済み（下の 8 節）。残り：文字の連続書・円弧 rest[1] の保存側（逆コンパイルが崩れて読めない）、中心線の点が線上の許容値 `[0x9e9c]`、面取④の許容値・60 本上限 | 1〜2 h |
 | **合計（D を除く）** | 「作図でふつうに使える」まで | A（稀な組み合わせ・見つけたときだけ）+B+C+E | **約 8〜12 h（待ち時間込み）** |
@@ -152,8 +152,23 @@ henkei_s0_c4(6px)・tangent_s1_c4(29px)・chamfer 等の端の画素・dim_val_b
 - ③データ整理（src/optdata.c・src/optdata_run.c、opt_stage は 40・41）：帯・範囲・確定の画面（optdata_screens 48 件・optdata_run_screens 13 件）と、重複線整理・連結･重複線整理・ソート・同一文字整理の保存結果（probe_opt4_data 23 件）が実機と一致。測った直しと残りは notes/opt4-data-measured.md。
 - 未実装：④ファイル(.JWL)、⑤の縮尺確認、④⑤中の左盤の線種・紙・縮尺などの入力、③の取り消し用の自動保存・隠し項目。opt_stage は ①② が 30 番台、③が 40 番台、④⑤が 10〜23。
 
-## オプション⑥各設定（取り込み前・ブランチで実装、仕様 notes/spec-opt6.md）
+## オプション⑥各設定（取り込み済み 7820645、仕様 notes/spec-opt6.md）
 - src/optset.c・src/optenv.c。opt_stage は 50〜59（50＝帯、51〜57＝①〜⑦）。①ﾒﾓﾘｰ配分・②画面ｻｲｽﾞ・③ｺﾏﾝﾄﾞｷｰ・④作図時間・⑤環境FILE（ファイル選択と LAYNAM/LAYCND）・⑥ﾄﾞﾗｯｸﾞ量・⑦画色の全画面と遷移を、
   実機と 0 画素差で一致（tools/cases/optset_screens.txt）。保存結果：jw_key.000・JW_PAL.DAT（tools/optsetfiles.sh）、作業時間 18 番（tools/cases/probe_opt6.txt）。
 - 残る差：①の容量は値を覚えるだけ（起動時 3639 は測定のみ）、⑥の値は左ドラッグが無いので持つだけ、⑤の LTYPE 以下は読んで捨てる・読んだあとの保存結果は不一致、
   帯の最中の左の盤のレイヤ釦の押し、④⑦の欄の矢印キー。
+
+## オプションの状態（2026-10-13）
+
+| 項目 | 状態 | 仕様・場所 |
+|---|---|---|
+| ①建具平面・②断面・③立面 | 既存（一覧まで） | src/item.h |
+| ④一括処理 ①②③④⑤ | 取り込み済み。画面・保存結果とも実機一致（未実装：④ファイル .JWL・⑤の縮尺確認・取り消し・左盤の線種/紙/縮尺入力） | notes/spec-opt4-*.md、src/optbatch.c optdata*.c optsub.h。opt_stage：④⑤=10〜23、①②=30〜34、③=40・41 |
+| ⑤日影図 | **作業中**（ブランチ worktree-agent-a1dfd507c9e077353、未取り込み）。③等時間図・⑤壁面日影の一部まで実機一致 | notes/spec-opt5-*.md、src/opthikage.c。opt_stage 70〜 |
+| ⑥各設定 | 取り込み済み（画面 0 画素差、保存結果は ③⑦④ の 3 種のみ確認） | notes/spec-opt6.md、src/optset.c optenv.c。opt_stage 50〜57 |
+| ⑧2.5D | 取り込み済み d9e0e4d。SAMPLE0〜6・TEST1〜6 の視点画面が 0 画素差、TEST7 は容量超過の分岐が未実装、円データ第 4 値以降・式評価（atof 代用）が残り | notes/spec-opt8*.md、src/opt25*.c。opt_stage 60〜67 |
+| ⑦外部処理・HELP・印刷・変形⑤外部 | **作らない**（ユーザー指示） | — |
+
+検査：画面は `sh tools/optsubcheck.sh [名前]`（`LIST=tools/cases/<名前>_screens.txt` で一覧を替える。⑥=optset_screens、⑧=opt8_screens・opt8_data_screens、③=optdata_screens）、
+保存結果は `FUNCID_PREFIX=x sh tools/funccases.sh tools/cases/probe_opt4_*.txt`（probe_opt6・probe_opt8 も）。
+**orig/ に AUTO.JWC・JW_FILE0.000 などの余計なファイルがあると実機のファイル一覧が変わって画面が合わなくなる**（⑤環境FILE で発覚。gitignore 済みなので退避する）。
