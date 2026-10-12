@@ -39,8 +39,8 @@ int jw_opt25_click(Jwc *d, const JwView *w, int x, int y, int right, int cell,
 int jw_opt25_key(Jwc *d, int key, int *opt_stage, int *leave);
 
 /* 上の行・行 2 の字。呼び元（ui.c）が上の行を黒で塗って top_clear したあとに呼ぶ。
- * group は書込グループ（0〜15）。 */
-void jw_opt25_text(VGA *v, int opt_stage, int group);
+ * layer は書込レイヤ（グループ<<4|レイヤ）。 */
+void jw_opt25_text(VGA *v, int opt_stage, int layer);
 
 /* 入力欄の緑のカーソルの桁（無ければ -1）。 */
 int jw_opt25_cursor(void);
@@ -67,5 +67,6 @@ void jw_o25v_row2(VGA *v, const Jwc *d, int unit);
 int jw_o25v_item(const Jwc *d, int n);
 void jw_o25v_press(const Jwc *d, double px, double py);
 int jw_o25v_mode(void);
+long jw_o25v_commit(Jwc *d);
 
 #endif

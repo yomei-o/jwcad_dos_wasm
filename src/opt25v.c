@@ -549,3 +549,61 @@ void jw_o25v_press(const Jwc *d, double px, double py)
     }
     project_all(d);
 }
+
+/* ------------------------------------------------------------ 作図 */
+/* 0x2fb3f：作図枠 [0,W]×[0,H]（W=518、H=447）への切り取り。float 演算。1＝見える。 */
+static int clip4(float *x0, float *y0, float *x1, float *y1)
+{
+    const float W = 518.0f, H = 447.0f;
+    static const float PX[4] = { 0.0f, 518.0f, 518.0f, 0.0f }, PY[4] = { 0.0f, 0.0f, 447.0f, 447.0f };
+    static const float QX[4] = { 518.0f, 518.0f, 0.0f, 0.0f }, QY[4] = { 0.0f, 447.0f, 447.0f, 0.0f };
+    int k;
+
+    if (*x0 >= 0.0f && *x0 <= W && *y0 >= 0.0f && *y0 <= H
+        && *x1 >= 0.0f && *x1 <= W && *y1 >= 0.0f && *y1 <= H) {
+        return 1;
+    }
+    if ((*x0 < 0.0f && *x1 < 0.0f) || (*x0 > W && *x1 > W)
+        || (*y0 < 0.0f && *y1 < 0.0f) || (*y0 > H && *y1 > H)) {
+        return 0;
+    }
+    for (k = 0; k < 4; k++) {
+        const float dx = QX[k] - PX[k], dy = QY[k] - PY[k];
+        const float s0 = (*y0 - PY[k]) * dx - (*x0 - PX[k]) * dy;
+        const float s1 = (*y1 - PY[k]) * dx - (*x1 - PX[k]) * dy;
+        float t, ddx, ddy;
+
+        if (s0 >= 0.0f && s1 >= 0.0f) continue;
+        if (!(s0 > 0.0f) && !(s1 > 0.0f)) return 0;
+        if (s0 == s1) return 0;
+        t = s0 / (s0 - s1);
+        ddx = *x1 - *x0;
+        ddy = *y1 - *y0;
+        if (s0 < 0.0f) {
+            *x0 = t * ddx + *x0;
+            *y0 = t * ddy + *y0;
+        }
+        if (s1 < 0.0f) {
+            *x1 = t * ddx + *x0;
+            *y1 = t * ddy + *y0;
+        }
+    }
+    return 1;
+}
+
+/* ①作図の実行：投影した線を図面の線として足す（5c55 の記録パス、spec-opt8-view §5.1）。 */
+long jw_o25v_commit(Jwc *d)
+{
+    long i, before = d->n_lines;
+
+    for (i = 0; i < v_nout; i++) {
+        JwcLine t = v_out[i];
+
+        if (!clip4(&t.x0, &t.y0, &t.x1, &t.y1)) continue;
+        t.rest[0] = t.rest[1] = t.rest[2] = t.rest[3] = 0;
+        t.rest[1] = 0x0f;               /* +0x13 は本物では未初期化のスタック（測定：o8_v3_run の保存結果は常に 0x0f） */
+        if (t.pen < 0x5a && t.x0 == t.x1 && t.y0 == t.y1) continue;   /* 66b3：長さ 0 は足さない */
+        jwc_put_line(d, &t);
+    }
+    return d->n_lines - before;
+}

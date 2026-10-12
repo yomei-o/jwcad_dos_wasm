@@ -30,6 +30,9 @@
 #define S_HAIN    " \x8d\x82\x82\xb3\xa5\x89\x9c\x8ds"        /*  高さ･奥行 */
 #define S_M1      "\x82\x8d"                                 /* ｍ */
 #define S_SAME    "\x93\xaf\x92l \x8d\xb6\xb8\xd8\xaf\xb8"   /* 同値 左ｸﾘｯｸ */
+#define S_LAY1    "\x83\x8c\x83" "C\x83\x84"                         /* レイヤ */
+#define S_ASK1    "\x82\xc9\x8d\xec\x90}\x82\xb5\x82\xdc\x82\xb7"  /* に作図します */
+#define S_RUN2    "|\x87@ \x8e\xc0\x8ds(L)|\x87" "A \x92\x86\x8e~(R)|"
 #define S_MM     " mm "
 #define S_M      " \x82\x8d "                        /* ｍ（全角） */
 #define S_GH     "\xda\xb2\xd4\xb8\xde\xd9\xb0\xcc\xdf[%c]\x8d\x82\x82\xb3 = "  /* ﾚｲﾔｸﾞﾙｰﾌﾟ[N]高さ =  */
@@ -58,6 +61,9 @@ static int o25_missed;          /* 押した所に線が無い（読取可能デ
 static double o25_ox, o25_oy, o25_ux, o25_uy;   /* 文字を置く端と、遠い端へ向かう単位ベクトル */
 static const Jwc *o25_d;        /* 視点画面の行 2 が縮尺を見る */
 static int o25_vlab = 1;        /* 視点画面の行 2・3 の札（捨てられる鍵で消える。項目の行の o25_lab と同じ） */
+static int o25_done;            /* [bp-0x120]：この視点画面で作図した（メニューの ESC が作図を取り消す） */
+static long o25_base;           /* [bp-0x5ae]：視点画面に入ったときの線の数 */
+static int o25_wl;              /* 確認の文字に出す書込レイヤ（0〜15）。text() の前に set_wl が入れる */
 static int o25_cur = -1;        /* 入力欄の緑のカーソルの桁（text が決める） */
 
 static char hexch(int n)
@@ -296,6 +302,8 @@ static void item_pick(Jwc *d, int n, int *opt_stage)
     case 3:                                     /* ①透視図・②鳥瞰図・③ｱｲｿﾒ（src/opt25v.c） */
         o25_d = d;
         if (jw_o25v_enter(d, n, o25_unit)) {
+            o25_base = d->n_lines;
+            o25_done = 0;
             o25_vlab = 1;
             *opt_stage = JW_OPT25_VIEW;
         }
@@ -334,13 +342,32 @@ int jw_opt25_click(Jwc *d, const JwView *w, int x, int y, int right, int cell,
         }
         return JW_O25_TAKEN;
     }
+    if (*opt_stage == JW_OPT25_ASK) {
+        const int run = (y >= 0 && y <= 15 && cell == 1)
+                        || (!(y >= 0 && y <= 15) && !right && w && x >= w->x0 && x <= w->x1
+                            && y >= w->y0 && y <= w->y1);
+
+        if (run) {
+            const int n = (int)jw_o25v_commit(d);
+
+            o25_done = 1;
+            o25_lab = 1;
+            *opt_stage = JW_OPT25_MENU;
+            return n ? JW_O25_CHANGED : JW_O25_TAKEN;
+        }
+        o25_vlab = 1;
+        *opt_stage = JW_OPT25_VIEW;
+        return JW_O25_TAKEN;
+    }
     if (*opt_stage == JW_OPT25_VIEW) {
         o25_vlab = 1;
         if (y >= 0 && y <= 15) {
             if (cell >= 3 && cell <= 9) {
                 jw_o25v_item(d, cell);
-            } else if (cell == 1 || cell == 2) {
-                /* ①作図・②変更間隔：未実装（spec-opt8-view §2.4・§3.3） */
+            } else if (cell == 1) {
+                *opt_stage = JW_OPT25_ASK;
+            } else if (cell == 2) {
+                /* ②変更間隔：未実装（spec-opt8-view §3.3、ovl25 3ab8:4f52） */
             }
             return JW_O25_TAKEN;
         }
@@ -418,6 +445,15 @@ int jw_opt25_key(Jwc *d, int key, int *opt_stage, int *leave)
             o25_lab = 1;
             return JW_O25_TAKEN;
         }
+        if (key == 27 && o25_done) {            /* 作図のあとだけ効く ESC：作図を取り消す（5c55 0x30a44〜） */
+            while (d->n_lines > o25_base) {
+                jwc_remove_line(d, d->n_lines - 1);
+            }
+            jwc_ink_clear(d);                   /* 885:23aa の全画面描き直し：消した跡の穴を残さない */
+            o25_done = 0;
+            o25_lab = 1;
+            return JW_O25_CHANGED;
+        }
         if (key >= 0 && key < 256 && jw_ui_key_command(key)) {
             return JW_O25_NONE;                 /* 命令の頭文字は命令を替える */
         }
@@ -437,7 +473,26 @@ int jw_opt25_key(Jwc *d, int key, int *opt_stage, int *leave)
         }
         field_edit(key);
         return JW_O25_TAKEN;
+    case JW_OPT25_ASK:
+        if (key == '1') {
+            const int n = (int)jw_o25v_commit(d);
+
+            o25_done = 1;
+            o25_lab = 1;
+            *opt_stage = JW_OPT25_MENU;
+            return n ? JW_O25_CHANGED : JW_O25_TAKEN;
+        }
+        if (key >= 0 && key < 256 && key != 13 && key != 10 && jw_ui_key_command(key)) {
+            return JW_O25_NONE;
+        }
+        o25_vlab = 1;
+        *opt_stage = JW_OPT25_VIEW;             /* 中止（②・ESC・Enter など） */
+        return JW_O25_TAKEN;
     case JW_OPT25_VIEW:
+        if (key == '1') {
+            *opt_stage = JW_OPT25_ASK;
+            return JW_O25_TAKEN;
+        }
         if (key == 27) {                        /* 視点画面の ESC：メニューへ（作図の取り消しではない） */
             jw_o25v_free();
             o25_lab = 1;
@@ -508,8 +563,11 @@ int jw_opt25_cursor(void)
     return o25_cur;
 }
 
-void jw_opt25_text(VGA *v, int opt_stage, int group)
+void jw_opt25_text(VGA *v, int opt_stage, int layer)
 {
+    const int group = (layer >> 4) & 15;
+
+    o25_wl = layer & 15;
     char row[160];
 
     o25_cur = -1;
@@ -521,6 +579,14 @@ void jw_opt25_text(VGA *v, int opt_stage, int group)
         jw_ui_text(v, 8, 1, 7, 0, t);
         jw_ui_text(v, 27, 1, 7, 0, o25_buf);
         o25_cur = 26 + o25_pos;     /* 欄は桁 27（1 始まり）、x = 桁*8 */
+        return;
+    }
+    if (opt_stage == JW_OPT25_ASK) {
+        char t[120];
+
+        sprintf(t, S_LAY1 "(%c-%c)" S_ASK1 " " S_RUN2, hexch(group), hexch(o25_wl));
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        jw_ui_text(v, 8, 1, 7, 0, t);
         return;
     }
     if (opt_stage == JW_OPT25_VIEW) {
@@ -589,6 +655,9 @@ void jw_opt25_text(VGA *v, int opt_stage, int group)
         return;
     }
     sprintf(row, "%s%c%s", S_ROW_A, hexch(group), S_ROW_B);
+    if (o25_done) {
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+    }
     jw_ui_text(v, 8, 1, 7, 0, row);
     jw_ui_text(v, 73, 1, 7, 0, S_BS);
     if (o25_lab) {
@@ -598,7 +667,7 @@ void jw_opt25_text(VGA *v, int opt_stage, int group)
 
 void jw_opt25_overlay(VGA *v, const Jwc *d, const JwView *w, int opt_stage)
 {
-    if (opt_stage == JW_OPT25_VIEW) {
-        jw_o25v_draw(v, d, w, o25_vlab);
+    if (opt_stage == JW_OPT25_VIEW || opt_stage == JW_OPT25_ASK) {
+        jw_o25v_draw(v, d, w, opt_stage == JW_OPT25_VIEW && o25_vlab);
     }
 }

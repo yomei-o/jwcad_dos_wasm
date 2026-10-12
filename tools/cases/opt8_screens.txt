@@ -95,3 +95,12 @@ v3_k7x2|type s|type 8|type 3|type 7|type 7
 v3_click|type s|type 8|type 3|400 300 left
 v3_esc|type s|type 8|type 3|key esc
 v3_bs|type s|type 8|type 3|key bs
+v3_ask|type s|type 8|type 3|type 1
+v3_run|type s|type 8|type 3|type 1|type 1
+v3_run_click|type s|type 8|type 3|type 1|400 300 left
+v3_run_r|type s|type 8|type 3|type 1|400 300 right
+v3_cancel|type s|type 8|type 3|type 1|type 2
+v3_run_esc|type s|type 8|type 3|type 1|type 1|key esc
+v3_run_esc2|type s|type 8|type 3|type 1|type 1|key esc|key esc
+v1_run|type s|type 8|type 1|type 1|type 1
+v2_run|type s|type 8|type 2|type 1|type 1

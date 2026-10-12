@@ -15,3 +15,9 @@ o8_h4_prev|SAMPLE0|type s|type 8|type 4|400 140 left|type 5|key enter|300 140 ri
 o8_h4_del|SAMPLE0|type s|type 8|type 4|400 140 left|type 5|key enter|type 1|400 140 left|key bs|key bs|key bs
 o8_h4_far|SAMPLE0|type s|type 8|type 4|450 140 left|type 2|key enter|key bs|key bs
 o8_h4_v|SAMPLE0|type s|type 8|type 4|400 140 left|type 1|type v|key enter|key bs|key bs
+o8_v3_run|SAMPLE0|type s|type 8|type 3|type 1|type 1|key bs
+o8_v1_run|SAMPLE0|type s|type 8|type 1|type 1|type 1|key bs
+o8_v2_run|SAMPLE0|type s|type 8|type 2|type 1|type 1|key bs
+o8_v3_esc|SAMPLE0|type s|type 8|type 3|type 1|type 1|key esc|key bs
+o8_v3_k4|SAMPLE0|type s|type 8|type 3|type 4|type 4|type 1|type 1|key bs
+o8_v1_k5|SAMPLE0|type s|type 8|type 1|type 5|type 5|type 1|type 1|key bs
