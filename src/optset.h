@@ -26,6 +26,7 @@
 #define JW_OS_NONE   0          /* この道のものではない。呼び元がそのまま続ける */
 #define JW_OS_TAKEN  1          /* 受けた（画面は描き直す） */
 #define JW_OS_LEAVE  2          /* 各設定を抜けて、オプションの 8 項目の帯へ戻る */
+#define JW_OS_PASS   5          /* 左の盤・下の帯の押し：各設定の道は動かさず、呼び元の通常の道へ流す */
 #define JW_OS_ENVLOAD 4         /* ⑤環境FILE：選んだファイルを読む（呼び元が読んで帯へ戻す） */
 #define JW_OS_ENV    3          /* ⑤環境FILE：ファイル選択の画面へ（呼び元が出す） */
 

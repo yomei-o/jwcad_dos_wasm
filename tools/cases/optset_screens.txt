@@ -121,3 +121,20 @@ env_click_title|type s|type 6|type 5|600 450 left|130 8 left
 env_2_1|type s|type 6|type 5|type 2|type 1
 env_2_x|type s|type 6|type 5|type 2|key esc
 env_2_8|type s|type 6|type 5|type 2|type 8
+env_load_layerbtn|type s|type 6|type 5|type 1|20 312 left
+env_load_esc2|type s|type 6|type 5|type 1|key esc|key esc
+env_load_cmd|type s|type 6|type 5|type 1|key esc|key esc|type c
+ctl_layerbtn|type s|type 6|key esc|20 312 left
+band_panel_pen|type s|type 6|20 312 left
+band_panel_pen_move|type s|type 6|20 312 left|move 400 250
+band_panel_pen_move_d|type s|type 6|20 312 left|move 400 250|type 1
+band_panel_layer2|type s|type 6|60 366 left|move 400 250
+band_bar_zoom|type s|type 6|300 472 left
+band_bar_calc|type s|type 6|10 472 left
+band_cmd_click|type s|type 6|50 150 left
+col_panel|type s|type 6|type 7|20 312 left
+time_panel|type s|type 6|type 4|20 312 left
+key_panel|type s|type 6|type 3|20 312 left
+
+# 実機と一致しないもの（notes/spec-opt6.md の残る差）：band_panel_layer（帯の最中にレイヤの釦を押す）、
+# drag_panel・size_panel・mem_panel（数の欄の最中に左の盤を押す）。ctl_grp・ctl_sub は座標が合っていなかった（⑥と無関係）。

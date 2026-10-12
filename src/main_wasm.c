@@ -48,6 +48,10 @@
 #define AREA_X1 638
 #define AREA_Y1 462
 
+/* ｵﾌﾟｼｮﾝ ⑥各設定の帯のあいだに左の盤（ペン・レイヤ…）を押すと、盤を閉じたあと各設定の帯に戻る
+ * （本物は帯の入力の中で盤を扱って 2a18 が戻るだけ。移植は盤が JwUi を作り直すので覚えておく）。 */
+static int set_return_stage;
+
 static VGA vga;
 static JwView view;
 static JwUi ui;
@@ -2242,7 +2246,15 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
          * 「いまの命令」は起動したときから 入出力（30）で、盤を閉じると
          * その上の行 `|①ファイル(L)|②プロッタ(R)|…` を出し、メニューの
          * 入出力 も黄色くなります（測定：線色の盤を開いて閉じただけ）。 */
-        if (!ui.command) {
+        if (!ui.command && set_return_stage) {
+            ui.command = 29;
+            ui.guide = 0;
+            jw_cmd_pick(&cmd, 29);
+            ui.stage = 0;
+            ui.io_stage = 0;
+            ui.opt_stage = set_return_stage;
+            set_return_stage = 0;
+        } else if (!ui.command) {
             ui.command = 30;
             ui.guide = 0;
             jw_cmd_pick(&cmd, 30);
@@ -3092,6 +3104,10 @@ static int set_after(int r, int stage, int x, int y)
     if (x >= 0) {
         mouse_x = x;
         mouse_y = y;
+    }
+    if (r == JW_OS_PASS) {
+        set_return_stage = ui.opt_stage;
+        return -2;
     }
     if (r == JW_OS_NONE) {
         if (ui.io_stage == JW_IO_LOAD && ui.command == 29) {

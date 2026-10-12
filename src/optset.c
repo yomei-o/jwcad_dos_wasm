@@ -911,6 +911,9 @@ int jw_optset_click(Jwc *d, VGA *v, int x, int y, int right, int *opt_stage)
     if (jw_ui_menu_hit(x, y)) {
         return JW_OS_NONE;
     }
+    if (os_item == 0 && !top && (x < 122 || y > 462)) {
+        return JW_OS_PASS;
+    }
     if (os_item == 0) {
         if (top && item >= 1 && item <= 7) {
             return enter_item(d, item, opt_stage);
