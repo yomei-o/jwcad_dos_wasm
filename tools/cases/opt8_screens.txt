@@ -131,3 +131,11 @@ h4c|type s|type 8|type 4|286 303 left
 h4c_t|type s|type 8|type 4|286 303 left|type 1|type 2
 h4c_wrong|type s|type 8|type 4|286 303 right
 h4c_none|type s|type 8|type 4|600 440 left
+# 書いた高さが視点画面に反映される（DRAWING=SAMPLE0）
+hv5_1|type s|type 8|type 5|type 3|key enter|type 1
+hv5_3|type s|type 8|type 5|type 3|key enter|type 3
+hv4_1|type s|type 8|type 4|400 140 left|type 5|key enter|key bs|type 1
+hv4_2|type s|type 8|type 4|400 140 left|type 5|key enter|key bs|type 2
+hv4_3|type s|type 8|type 4|400 140 left|type 5|key enter|key bs|type 3
+hv4two_1|type s|type 8|type 4|400 140 left|type 1|type 0|type ,|type 3|key enter|key bs|type 1
+hv4two_2|type s|type 8|type 4|400 140 left|type 1|type 0|type ,|type 3|key enter|key bs|type 2
