@@ -1,0 +1,14 @@
+#名前|手順…（LIST=tools/cases/hikage_screens.txt sh tools/optsubcheck.sh で本物と画面を比べる。⑤日影図の帯と頁）
+top|type s|type 5
+top_esc|type s|type 5|key esc
+top_bs|type s|type 5|key bs
+b|type s|type 5|type 1
+b_bs|type s|type 5|type 1|key bs
+b_esc|type s|type 5|type 1|key esc
+p2|type s|type 5|type 2
+p2_bs|type s|type 5|type 2|key bs
+p3|type s|type 5|type 3
+p3_bs|type s|type 5|type 3|key bs
+p4|type s|type 5|type 4
+p4_bs|type s|type 5|type 4|key bs
+p2_click|type s|type 5|200 8 left

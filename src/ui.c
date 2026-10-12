@@ -24,6 +24,7 @@
 #include "optsub.h"
 #include "optbatch.h"
 #include "optdata.h"
+#include "opthikage.h"
 #include "item.h"
 #include "tategu.h"
 
@@ -5259,6 +5260,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          *                   and ` 内法 ` at 55, and two pairs of spaces in
          *                   colour 6 at 68 and 77
          */
+        /* ｵﾌﾟｼｮﾝ ⑤日影図 の帯と頁（src/opthikage.c）。 */
+        if (s->command == 29 && JW_OPT_HK(s->opt_stage)) {
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
+            jw_hk_text(v, s->opt_stage);
+        }
         /* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理 G0（項目の帯、src/optdata.c）。 */
         if (s->command == 29 && s->opt_stage == JW_OPT_DATA_G0) {
             fill(v, 0, 0, 639, 15, 0);

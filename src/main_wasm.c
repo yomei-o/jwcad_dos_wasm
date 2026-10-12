@@ -25,6 +25,7 @@
 #include "optplan.h"
 #include "optbatch.h"
 #include "optdata.h"
+#include "opthikage.h"
 #include "tategu.h"
 #include "view.h"
 
@@ -3078,8 +3079,99 @@ static int data_g0_click(int x, int y, int right)
     return -1;
 }
 
+/* ｵﾌﾟｼｮﾝ ⑤日影図（src/opthikage.c）の帯・頁の行き来。入口の帯（opt_stage==0 で top_item==5）の
+ * ①〜④は段 70〜73 へ、BS は入口の帯へ。⑤壁面日影と各頁の中身は未実装。 */
+static int hk_active(void)
+{
+    return ui.command == 29 && (JW_OPT_HK(ui.opt_stage) || (ui.opt_stage == 0 && ui.top_item == 5));
+}
+
+static void hk_goto(int stage)
+{
+    cmd.top_item = stage ? 0 : 5;
+    cmd.top_right = 0;
+    ui.opt_stage = stage;
+    sync_ui();
+    present();
+}
+
+static int hk_item(int n)
+{
+    if (JW_OPT_HK(ui.opt_stage)) {
+        sync_ui();
+        present();
+        return -1;
+    }
+    if (jw_hk_enter(n)) {
+        hk_goto(jw_hk_enter(n));
+        return -1;
+    }
+    return -2;
+}
+
+static int hk_key(int key)
+{
+    if (!hk_active()) {
+        return -2;
+    }
+    if (key >= '1' && key <= '5') {
+        return hk_item(key - '0');
+    }
+    if (JW_OPT_HK(ui.opt_stage)) {
+        if (key == 8) {
+            hk_goto(0);
+            return -1;
+        }
+        if (key == 27 || key == 13 || key == 10) {
+            return -1;
+        }
+        if (key >= 0 && key < 256 && jw_ui_key_command(key)) {
+            ui.opt_stage = 0;
+            return -2;
+        }
+        return -1;
+    }
+    if (key == 27) {            /* 入口の帯の [ESC]：オプションの第一段の行へ（main を抜ける） */
+        cmd.top_item = 0;
+        cmd.top_right = 0;
+        sync_ui();
+        present();
+        return -1;
+    }
+    return -2;
+}
+
+static int hk_click(int x, int y, int right)
+{
+    (void)right;
+    if (!hk_active()) {
+        return -2;
+    }
+    if (jw_ui_menu_hit(x, y)) {
+        if (JW_OPT_HK(ui.opt_stage)) {
+            ui.opt_stage = 0;
+        }
+        return -2;
+    }
+    if (y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
+        mouse_x = x;
+        mouse_y = y;
+        return hk_item(jw_ui_top_item(x, y));
+    }
+    return -2;
+}
+
 EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 {
+    /* ｵﾌﾟｼｮﾝ ⑤日影図。 */
+    if (ui.command == 29 && (JW_OPT_HK(ui.opt_stage) || (ui.opt_stage == 0 && ui.top_item == 5))) {
+        const int r = hk_click(x, y, right);
+
+        if (r != -2) {
+            return r;
+        }
+    }
+
     const int pick = jw_ui_menu_hit(x, y);
     const int bar = jw_ui_bar_item(x, y);
 
@@ -4967,6 +5059,14 @@ static int lc_msg_was;
 
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
+    /* ｵﾌﾟｼｮﾝ ⑤日影図。 */
+    {
+        const int r = hk_key(key);
+
+        if (r != -2) {
+            return r;
+        }
+    }
     /* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理 G0。 */
     if (ui.command == 29 && ui.opt_stage == JW_OPT_DATA_G0) {
         const int r = data_g0_key(key);

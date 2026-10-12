@@ -151,3 +151,9 @@ henkei_s0_c4(6px)・tangent_s1_c4(29px)・chamfer 等の端の画素・dim_val_b
 - ①直線伸縮・②直線部分消（src/optbatch.c）、④ﾚｲﾔ整理・⑤ｸﾞﾙｰﾌﾟ整理（src/optsub.h ほか）を実装し、実機と画面・保存結果が一致（probe_opt4_ab 20 件、optsubcheck 89 件）。
 - ③データ整理（src/optdata.c・src/optdata_run.c、opt_stage は 40・41）：帯・範囲・確定の画面（optdata_screens 48 件・optdata_run_screens 13 件）と、重複線整理・連結･重複線整理・ソート・同一文字整理の保存結果（probe_opt4_data 23 件）が実機と一致。測った直しと残りは notes/opt4-data-measured.md。
 - 未実装：④ファイル(.JWL)、⑤の縮尺確認、④⑤中の左盤の線種・紙・縮尺などの入力、③の取り消し用の自動保存・隠し項目。opt_stage は ①② が 30 番台、③が 40 番台、④⑤が 10〜23。
+
+## オプション⑤日影図（途中）
+- 仕様：notes/spec-opt5-hikage.md（目次・実機の測定）、spec-opt5-ui/data/calc-a/calc-b.md（decomp の読み。計算部の C は実機未照合）。
+- 実装済み：入口の帯①〜④から建物設定の帯・②③④の頁（段 70〜73、src/opthikage.c）と BS/ESC の行き来。tools/cases/hikage_screens.txt 13 件が実機と 0 画素差（`LIST=tools/cases/hikage_screens.txt sh tools/optsubcheck.sh`）。
+- 未実装：①の入力/変更/消去/真北/確認、条件ダイアログ（4 行目の保存欄）、②③④の計算と保存結果、⑤壁面。
+- 検査の注意：数字を打つ前に押した点からマウスを動かすこと（動かさないと実機の数値欄が数字で閉じる）。
