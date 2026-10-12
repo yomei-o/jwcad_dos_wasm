@@ -152,8 +152,11 @@ henkei_s0_c4(6px)・tangent_s1_c4(29px)・chamfer 等の端の画素・dim_val_b
 - ③データ整理（src/optdata.c・src/optdata_run.c、opt_stage は 40・41）：帯・範囲・確定の画面（optdata_screens 48 件・optdata_run_screens 13 件）と、重複線整理・連結･重複線整理・ソート・同一文字整理の保存結果（probe_opt4_data 23 件）が実機と一致。測った直しと残りは notes/opt4-data-measured.md。
 - 未実装：④ファイル(.JWL)、⑤の縮尺確認、④⑤中の左盤の線種・紙・縮尺などの入力、③の取り消し用の自動保存・隠し項目。opt_stage は ①② が 30 番台、③が 40 番台、④⑤が 10〜23。
 
-## オプション⑤日影図（途中）
-- 仕様：notes/spec-opt5-hikage.md（目次・実機の測定）、spec-opt5-ui/data/calc-a/calc-b.md（decomp の読み。計算部の C は実機未照合）。
-- 実装済み：入口の帯①〜④から建物設定の帯・②③④の頁（段 70〜73、src/opthikage.c）と BS/ESC の行き来。tools/cases/hikage_screens.txt 13 件が実機と 0 画素差（`LIST=tools/cases/hikage_screens.txt sh tools/optsubcheck.sh`）。
-- 未実装：①の入力/変更/消去/真北/確認、条件ダイアログ（4 行目の保存欄）、②③④の計算と保存結果、⑤壁面。
-- 検査の注意：数字を打つ前に押した点からマウスを動かすこと（動かさないと実機の数値欄が数字で閉じる）。
+## オプション⑤日影図（取り込み済み）
+- 仕様：notes/spec-opt5-hikage.md（目次・実機で測ったこと）、spec-opt5-ui/data/calc-a/calc-b.md（decomp の読み）。実装は src/opthikage.c（段 70〜89：UI）・src/opthikage_calc.c（データ集め・計算）、文字列は tools/hkstr.py → src/opthikage_str.h。
+- 実装済み（実機と画面 0 画素差・保存結果一致を確認したもの）：①建物設定（高さ入力・変更・消去・真北・確認）、条件ダイアログと 4 行目の保存、②日影図（30 分毎・1 時間毎・指定時間）、③等時間図（高速・標準・指定範囲、間隔 1〜4・任意・誤差・終了）、④指定点日影時間、⑤壁面日影（壁面線の指示・向き・作図方向、②③④の壁面計算）。
+- 検査：画面は tools/cases/hikage_screens.txt・hikage_run_screens.txt（WAIT=250000000）・hikage_iso_screens.txt（DRAWING=TEST1 WAIT=250000000）・hikage_wall_screens.txt（BOOT=300000000 WAIT=100000000〜250000000 DRAWING=TEST7）を `LIST=… sh tools/optsubcheck.sh`、保存結果は tools/cases/probe_opt5.txt を `sh tools/hkregress.sh`（壁面は `BOOT=300000000 WAIT=100000000 sh tools/funccases.sh tools/cases/probe_opt5.txt hk_ws`）。
+- 検査図面：実機は保存のとき文字の x1 を入れ直すので、TEST3・TEST7 は固定点にした TEST3S・TEST7S（`sh tools/mkhkdraw.sh`、使い終わったら `sh tools/mkhkdraw.sh rm`）で比べる。
+- 検査の注意：数字を打つ前に押した点からマウスを動かすこと（動かさないと実機の数値欄が数字で閉じる）。③は計算に WAIT≈250000000（壁面・並べた入力は 600000000 か `wait N`）。TEST7 は起動が遅い（BOOT=300000000）。
+- 測定のみの直し（decomp にない合わせ）は src/opthikage*.c の「測定」注記を参照。2dddf のクリップは壁面（wall≠0）のときだけ（バイトで確認）。
+- 残る差：③壁面で計算直後・間隔を選ぶ前の画面に実機だけ出る 3 画素（行 2 に出る建物の破線の端）。印刷・HELP・外部 *.bat と 2.5D（⑧）は未実装。

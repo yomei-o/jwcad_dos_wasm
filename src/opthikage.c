@@ -77,6 +77,7 @@ void jw_hk_entry(Jwc *d)
 
 static int msg_top2;                    /* 壁面線：建物が無い（行 2 に言葉） */
 static int hk_toplabel_hide;            /* 上の帯：壁面日影の札は BS で消える */
+static long hk_resid = -1;               /* 印を落としても画面には白が残る線（7a6:0635 は描き直さない） */
 static long hk_wall = -1;                /* ⑤壁面日影で選んだ壁面線（線の番号。無ければ −1） */
 static int hk_base;                     /* [0x11e]：④の指定点の通し番号の基点 */
 static int hk_iso_err = 1;              /* [0x7638]：ラベルに「時間 誤差…」を付ける */
@@ -395,24 +396,11 @@ void jw_hk_iso_overlay(VGA *v, const Jwc *d, const JwView *w)
     if (!hk_remnant || !hk_iso_esc || !d) {
         return;
     }
-    {
-        static unsigned char keep[VGA_PLANES][80 * 480];
-        const long off0 = 48L * v->stride;
-        const long nb = (long)(v->height - 48) * v->stride;
-        int p;
-
-        for (p = 0; p < VGA_PLANES; p++) {
-            memcpy(keep[p], v->plane[p] + off0, (size_t)nb);
-        }
-        for (k = hk_iso_l0; k < d->n_lines; k++) {
-            jw_view_line(v, d, &d->lines[k], w, jw_view_pen_colour(d->lines[k].pen));
-        }
-        for (k = hk_iso_t0; k < d->n_texts; k++) {
-            jw_view_text(v, d, &d->texts[k], w, jw_view_text_colour(d, d->texts[k].size));
-        }
-        for (p = 0; p < VGA_PLANES; p++) {
-            memcpy(v->plane[p] + off0, keep[p], (size_t)nb);
-        }
+    for (k = hk_iso_l0; k < d->n_lines; k++) {
+        jw_view_line(v, d, &d->lines[k], w, jw_view_pen_colour(d->lines[k].pen));
+    }
+    for (k = hk_iso_t0; k < d->n_texts; k++) {
+        jw_view_text(v, d, &d->texts[k], w, jw_view_text_colour(d, d->texts[k].size));
     }
     if (!hk_iso_hide) {
         jw_ui_text(v, 48, 2, 7, 0, jw_hk_iso_errtxt());
@@ -514,6 +502,13 @@ void jw_hk_wall_overlay(VGA *v, const Jwc *d, const JwView *w)
 
             t.pen = 7;
             jw_view_line(v, d, &t, w, 0);
+        } else if (k == hk_resid) {
+            /* 印を落としても本物は描き直さない：強調の跡が白で残る（測定：w_5_pick_5・w_ask_esc） */
+            const JwcLine *L = &d->lines[k];
+
+            jw_line(v, (int)((L->x0 - w->ox) * w->scale + w->ax), (int)(w->ay - (L->y0 - w->oy) * w->scale),
+                    (int)((L->x1 - w->ox) * w->scale + w->ax), (int)(w->ay - (L->y1 - w->oy) * w->scale),
+                    7, ROP_REPLACE, JW_STYLE_SOLID);
         }
     }
     v->clip_x0 = cx0;
@@ -938,6 +933,7 @@ static void wall_mark(Jwc *d, long n, int on)
 void jw_hk_wall_enter(Jwc *d)
 {
     jw_hk_wall_msg_clear();
+    hk_resid = hk_wall;
     wall_mark(d, hk_wall, 0);
 }
 
@@ -1494,6 +1490,7 @@ int jw_hk_key(Jwc *d, int key, int *stage)
         }
         if (key == 27 && d) {
             if (st == JW_OPT_HK_WLA) {
+                hk_resid = wall_ask_n;
                 wall_mark(d, wall_ask_n, 0);
                 hk_wall = -1;
             } else {
