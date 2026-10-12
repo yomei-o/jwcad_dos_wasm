@@ -25,6 +25,7 @@
 #include "opt25.h"
 #include "optbatch.h"
 #include "optdata.h"
+#include "optset.h"
 #include "item.h"
 #include "tategu.h"
 
@@ -92,7 +93,15 @@ static const char MENU[30][7] = {
 
 /* The key that picks each one, DGROUP 0x7cad: the fifteen of the right column
  * in capitals, then the fifteen of the left in small letters. */
-static const char MENU_KEY[31] = "CHXBFTVRWDENASQchxbftvrwdenasq";
+static char MENU_KEY[31] = "CHXBFTVRWDENASQchxbftvrwdenasq";
+
+/* ｵﾌﾟｼｮﾝ ⑥各設定 ③ｺﾏﾝﾄﾞｷｰ が命令の鍵を書き換える（src/optset.c）。 */
+void jw_ui_set_menu_key(int command, char key)
+{
+    if (command >= 1 && command <= 30) {
+        MENU_KEY[command - 1] = key;
+    }
+}
 
 int jw_ui_item_has(int command, int item, int right)
 {
@@ -436,6 +445,11 @@ void jw_ui_pick_kind(JwUi *s, int kind)
         s->file_bar = JW_PICK_CHILD_BAR;
         s->file_path = "path=A:" "\x5c" "*.bat";
         s->file_word = " " "\x8a\x4f\x95\x94\x95\xcf\x8c\x60" "    ";
+        break;
+    case JW_PICK_ENV:
+        s->file_bar = JW_FILE_BAR;
+        s->file_path = "path=A:" "\x5c" "*.jwf";
+        s->file_word = " " "\x8a\xc2\x8b\xab" "    ";
         break;
     case JW_PICK_CHILD:
         s->file_bar = JW_PICK_CHILD_BAR;
@@ -1017,7 +1031,8 @@ static void pen_name(char *out, int pen, int line_type)
  * the width this table holds. */
 static double magnification(int paper)
 {
-    return paper >= 0 && paper <= 4 ? 170.0f / PAPER_MM[paper] : 0.0;
+    /* 画面の幅（mm）は DS:[0xc34]。初期 170、ｵﾌﾟｼｮﾝ ⑥各設定 ②画面ｻｲｽﾞ で変わる（src/optset.c）。 */
+    return paper >= 0 && paper <= 4 ? jw_optset_screen_mm() / PAPER_MM[paper] : 0.0;
 }
 
 void jw_ui_default(JwUi *s)
@@ -4473,6 +4488,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 8, 1, 7, 0,
                            " " "\x81\x9f\x83" "t" "\x83" "@" "\x83" "C"
                            "\x83\x8b\x96\xbc\x93\xfc\x97\xcd");
+            } else if (s->file_drive_env == 2) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                jw_ui_text(v, 8, 1, 7, 0, JW_DRIVE_BAR);
+            } else if (s->file_drive_env == 3) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]" "\x83h\x83\x89\x83" "C\x83u\x96\xbc\x93\xfc\x97\xcd\x81@");
+                fill(v, 21 * 8, 7, 21 * 8 + 7, 15, 4);
             } else if (saving) {
                 jw_ui_text(v, 1, 1, 6, 0xffffu, JW_SAVE_BAR);
             } else {
@@ -5329,6 +5350,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 68, 2, 6, 0, "  ");
                 jw_ui_text(v, 77, 2, 6, 0, "  ");
             }
+        }
+        /* ｵﾌﾟｼｮﾝ ⑥各設定（src/optset.c が字と絵を持つ）。 */
+        if (JW_OPT_SETTING(s)) {
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
+            jw_optset_text(v, NULL, s->opt_stage);
         }
         /* ④⑤ の段は上の行を jw_ui_data が自分で書く（小窓と一緒に）。 */
         if (JW_OPT_SUB(s)) {

@@ -104,6 +104,9 @@ for f in orig port; do
         # 最後の 1 ビットの違いが見えないため。2026-09-29 に ○ の半径で）。
         echo "== raw"
         python tools/recdump.py "$D/$f.JWC" 2> /dev/null || true
+        # 先頭の 4 行（ｵﾌﾟｼｮﾝ ⑥各設定 ④作図時間 が 18 番を変える）。
+        echo "== header"
+        python tools/hdrdump.py "$D/$f.JWC" 2> /dev/null || true
     } > "$D/$f.txt"
 done
 # **何も起きなかった検査を「同じ」と言わない**ように、元の図面から
@@ -116,6 +119,7 @@ for f in orig port; do
             echo "== arcs"; python tools/arcdump.py "orig/$DRAWING.JWC" 2> /dev/null || true
             echo "== texts"; python tools/textdump.py "orig/$DRAWING.JWC" 2> /dev/null || true
             echo "== raw"; python tools/recdump.py "orig/$DRAWING.JWC" 2> /dev/null || true
+            echo "== header"; python tools/hdrdump.py "orig/$DRAWING.JWC" 2> /dev/null || true
         } > "$D/base.txt"
     }
 done

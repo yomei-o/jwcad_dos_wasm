@@ -23,6 +23,7 @@ static const struct {
     { "TEST6.JWC", "93/09/12 01:56", 0x1B2C0F02ul },
     { "JW_SAMPL.BAT", "98/10/17 02:22", 0x255112DCul },
     { "SAMPLE6.JWC", "97/09/18 02:21", 0x233212A0ul },
+    { "SAMPLE.JWF", "98/03/22 02:22", 0x247612CFul },
     { "TEST7.JWC", "98/10/17 02:22", 0x255112DCul },
     { 0, 0, 0 },
 };

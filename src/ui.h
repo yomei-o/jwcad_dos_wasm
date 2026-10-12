@@ -169,6 +169,8 @@ typedef struct {
     /* `編集ファイル名=` on row 3 -- the drawing in hand.  入出力 shows it;
      * the three other screens do not. */
     int file_named;
+    /* ｵﾌﾟｼｮﾝ ⑥各設定 ⑤環境FILE の ファイル選択：2 ＝ ドライブ変更の行、3 ＝ ドライブ名入力（src/optset.c が決める）。 */
+    int file_drive_env;
     /* The colour of the `path=A:\*.xxx` line.  Cyan on three of the four
      * screens and **green on ｵﾌﾟｼｮﾝ ⑦外部処理's**, which is the original's
      * own doing: its call says colour 4 where the others say 5. */
@@ -517,7 +519,7 @@ typedef struct {
 /* ④一括処理 ③データ整理（src/optdata.c）：G0 は項目の帯、R は範囲と確定（cmd.dr が持ち主）。 */
 #define JW_OPT_DATA_G0 40
 #define JW_OPT_DATA_R  41
-#define JW_OPT_DATA(s) ((s)->command == 29 && (s)->opt_stage >= JW_OPT_DATA_G0)
+#define JW_OPT_DATA(s) ((s)->command == 29 && (s)->opt_stage >= JW_OPT_DATA_G0 && (s)->opt_stage < 50)
 #define JW_OPT_SUB(s) ((s)->command == 29 && (s)->opt_stage >= JW_OPT_LAY_B1 && (s)->opt_stage < 30)
 /* JW_OPT_BASE and JW_OPT_WHERE are in src/optplan.h, beside the lines they
  * put up. */
@@ -809,6 +811,7 @@ void jw_ui_text(VGA *v, int col, int row, unsigned fg, unsigned bg,
  * the command number the original's own documentation uses -- USER_MNU.DAT
  * says "複写から測定が 1〜15、移動から入出力が16〜30". */
 const char *jw_ui_menu_label(int command);
+void jw_ui_set_menu_key(int command, char key);
 
 /* The one black pixel a range screen leaves at the counts box's corner.
  * Called last, after everything else has been drawn. */
@@ -828,6 +831,7 @@ int jw_ui_past_cells(int x, int y);
 #define JW_PICK_DXFIN 5         /* ⑥ＤＸＦ ②読込 -- `*.dxf`, DXFIN      */
 #define JW_PICK_TEXTIN 6        /* 文字 ⑤文書 ②読込・③短文ﾌｧｲﾙ設定 -- `*.txt`, 文読込 */
 #define JW_PICK_HENKEI 7        /* 変形 ⑤外部 -- `*.bat`, 外部変形 */
+#define JW_PICK_ENV    8        /* ｵﾌﾟｼｮﾝ ⑥各設定 ⑤環境FILE -- `*.jwf`, 環境 */
 void jw_ui_pick_kind(JwUi *s, int kind);
 char jw_ui_menu_key(int command);
 

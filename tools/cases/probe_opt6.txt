@@ -1,0 +1,10 @@
+# ｵﾌﾟｼｮﾝ ⑥各設定 の保存結果（src/optset.c、仕様 notes/spec-opt6.md）。
+#   sh tools/funccases.sh tools/cases/probe_opt6.txt          保存した図面（先頭 4 行を含む）を本物と比べる
+# 1 手め：type s|type 6 = ｵﾌﾟｼｮﾝ ⑥各設定。type 4 = ④作図時間（欄の先頭へ打つ。初期値は 0:09）。
+opt6_time_5|SAMPLE0|type s|type 6|type 4|type 5|key enter
+opt6_time_12|SAMPLE0|type s|type 6|type 4|type 1|type 2|key enter
+opt6_time_0|SAMPLE0|type s|type 6|type 4|type 0|key enter
+opt6_time_neg|SAMPLE0|type s|type 6|type 4|type -|type 5|key enter|key esc
+opt6_time_partial|SAMPLE0|type s|type 6|type 4|type 5|type -|key enter
+opt6_time_ok_then_esc|SAMPLE0|type s|type 6|type 4|type 3|key enter|type 4|key esc
+opt6_time_twice|SAMPLE0|type s|type 6|type 4|type 3|key enter|type 4|type 2|key enter
