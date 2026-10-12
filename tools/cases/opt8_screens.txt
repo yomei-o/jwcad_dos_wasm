@@ -1,0 +1,44 @@
+#名前|手順…（tools/optsubcheck.sh で本物と画面を比べる。LIST=tools/cases/opt8_screens.txt）
+# ⑧2.5D の項目の行（ovl35 3ab8:5c55）
+m0|type s|type 8
+m6|type s|type 8|type 6
+m66|type s|type 8|type 6|type 6
+m6_bs|type s|type 8|type 6|key bs
+m_esc|type s|type 8|key esc
+m_bs|type s|type 8|key bs
+m_7|type s|type 8|type 7
+m_9|type s|type 8|type 9
+m_c|type s|type 8|type c
+m_click6|type s|type 8|520 8 left
+m_click6r|type s|type 8|520 8 right
+m_click_blank|type s|type 8|300 100 left
+# ⑤ ﾚｲﾔｸﾞﾙｰﾌﾟ[N]高さ
+g5|type s|type 8|type 5
+g5_1|type s|type 8|type 5|type 1
+g5_12|type s|type 8|type 5|type 1|type 2
+g5_125|type s|type 8|type 5|type 1|type 2|type .|type 5
+g5_esc|type s|type 8|type 5|key esc
+g5_bs|type s|type 8|type 5|key bs
+g5_enter|type s|type 8|type 5|key enter
+g5_1enter|type s|type 8|type 5|type 1|key enter
+g5_1bs|type s|type 8|type 5|type 1|key bs
+g5_1esc|type s|type 8|type 5|type 1|key esc
+g5_abc|type s|type 8|type 5|type a
+# ④ 線･円の高さ奥行
+h4|type s|type 8|type 4
+h4_esc|type s|type 8|type 4|key esc
+h4_bs|type s|type 8|type 4|key bs
+h4_enter|type s|type 8|type 4|key enter
+h4_1|type s|type 8|type 4|type 1
+g5_long|type s|type 8|type 5|type 12345678901234567890
+g5_long21|type s|type 8|type 5|type 123456789012345678901
+g5_sp|type s|type 8|type 5|type 1|key x20|type 2
+g5_punct|type s|type 8|type 5|type ,;-+*/
+g5_text|type s|type 8|type 5|type 1|type 2|type .|type 5|key enter
+g5_abc_enter|type s|type 8|type 5|type a|key enter
+g5_neg_enter|type s|type 8|type 5|type -|type 5|key enter
+g5_lc|type s|type 8|type 5|type c
+g5_pre|type s|type 8|type 5|type 3|key enter|type 5
+g5_pre_t|type s|type 8|type 5|type 3|key enter|type 5|type 4
+g5_pre_bs|type s|type 8|type 5|type 3|key enter|type 5|key bs
+g5_pre_esc|type s|type 8|type 5|type 3|key enter|type 5|key esc|type 5

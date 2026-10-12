@@ -1,0 +1,10 @@
+# ｵﾌﾟｼｮﾝ ⑧2.5D（src/opt25.c、仕様 notes/spec-opt8.md）。sh tools/funccases.sh tools/cases/probe_opt8.txt [名前の一部]
+# 名前|図面|手順…（tools/functest.sh の書き方）。保存した記録（線・円弧・文字・生のバイト）を本物と比べる。
+o8_g5_12|SAMPLE0|type s|type 8|type 5|type 1|type 2|key enter
+o8_g5_125|SAMPLE0|type s|type 8|type 5|type 1|type 2|type .|type 5|key enter
+o8_g5_abc|SAMPLE0|type s|type 8|type 5|type a|key enter
+o8_g5_neg|SAMPLE0|type s|type 8|type 5|type -|type 5|key enter
+o8_g5_empty|SAMPLE0|type s|type 8|type 5|key enter
+o8_g5_twice|SAMPLE0|type s|type 8|type 5|type 3|key enter|type 5|key enter
+o8_g5_twice2|SAMPLE0|type s|type 8|type 5|type 3|key enter|type 5|type 4|key enter
+o8_g5_lead|SAMPLE0|type s|type 8|type 5|type 0|type 0|type 7|key enter

@@ -24,6 +24,7 @@
 #include "draw.h"
 #include "optplan.h"
 #include "optbatch.h"
+#include "opt25.h"
 #include "optdata.h"
 #include "tategu.h"
 #include "view.h"
@@ -926,6 +927,9 @@ static int panel_up(void)
     }
     if (JW_OPT_SUB(&ui)) {
         return 1;
+    }
+    if (ui.command == 29 && jw_opt25_covers(ui.opt_stage)) {
+        return 1;                       /* ⑧2.5D の視点画面（src/opt25.c） */
     }
     return 0;
 }
@@ -2631,6 +2635,27 @@ static void batch_after(int r, int leave, int miss, int x, int y)
     present();
 }
 
+/* src/opt25.c が受けた押し・鍵のあとの後始末：帯の行・数え箱・画面。 */
+static void o25_after(int r, int leave, int x, int y)
+{
+    cmd.missed = 0;
+    cmd.top_item = 0;
+    cmd.top_right = 0;
+    if (leave) {
+        ui.opt_stage = 0;
+    }
+    if (x >= 0) {
+        mouse_x = x;
+        mouse_y = y;
+    }
+    if (r == JW_O25_CHANGED && drawing) {
+        ui.n_lines = drawing->n_lines;
+        ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+    }
+    sync_ui();
+    present();
+}
+
 static void opt_enter(int stage)
 {
     ui.opt_stage = stage;
@@ -3133,6 +3158,21 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         return -1;
     }
 
+    /* ｵﾌﾟｼｮﾝ ⑧2.5D（src/opt25.c）。 */
+    if (ui.command == 29 && drawing && JW_OPT25(&ui)) {
+        int leave = 0;
+        const int r = jw_opt25_click(drawing, &view, x, y, right,
+                                     y >= 0 && y <= 15 ? jw_ui_top_item(x, y) : 0,
+                                     &ui.opt_stage, &leave);
+
+        if (r) {
+            if (y >= 0 && y <= 15 && !leave) {
+                /* 項目の行の押しでは、矢は押した所のまま */
+            }
+            o25_after(r, leave, x, y);
+            return -1;
+        }
+    }
     /* ｵﾌﾟｼｮﾝ ④一括処理 ①直線伸縮・②直線部分消（src/optbatch.c）。 */
     if (ui.command == 29 && drawing
         && ((ui.opt_stage >= JW_OPT_BATCH && ui.opt_stage < JW_OPT_DATA_G0)
@@ -4473,6 +4513,14 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
         cmd.top_item = 0;
         cmd.top_right = 0;
+        if (ui.opt_stage == 0 && item == 8 && drawing) {     /* ⑧2.5D（src/opt25.c） */
+            jw_opt25_open(drawing, &ui.opt_stage);
+            mouse_x = x;
+            mouse_y = y;
+            sync_ui();
+            present();
+            return -1;
+        }
         if (ui.opt_stage == 0 && item >= 1 && item <= 3) {   /* ②断面・③立面 も同じ一覧画面（測定：probe_option_walk） */
             /* The screen is up; what is on it comes from src/item.h like
              * ②断面's and ③立面's. */
@@ -4981,6 +5029,17 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 
         if (r != -2) {
             return r;
+        }
+    }
+    /* ｵﾌﾟｼｮﾝ ⑧2.5D の鍵（src/opt25.c）。 */
+    if (ui.command == 29 && drawing && JW_OPT25(&ui)
+        && !(ui.opt_stage == JW_OPT25_MENU && key >= '1' && key <= '6')) {
+        int leave = 0;
+        const int r = jw_opt25_key(drawing, key, &ui.opt_stage, &leave);
+
+        if (r) {
+            o25_after(r, leave, -1, -1);
+            return -1;
         }
     }
     /* ｵﾌﾟｼｮﾝ ④一括処理 の [ESC]・[BS]・[Enter]（src/optbatch.c）。 */

@@ -22,6 +22,7 @@
 #include "zukei.h"
 #include "optplan.h"
 #include "optsub.h"
+#include "opt25.h"
 #include "optbatch.h"
 #include "optdata.h"
 #include "item.h"
@@ -5264,6 +5265,29 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             fill(v, 0, 0, 639, 15, 0);
             top_clear();
             jw_optdata_g0(v);
+        }
+        /* ｵﾌﾟｼｮﾝ ⑧2.5D（src/opt25.c が字を持つ）。 */
+        if (JW_OPT25(s)) {
+            int c;
+
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
+            jw_opt25_text(v, s->opt_stage, (s->layer >> 4) & 15);
+            c = jw_opt25_cursor();
+            if (c >= 0) {
+                const int ch = jw_opt25_cursor_char();
+
+                fill(v, c * 8, 7, c * 8 + 7, 15, 4);
+                if (ch) {
+                    char one[2];
+
+                    one[0] = (char)ch;
+                    one[1] = 0;
+                    v->clip_y0 = 7;
+                    jw_ui_text(v, c + 1, 1, 3, 2, one);   /* 洋紅（パレット 3） */
+                    v->clip_y0 = 0;
+                }
+            }
         }
         /* ｵﾌﾟｼｮﾝ ④一括処理 ①②の行（src/optbatch.c が字を持つ）。 */
         if (s->command == 29 && s->opt_stage >= JW_OPT_BATCH
