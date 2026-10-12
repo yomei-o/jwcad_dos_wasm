@@ -607,3 +607,18 @@ long jw_o25v_commit(Jwc *d)
     }
     return d->n_lines - before;
 }
+
+/* ②変更間隔（ovl25 3ab8:4f52、spec-opt8-view §3.3）：検査して採用する。mode 3 は回転の刻みだけ採用。
+ * 戻り 1＝採用、0＝範囲外（欄を空にして入れ直し）。 */
+int jw_o25v_set_steps(double rot, double mov, int have_mov)
+{
+    (void)have_mov;
+    if (!(rot >= 0.1 && rot <= 90.0 && mov >= 0.1 && mov <= 100.0)) {
+        return 0;
+    }
+    g_rot = (float)rot;
+    if (v_mode != 3) {
+        g_mov = (float)mov;
+    }
+    return 1;
+}

@@ -33,6 +33,8 @@
 #define S_LAY1    "\x83\x8c\x83" "C\x83\x84"                         /* レイヤ */
 #define S_ASK1    "\x82\xc9\x8d\xec\x90}\x82\xb5\x82\xdc\x82\xb7"  /* に作図します */
 #define S_RUN2    "|\x87@ \x8e\xc0\x8ds(L)|\x87" "A \x92\x86\x8e~(R)|"
+#define S_ANG     "\x8a" "p\x93x(\xdf"                      /* 角度(ﾟ */
+#define S_MOVE    "),\x88\xda\x93\xae("                     /* ),移動( */
 #define S_MM     " mm "
 #define S_M      " \x82\x8d "                        /* ｍ（全角） */
 #define S_GH     "\xda\xb2\xd4\xb8\xde\xd9\xb0\xcc\xdf[%c]\x8d\x82\x82\xb3 = "  /* ﾚｲﾔｸﾞﾙｰﾌﾟ[N]高さ =  */
@@ -82,7 +84,7 @@ void jw_opt25_reset(void)
 
 int jw_opt25_covers(int opt_stage)
 {
-    return opt_stage >= JW_OPT25_WAIT && opt_stage <= JW_OPT25_ASK;     /* VIEW・ASK など */
+    return opt_stage >= JW_OPT25_WAIT && opt_stage <= JW_OPT25_CHG;     /* VIEW・ASK など */
 }
 
 /* ------------------------------------------------------------------ 入口 */
@@ -137,6 +139,37 @@ static int gh_commit(Jwc *d)
     d->texts[d->n_texts - 1].rest[2] = 0;
     d->texts[d->n_texts - 1].rest[3] = 0x80;     /* +0x17 の bit7（rest は +0x14 から） */
     return 1;
+}
+
+/* ②変更間隔の入力欄を開く（欄は空、行 1 に `角度(ﾟ),移動(mm) = `）。 */
+static void chg_open(int *opt_stage)
+{
+    jw_opt25_reset();
+    o25_lim = jw_o25v_mode() == 3 ? 60 : 51;     /* 欄の桁 + 文字数 > 78 で入らない（numin 0x27a3） */
+    *opt_stage = JW_OPT25_CHG;
+}
+
+/* ②の確定：`角度,移動` を数にして検査（numin の式は atof で代用）。 */
+static void chg_commit(int *opt_stage)
+{
+    char *comma = strchr(o25_buf, ',');
+    double a, b;
+
+    if (!o25_n) {
+        o25_vlab = 1;
+        *opt_stage = JW_OPT25_VIEW;             /* 空：何も変えず視点画面へ */
+        return;
+    }
+    a = atof(o25_buf);
+    b = comma ? atof(comma + 1) : a;
+    if (jw_o25v_set_steps(a, b, comma != NULL)) {
+        o25_vlab = 1;
+        *opt_stage = JW_OPT25_VIEW;
+    } else {
+        o25_n = 0;                              /* 範囲外：欄を空にして入れ直し */
+        o25_pos = 0;
+        o25_buf[0] = 0;
+    }
 }
 
 /* ④の正規化（spec-opt8-height §3.6）：`v`/`V` で切り、`,` `;` で区切った各項を `%g` に直して `,` でつなぎ、
@@ -359,6 +392,12 @@ int jw_opt25_click(Jwc *d, const JwView *w, int x, int y, int right, int cell,
         *opt_stage = JW_OPT25_VIEW;
         return JW_O25_TAKEN;
     }
+    if (*opt_stage == JW_OPT25_CHG) {
+        if (!(y >= 0 && y <= 15) && w && x >= w->x0 && x <= w->x1 && y >= w->y0 && y <= w->y1) {
+            chg_commit(opt_stage);                  /* 作図範囲の押しは [Enter] と同じ道（RESUME §0） */
+        }
+        return JW_O25_TAKEN;
+    }
     if (*opt_stage == JW_OPT25_VIEW) {
         o25_vlab = 1;
         if (y >= 0 && y <= 15) {
@@ -367,7 +406,7 @@ int jw_opt25_click(Jwc *d, const JwView *w, int x, int y, int right, int cell,
             } else if (cell == 1) {
                 *opt_stage = JW_OPT25_ASK;
             } else if (cell == 2) {
-                /* ②変更間隔：未実装（spec-opt8-view §3.3、ovl25 3ab8:4f52） */
+                chg_open(opt_stage);
             }
             return JW_O25_TAKEN;
         }
@@ -473,6 +512,24 @@ int jw_opt25_key(Jwc *d, int key, int *opt_stage, int *leave)
         }
         field_edit(key);
         return JW_O25_TAKEN;
+    case JW_OPT25_CHG:
+        if (key == 27) {
+            o25_vlab = 1;
+            *opt_stage = JW_OPT25_VIEW;
+            return JW_O25_TAKEN;
+        }
+        if (key == 13 || key == 10) {
+            chg_commit(opt_stage);
+            return JW_O25_TAKEN;
+        }
+        if (key >= 0 && key < 256 && ((key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z'))
+            && jw_ui_key_command(key)) {
+            return JW_O25_NONE;
+        }
+        if (key == 8 || key == 7 || (key >= '0' && key <= '9') || (key && strchr(".,+-*/()", key))) {
+            field_edit(key);
+        }
+        return JW_O25_TAKEN;
     case JW_OPT25_ASK:
         if (key == '1') {
             const int n = (int)jw_o25v_commit(d);
@@ -491,6 +548,10 @@ int jw_opt25_key(Jwc *d, int key, int *opt_stage, int *leave)
     case JW_OPT25_VIEW:
         if (key == '1') {
             *opt_stage = JW_OPT25_ASK;
+            return JW_O25_TAKEN;
+        }
+        if (key == '2') {
+            chg_open(opt_stage);
             return JW_O25_TAKEN;
         }
         if (key == 27) {                        /* 視点画面の ESC：メニューへ（作図の取り消しではない） */
@@ -581,6 +642,22 @@ void jw_opt25_text(VGA *v, int opt_stage, int layer)
         o25_cur = 26 + o25_pos;     /* 欄は桁 27（1 始まり）、x = 桁*8 */
         return;
     }
+    if (opt_stage == JW_OPT25_CHG) {
+        const int m3 = jw_o25v_mode() == 3;
+
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, S_ANG);
+        if (!m3) {
+            jw_ui_text(v, 14, 1, 7, 0, S_MOVE);
+            jw_ui_text(v, 21, 1, 7, 0, o25_unit ? S_M1 : "mm");
+            jw_ui_text(v, 23, 1, 7, 0, ") =");
+        } else {
+            jw_ui_text(v, 14, 1, 7, 0, ") =");
+        }
+        jw_ui_text(v, m3 ? 18 : 27, 1, 7, 0, o25_buf);
+        o25_cur = (m3 ? 17 : 26) + o25_pos;
+        return;
+    }
     if (opt_stage == JW_OPT25_ASK) {
         char t[120];
 
@@ -667,7 +744,7 @@ void jw_opt25_text(VGA *v, int opt_stage, int layer)
 
 void jw_opt25_overlay(VGA *v, const Jwc *d, const JwView *w, int opt_stage)
 {
-    if (opt_stage == JW_OPT25_VIEW || opt_stage == JW_OPT25_ASK) {
+    if (opt_stage == JW_OPT25_VIEW || opt_stage == JW_OPT25_ASK || opt_stage == JW_OPT25_CHG) {
         jw_o25v_draw(v, d, w, opt_stage == JW_OPT25_VIEW && o25_vlab);
     }
 }

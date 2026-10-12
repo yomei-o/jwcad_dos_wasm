@@ -104,3 +104,25 @@ v3_run_esc|type s|type 8|type 3|type 1|type 1|key esc
 v3_run_esc2|type s|type 8|type 3|type 1|type 1|key esc|key esc
 v1_run|type s|type 8|type 1|type 1|type 1
 v2_run|type s|type 8|type 2|type 1|type 1
+v1_k2|type s|type 8|type 1|type 2
+v1_k2_7|type s|type 8|type 1|type 2|type 7
+v1_k2_7e|type s|type 8|type 1|type 2|type 7|key enter
+v1_k2_7e5|type s|type 8|type 1|type 2|type 7|key enter|type 5|key enter
+v1_k2_esc|type s|type 8|type 1|type 2|key esc
+v1_k2_bs|type s|type 8|type 1|type 2|key bs
+v1_k2_enter|type s|type 8|type 1|type 2|key enter
+v1_k2_7e5_k4|type s|type 8|type 1|type 2|type 7|key enter|type 5|key enter|type 4
+v3_k2|type s|type 8|type 3|type 2
+v3_k2_7e|type s|type 8|type 3|type 2|type 7|key enter
+v3_k2_7e_k4|type s|type 8|type 3|type 2|type 7|key enter|type 4
+v1_k2_100e|type s|type 8|type 1|type 2|type 1|type 0|type 0|key enter
+v1_k2_73e|type s|type 8|type 1|type 2|type 7|type ,|type 3|key enter
+v1_k2_e|type s|type 8|type 1|type 2|key enter
+v1_k2_ae|type s|type 8|type 1|type 2|type a|key enter
+v1_k2_0e|type s|type 8|type 1|type 2|type 0|key enter
+v1_k2_5_1e|type s|type 8|type 1|type 2|type 5|type ,|type 1|type 0|type 0|type 0|key enter
+v1_k2_7_e_2|type s|type 8|type 1|type 2|type 7|key enter|type 2
+v1_k2_bs7|type s|type 8|type 1|type 2|type 7|key bs
+v1_k2_long|type s|type 8|type 1|type 2|type 12345678901234567890123456789
+v3_k2_73e|type s|type 8|type 3|type 2|type 7|type ,|type 3|key enter
+v3_k2_7|type s|type 8|type 3|type 2|type 7
