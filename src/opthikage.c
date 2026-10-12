@@ -217,6 +217,12 @@ void jw_hk_text(VGA *v, int stage)
             jw_ui_text(v, 67, 2, 7, 0xffffu, HK_ISN);
         }
         jw_ui_text(v, 69, 2, 7, 0xffffu, HK_ISW);
+        if (hk_wall >= 0) {
+            jw_ui_text(v, 65, 3, 2, 0xffffu, HK_WLB);
+            if (jw_hk_wall_out()[0]) {
+                jw_ui_text(v, 30, 3, 6, 0xffffu, jw_hk_wall_out());
+            }
+        }
         return;
     case JW_OPT_HK_IC:
         jw_ui_text(v, 8, 1, 7, 0, HK_ICA);
@@ -309,6 +315,9 @@ void jw_hk_text(VGA *v, int stage)
     }
     if (hk_wall >= 0 && stage >= JW_OPT_HK_P2 && stage <= JW_OPT_HK_P4) {
         jw_ui_text(v, 71, 3, 2, 0xffffu, HK_WLB);
+        if (jw_hk_wall_out()[0]) {
+            jw_ui_text(v, 30, 3, 6, 0xffffu, jw_hk_wall_out());
+        }
     }
     for (i = 0; i < hk_nmsg; i++) {
         jw_ui_text(v, hk_msg[i].col, hk_msg[i].row, 7, 0, hk_msg[i].text);
@@ -348,8 +357,20 @@ void jw_hk_overlay(VGA *v, const Jwc *d, const JwView *w)
         int y;
         const int col = cond_string(buf);
 
+        /* 図の中は通常の描き（文字が線の上）で済んでいる。ここで描くのは、はみ出した行 3（y 47 まで）だけ。 */
+        static unsigned char keep[VGA_PLANES][80 * 480];
+        const long off0 = 48L * v->stride;
+        const long nb = (long)(v->height - 48) * v->stride;
+        int p;
+
+        for (p = 0; p < VGA_PLANES; p++) {
+            memcpy(keep[p], v->plane[p] + off0, (size_t)nb);
+        }
         for (k = hk_run_l; k < d->n_lines; k++) {
             jw_view_line(v, d, &d->lines[k], w, jw_view_pen_colour(d->lines[k].pen));
+        }
+        for (p = 0; p < VGA_PLANES; p++) {
+            memcpy(v->plane[p] + off0, keep[p], (size_t)nb);
         }
         /* 行 2 は頁の描き直しで塗り直される（線の跡は残らない）：塗って文字を書き直す。 */
         for (y = 17; y <= 31; y++) {
@@ -374,11 +395,24 @@ void jw_hk_iso_overlay(VGA *v, const Jwc *d, const JwView *w)
     if (!hk_remnant || !hk_iso_esc || !d) {
         return;
     }
-    for (k = hk_iso_l0; k < d->n_lines; k++) {
-        jw_view_line(v, d, &d->lines[k], w, jw_view_pen_colour(d->lines[k].pen));
-    }
-    for (k = hk_iso_t0; k < d->n_texts; k++) {
-        jw_view_text(v, d, &d->texts[k], w, jw_view_text_colour(d, d->texts[k].size));
+    {
+        static unsigned char keep[VGA_PLANES][80 * 480];
+        const long off0 = 48L * v->stride;
+        const long nb = (long)(v->height - 48) * v->stride;
+        int p;
+
+        for (p = 0; p < VGA_PLANES; p++) {
+            memcpy(keep[p], v->plane[p] + off0, (size_t)nb);
+        }
+        for (k = hk_iso_l0; k < d->n_lines; k++) {
+            jw_view_line(v, d, &d->lines[k], w, jw_view_pen_colour(d->lines[k].pen));
+        }
+        for (k = hk_iso_t0; k < d->n_texts; k++) {
+            jw_view_text(v, d, &d->texts[k], w, jw_view_text_colour(d, d->texts[k].size));
+        }
+        for (p = 0; p < VGA_PLANES; p++) {
+            memcpy(v->plane[p] + off0, keep[p], (size_t)nb);
+        }
     }
     if (!hk_iso_hide) {
         jw_ui_text(v, 48, 2, 7, 0, jw_hk_iso_errtxt());
@@ -503,6 +537,7 @@ int jw_hk_enter(int n)
     hk_topmsg = NULL;
     hk_esc = 0;
     if (n == 5) {
+        jw_hk_wall_msg_clear();
         return JW_OPT_HK_WL;
     }
     return n >= 1 && n <= 4 ? JW_OPT_HK_BLD + n - 1 : 0;
@@ -530,6 +565,7 @@ static int run_shadow(Jwc *d, double p, int *stage)
     c.decl = hk_decl;
     c.height = hk_height;
     c.time915 = hk_time;
+    jw_hk_wall_set(d, hk_wall);
     hk_run_l = d->n_lines;
     hk_run_t = d->n_texts;
     rc = jw_hk_run_shadow(d, &c, p, &err);
@@ -567,6 +603,7 @@ static int rg_run(Jwc *d, int k, int *stage)
     c.decl = hk_decl;
     c.height = hk_height;
     c.time915 = hk_time;
+    jw_hk_wall_set(d, hk_wall);
     jw_hk_iso_corners(rg_p1x, rg_p1y, rg_p2x, rg_p2y, X, Y);
     rc = jw_hk_iso_calc(d, &c, 3, k, X, Y, &err);
     if (rc < 0) {
@@ -598,6 +635,7 @@ static int iso_start(Jwc *d, int m, int *stage)
     c.decl = hk_decl;
     c.height = hk_height;
     c.time915 = hk_time;
+    jw_hk_wall_set(d, hk_wall);
     iso_m = m;
     if (m == 3) {
         rc = jw_hk_iso_prepare(d, &c, &err);
@@ -671,6 +709,7 @@ int jw_hk_page_item(int n, int *stage)
     hk_sub = 0;
     hk_wflag = 0;
     hk_nmsg = 0;
+    jw_hk_wall_msg_clear();
     *stage = JW_OPT_HK_DLG;
     return 1;
 }
@@ -898,6 +937,7 @@ static void wall_mark(Jwc *d, long n, int on)
 
 void jw_hk_wall_enter(Jwc *d)
 {
+    jw_hk_wall_msg_clear();
     wall_mark(d, hk_wall, 0);
 }
 
@@ -1204,6 +1244,26 @@ static int pt_add(Jwc *d, const JwView *w, int x, int y, int right, int *stage)
     } else {
         jw_cmd_at(w, x, y, &px, &py);
     }
+    if (hk_wall >= 0 && hk_wall < d->n_lines) {
+        /* wall_point（0x2b681）：壁面線の範囲内（左側で、線の長さの内）だけ受ける */
+        const JwcLine *L = &d->lines[hk_wall];
+        const double wdx = (double)L->x1 - L->x0, wdy = (double)L->y1 - L->y0;
+        int ok = 0;
+
+        if (frame_set(L->x0, L->y0, L->x1, L->y1)) {
+            const float wv = wall_v((float)px, (float)py);
+            const float wu = (float)(((double)(float)px - fr_ox) * fr_ux + ((double)(float)py - fr_oy) * fr_uy);
+            const float wl = (float)sqrt(wdy * wdy + wdx * wdx);
+
+            ok = wv >= 0.0f && wu >= 0.0f && wu <= wl;
+        } else {
+            ok = 0;
+        }
+        if (!ok) {
+            msg(18, 3, HK_M_WOUT);
+            return JW_HK_CHANGED;
+        }
+    }
     memset(&p, 0, sizeof p);
     p.x = (float)px;
     p.y = (float)py;
@@ -1241,6 +1301,7 @@ static int pt_result(Jwc *d, const JwView *w, int x, int y, int right, int *stag
     c.decl = hk_decl;
     c.height = hk_height;
     c.time915 = hk_time;
+    jw_hk_wall_set(d, hk_wall);
     rc = jw_hk_run_points(d, &c, hk_base, pt_n, pt_x, pt_y, (float)px, (float)py, &err);
     if (rc >= 0) {
         hk_base += pt_n;

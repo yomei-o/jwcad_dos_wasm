@@ -14,3 +14,13 @@ w_ask|type s|type 5|type 5|380 420 left
 w_ask_esc|type s|type 5|type 5|380 420 left|key esc
 w_ask_pick|type s|type 5|type 5|380 420 left|420 300 left
 w_ask_pick2|type s|type 5|type 5|380 420 left|300 300 left
+w_s2|type s|type 5|type 5|465 420 left|type 2|type 2
+w_s2_1|type s|type 5|type 5|465 420 left|type 2|type 1
+w_s2_t|type s|type 5|type 5|465 420 left|type 2|type 3|type 1|type 0|key enter
+w_s3|type s|type 5|type 5|465 420 left|type 3|type 1
+w_s3_4|type s|type 5|type 5|465 420 left|type 3|type 1|type 4
+w_s4|type s|type 5|type 5|465 420 left|type 4
+w_s4_in|type s|type 5|type 5|465 420 left|type 4|480 430 left
+w_s4_msg|type s|type 5|type 5|465 420 left|type 4|300 300 left
+w_s4_res|type s|type 5|type 5|465 420 left|type 4|480 430 left|type 1|500 440 left
+w_s4_res2|type s|type 5|type 5|465 420 left|type 4|480 430 left|500 440 left|type 1|520 440 left

@@ -741,7 +741,8 @@ static int gather(Jwc *d, const HkCond *c, Gather *g)
                 m2 = t / 60;
             }
         }
-        strcpy(head, HK_WLB);
+        memcpy(head, HK_WLB, 4);                /* 先頭の 4 バイト（壁面） */
+        head[4] = 0;
         strcat(head, HK_WJIS);
         strcat(head, HK_WNICH);
         wl_out[0] = 0;
@@ -1741,7 +1742,12 @@ void jw_hk_wall_set(const Jwc *d, long n)
 
 const char *jw_hk_wall_out(void)
 {
-    return wl_on ? wl_out : "";
+    return wl_out;
+}
+
+void jw_hk_wall_msg_clear(void)
+{
+    wl_out[0] = 0;
 }
 
 /* ------------------------------------------------------------ ②の入口 */
@@ -1818,7 +1824,7 @@ int jw_hk_run_points(Jwc *d, const HkCond *c, int base, int n, const float *xs, 
 {
     Gather g;
     int nb, i, k, t_n, col;
-    static unsigned char table[64][500];
+    static int table[64][500];
     Sun sun;
     const float b4a2 = paper_b4a2(d);
 
@@ -1856,7 +1862,7 @@ int jw_hk_run_points(Jwc *d, const HkCond *c, int base, int n, const float *xs, 
             return -1;
         }
         for (i = 1; i <= n; i++) {
-            table[i][col] = (unsigned char)(WCNT[i] != 0);
+            table[i][col] = WCNT[i];
         }
     }
     {
@@ -1875,9 +1881,11 @@ int jw_hk_run_points(Jwc *d, const HkCond *c, int base, int n, const float *xs, 
             for (k = 0; k <= t_n; k++) {
                 if (table[i][k]) {
                     A[k] = 1;
-                    B[k + 1] = 1;
-                    if (k > 0) {
-                        A[k - 1] = 1;
+                    if (!wl_on || table[i][k] < 10000) {
+                        B[k + 1] = 1;
+                        if (k > 0) {
+                            A[k - 1] = 1;
+                        }
                     }
                 }
             }
@@ -1940,6 +1948,14 @@ int jw_hk_run_points(Jwc *d, const HkCond *c, int base, int n, const float *xs, 
                 w1 = jwc_ed_text_length(d, band, 3, 0);
                 jwc_add_text(d, x, y, (float)((double)w1 + x), y, band, 3, cur_layer);
                 x = (float)((double)chf * 8.5 + x);
+            }
+            if (wl_on && i == 1) {
+                const char *wt = wl_out[0] ? wl_out : HK_WLB;
+                double w1;
+
+                x = (float)((double)chf + (double)x);
+                w1 = jwc_ed_text_length(d, wt, 3, 0);
+                jwc_add_text(d, x, y, (float)((double)w1 + x), y, wt, 3, cur_layer);
             }
         }
     }

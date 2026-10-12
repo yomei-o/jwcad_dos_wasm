@@ -77,6 +77,10 @@ hk_ws2_bot|TEST7S|type s|type 5|type 5|420 447 left|type 2|type 2|wait 300000000
 hk_ws2_top|TEST7S|type s|type 5|type 5|420 396 left|type 2|type 2|wait 3000000000|key bs
 hk_ws2_left|TEST7S|type s|type 5|type 5|380 420 left|type 2|type 2|wait 3000000000|key bs
 hk_ws2_t10|TEST7S|type s|type 5|type 5|465 420 left|type 2|type 3|type 1|type 0|type .|type 5|key enter|wait 3000000000|key bs
+hk_ws4_in|TEST7S|type s|type 5|type 5|465 420 left|type 4|480 430 left|type 1|500 440 left|wait 600000000|key bs
+hk_ws4_out|TEST7S|type s|type 5|type 5|465 420 left|type 4|600 560 left|type 1|480 430 left|wait 600000000|key bs
+hk_ws4_msg|TEST7S|type s|type 5|type 5|465 420 left|type 4|300 300 left|key bs
+hk_ws3_a|TEST7S|type s|type 5|type 5|465 420 left|type 3|type 1|wait 3000000000|type 4|type 9|key bs
 hk_del_old|SAMPLE0|type s|type 5|type 1|type 3|230 200 left|key bs
 hk_nth_top|SAMPLE0|type s|type 5|type 1|type 4|161 145 left|key bs
 hk_nth_bottom|SAMPLE0|type s|type 5|type 1|type 4|161 400 left|key bs

@@ -3134,6 +3134,7 @@ static void hk_after(int r, int x, int y, int miss)
     if (r == JW_HK_CHANGED && drawing) {
         ui.n_lines = drawing->n_lines;
         ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+        jw_ui_layers_from(&ui, drawing);
     }
     sync_ui();
     present();

@@ -35,5 +35,6 @@ int jw_hk_iso_frame(float *X, float *Y);
 void jw_hk_wall_set(const Jwc *d, long n);
 /* 直前の計算で作った「壁面自身の日影」の時間帯の文字（SJIS。無ければ空）。 */
 const char *jw_hk_wall_out(void);
+void jw_hk_wall_msg_clear(void);        /* wallmsg[0]=0 */
 
 #endif
