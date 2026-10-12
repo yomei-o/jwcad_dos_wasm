@@ -26,7 +26,10 @@
 #define JW_OPT_HK_IS  82        /* ③日影時間の帯（1.5〜5.0・任意・誤差・終了） */
 #define JW_OPT_HK_ISF 83        /* ③任意の時間の数値欄 */
 #define JW_OPT_HK_IC  84        /* ③終了の確認（中間ﾃﾞｰﾀは失われます…） */
-#define JW_OPT_HK(s)  ((s) >= JW_OPT_HK_BLD && (s) <= JW_OPT_HK_IC)
+#define JW_OPT_HK_RG1 85        /* ③指定範囲：始点指示 */
+#define JW_OPT_HK_RG2 86        /* ③指定範囲：終点指示（ゴムの枠） */
+#define JW_OPT_HK_RGI 87        /* ③指定範囲：計算の間隔 */
+#define JW_OPT_HK(s)  ((s) >= JW_OPT_HK_BLD && (s) <= JW_OPT_HK_RGI)
 
 #define JW_HK_NONE    0         /* この道のものではない */
 #define JW_HK_TAKEN   1         /* 受けた（画面は描き直す） */
@@ -53,6 +56,8 @@ void jw_hk_top_text(VGA *v);
 void jw_hk_overlay(VGA *v, const Jwc *d, const JwView *w);
 /* ③の描いた直後（段 IS）の絵。 */
 void jw_hk_iso_overlay(VGA *v, const Jwc *d, const JwView *w);
+/* ③指定範囲のゴムの枠・外枠。 */
+void jw_hk_rg_overlay(VGA *v, const Jwc *d, const JwView *w, int stage, int mouse_x, int mouse_y);
 /* ②の頁の [ESC]：直前の実行を取り消す。取り消したら 1。 */
 int jw_hk_page_esc(Jwc *d);
 

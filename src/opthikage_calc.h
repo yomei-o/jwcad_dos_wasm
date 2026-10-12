@@ -26,4 +26,9 @@ int jw_hk_iso_calc(Jwc *d, const HkCond *c, int m, int interval, const float *cx
 int jw_hk_iso_draw(Jwc *d, double level, int show_err);
 const char *jw_hk_iso_errtxt(void);
 
+/* ③の頭のデータ集め（m＝3 の範囲指定の前）・範囲の長方形の隅・計算した格子の外枠。 */
+int jw_hk_iso_prepare(Jwc *d, const HkCond *c, const char **err);
+void jw_hk_iso_corners(float p1x, float p1y, float p2x, float p2y, float *X, float *Y);
+int jw_hk_iso_frame(float *X, float *Y);
+
 #endif

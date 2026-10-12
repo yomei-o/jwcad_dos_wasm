@@ -34,6 +34,7 @@ for (const step of steps) {
         for (const ch of step.trim().slice(5)) M._jw_key(ch.charCodeAt(0));
         continue;
     }
+    if (w[0] === 'wait') { continue; }
     if (w[0] === 'key') { M._jw_key(KEY[w[1]] ?? w[1].charCodeAt(0)); continue; }
     /* 押さずに矢だけ。前はこれが無く、`move` が NaN の押しになっていました。 */
     if (w[0] === 'move') { M._jw_mouse(Number(w[1]), Number(w[2])); continue; }

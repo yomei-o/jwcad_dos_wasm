@@ -1839,6 +1839,65 @@ L_done:
 
 /* 4451 の前半：格子の大きさを決め、影の外周を時刻ごとに足す。m＝1 高速・2 標準・3 指定範囲（interval は 1〜4）。
  * cx・cy は m==3 のときの長方形の 4 隅（図面の座標）。戻り：1＝できた、−1＝不備（*err）、−2＝線が多すぎる。 */
+static Gather iso_g;                    /* 4451 の前に ovl33 が集めたデータ（m＝3 の範囲指定のあいだ持つ） */
+static int iso_g_ok;
+
+/* ③の頭：データを集める（ovl33 の collect）。戻り：1＝できた、−1＝不備（*err）。 */
+int jw_hk_iso_prepare(Jwc *d, const HkCond *c, const char **err)
+{
+    int nb;
+
+    cur_d = d;
+    cur_c = c;
+    cur_layer = (unsigned char)d->write_layer;
+    *err = NULL;
+    iso_g_ok = 0;
+    memset(&iso_g, 0, sizeof iso_g);
+    nb = gather(d, c, &iso_g);
+    if (nb <= 0) {
+        *err = errbuf;
+        return -1;
+    }
+    iso_g_ok = 1;
+    return 1;
+}
+
+/* 範囲指定の長方形の 4 隅（4451 の 0x2f2f1〜0x2f4b0）：2 点を北向きの座標系の v だけずらして作る。 */
+void jw_hk_iso_corners(float p1x, float p1y, float p2x, float p2y, float *X, float *Y)
+{
+    const float v1 = fr_v((double)p1x, (double)p1y);
+    const float v2 = fr_v((double)p2x, (double)p2y);
+    const float dv = (float)(v2 - v1);
+    const float offx = (float)(fr_X(0.0, (double)dv) - fr_ox);
+    const float offy = (float)(fr_Y(0.0, (double)dv) - fr_oy);
+
+    X[0] = p1x;
+    Y[0] = p1y;
+    X[1] = (float)(p1x + offx);
+    Y[1] = (float)(p1y + offy);
+    X[2] = p2x;
+    Y[2] = p2y;
+    X[3] = (float)(p2x - offx);
+    Y[3] = (float)(p2y - offy);
+}
+
+/* 計算した格子の外枠（0x2fb5f〜0x2fda1）。計算の前なら 0。 */
+int jw_hk_iso_frame(float *X, float *Y)
+{
+    if (!I_valid) {
+        return 0;
+    }
+    X[0] = fr_X((double)I_xmin, (double)I_ymin);
+    Y[0] = fr_Y((double)I_xmin, (double)I_ymin);
+    X[1] = fr_X((double)I_xmin, (double)I_ymax);
+    Y[1] = fr_Y((double)I_xmin, (double)I_ymax);
+    X[2] = fr_X((double)I_xmax, (double)I_ymax);
+    Y[2] = fr_Y((double)I_xmax, (double)I_ymax);
+    X[3] = fr_X((double)I_xmax, (double)I_ymin);
+    Y[3] = fr_Y((double)I_xmax, (double)I_ymin);
+    return 1;
+}
+
 int jw_hk_iso_calc(Jwc *d, const HkCond *c, int m, int interval, const float *cx, const float *cy, const char **err)
 {
     Gather g;
@@ -1854,7 +1913,12 @@ int jw_hk_iso_calc(Jwc *d, const HkCond *c, int m, int interval, const float *cx
     *err = NULL;
     I_valid = 0;
     memset(&g, 0, sizeof g);
-    nb = gather(d, c, &g);
+    if (m == 3 && iso_g_ok) {
+        g = iso_g;
+        nb = 1;
+    } else {
+        nb = gather(d, c, &g);
+    }
     if (nb <= 0) {
         *err = errbuf;
         return -1;
@@ -1952,7 +2016,7 @@ int jw_hk_iso_calc(Jwc *d, const HkCond *c, int m, int interval, const float *cx
     }
     I_xmax = (float)((float)((float)I_nx * I_dx) + I_xmin);
     I_ymax = (float)((float)((float)I_ny * I_dy) + I_ymin);
-    if (I_nx < 1 || I_ny < 1 || I_nx > 500 || I_ny > 500) {
+    if (I_nx < 1 || I_ny < 1 || I_nx > 500 || I_ny > 500 || (I_nx + 1) * I_ny > 0x7918) {
         *err = HK_E_RANGE;
         return -1;
     }

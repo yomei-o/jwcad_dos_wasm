@@ -47,6 +47,11 @@ for step in "$@"; do
         printf 'wait %s\n' "$WAIT" >> "$D/pre.txt"
         continue
         ;;
+    wait\ *)
+        # 本物だけの待ち（等時間図の計算のように長い所。移植には渡らない）。
+        printf 'wait %s\n' "${step#wait }" >> "$D/pre.txt"
+        continue
+        ;;
     move\ *)
         printf 'mouse %s\nwait %s\n' "${step#move }" "$WAIT" >> "$D/pre.txt"
         continue

@@ -77,6 +77,9 @@ void jw_hk_entry(Jwc *d)
 
 static int hk_base;                     /* [0x11e]：④の指定点の通し番号の基点 */
 static int hk_iso_err = 1;              /* [0x7638]：ラベルに「時間 誤差…」を付ける */
+static int iso_m;                       /* ③の方式：1 高速・2 標準・3 指定範囲 */
+static float rg_p1x, rg_p1y, rg_p2x, rg_p2y;    /* 指定範囲の 2 点（図面の座標） */
+static long iso_cl0, iso_ct0;           /* 計算のあと（等時間線を引く前）の線・文字の数 */
 static int hk_iso_hide;                 /* 行 2 の誤差・書込の文字を出さない（BS・取り消すものの無い ESC のあと） */
 static int hk_iso_esc;                  /* 直前の描きを取り消せる（行 1 に [ESC]） */
 static long hk_iso_l0, hk_iso_t0;       /* 直前に等時間線を引く前の線・文字の数（ESC で戻す） */
@@ -214,6 +217,18 @@ void jw_hk_text(VGA *v, int stage)
         return;
     case JW_OPT_HK_IC:
         jw_ui_text(v, 8, 1, 7, 0, HK_ICA);
+        return;
+    case JW_OPT_HK_RG1:
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, HK_RG1);
+        return;
+    case JW_OPT_HK_RG2:
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, HK_RG2);
+        return;
+    case JW_OPT_HK_RGI:
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, HK_RGI);
         return;
     case JW_OPT_HK_ISF:
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
@@ -356,6 +371,68 @@ void jw_hk_iso_overlay(VGA *v, const Jwc *d, const JwView *w)
     }
 }
 
+static void rg_frame(VGA *v, const JwView *w, const float *X, const float *Y)
+{
+    int k;
+    const int cx0 = v->clip_x0, cy0 = v->clip_y0, cx1 = v->clip_x1, cy1 = v->clip_y1;
+
+    v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+    v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+    v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+    v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+    for (k = 0; k < 4; k++) {
+        const int k2 = (k + 1) & 3;
+        const int sx0 = (int)(((double)X[k] - w->ox) * w->scale + w->ax);
+        const int sy0 = (int)(w->ay - ((double)Y[k] - w->oy) * w->scale);
+        const int sx1 = (int)(((double)X[k2] - w->ox) * w->scale + w->ax);
+        const int sy1 = (int)(w->ay - ((double)Y[k2] - w->oy) * w->scale);
+
+        jw_line(v, sx0, sy0, sx1, sy1, 4, ROP_XOR, JW_STYLE_SOLID);
+    }
+    v->clip_x0 = cx0;
+    v->clip_y0 = cy0;
+    v->clip_x1 = cx1;
+    v->clip_y1 = cy1;
+}
+
+/* ③指定範囲：ゴムの枠（終点指示）・決めた枠（間隔の帯）・計算した格子の外枠（日影時間の帯）。 */
+void jw_hk_rg_overlay(VGA *v, const Jwc *d, const JwView *w, int stage, int mouse_x, int mouse_y)
+{
+    float X[4], Y[4];
+    long k;
+
+    if (!d) {
+        return;
+    }
+    if (stage == JW_OPT_HK_RG2) {
+        double px, py;
+
+        if (mouse_x < w->x0 || mouse_y < w->y0 || mouse_x > w->x1 || mouse_y > w->y1) {
+            return;
+        }
+        jw_cmd_at(w, mouse_x, mouse_y, &px, &py);
+        jw_hk_iso_corners(rg_p1x, rg_p1y, (float)px, (float)py, X, Y);
+        rg_frame(v, w, X, Y);
+        return;
+    }
+    if (stage == JW_OPT_HK_RGI) {
+        jw_hk_iso_corners(rg_p1x, rg_p1y, rg_p2x, rg_p2y, X, Y);
+        rg_frame(v, w, X, Y);
+        return;
+    }
+    if (iso_m == 3 && (stage == JW_OPT_HK_IS || stage == JW_OPT_HK_IC || stage == JW_OPT_HK_ISF)
+        && jw_hk_iso_frame(X, Y)) {
+        rg_frame(v, w, X, Y);
+        /* 枠より後に引いた等時間線・ラベルは枠の上に置いたまま（枠を消して描き直す順になる）。 */
+        for (k = iso_cl0; k < d->n_lines; k++) {
+            jw_view_line(v, d, &d->lines[k], w, jw_view_pen_colour(d->lines[k].pen));
+        }
+        for (k = iso_ct0; k < d->n_texts; k++) {
+            jw_view_text(v, d, &d->texts[k], w, jw_view_text_colour(d, d->texts[k].size));
+        }
+    }
+}
+
 void jw_hk_top_text(VGA *v)
 {
     if (hk_topmsg) {
@@ -414,6 +491,38 @@ static int iso_draw(Jwc *d, double level)
     return JW_HK_CHANGED;
 }
 
+/* 指定範囲：間隔 k（1〜4）で計算して日影時間の帯へ。 */
+static int rg_run(Jwc *d, int k, int *stage)
+{
+    HkCond c;
+    const char *err = NULL;
+    float X[4], Y[4];
+    int rc;
+
+    memset(&c, 0, sizeof c);
+    c.lat = hk_lat;
+    c.decl = hk_decl;
+    c.height = hk_height;
+    c.time915 = hk_time;
+    jw_hk_iso_corners(rg_p1x, rg_p1y, rg_p2x, rg_p2y, X, Y);
+    rc = jw_hk_iso_calc(d, &c, 3, k, X, Y, &err);
+    if (rc < 0) {
+        if (err) {
+            hk_topmsg = err;
+        }
+        *stage = 0;
+        return JW_HK_CHANGED;
+    }
+    iso_cl0 = d->n_lines;
+    iso_ct0 = d->n_texts;
+    hk_iso_l0 = d->n_lines;
+    hk_iso_t0 = d->n_texts;
+    hk_iso_esc = 0;
+    hk_iso_hide = 0;
+    *stage = JW_OPT_HK_IS;
+    return JW_HK_CHANGED;
+}
+
 /* ③等時間図：格子を作って日影時間の帯へ。 */
 static int iso_start(Jwc *d, int m, int *stage)
 {
@@ -426,6 +535,19 @@ static int iso_start(Jwc *d, int m, int *stage)
     c.decl = hk_decl;
     c.height = hk_height;
     c.time915 = hk_time;
+    iso_m = m;
+    if (m == 3) {
+        rc = jw_hk_iso_prepare(d, &c, &err);
+        if (rc < 0) {
+            if (err) {
+                hk_topmsg = err;
+            }
+            *stage = 0;
+            return JW_HK_CHANGED;
+        }
+        *stage = JW_OPT_HK_RG1;
+        return JW_HK_CHANGED;
+    }
     rc = jw_hk_iso_calc(d, &c, m, 1, NULL, NULL, &err);
     if (rc < 0) {
         if (err) {
@@ -434,6 +556,8 @@ static int iso_start(Jwc *d, int m, int *stage)
         *stage = 0;
         return JW_HK_CHANGED;
     }
+    iso_cl0 = d->n_lines;
+    iso_ct0 = d->n_texts;
     hk_iso_l0 = d->n_lines;
     hk_iso_t0 = d->n_texts;
     hk_iso_esc = 0;
@@ -449,7 +573,7 @@ int jw_hk_page_run(Jwc *d, int n, int *stage)
     if (*stage == JW_OPT_HK_P2 && d && (n == 1 || n == 2)) {
         return run_shadow(d, n == 1 ? -1.0 : 1.0, stage);
     }
-    if (*stage == JW_OPT_HK_P3 && d && (n == 1 || n == 2)) {
+    if (*stage == JW_OPT_HK_P3 && d && (n == 1 || n == 2 || n == 3)) {
         return iso_start(d, n, stage);
     }
     if (*stage == JW_OPT_HK_P2 && d && n == 3) {
@@ -992,6 +1116,26 @@ int jw_hk_click(Jwc *d, const JwView *w, int x, int y, int right,
     if (st == JW_OPT_HK_IC && d && y > 15 && x >= area_x0 && x <= area_x1 && y >= area_y0 && y <= area_y1) {
         return jw_hk_key(d, right ? '2' : '1', stage);
     }
+    if ((st == JW_OPT_HK_RG1 || st == JW_OPT_HK_RG2 || st == JW_OPT_HK_RGI) && d && y > 15
+        && x >= area_x0 && x <= area_x1 && y >= area_y0 && y <= area_y1) {
+        double px, py;
+
+        hk_remnant = 0;
+        if (st == JW_OPT_HK_RGI) {
+            return rg_run(d, right ? 2 : 1, stage);
+        }
+        jw_cmd_at(w, x, y, &px, &py);
+        if (st == JW_OPT_HK_RG1) {
+            rg_p1x = (float)px;
+            rg_p1y = (float)py;
+            *stage = JW_OPT_HK_RG2;
+        } else {
+            rg_p2x = (float)px;
+            rg_p2y = (float)py;
+            *stage = JW_OPT_HK_RGI;
+        }
+        return JW_HK_CHANGED;
+    }
     if (st < JW_OPT_HK_IN || !d) {
         return JW_HK_NONE;
     }
@@ -1090,6 +1234,23 @@ int jw_hk_key(Jwc *d, int key, int *stage)
         if (((key >= '0' && key <= '9') || key == '.') && hk_n < 30) {
             hk_buf[hk_n++] = (char)key;
             hk_buf[hk_n] = 0;
+        }
+        return JW_HK_TAKEN;
+    }
+    if (st == JW_OPT_HK_RG1 || st == JW_OPT_HK_RG2) {
+        if (key == 27) {
+            *stage = st == JW_OPT_HK_RG1 ? JW_OPT_HK_P3 : JW_OPT_HK_RG1;
+            return JW_HK_TAKEN;
+        }
+        return JW_HK_TAKEN;
+    }
+    if (st == JW_OPT_HK_RGI) {
+        if (key == 27) {
+            *stage = JW_OPT_HK_RG1;
+            return JW_HK_TAKEN;
+        }
+        if (key >= '1' && key <= '4' && d) {
+            return rg_run(d, key - '0', stage);
         }
         return JW_HK_TAKEN;
     }

@@ -1156,6 +1156,9 @@ static void present(void)
         if (ui.command == 29 && ui.opt_stage == JW_OPT_HK_IS) {
             jw_hk_iso_overlay(&vga, drawing, &view);
         }
+        if (ui.command == 29 && ui.opt_stage >= JW_OPT_HK_IS && ui.opt_stage <= JW_OPT_HK_RGI) {
+            jw_hk_rg_overlay(&vga, drawing, &view, ui.opt_stage, mouse_x, mouse_y);
+        }
         /* **記号の仮の印は最後**です。帯の下に描き直した線より先に
          * 置くと、重なった所の排他的論理和がひっくり返ります
          * （「建具記号 (AW)」で y=157 の 3 画素）。 */
@@ -3168,7 +3171,7 @@ static int hk_item(int n)
         hk_after(JW_HK_TAKEN, -1, 0, 0);
         return -1;
     }
-    if (ui.opt_stage == JW_OPT_HK_IS || ui.opt_stage == JW_OPT_HK_IC) {
+    if (ui.opt_stage == JW_OPT_HK_IS || ui.opt_stage == JW_OPT_HK_IC || ui.opt_stage == JW_OPT_HK_RGI) {
         int st = ui.opt_stage;
         const int r = jw_hk_key(drawing, '0' + n, &st);
 
@@ -3273,7 +3276,7 @@ static int hk_click(int x, int y, int right)
         return -2;
     }
     if ((ui.opt_stage == JW_OPT_HK_DLG || ui.opt_stage == JW_OPT_HK_IS || ui.opt_stage == JW_OPT_HK_IC
-         || ui.opt_stage == JW_OPT_HK_PT) && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
+         || ui.opt_stage == JW_OPT_HK_PT || ui.opt_stage == JW_OPT_HK_RGI) && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
         mouse_x = x;
         mouse_y = y;
         return hk_item(jw_ui_top_item(x, y));
