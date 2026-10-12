@@ -1,17 +1,70 @@
-/* src/opthikage.c -- ｵﾌﾟｼｮﾝ ⑤日影図 の画面（帯・頁）。
+/* src/opthikage.c -- ｵﾌﾟｼｮﾝ ⑤日影図 の画面と ① 建物高さ･真北 設定。
  *
- * 字面は実機の行 1・2 から採った（src/opthikage_str.h、tools/hkstr.py）。条件の文字は
- * spec-opt5-ui.md 9.1 の cond_string（decomp ovl33 0x2efd0）。「測定のみ・decomp 未確認」は無い。 */
+ * 仕様：notes/spec-opt5-ui.md（ovl33 の読み）。字面は実機の行 1・2 から採った
+ * （src/opthikage_str.h、tools/hkstr.py）。「測定のみ・decomp 未確認」と書いた所は実機で採った値。 */
+#include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "opthikage.h"
 #include "opthikage_str.h"
+#include "cmd.h"
+#include "draw.h"
 #include "ui.h"
 
+#pragma STDC FP_CONTRACT OFF
+
+/* ----------------------------------------------------------------- 状態 */
 /* 条件（図面 4 行目の欄は未接続：既定値のまま。spec-opt5-ui.md 1）。 */
 static double hk_lat = 36.0, hk_decl = -23.45, hk_height = 0.0;
 static int hk_time = 0;
+
+static float hk_prev1 = 9.0e9f, hk_prev2 = 0.0f;    /* DS:0x73e6・0x73ea（前回の高さ。9e9 は未入力） */
+static int hk_mode = 1;                 /* 1 入力、2 変更（段 74） */
+static int hk_added;                    /* 入力で足した直後（ESC が効く） */
+static char hk_buf[40];                 /* 数値欄 */
+static int hk_n;
+static int hk_nonote;                   /* 押しでない鍵（ESC・数字）のあと、行 3 の注意書きが消える（測定） */
+static struct { int col, row; const char *text; } hk_msg[4];
+static int hk_nmsg;
+/* 欄を開いた線の端と向き（座標系の原点＝押した点に近い端、軸＝もう一端へ）。 */
+static float hk_ox, hk_oy, hk_ux, hk_uy;
+
+void jw_hk_entry(Jwc *d)
+{
+    long k;
+
+    for (k = 0; k < d->n_lines; k++) {
+        d->lines[k].rest[2] &= (unsigned char)~0x02u;
+    }
+    for (k = 0; k < d->n_arcs; k++) {
+        d->arcs[k].rest[2] &= (unsigned char)~0x02u;
+    }
+    for (k = 0; k < d->n_points; k++) {
+        d->points[k].rest[2] &= (unsigned char)~0x02u;
+    }
+    for (k = 0; k < d->n_texts; k++) {
+        d->texts[k].rest[2] &= (unsigned char)~0x02u;
+    }
+}
+
+void jw_hk_reset(void)
+{
+    hk_added = 0;
+    hk_n = 0;
+    hk_nmsg = 0;
+}
+
+static void msg(int col, int row, const char *s)
+{
+    if (hk_nmsg < 4) {
+        hk_msg[hk_nmsg].col = col;
+        hk_msg[hk_nmsg].row = row;
+        hk_msg[hk_nmsg].text = s;
+        hk_nmsg++;
+    }
+}
 
 /* cond_string（0x2efd0）：色を返す（8～16 時 7、9～15 時 6）。 */
 static int cond_string(char *buf)
@@ -39,7 +92,8 @@ static int cond_string(char *buf)
 
 void jw_hk_text(VGA *v, int stage)
 {
-    char buf[160];
+    char buf[200];
+    int i;
 
     switch (stage) {
     case JW_OPT_HK_BLD:
@@ -52,21 +106,358 @@ void jw_hk_text(VGA *v, int stage)
         jw_ui_text(v, 8, 1, 7, 0, HK_P3);
         break;
     case JW_OPT_HK_P4:
-        /* 指定点(No1)マウス指示 (L)free (R)Read (残50) |①測定高･緯度|（No は [0x11e]+1） */
         jw_ui_text(v, 8, 1, 7, 0, HK_P4A HK_P4);
+        break;
+    case JW_OPT_HK_IN:
+        if (hk_mode == 1 && hk_added) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        }
+        sprintf(buf, "%s%s%s(L) ", hk_mode == 1 ? HK_IN1 : HK_IN2, HK_DIA, HK_MOUSE);
+        strcat(buf, "  ");
+        if (fabsf(hk_prev1) <= 400.0f) {
+            char one[40];
+
+            sprintf(one, "%s%7.3f", HK_PREV, (double)hk_prev1);
+            strcat(buf, one);
+            if (hk_prev1 > 0.0f && hk_prev2 > 0.0f) {
+                sprintf(one, ",%7.3f", (double)hk_prev2);
+                strcat(buf, one);
+            }
+            strcat(buf, "m]");
+        }
+        jw_ui_text(v, 8, 1, 7, 0, buf);
+        if (!hk_nonote) {
+            jw_ui_text(v, 20, 3, 7, 0, HK_NOTE);
+        }
+        break;
+    case JW_OPT_HK_FLD:
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, HK_FLD1);
+        jw_ui_text(v, 12, 1, 7, 0, HK_FLD2);
+        jw_ui_text(v, 18, 1, 7, 0, hk_buf);
+        for (i = 7; i <= 15; i++) {
+            const int x0 = 8 * (17 + hk_n);
+
+            jw_line(v, x0, i, x0 + 7, i, 4, ROP_REPLACE, JW_STYLE_SOLID);
+        }
+        return;
+    case JW_OPT_HK_DEL:
+        jw_ui_text(v, 8, 1, 7, 0, HK_DELP);
+        break;
+    case JW_OPT_HK_NTH:
+        jw_ui_text(v, 8, 1, 7, 0, HK_NTHP);
         break;
     default:
         return;
     }
     jw_ui_text(v, 73, 1, 7, 0, HK_BS);
-    if (stage != JW_OPT_HK_BLD) {
+    if (stage >= JW_OPT_HK_P2 && stage <= JW_OPT_HK_P4) {
         const int col = cond_string(buf);
 
         jw_ui_text(v, 18, 2, (unsigned)col, 0, buf);
+    }
+    for (i = 0; i < hk_nmsg; i++) {
+        jw_ui_text(v, hk_msg[i].col, hk_msg[i].row, 7, 0, hk_msg[i].text);
     }
 }
 
 int jw_hk_enter(int n)
 {
     return n >= 1 && n <= 4 ? JW_OPT_HK_BLD + n - 1 : 0;
+}
+
+int jw_hk_bld_item(int n, int *stage)
+{
+    hk_nmsg = 0;
+    if (n == 1 || n == 2) {
+        hk_mode = n;
+        hk_added = 0;
+        hk_nonote = 0;
+        *stage = JW_OPT_HK_IN;
+        return 1;
+    }
+    if (n == 3) {
+        *stage = JW_OPT_HK_DEL;
+        return 1;
+    }
+    if (n == 4) {
+        *stage = JW_OPT_HK_NTH;
+        return 1;
+    }
+    return 0;
+}
+
+/* ---------------------------------------------------------------- 座標系 */
+/* root 1bb4:27ea・2981・2a18（src/optbatch.c の frame_* と同じ丸め）。 */
+static float fr_ox, fr_oy, fr_ux, fr_uy;
+
+static int frame_set(double x1, double y1, double x2, double y2)
+{
+    double dx, dy, len;
+
+    fr_ox = (float)x1;
+    fr_oy = (float)y1;
+    dx = x2 - x1;
+    dy = y2 - y1;
+    if (!(fabs(dy) + fabs(dx) >= 0.001)) {
+        fr_ux = 1.0f;
+        fr_uy = 0.0f;
+        return 0;
+    }
+    len = sqrt(dy * dy + dx * dx);
+    fr_ux = (float)(dx / len);
+    fr_uy = (float)(dy / len);
+    return 1;
+}
+
+static float fr_X(double u, double v)
+{
+    return (float)(((double)fr_ux * u - (double)fr_uy * v) + fr_ox);
+}
+
+static float fr_Y(double u, double v)
+{
+    return (float)(((double)fr_ux * v + (double)fr_uy * u) + fr_oy);
+}
+
+/* ---------------------------------------------------------------- 文字を足す */
+/* add_text（0x2e36f）：座標系の原点から軸の向きへ文字列の長さぶんの基線。rest[2] は印だけ。 */
+static void add_text(Jwc *d, const char *s, int size, unsigned char flag)
+{
+    const double w = jwc_text_length(d, s, (unsigned char)size);
+    const float x0 = fr_ox, y0 = fr_oy;
+    const float x1 = fr_X(w, 0.0), y1 = fr_Y(w, 0.0);
+
+    if (!*s) {
+        return;
+    }
+    if (jwc_add_text(d, x0, y0, x1, y1, s, (unsigned char)size, (unsigned char)d->write_layer)) {
+        d->texts[d->n_texts - 1].rest[2] |= flag;
+    }
+}
+
+/* put_height（0x2e282）：mode 桁の数。実機の保存で `10.000`（末尾の 0 は落ちない：測定）。 */
+static void put_height(Jwc *d, double v1, double v2, int digits, unsigned char flag)
+{
+    char b[64], c[32];
+
+    sprintf(b, "%.*f", digits, v1);
+    if (v2 > 0.0) {
+        sprintf(c, ",%.*f", digits, v2);
+        strcat(b, c);
+    }
+    add_text(d, b, 2, flag);
+}
+
+static int shown(const Jwc *d, unsigned layer)
+{
+    return (d->layer_edit[layer & 255] & 1) && (d->group_edit[(layer >> 4) & 15] & 1);
+}
+
+/* ---------------------------------------------------------------- ① の押し */
+/* pick（0x2de89）：線を拾って、近い端を原点・もう一端へ軸を取る。戻り 1＝続ける、0＝メッセージ／何も無し。 */
+static int pick(Jwc *d, const JwView *w, int x, int y, int *missed)
+{
+    long n = jw_cmd_pick_line(d, w, x, y);
+    JwcLine *L;
+    double px, py, d0, d1;
+    long k;
+
+    if (n < 0) {
+        *missed = 1;
+        return 0;
+    }
+    L = &d->lines[n];
+    if (L->layer != (unsigned char)d->write_layer) {
+        msg(22, 2, HK_M_LAYER);
+        return 0;
+    }
+    if (L->rest[2] & 0xC0) {
+        msg(22, 2, HK_M_CURVE);
+        return 0;
+    }
+    jw_cmd_at(w, x, y, &px, &py);
+    d0 = fabs((double)((float)L->y0 - (float)py)) + fabs((double)((float)L->x0 - (float)px));
+    d1 = fabs((double)((float)L->y1 - (float)py)) + fabs((double)((float)L->x1 - (float)px));
+    if (d1 <= d0) {
+        frame_set(L->x1, L->y1, L->x0, L->y0);
+    } else {
+        frame_set(L->x0, L->y0, L->x1, L->y1);
+    }
+    hk_ox = fr_ox;
+    hk_oy = fr_oy;
+    hk_ux = fr_ux;
+    hk_uy = fr_uy;
+    for (k = 0; k < d->n_texts; k++) {
+        const JwcText *t = &d->texts[k];
+        double v;
+
+        if (t->size >= 0x5a || !(t->rest[2] & 0x80) || t->layer != (unsigned char)d->write_layer) {
+            continue;
+        }
+        if (fabs((double)(t->y0 - fr_oy)) + fabs((double)(t->x0 - fr_ox)) >= 0.01) {
+            continue;
+        }
+        if (sscanf(t->text, " %lf ", &v) != 1) {
+            v = 999999.0;
+        }
+        if (hk_mode == 1 && v < 10000.0) {
+            msg(20, 2, HK_M_DUP1);
+            msg(20, 4, HK_M_DUP2 HK_M_DUP3);
+            return 0;
+        }
+        jwc_remove_text(d, k);
+        return 2;
+    }
+    return 1;
+}
+
+static void to_field(int *stage)
+{
+    hk_buf[0] = 0;
+    hk_n = 0;
+    *stage = JW_OPT_HK_FLD;
+}
+
+/* 数値欄の確定。ok なら足して 74 へ、範囲外は欄を出し直す。 */
+static int field_commit(Jwc *d, int *stage)
+{
+    double v1 = hk_prev1, v2 = 0.0, t;
+    char *comma = strchr(hk_buf, ',');
+
+    if (hk_n > 0) {
+        v1 = atof(hk_buf);
+    }
+    if (comma) {
+        v2 = atof(comma + 1);
+    }
+    if (comma && v1 < v2) {            /* 測定：`-3` は swap されず `-3.000`（v2 の既定は比べない） */
+        t = v1;
+        v1 = v2;
+        v2 = t;
+    }
+    if (v1 == v2) {
+        v2 = 0.0;
+    }
+    if (v1 <= 0.0) {
+        v2 = 0.0;
+    }
+    if (fabs(v1) > 400.0 || v2 < 0.0 || v2 > 400.0) {
+        hk_buf[0] = 0;
+        hk_n = 0;
+        return JW_HK_TAKEN;
+    }
+    hk_prev1 = (float)v1;
+    hk_prev2 = (float)v2;
+    /* 足す文字の座標系は欄を開いたときのもの。 */
+    fr_ox = hk_ox;
+    fr_oy = hk_oy;
+    fr_ux = hk_ux;
+    fr_uy = hk_uy;
+    put_height(d, v1, v2, 3, 0x80);
+    hk_added = 1;
+    *stage = JW_OPT_HK_IN;
+    return JW_HK_CHANGED;
+}
+
+int jw_hk_click(Jwc *d, const JwView *w, int x, int y, int right,
+                int area_x0, int area_y0, int area_x1, int area_y1,
+                int *stage, int *missed)
+{
+    int st = *stage;
+
+    *missed = 0;
+    if (st < JW_OPT_HK_IN || !d) {
+        return JW_HK_NONE;
+    }
+    hk_nmsg = 0;
+    hk_nonote = 0;
+    if (y >= 0 && y <= 15) {
+        if (st != JW_OPT_HK_FLD && x > 580) {   /* [BS]前項 */
+            *stage = JW_OPT_HK_BLD;
+        }
+        return JW_HK_TAKEN;
+    }
+    if (x < area_x0 || x > area_x1 || y < area_y0 || y > area_y1) {
+        return JW_HK_NONE;
+    }
+    if (st == JW_OPT_HK_FLD) {
+        return JW_HK_TAKEN;
+    }
+    if (st == JW_OPT_HK_IN) {
+        const int r = pick(d, w, x, y, missed);
+        int ch = 0;
+
+        if (r == 0) {
+            return JW_HK_TAKEN;
+        }
+        if (r == 2) {
+            ch = 1;
+        }
+        if (right && fabsf(hk_prev1) <= 400.0f) {
+            fr_ox = hk_ox;
+            fr_oy = hk_oy;
+            fr_ux = hk_ux;
+            fr_uy = hk_uy;
+            put_height(d, hk_prev1, hk_prev2, 3, 0x80);
+            hk_added = 1;
+            return JW_HK_CHANGED;
+        }
+        if (right) {
+            return ch ? JW_HK_CHANGED : JW_HK_TAKEN;
+        }
+        to_field(stage);
+        return ch ? JW_HK_CHANGED : JW_HK_TAKEN;
+    }
+    return JW_HK_TAKEN;
+}
+
+int jw_hk_key(Jwc *d, int key, int *stage)
+{
+    int st = *stage;
+
+    if (st < JW_OPT_HK_IN) {
+        return JW_HK_NONE;
+    }
+    hk_nmsg = 0;
+    if (st == JW_OPT_HK_FLD) {
+        if (key == 27) {
+            *stage = JW_OPT_HK_IN;
+            return JW_HK_TAKEN;
+        }
+        if (key == 13 || key == 10) {
+            return d ? field_commit(d, stage) : JW_HK_TAKEN;
+        }
+        if (key == 8 || key == 127) {
+            if (hk_n > 0) {
+                hk_buf[--hk_n] = 0;
+            }
+            return JW_HK_TAKEN;
+        }
+        if (((key >= '0' && key <= '9') || key == '.' || key == '-' || key == ',')
+            && hk_n < 30) {
+            hk_buf[hk_n++] = (char)key;
+            hk_buf[hk_n] = 0;
+        }
+        return JW_HK_TAKEN;
+    }
+    if (key == 8) {
+        *stage = JW_OPT_HK_BLD;
+        return JW_HK_TAKEN;
+    }
+    if (key == 27) {
+        if (st == JW_OPT_HK_IN && hk_mode == 1 && hk_added && d && d->n_texts > 0) {
+            jwc_remove_text(d, d->n_texts - 1);
+            hk_added = 0;
+            return JW_HK_CHANGED;
+        }
+        if (st == JW_OPT_HK_IN) {
+            hk_nonote = 1;              /* 測定：ESC が取り消しにならないとき、行 3 の注意書きが消える */
+        }
+        return JW_HK_TAKEN;
+    }
+    if (st == JW_OPT_HK_IN && key != 13 && key != 10) {
+        hk_nonote = 1;                  /* 測定：数字などの鍵でも消える（Enter は残る） */
+    }
+    return JW_HK_NONE;
 }

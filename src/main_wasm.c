@@ -1069,6 +1069,16 @@ static void kigou_ghost(void)
 
 static void present(void)
 {
+    /* ｵﾌﾟｼｮﾝ ⑤日影図に入ったとき、全記録の範囲の印（rest[2] bit1）を落とす（ovl33 0x2f85b、7a6:0066）。 */
+    {
+        static int hk_in;
+        const int now = ui.command == 29 && (ui.top_item == 5 || JW_OPT_HK(ui.opt_stage));
+
+        if (now && !hk_in && drawing) {
+            jw_hk_entry(drawing);
+        }
+        hk_in = now;
+    }
     ui.view_scale = view.scale;
     ui.view_ox = view.ox;
     ui.view_oy = view.oy;
@@ -3095,11 +3105,39 @@ static void hk_goto(int stage)
     present();
 }
 
+/* ⑤日影図の受けたあとの後始末：数え箱・帯・画面。 */
+static void hk_after(int r, int x, int y, int miss)
+{
+    cmd.missed = miss;
+    cmd.top_item = 0;
+    cmd.top_right = 0;
+    if (x >= 0) {
+        mouse_x = x;
+        mouse_y = y;
+    }
+    if (r == JW_HK_CHANGED && drawing) {
+        ui.n_lines = drawing->n_lines;
+        ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+    }
+    sync_ui();
+    present();
+}
+
 static int hk_item(int n)
 {
+    if (ui.opt_stage == JW_OPT_HK_BLD) {
+        int st = JW_OPT_HK_BLD;
+
+        if (jw_hk_bld_item(n, &st)) {
+            ui.opt_stage = st;
+            hk_after(JW_HK_TAKEN, -1, 0, 0);
+            return -1;
+        }
+        hk_after(JW_HK_TAKEN, -1, 0, 0);
+        return -1;
+    }
     if (JW_OPT_HK(ui.opt_stage)) {
-        sync_ui();
-        present();
+        hk_after(JW_HK_TAKEN, -1, 0, 0);
         return -1;
     }
     if (jw_hk_enter(n)) {
@@ -3114,7 +3152,19 @@ static int hk_key(int key)
     if (!hk_active()) {
         return -2;
     }
-    if (key >= '1' && key <= '5') {
+    if (ui.opt_stage >= JW_OPT_HK_IN) {
+        int st = ui.opt_stage;
+        const int r = jw_hk_key(drawing, key, &st);
+
+        if (r) {
+            ui.opt_stage = st;
+            if (st == JW_OPT_HK_BLD) {
+                jw_hk_reset();
+            }
+            hk_after(r, -1, 0, 0);
+            return -1;
+        }
+    } else if (key >= '1' && key <= '5') {
         return hk_item(key - '0');
     }
     if (JW_OPT_HK(ui.opt_stage)) {
@@ -3123,12 +3173,15 @@ static int hk_key(int key)
             return -1;
         }
         if (key == 27 || key == 13 || key == 10) {
+            hk_after(JW_HK_TAKEN, -1, 0, 0);
             return -1;
         }
         if (key >= 0 && key < 256 && jw_ui_key_command(key)) {
             ui.opt_stage = 0;
+            jw_hk_reset();
             return -2;
         }
+        hk_after(JW_HK_TAKEN, -1, 0, 0);
         return -1;
     }
     if (key == 27) {            /* 入口の帯の [ESC]：オプションの第一段の行へ（main を抜ける） */
@@ -3143,15 +3196,26 @@ static int hk_key(int key)
 
 static int hk_click(int x, int y, int right)
 {
-    (void)right;
     if (!hk_active()) {
         return -2;
     }
     if (jw_ui_menu_hit(x, y)) {
         if (JW_OPT_HK(ui.opt_stage)) {
             ui.opt_stage = 0;
+            jw_hk_reset();
         }
         return -2;
+    }
+    if (ui.opt_stage >= JW_OPT_HK_IN && drawing) {
+        int st = ui.opt_stage, miss = 0;
+        const int r = jw_hk_click(drawing, &view, x, y, right, AREA_X0, AREA_Y0,
+                                  AREA_X1, AREA_Y1, &st, &miss);
+
+        if (r) {
+            ui.opt_stage = st;
+            hk_after(r, x, y, miss);
+            return -1;
+        }
     }
     if (y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
         mouse_x = x;

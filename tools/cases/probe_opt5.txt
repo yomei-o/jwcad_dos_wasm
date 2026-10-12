@@ -1,0 +1,15 @@
+# ｵﾌﾟｼｮﾝ ⑤日影図（src/opthikage.c、仕様 notes/spec-opt5-hikage.md）。保存した記録を本物と比べる：
+#   sh tools/funccases.sh tools/cases/probe_opt5.txt
+# 数字を打つ前に必ず move（押した点にマウスを置いたままだと実機の数値欄が数字で閉じる）。
+# SAMPLE0：L0 左の縦 x=161（レイヤ 0）、L2 右の縦 x=597。
+hk_in1|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|key bs
+hk_in_two|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|597 145 right|key bs
+hk_in_comma|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|type ,|type 9|key enter|key bs
+hk_in_neg|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type -|type 3|key enter|key bs
+hk_in_esc|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|key esc|key bs
+hk_in_swap|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 9|type ,|type 1|type 0|key enter|key bs
+hk_in_dup|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|161 150 left|key bs
+hk_chg|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|key bs|type 2|161 145 left|move 30 300|type 2|type 0|key enter|key bs
+hk_chg_none|SAMPLE0|type s|type 5|type 1|type 2|161 145 left|move 30 300|type 2|type 0|key enter|key bs
+hk_in_layer|SAMPLE0|type s|type 5|type 1|type 1|260 140 left|key bs
+hk_in_bottom|SAMPLE0|type s|type 5|type 1|type 1|161 400 left|move 30 300|type 5|key enter|key bs

@@ -12,3 +12,27 @@ p3_bs|type s|type 5|type 3|key bs
 p4|type s|type 5|type 4
 p4_bs|type s|type 5|type 4|key bs
 p2_click|type s|type 5|200 8 left
+in1|type s|type 5|type 1|type 1
+in2|type s|type 5|type 1|type 2
+in1_bs|type s|type 5|type 1|type 1|key bs
+in_far|type s|type 5|type 1|type 1|400 300 left
+in_fld|type s|type 5|type 1|type 1|161 145 left
+in_f1|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1
+in_f10|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0
+in_f10e|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter
+in_f10esc|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key esc
+in_f10bs|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key bs
+in_f10e_esc|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|key esc
+in_f10e_bs|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|key bs
+in_r|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|597 145 right
+in_layer|type s|type 5|type 1|type 1|260 140 left
+in_layer2|type s|type 5|type 1|type 1|260 140 left|400 300 left
+in_chg|type s|type 5|type 1|type 2|161 145 left
+in_chg_f|type s|type 5|type 1|type 2|161 145 left|move 30 300|type 2|type 0|key enter
+in_chg_esc|type s|type 5|type 1|type 2|161 145 left|move 30 300|type 2|type 0|key enter|key esc
+in1_esc|type s|type 5|type 1|type 1|key esc
+in2_esc|type s|type 5|type 1|type 2|key esc
+in1_enter|type s|type 5|type 1|type 1|key enter
+in1_digit|type s|type 5|type 1|type 1|type 5
+in_dup2|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|161 150 left|400 300 left
+in_dup|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|161 150 left
