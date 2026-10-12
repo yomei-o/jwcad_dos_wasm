@@ -108,8 +108,8 @@ env_2|type s|type 6|type 5|type 2
 env_e|type s|type 6|type 5|key enter
 env_click_row|type s|type 6|type 5|200 120 left
 env_click_row2|type s|type 6|type 5|200 120 left|200 120 left
-env_click_item1|type s|type 6|type 5|130 8 left
-env_click_item2|type s|type 6|type 5|250 8 left
+env_click_item1|type s|type 6|type 5|600 450 left|200 8 left
+env_click_item2|type s|type 6|type 5|600 450 left|300 8 left
 env_click_esc|type s|type 6|type 5|20 8 left
 env_rclick|type s|type 6|type 5|200 120 right
 env_a|type s|type 6|type 5|type a
@@ -117,3 +117,7 @@ env_1_esc|type s|type 6|type 5|type 1|key esc
 env_1_1|type s|type 6|type 5|type 1|type 1
 env_1_e|type s|type 6|type 5|type 1|key enter
 env_1_x|type s|type 6|type 5|type 1|type x
+env_click_title|type s|type 6|type 5|600 450 left|130 8 left
+env_2_1|type s|type 6|type 5|type 2|type 1
+env_2_x|type s|type 6|type 5|type 2|key esc
+env_2_8|type s|type 6|type 5|type 2|type 8

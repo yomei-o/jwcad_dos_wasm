@@ -65,6 +65,11 @@ static const Jwc *os_d;                 /* 使用数を読む図面 */
 static int os_tick;                     /* ②を抜けたあとも行 2 の桁 18 に ┝ が残る（本物は桁 19 から消す。測定） */
 static int os_pal_drawn;                /* 一度見本を出した（本物は消さない） */
 
+int jw_optset_env_drive(void)
+{
+    return os_item == 5 ? os_ph : 0;
+}
+
 int jw_optset_cursor_hidden(int opt_stage)
 {
     return opt_stage == JW_OPT_SET_TIME || opt_stage == JW_OPT_SET_KEY
@@ -537,6 +542,12 @@ static int to_band(int *opt_stage)
     return JW_OS_TAKEN;
 }
 
+/* ⑤を読み終えて各設定の帯へ（呼び元が読んだあと）。 */
+int jw_optset_env_done(int *opt_stage)
+{
+    return to_band(opt_stage);
+}
+
 static int enter_item(Jwc *d, int item, int *opt_stage)
 {
     os_item = item;
@@ -718,6 +729,37 @@ int jw_optset_key(Jwc *d, VGA *v, int key, int *opt_stage)
         return JW_OS_TAKEN;
     }
     switch (os_item) {
+    case 5:
+        /* ファイル選択（*.jwf）：[ESC] は各設定の帯へ、① 選択確定（1・[Enter]）で読んで帯へ（測定：env_*）。
+         * ② ドライブ変更の行（os_ph 2）では 1〜7 と [ESC] でファイル選択の行へ、8 でドライブ名入力（os_ph 3）。 */
+        if (os_ph == 2) {
+            if (key == 27 || (key >= '1' && key <= '7')) {
+                os_ph = 0;
+            } else if (key == '8') {
+                os_ph = 3;
+            }
+            return JW_OS_TAKEN;
+        }
+        if (os_ph == 3) {
+            if (key == 27 || enter) {
+                os_ph = 0;
+            }
+            return JW_OS_TAKEN;
+        }
+        if (key == 27) {
+            return to_band(opt_stage);
+        }
+        if (key == '2') {
+            os_ph = 2;
+            return JW_OS_TAKEN;
+        }
+        if (key == '1' || enter) {
+            return JW_OS_ENVLOAD;
+        }
+        if (key >= 0 && key < 256 && jw_ui_key_command(key)) {
+            return JW_OS_NONE;
+        }
+        return JW_OS_TAKEN;
     case 1:
         if (os_ms == 5) {
             if (key == '1') {
@@ -879,6 +921,34 @@ int jw_optset_click(Jwc *d, VGA *v, int x, int y, int right, int *opt_stage)
         return JW_OS_TAKEN;
     }
     switch (os_item) {
+    case 5:
+        if (os_ph == 2) {
+            if (top && item >= 1 && item <= 7) {
+                os_ph = 0;
+            } else if (top && item == 8) {
+                os_ph = 3;
+            } else if (top && item == 0 && x < 40) {
+                os_ph = 0;
+            }
+            return JW_OS_TAKEN;
+        }
+        if (os_ph == 3) {
+            if (top && item == 0 && x < 40) {
+                os_ph = 0;
+            }
+            return JW_OS_TAKEN;
+        }
+        if (top && item == 2) {
+            os_ph = 2;
+            return JW_OS_TAKEN;
+        }
+        if (top && item == 1) {
+            return JW_OS_ENVLOAD;
+        }
+        if (top && item == 0 && x < 40) {
+            return to_band(opt_stage);
+        }
+        return JW_OS_TAKEN;
     case 1:
         if (os_ms == 5) {
             if (item == 1) {

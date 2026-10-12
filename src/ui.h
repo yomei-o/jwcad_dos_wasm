@@ -169,6 +169,8 @@ typedef struct {
     /* `編集ファイル名=` on row 3 -- the drawing in hand.  入出力 shows it;
      * the three other screens do not. */
     int file_named;
+    /* ｵﾌﾟｼｮﾝ ⑥各設定 ⑤環境FILE の ファイル選択：2 ＝ ドライブ変更の行、3 ＝ ドライブ名入力（src/optset.c が決める）。 */
+    int file_drive_env;
     /* The colour of the `path=A:\*.xxx` line.  Cyan on three of the four
      * screens and **green on ｵﾌﾟｼｮﾝ ⑦外部処理's**, which is the original's
      * own doing: its call says colour 4 where the others say 5. */

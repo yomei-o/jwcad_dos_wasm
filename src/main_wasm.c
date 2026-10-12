@@ -26,6 +26,7 @@
 #include "optbatch.h"
 #include "optdata.h"
 #include "optset.h"
+#include "optenv.h"
 #include "tategu.h"
 #include "view.h"
 
@@ -3053,13 +3054,51 @@ static int data_g0_key(int key)
 
 /* ｵﾌﾟｼｮﾝ ⑥各設定（src/optset.c）が受けた鍵・押しのあとの後始末。
  * 戻り値：-1 受けた／-2 受けない（命令の鍵・左の盤の押しとして先へ流す）。 */
+static JwEnvState env_state;
+
+/* ⑤環境FILE：選んだ *.jwf を読む（src/optenv.c）。 */
+static void env_load(void)
+{
+    char stem[9];
+    char path[256];
+    int k;
+
+    if (ui.file_n > 0 && drawing) {
+        memcpy(stem, ui.file_name[ui.file_sel], 8);
+        stem[8] = 0;
+        for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
+        sprintf(path, "%s/%s.JWF", JW_DIR, stem);
+        jw_optenv_load(drawing, path, &env_state);
+        opt_refresh();                          /* 左の盤のレイヤの釦・名前を読み直す */
+    }
+    ui.io_stage = 0;
+    jw_ui_pick_kind(&ui, JW_PICK_IO);
+}
+
 static int set_after(int r, int stage, int x, int y)
 {
+    if (r == JW_OS_ENVLOAD) {
+        int st = stage;
+
+        env_load();
+        jw_optset_env_done(&st);
+        r = JW_OS_TAKEN;
+        stage = st;
+    }
+    if (ui.io_stage == JW_IO_LOAD && stage != JW_OPT_SET_ENV && ui.command == 29) {
+        ui.io_stage = 0;
+        jw_ui_pick_kind(&ui, JW_PICK_IO);
+    }
     if (x >= 0) {
         mouse_x = x;
         mouse_y = y;
     }
     if (r == JW_OS_NONE) {
+        if (ui.io_stage == JW_IO_LOAD && ui.command == 29) {
+            ui.io_stage = 0;
+            jw_ui_pick_kind(&ui, JW_PICK_IO);
+        }
+        ui.file_drive_env = 0;
         ui.opt_stage = 0;
         jw_optset_reset();
         return -2;
@@ -3080,6 +3119,7 @@ static int set_after(int r, int stage, int x, int y)
     }
     cmd.top_item = 0;
     cmd.top_right = 0;
+    ui.file_drive_env = ui.opt_stage == JW_OPT_SET_ENV ? jw_optset_env_drive() : 0;
     /* 左の盤の作業時間の棒は盤を描き直すまで古いまま（測定：optset_screens の time_5e）。 */
     sync_ui();
     present();
@@ -3122,6 +3162,24 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     const int pick = jw_ui_menu_hit(x, y);
     const int bar = jw_ui_bar_item(x, y);
 
+    /* ｵﾌﾟｼｮﾝ ⑥各設定 ⑤環境FILE の一覧の押し：選んだ行をもう一度押すと読む（入出力の読込の一覧と同じ）。 */
+    if (ui.command == 29 && ui.opt_stage == JW_OPT_SET_ENV && x >= 128 && y >= 112 && drawing) {
+        const int row = y / 16 - 7;
+
+        mouse_x = x;
+        mouse_y = y;
+        if (row >= 0 && row < JW_FILE_ROWS && ui.file_top + row < ui.file_n) {
+            int st = ui.opt_stage;
+
+            if (ui.file_top + row == ui.file_sel) {
+                return set_after(JW_OS_ENVLOAD, st, x, y);
+            }
+            ui.file_sel = ui.file_top + row;
+        }
+        sync_ui();
+        present();
+        return -1;
+    }
     /* ｵﾌﾟｼｮﾝ ⑥各設定。 */
     if (JW_OPT_SETTING(&ui) && drawing) {
         int st = ui.opt_stage;

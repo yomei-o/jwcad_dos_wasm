@@ -446,7 +446,7 @@ void jw_ui_pick_kind(JwUi *s, int kind)
         s->file_word = " " "\x8a\x4f\x95\x94\x95\xcf\x8c\x60" "    ";
         break;
     case JW_PICK_ENV:
-        s->file_bar = JW_PICK_CHILD_BAR;
+        s->file_bar = JW_FILE_BAR;
         s->file_path = "path=A:" "\x5c" "*.jwf";
         s->file_word = " " "\x8a\xc2\x8b\xab" "    ";
         break;
@@ -4487,6 +4487,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 8, 1, 7, 0,
                            " " "\x81\x9f\x83" "t" "\x83" "@" "\x83" "C"
                            "\x83\x8b\x96\xbc\x93\xfc\x97\xcd");
+            } else if (s->file_drive_env == 2) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                jw_ui_text(v, 8, 1, 7, 0, JW_DRIVE_BAR);
+            } else if (s->file_drive_env == 3) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]" "\x83h\x83\x89\x83" "C\x83u\x96\xbc\x93\xfc\x97\xcd\x81@");
+                fill(v, 21 * 8, 7, 21 * 8 + 7, 15, 4);
             } else if (saving) {
                 jw_ui_text(v, 1, 1, 6, 0xffffu, JW_SAVE_BAR);
             } else {

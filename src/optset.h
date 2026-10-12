@@ -26,6 +26,7 @@
 #define JW_OS_NONE   0          /* この道のものではない。呼び元がそのまま続ける */
 #define JW_OS_TAKEN  1          /* 受けた（画面は描き直す） */
 #define JW_OS_LEAVE  2          /* 各設定を抜けて、オプションの 8 項目の帯へ戻る */
+#define JW_OS_ENVLOAD 4         /* ⑤環境FILE：選んだファイルを読む（呼び元が読んで帯へ戻す） */
 #define JW_OS_ENV    3          /* ⑤環境FILE：ファイル選択の画面へ（呼び元が出す） */
 
 /* ⑥各設定を押した。opt_stage を JW_OPT_SET へ。 */
@@ -42,6 +43,12 @@ void jw_optset_text(VGA *v, const Jwc *d, int opt_stage);
 
 /* 本物が矢を消している段（④作図時間、③ｺﾏﾝﾄﾞｷｰ、⑦の見本）。 */
 int jw_optset_cursor_hidden(int opt_stage);
+
+/* ⑤環境FILE のファイル選択の行：0 通常、2 ドライブ変更、3 ドライブ名入力（JwUi.file_drive_env）。 */
+int jw_optset_env_drive(void);
+
+/* ⑤環境FILE を読み終えた。各設定の帯へ戻す。 */
+int jw_optset_env_done(int *opt_stage);
 
 /* 命令を離れたときなど、状態を捨てる（設定した値は残す）。 */
 void jw_optset_reset(void);
