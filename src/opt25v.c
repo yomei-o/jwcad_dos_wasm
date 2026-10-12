@@ -90,53 +90,6 @@ static int layer_shown(const Jwc *d, unsigned layer)
     return (d->layer_edit[layer & 255] & 1) && (d->group_edit[(layer >> 4) & 15] & 1);
 }
 
-/* ovl35 1e64 の代わり（高さ 0 の平面の線だけ）。レイヤ 0..255 の順に、表示中のレイヤの線
- * （ペン<0x5a、線種 9＝補助線でない）を集める。 */
-static long build(const Jwc *d)
-{
-    int k;
-    long n, cnt = 0;
-
-    free(v_seg);
-    v_seg = NULL;
-    v_nseg = 0;
-    for (n = 0; n < d->n_lines; n++) {
-        const JwcLine *l = &d->lines[n];
-
-        if (l->pen < 0x5a && l->type != 9 && layer_shown(d, l->layer)) {
-            cnt++;
-        }
-    }
-    if (!cnt) {
-        return 0;
-    }
-    v_seg = (Seg *)calloc((size_t)cnt, sizeof(Seg));
-    if (!v_seg) {
-        return 0;
-    }
-    for (k = 0; k < 256; k++) {
-        if (!layer_shown(d, (unsigned)k)) {
-            continue;
-        }
-        for (n = 0; n < d->n_lines; n++) {
-            const JwcLine *l = &d->lines[n];
-            Seg *s;
-
-            if (l->pen >= 0x5a || l->type == 9 || l->layer != k) {
-                continue;
-            }
-            s = &v_seg[v_nseg++];
-            s->x0 = l->x0;
-            s->y0 = l->y0;
-            s->x1 = l->x1;
-            s->y1 = l->y1;
-            s->type = l->type;
-            s->pen = l->pen;
-        }
-    }
-    return v_nseg;
-}
-
 /* ------------------------------------------------------------ 初期化 */
 static float paper_k(const Jwc *d)
 {
@@ -144,6 +97,503 @@ static float paper_k(const Jwc *d)
     const int pp = d->paper >= 0 && d->paper < 5 ? d->paper : 4;
 
     return (float)((double)PAPER[pp] / 518.0);
+}
+
+/* ------------------------------------------------------------ 高さデータの読み取り（ovl35 1e64・14ad・0e2e）
+ *
+ * 本物は 1e64 が図面の線を 3 本組（A＝平面の線、B＝端の高さ、C＝(横,奥行)）に作り直して線の配列の上に隠す。
+ * ここでは A と B だけを Seg に持つ（C は recompute が作る）。番地は ovl35 の dis 番地（`3ab8:XXXX`＝dis−0x2ab80）。
+ * float／double は x87 ランタイム（22b2）の型どおり（float 同士だけ float、一方でも double なら double、
+ * 「keep」の store は丸めずに続ける）。 */
+
+static float v_f5fe = 250.0f, v_f632 = 150.0f;   /* 枠 1 の原点 [bp-0x5fe]・[bp-0x632]（1e64 が決める） */
+static float h_f;                       /* [bp-0x228]：1.0/(縮尺×紙の倍率)（ｍなら ×1000） */
+static float g_div = 30.0f;             /* [0x11e6]：円の分割角（14ad が円データの第 3 値で替える） */
+static char h_buf[256];                 /* [0xbf48]：14ad が最後に読んだ高さ文字（古いまま残る） */
+
+/* 22b2:28ae の sscanf(" %lf,%lf,...")。戻り：読めた個数、最初の変換の前に文字列が尽きたら -1。 */
+static int scan_list(const char *s, double *v, int max)
+{
+    int n = 0;
+
+    while (n < max) {
+        char tmp[64];
+        int k = 0;
+        char *e;
+        const char *p;
+
+        while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r' || *s == '\v' || *s == '\f') {
+            s++;
+        }
+        if (!*s) {
+            return n == 0 ? -1 : n;
+        }
+        p = s;
+        if (*p == '+' || *p == '-') tmp[k++] = *p++;
+        {
+            int nd = 0;
+
+            while (*p >= '0' && *p <= '9' && k < 40) { tmp[k++] = *p++; nd++; }
+            if (*p == '.') {
+                tmp[k++] = *p++;
+                while (*p >= '0' && *p <= '9' && k < 40) { tmp[k++] = *p++; nd++; }
+            }
+            if (!nd) return n;
+            if (*p == 'e' || *p == 'E') {
+                const char *q = p + 1;
+                int k2 = k;
+
+                tmp[k2++] = 'e';
+                if (*q == '+' || *q == '-') tmp[k2++] = *q++;
+                if (*q >= '0' && *q <= '9') {
+                    while (*q >= '0' && *q <= '9' && k2 < 60) tmp[k2++] = *q++;
+                    k = k2;
+                    p = q;
+                }
+            }
+        }
+        tmp[k] = 0;
+        v[n++] = strtod(tmp, &e);
+        s = p;
+        if (n == max || *s != ',') {
+            return n;
+        }
+        s++;
+    }
+    return n;
+}
+
+/* 浮動小数点の並びをそのまま整数に読んだ鍵（負は符号を落として負にする。14ad の粗い検査）。 */
+static long fkey(float f)
+{
+    unsigned long b;
+
+    memcpy(&b, &f, 4);
+    return (b & 0x80000000ul) ? -(long)(b & 0x7ffffffful) : (long)b;
+}
+
+/* 14ad：(layer,x,y) に高さの文字があれば（最後の 1 件）その値を読む。戻り＝見つけた文字の番号（無ければ 0）。
+ * *n＝個数（3 個以上なら 1 引く）。v[1..11] は読めた値（v[3] は円の分割角の読み取りに使った値）。 */
+static int read_h(const Jwc *d, int layer, double x, double y, int *n, double v[12])
+{
+    const float xlo = (float)(x - (double)0.1f), ylo = (float)(y - (double)0.1f);
+    const float xhi = (float)((double)0.1f + x), yhi = (float)((double)0.1f + y);
+    int i, hit = 0, nn;
+    const JwcText *t = NULL;
+
+    for (i = 0; i < d->n_texts; i++) {
+        const JwcText *c = &d->texts[i];
+
+        if (c->rest[0] >= 0x5a || c->layer != layer) continue;
+        if (!((c->rest[2] & 0x80) || (c->rest[3] & 0x80))) continue;
+        if (fkey(xlo) > fkey(c->x0) || fkey(ylo) > fkey(c->y0)) continue;
+        if (fkey(xhi) < fkey(c->x0) || fkey(yhi) < fkey(c->y0)) continue;
+        if (!(fabs((double)c->y0 - y) + fabs((double)c->x0 - x) < 0.01)) continue;
+        hit = i + 1;
+        t = c;
+    }
+    for (i = 0; i < 12; i++) v[i] = 0.0;
+    nn = 0;
+    if (hit) {
+        const char *s = t->text ? t->text : "";
+
+        strncpy(h_buf, s, sizeof h_buf - 1);
+        h_buf[sizeof h_buf - 1] = 0;
+        nn = scan_list(h_buf, v + 1, 11);
+        if (nn > 0) {
+            /* v+1 から読んだので v[1] が第 1 値 */
+        }
+        if (nn == 1 && (t->rest[2] & 0x80)) {
+            if (0.0 < v[1]) nn = 2;
+            v[1] = fabs(v[1]);
+            v[2] = 0.0;
+        }
+        if (nn == 0) {
+            for (i = 0; i < 12; i++) v[i] = 0.0;
+        }
+    }
+    g_div = 30.0f;
+    if (nn >= 3) {
+        const double a = fabs(v[3]);
+
+        nn--;
+        if (a >= 1.0 && a <= 90.0) g_div = (float)v[3];
+    }
+    *n = nn;
+    return hit;
+}
+
+/* 2981(0,u,v)・2a18(0,u,v)：枠の座標から図面の座標へ。 */
+static float fr_X(double u, double v)
+{
+    return (float)(((double)fr_ux * u - (double)fr_uy * v) + (double)fr_ox);
+}
+
+static float fr_Y(double u, double v)
+{
+    return (float)(((double)fr_ux * v + (double)fr_uy * u) + (double)fr_oy);
+}
+
+typedef struct {
+    float x0, y0, x1, y1;
+    float z0, z1;
+    unsigned char type, pen;
+} H3;
+
+/* 立面の状態（1 つのレイヤの間ずっと）。 */
+typedef struct {
+    int elev;                           /* [bp-0x2c2]：Pen5 の補助線がある */
+    double pt6x, pt6y;                  /* [bp-0x160]・[bp-0x188]：立面原点 */
+    double sx, sy, ex, ey;              /* [bp-0x22c]・[bp-0x276]・[bp-0xac]・[bp-0x2b6]：斜の線 */
+    double zbase;                       /* [bp-0x198] */
+} Elev;
+
+static Seg *h_out;
+static long h_n, h_cap;
+static int h_vflag;
+
+static void h_add(const H3 *s)
+{
+    Seg *g;
+
+    if (h_n >= h_cap) {
+        h_cap = h_cap ? h_cap * 2 : 256;
+        h_out = (Seg *)realloc(h_out, (size_t)h_cap * sizeof(Seg));
+    }
+    g = &h_out[h_n++];
+    memset(g, 0, sizeof *g);
+    g->x0 = s->x0;
+    g->y0 = s->y0;
+    g->x1 = s->x1;
+    g->y1 = s->y1;
+    g->z0 = s->z0;
+    g->z1 = s->z1;
+    g->type = s->type;
+    g->pen = s->pen;
+}
+
+/* 0e2e：1 本の 3 次元の線を足す。za・zb は端の高さ（立面なら奥行）。戻り 0＝足した／足さなかった。 */
+static void emit_line(const JwcLine *rec, const Elev *E, double za, double zb)
+{
+    H3 o;
+
+    o.type = rec->type;
+    o.pen = rec->pen;
+    if (!E->elev) {
+        o.x0 = rec->x0;
+        o.y0 = rec->y0;
+        o.x1 = rec->x1;
+        o.y1 = rec->y1;
+        o.z0 = (float)(za + E->zbase);
+        o.z1 = (float)(E->zbase + zb);
+    } else {
+        const float eps = 0.002f;
+        const float u0 = (float)((double)rec->x0 - E->pt6x), u1 = (float)((double)rec->x1 - E->pt6x);
+        const double t0 = (double)rec->y0 - E->pt6y, t1 = (double)rec->y1 - E->pt6y;
+        float w0 = (float)t0, w1 = (float)t1;
+        const float s0 = (float)(t0 - E->sy), s1 = (float)(t1 - E->sy);
+        float v0, v1;
+        int slant0, slant1;
+        const int both = ((float)(s0 + eps) > 0.0f) && ((float)(s1 + eps) > 0.0f);
+
+        slant0 = (s0 > eps) || both;
+        slant1 = (s1 > eps) || both;
+        if (slant0) {
+            if (h_vflag) {
+                w0 = (float)(((double)s0 * E->ey + za * E->ex) + E->sy);
+                v0 = (float)((double)s0 * E->ex - za * E->ey);
+            } else {
+                if (!(fabs(E->ey) >= 0.01)) return;
+                v0 = (float)(((double)s0 / E->ey) * E->ex - za);
+            }
+            v0 = (float)((double)v0 + E->sx);
+        } else {
+            v0 = (float)(-za);
+        }
+        if (slant1) {
+            if (h_vflag) {
+                w1 = (float)(((double)s1 * E->ey + E->ex * zb) + E->sy);
+                v1 = (float)((double)s1 * E->ex - E->ey * zb);
+            } else {
+                if (!(fabs(E->ey) >= 0.01)) return;
+                v1 = (float)(((double)s1 / E->ey) * E->ex - zb);
+            }
+            v1 = (float)((double)v1 + E->sx);
+        } else {
+            v1 = (float)(-zb);
+        }
+        o.x0 = fr_X((double)u0, (double)v0);
+        o.y0 = fr_Y((double)u0, (double)v0);
+        o.x1 = fr_X((double)u1, (double)v1);
+        o.y1 = fr_Y((double)u1, (double)v1);
+        o.z0 = (float)((double)w0 + E->zbase);
+        o.z1 = (float)((double)w1 + E->zbase);
+    }
+    h_add(&o);
+}
+
+static int layer_used(const Jwc *d, int k)
+{
+    long n;
+
+    for (n = 0; n < d->n_lines; n++) if (d->lines[n].layer == k) return 1;
+    for (n = 0; n < d->n_arcs; n++) if (d->arcs[n].layer == k) return 1;
+    for (n = 0; n < d->n_texts; n++) if (d->texts[n].layer == k) return 1;
+    for (n = 0; n < d->n_points; n++) if (d->points[n].layer == k) return 1;
+    return 0;
+}
+
+/* 1e64：高さのデータを作る。戻り＝線の数（本物は円弧の数も返す）。 */
+static long build(const Jwc *d, int unit)
+{
+    float gh[16];
+    int gk[16];
+    int k, g, n;
+    long i;
+    char *used;
+
+    free(h_out);
+    h_out = NULL;
+    h_n = h_cap = 0;
+    h_f = 1.0f / (d->denom * paper_k(d));
+    if (unit) h_f = (float)((double)h_f * 1000.0);
+    for (g = 0; g < 16; g++) { gh[g] = 0.0f; gk[g] = 0; }
+    for (i = 0; i < d->n_texts; i++) {
+        const JwcText *t = &d->texts[i];
+        double v[2];
+
+        if (t->rest[0] >= 0x5a || !(t->x0 == 0.0f && t->y0 == 0.0f) || !(t->rest[3] & 0x80)) continue;
+        strncpy(h_buf, t->text ? t->text : "", sizeof h_buf - 1);
+        h_buf[sizeof h_buf - 1] = 0;
+        if (scan_list(h_buf, v, 1) == 1) {
+            gh[t->layer >> 4] = (float)((double)h_f * v[0]);
+        }
+    }
+    for (g = 0; g < 16; g++) {
+        const char *nm = d->group_name[g];
+        double v[1];
+
+        if (nm[0] == '#') {
+            if (nm[1] == 'l' && nm[2] == 'v') {
+                if (scan_list(nm + 3, v, 1) == 1) gh[g] = (float)((float)v[0] * h_f);
+            }
+            if (nm[1] == 'k') gk[g] = 1;
+        }
+    }
+    used = (char *)calloc(256, 1);
+    for (k = 0; k < 256; k++) used[k] = (char)layer_used(d, k);
+    for (k = 0; k < 256; k++) {
+        const char *nm = d->layer_name[k];
+        float lv = 0.0f, lh = 0.0f;
+        int lhflag = 0, flag40;
+        Elev E;
+        long line5 = 0, line6 = 0, pt5 = 0, pt6 = 0;
+        float p5x = 0.0f, p5y = 0.0f, p6x = 0.0f, p6y = 0.0f;
+        unsigned char *consumed;
+
+        if (!layer_shown(d, (unsigned)k) || !used[k]) continue;
+        g = k >> 4;
+        memset(&E, 0, sizeof E);
+        E.zbase = (double)gh[g];
+        flag40 = gk[g];
+        if (nm[0] == '#') {
+            double v[1];
+
+            if (nm[1] == 'l' && nm[2] == 'v') {
+                if (scan_list(nm + 3, v, 1) == 1) lv = (float)v[0];
+            }
+            if (nm[1] == 'l' && nm[2] == 'h') {
+                if (scan_list(nm + 3, v, 1) == 1) lh = (float)v[0];
+                if (fabs((double)lh) >= 0.001) lhflag = 1;
+            }
+        }
+        E.zbase = (double)((float)(lv * h_f)) + E.zbase;
+        /* 立面の補助線（Pen5・Pen6 の線種 9） */
+        for (i = 0; i < d->n_lines; i++) {
+            const JwcLine *l = &d->lines[i];
+
+            if (l->pen >= 0x5a || l->layer != k) continue;
+            if (l->type == 9 && l->pen == 5) line5 = i + 1;
+            if (l->type == 9 && l->pen == 6) line6 = i + 1;
+            if (flag40 && l->type == 9) line5 = i + 1;
+        }
+        if (!line5) flag40 = 0;
+        E.elev = line5 != 0;
+        E.sy = 999999.0;
+        if (line5) {
+            const JwcLine *b = &d->lines[line5 - 1];
+            double ox = 0.0;
+
+            (void)ox;
+            for (i = 0; i < d->n_points; i++) {
+                const JwcPoint *p = &d->points[i];
+
+                if (p->rest[1] < 0x5a && p->layer == k) {
+                    if (p->rest[1] == 5) { p5x = p->x; p5y = p->y; pt5 = i + 1; }
+                    if (p->rest[1] == 6) { p6x = p->x; p6y = p->y; pt6 = i + 1; }
+                }
+            }
+            /* 底辺の線の近い端を原点に、遠い端へ向かう枠（原点を指す点があればその点が原点） */
+            if (((fabsf(b->y0 - p5y) - fabsf(b->y1 - p5y)) + fabsf(b->x0 - p5x)) > fabsf(b->x1 - p5x)) {
+                frame_set((double)b->x1, (double)b->y1, (double)b->x0, (double)b->y0);
+            } else {
+                frame_set((double)b->x0, (double)b->y0, (double)b->x1, (double)b->y1);
+            }
+            if (pt5) { fr_ox = p5x; fr_oy = p5y; }
+            if (!pt6 && flag40) {
+                if (!pt5) frame_set((double)b->x0, (double)b->y0, (double)b->x1, (double)b->y1);
+                pt6 = 1;
+                p6x = fr_ox;
+                p6y = fr_oy;
+                if (pt5) { p6x = p5x; p6y = p5y; }
+            }
+            if (!pt6) {
+                p6x = p6y = 99999.0f;
+                for (i = 0; i < d->n_lines; i++) {
+                    const JwcLine *l = &d->lines[i];
+
+                    if (l->pen >= 0x5a || l->layer != k || l->type == 9) continue;
+                    if (l->x0 < p6x) p6x = l->x0;
+                    if (l->y0 < p6y) p6y = l->y0;
+                    if (l->x1 < p6x) p6x = l->x1;
+                    if (l->y1 < p6y) p6y = l->y1;
+                }
+                for (i = 0; i < d->n_arcs; i++) {
+                    const JwcArc *a = &d->arcs[i];
+
+                    if (a->pen >= 0x5a || a->layer != k || a->type == 9) continue;
+                    if (a->cx < p6x) p6x = a->cx;
+                    if (a->cy < p6y) p6y = a->cy;
+                }
+            }
+            E.pt6x = p6x;
+            E.pt6y = p6y;
+            E.sy = (double)999999.0f;
+            E.sx = 0.0;
+            if (line6) {
+                const JwcLine *s = &d->lines[line6 - 1];
+                const double dy = (double)(float)((double)s->y1 - (double)s->y0);
+                const double dx = (double)(float)((double)s->x1 - (double)s->x0);
+                const double len2 = dx * dx + dy * dy;
+
+                if (len2 >= 0.001) {
+                    const double len = sqrt(len2);
+                    double sign;
+
+                    if (fabs(dy) > 0.01) sign = dy > 0.0 ? 1.0 : -1.0;
+                    else sign = dx > 0.0 ? 1.0 : -1.0;
+                    if (sign > 0.0) {
+                        E.sx = (double)(float)((double)s->x0 - (double)p6x);
+                        E.sy = (double)(float)((double)s->y0 - (double)p6y);
+                        E.ex = (double)(float)(dx / len);
+                        E.ey = (double)(float)(dy / len);
+                    } else {
+                        E.sx = (double)(float)((double)s->x1 - (double)p6x);
+                        E.sy = (double)(float)((double)s->y1 - (double)p6y);
+                        E.ex = (double)(float)(-(dx / len));
+                        E.ey = (double)(float)(-(dy / len));
+                    }
+                }
+            }
+        }
+        consumed = (unsigned char *)calloc((size_t)d->n_texts + 3, 1);
+        for (i = 0; i < d->n_lines; i++) {
+            JwcLine l = d->lines[i];
+            double hv0[12], hv1[12];
+            int n0, n1, i0, i1;
+            double z0, z1;
+            double dd0, dd1;
+
+            if (l.pen >= 0x5a || l.layer != k) continue;
+            if (l.type == 9) continue;              /* flag40 の立面の線は未実装 */
+            i0 = read_h(d, k, (double)l.x0, (double)l.y0, &n0, hv0);
+            i1 = read_h(d, k, (double)l.x1, (double)l.y1, &n1, hv1);
+            z0 = (double)(float)((double)h_f * hv0[1]);
+            z1 = (double)(float)((double)h_f * hv1[1]);
+            if ((l.rest[3] & 0x40) && flag40) z0 = z1 = 0.0;
+            /* v の印は最後に読んだ文字（古いまま残る h_buf） */
+            h_vflag = strchr(h_buf, 'V') != NULL || strchr(h_buf, 'v') != NULL;
+            emit_line(&l, &E, z0, z1);
+            dd0 = hv0[2];
+            dd1 = hv1[2];
+            if (n0 == 0 && n1 == 0 && lhflag) {
+                n0 = n1 = 2;
+                dd0 = dd1 = (double)lh;
+                i0 = d->n_texts + 1;
+                i1 = d->n_texts + 2;
+                consumed[d->n_texts] = consumed[d->n_texts + 1] = 0;
+            }
+            if (n0 >= 2 && n1 >= 2) {
+                emit_line(&l, &E, (double)(float)((double)h_f * dd0), (double)(float)((double)h_f * dd1));
+            }
+            if (n0 >= 2) {
+                float tx, ty;
+                int ci = i0;
+
+                if (ci <= d->n_texts) { tx = d->texts[ci - 1].x0; ty = d->texts[ci - 1].y0; }
+                else { tx = l.x0; ty = l.y0; }
+                if (!consumed[ci - 1]) {
+                    JwcLine vl = l;
+
+                    consumed[ci - 1] = 1;
+                    vl.x0 = vl.x1 = tx;
+                    vl.y0 = vl.y1 = ty;
+                    emit_line(&vl, &E, (double)(float)((double)h_f * hv0[1]),
+                              (double)(float)((double)h_f * dd0));
+                }
+            }
+            if (n1 >= 2) {
+                float tx, ty;
+                int ci = i1;
+
+                if (ci <= d->n_texts) { tx = d->texts[ci - 1].x0; ty = d->texts[ci - 1].y0; }
+                else { tx = l.x1; ty = l.y1; }
+                if (!consumed[ci - 1]) {
+                    JwcLine vl = l;
+
+                    consumed[ci - 1] = 1;
+                    vl.x0 = vl.x1 = tx;
+                    vl.y0 = vl.y1 = ty;
+                    emit_line(&vl, &E, (double)(float)((double)h_f * hv1[1]),
+                              (double)(float)((double)h_f * dd1));
+                }
+            }
+        }
+        free(consumed);
+    }
+    free(used);
+    (void)n;
+    v_seg = h_out;
+    v_nseg = h_n;
+    h_out = NULL;
+    /* 1e64 の最後（0x2f81d〜0x2fb3f）：高さのある線（端の高さが 0.001 以上）の A の外接の中心＝枠 1 の原点
+     * [bp-0x5fe]・[bp-0x632]。無ければ [0xaa78]・[0xaa7c] の 250.0・150.0。 */
+    {
+        float minx = 99999.0f, maxx = -99999.0f, miny = 99999.0f, maxy = -99999.0f;
+        long cnt = 0;
+
+        for (i = 0; i < v_nseg; i++) {
+            const Seg *q = &v_seg[i];
+
+            if (!((double)q->z0 >= 0.001 || (double)q->z1 >= 0.001)) continue;
+            cnt++;
+            if (q->x0 < minx) minx = q->x0;
+            if (q->x0 > maxx) maxx = q->x0;
+            if (q->x1 < minx) minx = q->x1;
+            if (q->x1 > maxx) maxx = q->x1;
+            if (q->y0 < miny) miny = q->y0;
+            if (q->y0 > maxy) maxy = q->y0;
+            if (q->y1 < miny) miny = q->y1;
+            if (q->y1 > maxy) maxy = q->y1;
+        }
+        v_f5fe = 250.0f;
+        v_f632 = 150.0f;
+        if (cnt) {
+            v_f5fe = (float)((float)(maxx + minx) * 0.5f);
+            v_f632 = (float)((float)(maxy + miny) * 0.5f);
+        }
+    }
+    return v_nseg;
 }
 
 static void set_iso(void)
@@ -189,7 +639,7 @@ static void recompute(void)
     v_vmin = 99999.0f;
     v_vmax = -99999.0f;
     /* 枠 1 の原点 [bp-0x5fe]・[bp-0x632] は本物では未初期化の局所。(250,150) と仮定（測定のみ：v3 の絵の端から逆算した値。[0xaa78]・[0xaa7c] と同じ）。 */
-    frame_set(250.0, 150.0, cos(theta) * 100.0 + 250.0, sin(theta) * 100.0 + 150.0);
+    frame_set((double)v_f5fe, (double)v_f632, cos(theta) * 100.0 + (double)v_f5fe, sin(theta) * 100.0 + (double)v_f632);
     for (i = 0; i < v_nseg; i++) {
         Seg *s = &v_seg[i];
 
@@ -352,6 +802,9 @@ static void project_all(const Jwc *d)
         int r;
         JwcLine *o;
 
+#ifdef O25_TRACE
+        printf("TR %.9g %.9g %.9g %.9g %.9g %.9g\n", (double)v_seg[i].cx0, (double)v_seg[i].cy0, (double)v_seg[i].z0, (double)v_seg[i].cx1, (double)v_seg[i].cy1, (double)v_seg[i].z1);
+#endif
         if (v_mode == 1) r = proj1(&v_seg[i], &X0, &Y0, &X1, &Y1);
         else if (v_mode == 2) r = proj2(&v_seg[i], &X0, &Y0, &X1, &Y1);
         else r = proj3(&v_seg[i], &X0, &Y0, &X1, &Y1);
@@ -371,7 +824,7 @@ int jw_o25v_enter(const Jwc *d, int m, int unit)
 {
     v_halfW = 0.0f;
     v_halfH = 0.0f;
-    if (build(d) <= 0) {
+    if (build(d, unit) <= 0) {
         return 0;
     }
     mode_init(d, m, unit);
