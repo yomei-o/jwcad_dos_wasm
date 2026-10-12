@@ -1150,6 +1150,9 @@ static void present(void)
             && ui.opt_stage < JW_OPT_DATA_G0) {
             jw_optbatch_overlay(&vga, drawing, &view, ui.opt_stage, mouse_x, mouse_y);
         }
+        if (ui.command == 29 && ui.opt_stage == JW_OPT_HK_P2) {
+            jw_hk_overlay(&vga, drawing, &view);
+        }
         /* **記号の仮の印は最後**です。帯の下に描き直した線より先に
          * 置くと、重なった所の排他的論理和がひっくり返ります
          * （「建具記号 (AW)」で y=157 の 3 画素）。 */
@@ -3177,6 +3180,11 @@ static int hk_key(int key)
     if (!hk_active()) {
         return -2;
     }
+    if (jw_hk_top_msg()) {
+        jw_hk_clear_msg();
+        sync_ui();
+        present();
+    }
     if (ui.opt_stage == JW_OPT_HK_P2 && key == 27 && drawing && jw_hk_page_esc(drawing)) {
         hk_after(JW_HK_CHANGED, -1, 0, 0);
         return -1;
@@ -3231,6 +3239,11 @@ static int hk_click(int x, int y, int right)
 {
     if (!hk_active()) {
         return -2;
+    }
+    if (jw_hk_top_msg()) {
+        jw_hk_clear_msg();
+        sync_ui();
+        present();
     }
     if (jw_ui_menu_hit(x, y)) {
         if (JW_OPT_HK(ui.opt_stage)) {

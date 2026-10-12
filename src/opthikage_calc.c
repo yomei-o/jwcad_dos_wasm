@@ -925,7 +925,7 @@ static void put_label(double hour, float lx1, float ly1, float lx2, float ly2)
     double len;
     const float b4a2 = paper_b4a2(d);
 
-    sprintf(buf, "%.1f", hour);
+    sprintf(buf, "%.1f", floor(hour * 10.0 + 0.5) / 10.0);   /* 測定：四捨五入（10.25 が 10.3） */
     width = (float)jwc_ed_text_length(d, buf, 3, 0);
     dx = lx2 - lx1;
     dy = ly2 - ly1;

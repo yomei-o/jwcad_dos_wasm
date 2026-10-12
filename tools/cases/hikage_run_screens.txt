@@ -1,0 +1,21 @@
+#名前|手順…（DRAWING=TEST1 LIST=tools/cases/hikage_run_screens.txt sh tools/optsubcheck.sh。②日影図を実行したあとの画面）
+run1|type s|type 5|type 2|type 1
+run2|type s|type 5|type 2|type 2
+run2_esc|type s|type 5|type 2|type 2|key esc
+run2_bs|type s|type 5|type 2|type 2|key bs
+run2_twice|type s|type 5|type 2|type 2|type 1
+run2_then_dlg|type s|type 5|type 2|type 2|type 4
+run2_dlg_ok|type s|type 5|type 2|type 2|type 4|type 1
+run2_top|type s|type 5|type 2|type 2|key bs|key esc
+tm|type s|type 5|type 2|type 3
+tm_10|type s|type 5|type 2|type 3|type 1|type 0
+tm_10e|type s|type 5|type 2|type 3|type 1|type 0|key enter
+tm_105e|type s|type 5|type 2|type 3|type 1|type 0|type .|type 5|key enter
+tm_e|type s|type 5|type 2|type 3|key enter
+tm_esc|type s|type 5|type 2|type 3|key esc
+tm_bad|type s|type 5|type 2|type 3|type 2|type 0|key enter
+tm_bad7|type s|type 5|type 2|type 3|type 7|key enter
+tm_after|type s|type 5|type 2|type 2|type 3|type 9|key enter
+tm_after_esc|type s|type 5|type 2|type 2|type 3|key esc
+tm_after_esc2|type s|type 5|type 2|type 2|type 3|key esc|key esc
+run2_key5|type s|type 5|type 2|type 2|type 5

@@ -30,6 +30,8 @@ static int hk_n;
 static int hk_esc;                      /* ②の頁：足した線がある（[ESC] が効き、桁 1 に札） */
 static long hk_run_l, hk_run_t;         /* 実行の直前の線・文字の数（ESC で戻す） */
 static const char *hk_topmsg;           /* 入口の帯に出す失敗の言葉（行 3 桁 20） */
+static int hk_remnant;                  /* 実行の直後だけ：行 3 に線の跡が残る（測定：run1・run2） */
+static double hk_tm_def = 12.0;         /* ②指定時間の既定（入れた値が次回の既定） */
 static int hk_nonote;                   /* 押しでない鍵（ESC・数字）のあと、行 3 の注意書きが消える（測定） */
 static struct { int col, row; const char *text; } hk_msg[4];
 static int hk_nmsg;
@@ -174,6 +176,16 @@ void jw_hk_text(VGA *v, int stage)
     case JW_OPT_HK_NTH:
         jw_ui_text(v, 8, 1, 7, 0, HK_NTHP);
         break;
+    case JW_OPT_HK_TM:
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, HK_TMF);
+        jw_ui_text(v, 20, 1, 7, 0, hk_buf);
+        for (i = 7; i <= 15; i++) {
+            const int x0 = 8 * (19 + hk_n);
+
+            jw_line(v, x0, i, x0 + 7, i, 4, ROP_REPLACE, JW_STYLE_SOLID);
+        }
+        return;
     case JW_OPT_HK_DLG:
         if (hk_sub == 0) {
             const int col = cond_string(buf);
@@ -226,14 +238,50 @@ int jw_hk_page_esc(Jwc *d)
     if (!hk_esc || !d) {
         return 0;
     }
+    jwc_ink_hold(d, 1);
     while (d->n_texts > hk_run_t) {
         jwc_remove_text(d, d->n_texts - 1);
     }
     while (d->n_lines > hk_run_l) {
         jwc_remove_line(d, d->n_lines - 1);
     }
+    jwc_ink_hold(d, 0);
+    jwc_ink_clear(d);                    /* 全面を描き直す（足した形も消し跡も残さない） */
     hk_esc = 0;
     return 1;
+}
+
+/* 実行の直後の絵：本物は線を描くとき行 3（y 32〜47）まで描き、そのあと頁の文字で行 2 だけ塗り直す。
+ * 行 3 には線の跡が残る。次の鍵・押しで頁が描き直されると消える。 */
+void jw_hk_overlay(VGA *v, const Jwc *d, const JwView *w)
+{
+    long k;
+    const int cx0 = v->clip_x0, cy0 = v->clip_y0, cx1 = v->clip_x1, cy1 = v->clip_y1;
+
+    if (!hk_remnant || !d) {
+        return;
+    }
+    {
+        char buf[200];
+        int y;
+        const int col = cond_string(buf);
+
+        for (k = hk_run_l; k < d->n_lines; k++) {
+            jw_view_line(v, d, &d->lines[k], w, jw_view_pen_colour(d->lines[k].pen));
+        }
+        /* 行 2 は頁の描き直しで塗り直される（線の跡は残らない）：塗って文字を書き直す。 */
+        for (y = 17; y <= 31; y++) {
+            jw_line(v, 122, y, 638, y, 0, ROP_REPLACE, JW_STYLE_SOLID);
+        }
+        jw_ui_text(v, 18, 2, (unsigned)col, 0, buf);
+        if (hk_esc) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+        }
+    }
+    v->clip_x0 = cx0;
+    v->clip_y0 = cy0;
+    v->clip_x1 = cx1;
+    v->clip_y1 = cy1;
 }
 
 void jw_hk_top_text(VGA *v)
@@ -252,6 +300,7 @@ int jw_hk_enter(int n)
 
 void jw_hk_page_key(int key, int stage)
 {
+    hk_remnant = 0;
     const int items = stage == JW_OPT_HK_P4 ? 1 : 4;
 
     if (key == 27 || (key >= '1' && key <= '9' && key - '0' > items)) {
@@ -278,16 +327,32 @@ static int run_shadow(Jwc *d, double p, int *stage)
         return JW_HK_CHANGED;
     }
     hk_esc = d->n_lines > hk_run_l;
+    hk_remnant = 1;
     return JW_HK_CHANGED;
 }
 
 int jw_hk_page_run(Jwc *d, int n, int *stage)
 {
     hk_topmsg = NULL;
+    hk_remnant = 0;
     if (*stage == JW_OPT_HK_P2 && d && (n == 1 || n == 2)) {
         return run_shadow(d, n == 1 ? -1.0 : 1.0, stage);
     }
+    if (*stage == JW_OPT_HK_P2 && d && n == 3) {
+        hk_buf[0] = 0;
+        hk_n = 0;
+        hk_run_l = d->n_lines;
+        hk_run_t = d->n_texts;
+        hk_esc = 0;                     /* 取り消しの基準が今に替わる（測定：spec 5.6） */
+        *stage = JW_OPT_HK_TM;
+        return JW_HK_CHANGED;
+    }
     return JW_HK_NONE;
+}
+
+void jw_hk_clear_msg(void)
+{
+    hk_topmsg = NULL;
 }
 
 const char *jw_hk_top_msg(void)
@@ -713,6 +778,7 @@ int jw_hk_click(Jwc *d, const JwView *w, int x, int y, int right,
     }
     hk_nmsg = 0;
     hk_nonote = 0;
+    hk_remnant = 0;
     if (y >= 0 && y <= 15) {
         if (st != JW_OPT_HK_FLD && x > 580) {   /* [BS]前項 */
             *stage = JW_OPT_HK_BLD;
@@ -778,6 +844,36 @@ int jw_hk_key(Jwc *d, int key, int *stage)
 {
     int st = *stage;
 
+    if (st == JW_OPT_HK_TM) {
+        if (key == 27) {
+            *stage = JW_OPT_HK_P2;
+            return JW_HK_TAKEN;
+        }
+        if (key == 13 || key == 10) {
+            const double v = hk_n > 0 ? atof(hk_buf) : hk_tm_def;
+            const double lo = hk_time ? 9.0 : 8.0, hi = hk_time ? 15.0 : 16.0;
+
+            hk_buf[0] = 0;
+            hk_n = 0;
+            if (v >= lo && v <= hi && d) {
+                hk_tm_def = v;
+                *stage = JW_OPT_HK_P2;
+                return run_shadow(d, v, stage);
+            }
+            return JW_HK_TAKEN;
+        }
+        if (key == 8 || key == 127) {
+            if (hk_n > 0) {
+                hk_buf[--hk_n] = 0;
+            }
+            return JW_HK_TAKEN;
+        }
+        if (((key >= '0' && key <= '9') || key == '.') && hk_n < 30) {
+            hk_buf[hk_n++] = (char)key;
+            hk_buf[hk_n] = 0;
+        }
+        return JW_HK_TAKEN;
+    }
     if (st == JW_OPT_HK_DLG) {
         hk_nmsg = 0;
         if (hk_sub == 2 || hk_sub == 3) {

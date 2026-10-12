@@ -84,5 +84,10 @@ bld_6|type s|type 5|type 1|type 6
 bld_5|type s|type 5|type 1|type 5
 dlg_p4|type s|type 5|type 4|type 1
 dlg_p4_ok|type s|type 5|type 4|type 1|type 1
+run_none|type s|type 5|type 2|type 2
+run_none1|type s|type 5|type 2|type 1
+run_none_esc|type s|type 5|type 2|type 2|key esc
+run_none_bs|type s|type 5|type 2|type 2|key bs
+run_none_again|type s|type 5|type 2|type 2|type 2
 in_dup2|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|161 150 left|400 300 left
 in_dup|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|161 150 left
