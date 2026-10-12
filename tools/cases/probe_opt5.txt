@@ -15,6 +15,10 @@ hk_in_layer|SAMPLE0|type s|type 5|type 1|type 1|260 140 left|key bs
 hk_del|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|597 145 right|key bs|type 3|161 145 left|key bs
 hk_del_pick|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|597 145 right|key bs|type 3|170 145 left|key bs
 hk_del_two|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|597 145 right|key bs|type 3|161 145 left|597 145 left|key bs
+hk_dlg_w|SAMPLE0|type s|type 5|type 2|type 4|type 5|300 300 left|type 1|key bs
+hk_dlg_w2|SAMPLE0|type s|type 5|type 2|type 4|type 2|type 3|type 5|key enter|type 4|type 5|300 300 left|type 1|key bs
+hk_dlg_wesc|SAMPLE0|type s|type 5|type 2|type 4|type 5|300 300 left|key esc|type 1|key bs
+hk_dlg_lat|SAMPLE0|type s|type 5|type 3|type 4|type 3|type 4|type 1|type .|type 5|key enter|type 2|type 1|key bs
 hk_del_old|SAMPLE0|type s|type 5|type 1|type 3|230 200 left|key bs
 hk_nth_top|SAMPLE0|type s|type 5|type 1|type 4|161 145 left|key bs
 hk_nth_bottom|SAMPLE0|type s|type 5|type 1|type 4|161 400 left|key bs

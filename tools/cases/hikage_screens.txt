@@ -48,5 +48,41 @@ nth_bs|type s|type 5|type 1|type 4|key bs
 nth_miss|type s|type 5|type 1|type 4|400 300 left
 nth_top|type s|type 5|type 1|type 4|161 145 left
 nth_horiz|type s|type 5|type 1|type 4|200 419 left
+dlg|type s|type 5|type 2|type 4
+dlg3|type s|type 5|type 3|type 4
+dlg4|type s|type 5|type 4|type 4
+dlg_ok|type s|type 5|type 2|type 4|type 1
+dlg_h|type s|type 5|type 2|type 4|type 2
+dlg_h35|type s|type 5|type 2|type 4|type 2|type 3|type 5
+dlg_h35e|type s|type 5|type 2|type 4|type 2|type 3|type 5|key enter
+dlg_hesc|type s|type 5|type 2|type 4|type 2|key esc
+dlg_hbad|type s|type 5|type 2|type 4|type 2|type 9|type 9|type 9|key enter
+dlg_lat|type s|type 5|type 2|type 4|type 3
+dlg_lat40e|type s|type 5|type 2|type 4|type 3|type 4|type 0|key enter
+dlg_lat41|type s|type 5|type 2|type 4|type 3|type 4|type 1|type .|type 5|key enter
+dlg_lat41_2|type s|type 5|type 2|type 4|type 3|type 4|type 1|type .|type 5|key enter|type 2
+dlg_lat44|type s|type 5|type 2|type 4|type 3|type 4|type 4|key enter
+dlg_lat44_ok|type s|type 5|type 2|type 4|type 3|type 4|type 4|key enter|type 1
+dlg_lat50|type s|type 5|type 2|type 4|type 3|type 5|type 0|key enter
+dlg_season|type s|type 5|type 2|type 4|type 4
+dlg_season2|type s|type 5|type 2|type 4|type 4|type 4
+dlg_season3|type s|type 5|type 2|type 4|type 4|type 4|type 4
+dlg_season_ok|type s|type 5|type 2|type 4|type 4|type 1
+dlg_w|type s|type 5|type 2|type 4|type 5
+dlg_w_click|type s|type 5|type 2|type 4|type 5|300 300 left
+dlg_w_esc|type s|type 5|type 2|type 4|type 5|300 300 left|key esc
+dlg_esc|type s|type 5|type 2|type 4|key esc
+dlg_bs|type s|type 5|type 2|type 4|key bs
+dlg_click|type s|type 5|type 2|type 4|300 8 left
+p2_esc|type s|type 5|type 2|key esc
+p2_5|type s|type 5|type 2|type 5
+p2_9|type s|type 5|type 2|type 9
+p3_esc|type s|type 5|type 3|key esc
+p4_2|type s|type 5|type 4|type 2
+p4_esc|type s|type 5|type 4|key esc
+bld_6|type s|type 5|type 1|type 6
+bld_5|type s|type 5|type 1|type 5
+dlg_p4|type s|type 5|type 4|type 1
+dlg_p4_ok|type s|type 5|type 4|type 1|type 1
 in_dup2|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|161 150 left|400 300 left
 in_dup|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|161 150 left

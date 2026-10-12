@@ -127,6 +127,10 @@ typedef struct {
      * drawing-area width over the one the file was saved with.  1 unless the
      * drawing came off a wider screen. */
     float scale;
+    /* ｵﾌﾟｼｮﾝ ⑤日影図の測定条件（図面 4 行目の %g の 16〜18 番と %i の 19 番目。
+     * 古い書式の図面は既定値）。notes/spec-opt5-ui.md 1.1。 */
+    float cond_lat, cond_decl, cond_height;
+    int cond_time;
     /* The dot grid: whether it is on, and its spacing in drawing units.  It
      * runs through the drawing's origin in both directions. */
     unsigned char grid_on;

@@ -31,10 +31,29 @@ static struct { int col, row; const char *text; } hk_msg[4];
 static int hk_nmsg;
 /* 欄を開いた線の端と向き（座標系の原点＝押した点に近い端、軸＝もう一端へ）。 */
 static float hk_ox, hk_oy, hk_ux, hk_uy;
+/* 測定条件ダイアログ：小段（0 項目の帯、2 高さの欄、3 緯度の欄、4 測定時間の選び、5 書込位置）。 */
+static int hk_sub, hk_ret = JW_OPT_HK_P2;
+static int hk_wflag;                    /* 測定条件図面書込のあと ESC が効く */
+static long hk_wsaved;                  /* そのときの文字の数 */
+static char hk_pagecond[200];           /* 頁を描いたときの行 2（ダイアログの間は古いまま残る） */
+static int hk_pagecol = 7;
+
+void jw_hk_cond_store(Jwc *d)
+{
+    d->cond_lat = (float)hk_lat;
+    d->cond_decl = (float)hk_decl;
+    d->cond_height = (float)hk_height;
+    d->cond_time = hk_time;
+}
 
 void jw_hk_entry(Jwc *d)
 {
     long k;
+
+    hk_lat = d->cond_lat;
+    hk_decl = d->cond_decl;
+    hk_height = d->cond_height;
+    hk_time = d->cond_time;
 
     for (k = 0; k < d->n_lines; k++) {
         d->lines[k].rest[2] &= (unsigned char)~0x02u;
@@ -148,6 +167,35 @@ void jw_hk_text(VGA *v, int stage)
     case JW_OPT_HK_NTH:
         jw_ui_text(v, 8, 1, 7, 0, HK_NTHP);
         break;
+    case JW_OPT_HK_DLG:
+        if (hk_sub == 0) {
+            const int col = cond_string(buf);
+
+            if (hk_wflag) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+            }
+            jw_ui_text(v, 8, 1, 7, 0, HK_DLG);
+            if (!hk_nonote) {
+                jw_ui_text(v, 18, 3, (unsigned)col, 0xffffu, buf);
+            }
+        } else if (hk_sub == 2 || hk_sub == 3) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+            jw_ui_text(v, 8, 1, 7, 0, hk_sub == 2 ? HK_H : HK_LAT);
+            jw_ui_text(v, hk_sub == 2 ? 20 : 13, 1, 7, 0, hk_sub == 2 ? HK_HM : HK_LATM);
+            jw_ui_text(v, hk_sub == 2 ? 26 : 20, 1, 7, 0, hk_buf);
+            for (i = 7; i <= 15; i++) {
+                const int x0 = 8 * ((hk_sub == 2 ? 25 : 19) + hk_n);
+
+                jw_line(v, x0, i, x0 + 7, i, 4, ROP_REPLACE, JW_STYLE_SOLID);
+            }
+        } else if (hk_sub == 4) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+            jw_ui_text(v, 8, 1, 7, 0, HK_TCH);
+        } else if (hk_sub == 5) {
+            jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+            jw_ui_text(v, 8, 1, 7, 0, HK_WPOS);
+        }
+        return;
     default:
         return;
     }
@@ -155,7 +203,11 @@ void jw_hk_text(VGA *v, int stage)
     if (stage >= JW_OPT_HK_P2 && stage <= JW_OPT_HK_P4) {
         const int col = cond_string(buf);
 
-        jw_ui_text(v, 18, 2, (unsigned)col, 0, buf);
+        if (!hk_nonote) {
+            jw_ui_text(v, 18, 2, (unsigned)col, 0, buf);
+        }
+        strcpy(hk_pagecond, buf);
+        hk_pagecol = col;
     }
     for (i = 0; i < hk_nmsg; i++) {
         jw_ui_text(v, hk_msg[i].col, hk_msg[i].row, 7, 0, hk_msg[i].text);
@@ -165,6 +217,29 @@ void jw_hk_text(VGA *v, int stage)
 int jw_hk_enter(int n)
 {
     return n >= 1 && n <= 4 ? JW_OPT_HK_BLD + n - 1 : 0;
+}
+
+void jw_hk_page_key(int key, int stage)
+{
+    const int items = stage == JW_OPT_HK_P4 ? 1 : 4;
+
+    if (key == 27 || (key >= '1' && key <= '9' && key - '0' > items)) {
+        hk_nonote = 1;                  /* 測定：効かない鍵で行 2 の条件が消える */
+    }
+}
+
+int jw_hk_page_item(int n, int *stage)
+{
+    if (n != (*stage == JW_OPT_HK_P4 ? 1 : 4)) {
+        return 0;
+    }
+    hk_nonote = 0;
+    hk_ret = *stage;
+    hk_sub = 0;
+    hk_wflag = 0;
+    hk_nmsg = 0;
+    *stage = JW_OPT_HK_DLG;
+    return 1;
 }
 
 int jw_hk_bld_item(int n, int *stage)
@@ -482,6 +557,67 @@ static int field_commit(Jwc *d, int *stage)
     return JW_HK_CHANGED;
 }
 
+/* ダイアログの項目 n（確定・高さ・緯度・季節・書込）。 */
+static int dlg_item(int n, int *stage)
+{
+    if (hk_sub != 0) {
+        return JW_HK_TAKEN;
+    }
+    hk_nonote = 0;
+    if (n == 1) {
+        *stage = hk_ret;
+        hk_sub = 0;
+        return JW_HK_TAKEN;
+    }
+    if (n == 2 || n == 3) {
+        hk_sub = n;
+        hk_buf[0] = 0;
+        hk_n = 0;
+        return JW_HK_TAKEN;
+    }
+    if (n == 4) {
+        if (fabs(hk_decl) < 10.0) {
+            hk_decl = 23.45;
+        } else if (hk_decl < 0) {
+            hk_decl = 0.0;
+        } else {
+            hk_decl = -23.45;
+        }
+        return JW_HK_TAKEN;
+    }
+    if (n == 5) {
+        hk_sub = 5;
+        return JW_HK_TAKEN;
+    }
+    return JW_HK_TAKEN;
+}
+
+int jw_hk_dlg_item(int n, int *stage)
+{
+    return dlg_item(n, stage);
+}
+
+/* 欄の確定（高さ・緯度）。範囲外は欄を出し直す。 */
+static void dlg_commit(void)
+{
+    const double v = hk_n > 0 ? atof(hk_buf) : (hk_sub == 2 ? hk_height : hk_lat);
+
+    hk_buf[0] = 0;
+    hk_n = 0;
+    if (hk_sub == 2) {
+        if (v >= -50.0 && v <= 400.0) {
+            hk_height = (float)v;
+            hk_sub = 0;
+        }
+    } else if (hk_sub == 3) {
+        if (v >= 25.0 && v <= 46.0) {
+            hk_lat = (float)v;
+            hk_time = v > 41.5999 ? 1 : 0;
+            hk_sub = (v >= 41.3001 && v <= 41.5999) ? 4 : 0;
+        }
+    }
+}
+
 int jw_hk_click(Jwc *d, const JwView *w, int x, int y, int right,
                 int area_x0, int area_y0, int area_x1, int area_y1,
                 int *stage, int *missed)
@@ -489,6 +625,22 @@ int jw_hk_click(Jwc *d, const JwView *w, int x, int y, int right,
     int st = *stage;
 
     *missed = 0;
+    if (st == JW_OPT_HK_DLG && d) {
+        if (hk_sub == 5 && y > 15 && x >= area_x0 && x <= area_x1 && y >= area_y0 && y <= area_y1) {
+            double px, py;
+            char b[200];
+
+            jw_cmd_at(w, x, y, &px, &py);
+            hk_wsaved = d->n_texts;
+            cond_string(b);
+            frame_set(px, py, px + 10.0, py);
+            add_text(d, b, 3, 0);
+            hk_wflag = 1;
+            hk_sub = 0;
+            return JW_HK_CHANGED;
+        }
+        return JW_HK_TAKEN;
+    }
     if (st < JW_OPT_HK_IN || !d) {
         return JW_HK_NONE;
     }
@@ -558,6 +710,57 @@ int jw_hk_click(Jwc *d, const JwView *w, int x, int y, int right,
 int jw_hk_key(Jwc *d, int key, int *stage)
 {
     int st = *stage;
+
+    if (st == JW_OPT_HK_DLG) {
+        hk_nmsg = 0;
+        if (hk_sub == 2 || hk_sub == 3) {
+            if (key == 27) {
+                hk_sub = 0;
+            } else if (key == 13 || key == 10) {
+                dlg_commit();
+            } else if (key == 8 || key == 127) {
+                if (hk_n > 0) {
+                    hk_buf[--hk_n] = 0;
+                }
+            } else if (((key >= '0' && key <= '9') || key == '.' || key == '-') && hk_n < 30) {
+                hk_buf[hk_n++] = (char)key;
+                hk_buf[hk_n] = 0;
+            }
+            return JW_HK_TAKEN;
+        }
+        if (hk_sub == 4) {
+            if (key == '1' || key == '2') {
+                hk_time = key - '1';
+                hk_sub = 0;
+            } else if (key == 27) {
+                hk_sub = 0;
+            }
+            return JW_HK_TAKEN;
+        }
+        if (hk_sub == 5) {
+            if (key == 27) {
+                hk_sub = 0;
+            }
+            return JW_HK_TAKEN;
+        }
+        if (key == 27 && !hk_wflag) {
+            hk_nonote = 1;              /* 測定：効かない ESC・BS で行 3 の条件が消える */
+        }
+        if (key == 8) {
+            hk_nonote = 1;
+        }
+        if (key == 27 && hk_wflag && d) {
+            while (d->n_texts > hk_wsaved) {
+                jwc_remove_text(d, d->n_texts - 1);
+            }
+            hk_wflag = 0;
+            return JW_HK_CHANGED;
+        }
+        if (key >= '1' && key <= '5') {
+            return dlg_item(key - '0', stage);
+        }
+        return JW_HK_TAKEN;
+    }
 
     if (st < JW_OPT_HK_IN) {
         return JW_HK_NONE;

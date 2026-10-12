@@ -387,6 +387,20 @@ static int header(const unsigned char *file, Jwc *d)
     }
     d->text_len = (long)o2;
     d->text_seg = s2;
+    d->cond_lat = 36.0f;
+    d->cond_decl = -23.45f;
+    d->cond_height = 0.0f;
+    d->cond_time = 0;
+    {
+        const char *f = field(buf, 17);
+
+        if (f && field(buf, 20)) {
+            d->cond_lat = (float)atof(f);
+            d->cond_decl = (float)atof(field(buf, 18));
+            d->cond_height = (float)atof(field(buf, 19));
+            d->cond_time = atoi(field(buf, 20));
+        }
+    }
     return a >= 0 && c >= 0 && e >= 0 && g >= 0;
 }
 
@@ -875,6 +889,23 @@ unsigned char *jwc_bytes(const Jwc *d, long *out_len, const char **why)
     sprintf(line, "%04X:0000,%04X:%04lX", d->text_seg, d->text_seg,
             d->text_len & 0xffff);
     keep_fields(line, sizeof line, src, 2, NULL);
+    if (field(src, 20)) {
+        /* 測定条件（⑤日影図）：緯度・日赤緯・測定面の高さ・測定時間を今の値で書き直す。 */
+        char cond[TEXT_LINE * 2];
+        const char *f = field(line, 17), *e = field(line, 21);
+
+        if (f) {
+            sprintf(cond, "%.*s%g,%g,%g,%d", (int)(f - line), line, (double)d->cond_lat,
+                    (double)d->cond_decl, (double)d->cond_height, d->cond_time);
+            if (e) {
+                strcat(cond, ",");
+                strcat(cond, e);
+            }
+            if (strlen(cond) < TEXT_LINE) {
+                strcpy(line, cond);
+            }
+        }
+    }
     put_header(out + TEXT_LINE * 3, line);
 
     p = DATA_AT + d->data_at;

@@ -3115,6 +3115,9 @@ static void hk_after(int r, int x, int y, int miss)
         mouse_x = x;
         mouse_y = y;
     }
+    if (drawing) {
+        jw_hk_cond_store(drawing);
+    }
     if (r == JW_HK_CHANGED && drawing) {
         ui.n_lines = drawing->n_lines;
         ui.n_arcs = drawing->n_arcs + drawing->n_texts;
@@ -3136,6 +3139,23 @@ static int hk_item(int n)
         hk_after(JW_HK_TAKEN, -1, 0, 0);
         return -1;
     }
+    if (ui.opt_stage >= JW_OPT_HK_P2 && ui.opt_stage <= JW_OPT_HK_P4) {
+        int st = ui.opt_stage;
+
+        if (jw_hk_page_item(n, &st)) {
+            ui.opt_stage = st;
+        }
+        hk_after(JW_HK_TAKEN, -1, 0, 0);
+        return -1;
+    }
+    if (ui.opt_stage == JW_OPT_HK_DLG) {
+        int st = ui.opt_stage;
+
+        jw_hk_dlg_item(n, &st);
+        ui.opt_stage = st;
+        hk_after(JW_HK_TAKEN, -1, 0, 0);
+        return -1;
+    }
     if (JW_OPT_HK(ui.opt_stage)) {
         hk_after(JW_HK_TAKEN, -1, 0, 0);
         return -1;
@@ -3152,6 +3172,9 @@ static int hk_key(int key)
     if (!hk_active()) {
         return -2;
     }
+    if (ui.opt_stage >= JW_OPT_HK_P2 && ui.opt_stage <= JW_OPT_HK_P4) {
+        jw_hk_page_key(key, ui.opt_stage);
+    }
     if (ui.opt_stage >= JW_OPT_HK_IN) {
         int st = ui.opt_stage;
         const int r = jw_hk_key(drawing, key, &st);
@@ -3167,6 +3190,7 @@ static int hk_key(int key)
     } else if (key >= '1' && key <= '5') {
         return hk_item(key - '0');
     }
+
     if (JW_OPT_HK(ui.opt_stage)) {
         if (key == 8) {
             hk_goto(0);
@@ -3205,6 +3229,11 @@ static int hk_click(int x, int y, int right)
             jw_hk_reset();
         }
         return -2;
+    }
+    if (ui.opt_stage == JW_OPT_HK_DLG && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
+        mouse_x = x;
+        mouse_y = y;
+        return hk_item(jw_ui_top_item(x, y));
     }
     if (ui.opt_stage >= JW_OPT_HK_IN && drawing) {
         int st = ui.opt_stage, miss = 0;

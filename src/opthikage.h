@@ -19,7 +19,8 @@
 #define JW_OPT_HK_FLD 75
 #define JW_OPT_HK_DEL 76
 #define JW_OPT_HK_NTH 77
-#define JW_OPT_HK(s)  ((s) >= JW_OPT_HK_BLD && (s) <= JW_OPT_HK_NTH)
+#define JW_OPT_HK_DLG 78        /* 測定条件ダイアログ（小段は opthikage.c の hk_sub） */
+#define JW_OPT_HK(s)  ((s) >= JW_OPT_HK_BLD && (s) <= JW_OPT_HK_DLG)
 
 #define JW_HK_NONE    0         /* この道のものではない */
 #define JW_HK_TAKEN   1         /* 受けた（画面は描き直す） */
@@ -34,6 +35,15 @@ int jw_hk_enter(int n);
 /* 建物設定の帯の項目 n（1〜5）。段を替えたら 1。 */
 int jw_hk_bld_item(int n, int *stage);
 
+/* ②③④の頁の項目 n（4＝測定高･緯度）。段を替えたら 1。 */
+int jw_hk_page_item(int n, int *stage);
+
+/* 頁（71〜73）で効かない鍵を受けたとき。 */
+void jw_hk_page_key(int key, int stage);
+
+/* ダイアログの帯の項目 n（押し）。 */
+int jw_hk_dlg_item(int n, int *stage);
+
 /* 押し（図面の押し・上の行の押し）。leave は BS で建物設定の帯へ戻るときに 1。 */
 int jw_hk_click(Jwc *d, const JwView *w, int x, int y, int right,
                 int area_x0, int area_y0, int area_x1, int area_y1,
@@ -44,6 +54,9 @@ int jw_hk_key(Jwc *d, int key, int *stage);
 
 /* ⑤に入ったとき：全記録の範囲の印（rest[2] bit1）を落とす。 */
 void jw_hk_entry(Jwc *d);
+
+/* 測定条件を図面へ戻す（保存のとき 4 行目に出る）。 */
+void jw_hk_cond_store(Jwc *d);
 
 /* 命令を離れたときなどに状態を捨てる。 */
 void jw_hk_reset(void);
