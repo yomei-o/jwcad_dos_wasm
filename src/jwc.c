@@ -862,6 +862,22 @@ unsigned char *jwc_bytes(const Jwc *d, long *out_len, const char **why)
         }
     }
 
+    /* 先頭の行の 18 番（作業時間、秒）。ｵﾌﾟｼｮﾝ ⑥各設定 ④作図時間 が変える（本物は保存のとき
+     * time() - [0xc134] を書く）。変わっていなければ読んだままを書く。 */
+    read_header(src, d->raw, 0);
+    {
+        const char *f = field(src, 18);
+
+        if (f && strtol(f, NULL, 10) != d->work_seconds) {
+            const char *end = strchr(f, ',');
+            char tmp[TEXT_LINE * 2];
+
+            snprintf(tmp, sizeof tmp, "%.*s%ld%s", (int)(f - src), src, d->work_seconds,
+                     end ? end : "");
+            put_header(out, tmp);
+        }
+    }
+
     /* the counts, and the width the coordinates are now in */
     read_header(src, d->raw, 1);
     sprintf(line, "%ld,%ld,%d,%d", d->n_lines, d->n_arcs, d->n_texts,

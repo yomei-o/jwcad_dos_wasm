@@ -26,6 +26,7 @@
 #define JW_OS_NONE   0          /* この道のものではない。呼び元がそのまま続ける */
 #define JW_OS_TAKEN  1          /* 受けた（画面は描き直す） */
 #define JW_OS_LEAVE  2          /* 各設定を抜けて、オプションの 8 項目の帯へ戻る */
+#define JW_OS_ENV    3          /* ⑤環境FILE：ファイル選択の画面へ（呼び元が出す） */
 
 /* ⑥各設定を押した。opt_stage を JW_OPT_SET へ。 */
 void jw_optset_open(int *opt_stage);
@@ -39,6 +40,9 @@ int jw_optset_click(Jwc *d, VGA *v, int x, int y, int right, int *opt_stage);
  * 作図範囲に重ねる絵（②の赤い線、⑦の見本）もここで描く。 */
 void jw_optset_text(VGA *v, const Jwc *d, int opt_stage);
 
+/* 本物が矢を消している段（④作図時間、③ｺﾏﾝﾄﾞｷｰ、⑦の見本）。 */
+int jw_optset_cursor_hidden(int opt_stage);
+
 /* 命令を離れたときなど、状態を捨てる（設定した値は残す）。 */
 void jw_optset_reset(void);
 
@@ -47,6 +51,6 @@ float jw_optset_screen_mm(void);        /* ②：画面の幅（mm）。DS:[0xc3
 long jw_optset_drag(void);              /* ⑥：DS:[0xc1c]、初期 1000 */
 
 /* ①ﾒﾓﾘｰ配分の最大値の元になる空きバイト（移植では定数）。 */
-#define JW_MEM_FREE 364058L
+#define JW_MEM_FREE 364056L
 
 #endif

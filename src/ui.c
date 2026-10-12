@@ -445,6 +445,11 @@ void jw_ui_pick_kind(JwUi *s, int kind)
         s->file_path = "path=A:" "\x5c" "*.bat";
         s->file_word = " " "\x8a\x4f\x95\x94\x95\xcf\x8c\x60" "    ";
         break;
+    case JW_PICK_ENV:
+        s->file_bar = JW_PICK_CHILD_BAR;
+        s->file_path = "path=A:" "\x5c" "*.jwf";
+        s->file_word = " " "\x8a\xc2\x8b\xab" "    ";
+        break;
     case JW_PICK_CHILD:
         s->file_bar = JW_PICK_CHILD_BAR;
         s->file_path = "path=A:" "\x5c" "*.bat";

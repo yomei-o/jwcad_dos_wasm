@@ -32,7 +32,7 @@ EMBED=""
 # JW_SAMPL.BAT is on the disk because ｵﾌﾟｼｮﾝ ⑦外部処理 lists `*.bat` and the
 # original's screen shows that one file, its date, its size and its first
 # line.  The JW_OPT*.DAT are the 建具 and 2.5D libraries ｵﾌﾟｼｮﾝ reads.
-for f in orig/SAMPLE*.JWC orig/TEST*.JWC orig/JW_PAL.DAT orig/JW_SAMPL.BAT          orig/JW_OPT*.DAT orig/JW_FILE0.000 orig/DXF_HDR.DAT font/JWANK16.FNT font/JWKAN16.FNT; do
+for f in orig/SAMPLE*.JWC orig/TEST*.JWC orig/JW_PAL.DAT orig/JW_SAMPL.BAT orig/SAMPLE.JWF          orig/JW_OPT*.DAT orig/JW_FILE0.000 orig/DXF_HDR.DAT font/JWANK16.FNT font/JWKAN16.FNT; do
     # JW_FILE0.000 is written by the original whenever it runs and is not in
     # the distribution (it is in .gitignore), so a fresh clone has none.
     [ -f "$f" ] || continue

@@ -55,8 +55,21 @@ static int os_ki;                       /* いま聞いているコマンド（1
 /* ⑦ */
 static int os_cidx;                     /* 色番号 [bp-0x50]（⑦を始めるときだけ 0） */
 static unsigned char os_rgb[3];         /* [bp-6][bp-5][bp-4]＝R G B（6 ビット） */
+/* ① */
+static int os_ms;                       /* 段：1 線 2 円弧 3 点 4 文字列 5 確認の帯 */
+static long os_mv[4];                   /* 受けた値（線・円弧・点・文字列） */
+static long os_cap[4] = { 3639, 3639, 3639, 3639 };   /* 容量 DS:[0x13c][0x140][0x146][0x144]（測定のみ：起動時に決まる値） */
+static long os_pool = 32767;
+static int os_cap_user;                 /* ①の ① 変更確定 で容量を決めた */
+static const Jwc *os_d;                 /* 使用数を読む図面 */
 static int os_tick;                     /* ②を抜けたあとも行 2 の桁 18 に ┝ が残る（本物は桁 19 から消す。測定） */
 static int os_pal_drawn;                /* 一度見本を出した（本物は消さない） */
+
+int jw_optset_cursor_hidden(int opt_stage)
+{
+    return opt_stage == JW_OPT_SET_TIME || opt_stage == JW_OPT_SET_KEY
+        || (opt_stage == JW_OPT_SET_COL && os_ph == 1);
+}
 
 float jw_optset_screen_mm(void)
 {
@@ -276,6 +289,125 @@ static void size_draw(VGA *v)
     field_draw(v, 52);
 }
 
+/* ------------------------------------------------------------ ① ﾒﾓﾘｰ配分 */
+/* 最大値の式（decomp：ovl28 3ab8:5038、file-linear 0x2fc00〜0x300de。notes/spec-opt6.md）。
+ * M は空きバイト（JW_MEM_FREE。本物は 0xc288、実機の 14 個の図面の最大値から割り出した値）。
+ * 除算は long の 0 方向への切り捨て。S は文字列プールの使用バイト + 1。 */
+static long mem_used(int k)
+{
+    if (!os_d) {
+        return 0;
+    }
+    switch (k) {
+    case 0: return os_d->n_lines;
+    case 1: return os_d->n_arcs;
+    case 2: return os_d->n_points;
+    default: return os_d->n_texts;
+    }
+}
+
+static long mem_max(int st)
+{
+    const long M = JW_MEM_FREE, S = (os_d ? os_d->text_len : 0) + 1;
+    const long T0 = mem_used(3), A0 = mem_used(1), P0 = mem_used(2);
+
+    switch (st) {
+    case 1: return (M - S - 34 * T0 - 32 * A0 - 12 * P0 - 156) / 22 - 1;
+    case 2: return (M - S - 34 * T0 - 12 * P0 - 114 - 22 * os_mv[0]) / 32 - 1;
+    case 3: return (M - S - 34 * T0 - 32 * os_mv[1] - 22 * os_mv[0] - 122) / 12 - 1;
+    default: return (M - (S + 1) - 32 * os_mv[1] - 12 * os_mv[2] - 22 * os_mv[0] - 66) / 34 - 1;
+    }
+}
+
+static long mem_pool(void)
+{
+    long p = JW_MEM_FREE - 22 * os_mv[0] - 32 * os_mv[1] - 12 * os_mv[2] - 24 * os_mv[3] - 91;
+
+    if (p > 0x7fff) {
+        p = 0x7fff;
+    }
+    if ((p & 1) == 0) {
+        p--;
+    }
+    return p;
+}
+
+/* 容量の初期値（測定のみ・decomp 未確認）。起動時は 4 つとも 3639。図面を読んで 3639 を越える数があると
+ * 本物は読み込みのとき配列を広げる（3ab8:4124→43b1）：新しい容量＝使用数＋δ、
+ * δ ＝ (M − 32767 − S − 22L − 32A − 12(P+2T) − 91) / 91（TEST7 の 6688・2610 が合う）。 */
+static void mem_caps_from(const Jwc *d)
+{
+    int k;
+
+    for (k = 0; k < 4; k++) {
+        os_cap[k] = 3639;
+    }
+    if (d && (d->n_lines > 3639 || d->n_arcs > 3639 || d->n_points > 3639 || d->n_texts > 3639)) {
+        const long delta = (JW_MEM_FREE - 32767 - (d->text_len + 1) - 22 * d->n_lines - 32 * d->n_arcs
+                            - 12 * ((long)d->n_points + 2L * d->n_texts) - 91) / 91;
+
+        os_cap[0] = d->n_lines + delta;
+        os_cap[1] = d->n_arcs + delta;
+        os_cap[2] = d->n_points + delta;
+        os_cap[3] = d->n_texts + delta;
+    }
+}
+
+static void mem_draw(VGA *v)
+{
+    char buf[200];
+
+    if (os_ms >= 1 && os_ms <= 4) {
+        static const char *const LAB[4] = { S_MEM_LINE, S_MEM_ARC, S_MEM_PT, S_MEM_TXT };
+
+        snprintf(buf, sizeof buf, S_MEM_FMT, LAB[os_ms - 1], mem_used(os_ms == 1 ? 0 : os_ms == 2 ? 1 : os_ms == 3 ? 2 : 3),
+                 mem_max(os_ms));
+        jw_ui_text(v, 1, 1, 7, 0, buf);
+        field_draw(v, 64);
+    } else {
+        snprintf(buf, sizeof buf, S_MEM_SUM S_MEM_OK, os_mv[0], os_mv[1], (int)os_mv[2], (int)os_mv[3], mem_pool());
+        jw_ui_text(v, 1, 1, 7, 0, S_ESC);
+        jw_ui_text(v, 8, 1, 7, 0, buf);
+    }
+}
+
+/* 欄の確定。code：0 通常（打った値）、1 作図範囲の空の押し（値 0＝容量）、2 上の行の押し（初期値のまま）。 */
+static int mem_accept(int code, int *opt_stage)
+{
+    const int k = os_ms - 1;
+    const long mx = mem_max(os_ms);
+    double v = (os_ms >= 3) ? (double)mx : 0.0;     /* 点・文字列は初期値が最大値 */
+
+    if (code == 0 && nf_n > 0) {
+        v = nf_value();
+    } else if (code == 1) {
+        v = 0.0;
+    }
+    if (v == 0.0) {
+        v = (double)os_cap[k];
+    }
+    if (v < (double)mem_used(k) || v > (double)mx) {
+        nf_clear();
+        return JW_OS_TAKEN;
+    }
+    os_mv[k] = (long)v;
+    os_ms++;
+    nf_clear();
+    (void)opt_stage;
+    return JW_OS_TAKEN;
+}
+
+static void mem_apply(void)
+{
+    int k;
+
+    for (k = 0; k < 4; k++) {
+        os_cap[k] = os_mv[k];
+    }
+    os_cap_user = 1;
+    os_pool = mem_pool();
+}
+
 /* ------------------------------------------------------------ ③ ｺﾏﾝﾄﾞｷｰ */
 static void key_draw(VGA *v)
 {
@@ -316,7 +448,11 @@ static void key_draw(VGA *v)
 static void color_draw_prompt(VGA *v)
 {
     jw_ui_text(v, 1, 1, 7, 0, S_COLNO "7) ?=");
-    edit_draw(v);
+    if (os_ph == 0) {
+        edit_draw(v);
+    } else if (ed_n > 0) {
+        jw_ui_text(v, ed_col, 1, 7, 0, ed);         /* 確定した字は残り、四角は無い（測定） */
+    }
 }
 
 static void color_draw_edit(VGA *v)
@@ -353,6 +489,9 @@ void jw_optset_text(VGA *v, const Jwc *d, int opt_stage)
         break;
     case JW_OPT_SET_SIZE:
         size_draw(v);
+        break;
+    case JW_OPT_SET_MEM:
+        mem_draw(v);
         break;
     case JW_OPT_SET_KEY:
         if (os_ph == 0) {
@@ -406,7 +545,17 @@ static int enter_item(Jwc *d, int item, int *opt_stage)
     ed_n = 0;
     ed[0] = 0;
     *opt_stage = JW_OPT_SET + item;
+    if (item == 5) {
+        return JW_OS_ENV;
+    }
     switch (item) {
+    case 1:
+        os_ms = 1;
+        os_d = d;
+        if (!os_cap_user) {
+            mem_caps_from(d);
+        }
+        break;
     case 3:
         os_ki = 1;
         break;
@@ -569,6 +718,42 @@ int jw_optset_key(Jwc *d, VGA *v, int key, int *opt_stage)
         return JW_OS_TAKEN;
     }
     switch (os_item) {
+    case 1:
+        if (os_ms == 5) {
+            if (key == '1') {
+                mem_apply();
+                return to_band(opt_stage);
+            }
+            if (key == '2') {
+                return to_band(opt_stage);
+            }
+            if (key == 27) {
+                os_ms = 4;
+            }
+            return JW_OS_TAKEN;
+        }
+        if (key == 27) {
+            if (os_ms == 1) {
+                return to_band(opt_stage);
+            }
+            os_ms--;
+            nf_clear();
+            return JW_OS_TAKEN;
+        }
+        if (enter) {
+            return mem_accept(0, opt_stage);
+        }
+        if (key == 8) {
+            if (nf_n > 0) {
+                nf[--nf_n] = 0;
+            }
+            return JW_OS_TAKEN;
+        }
+        if (key >= 0 && key < 256 && !nf_char(key) && jw_ui_key_command(key)) {
+            return JW_OS_NONE;
+        }
+        nf_add(key, 64);
+        return JW_OS_TAKEN;
     case 6:
     case 2:
         if (key == 27) {
@@ -694,9 +879,31 @@ int jw_optset_click(Jwc *d, VGA *v, int x, int y, int right, int *opt_stage)
         return JW_OS_TAKEN;
     }
     switch (os_item) {
+    case 1:
+        if (os_ms == 5) {
+            if (item == 1) {
+                mem_apply();
+                return to_band(opt_stage);
+            }
+            if (item == 2) {
+                return to_band(opt_stage);
+            }
+            return JW_OS_TAKEN;
+        }
+        if (top) {
+            nf_clear();
+            return mem_accept(2, opt_stage);
+        }
+        return mem_accept(nf_n > 0 ? 0 : 1, opt_stage);
     case 6:
+        if (top) {
+            nf_clear();
+        }
         return drag_accept(opt_stage);
     case 2:
+        if (top) {
+            nf_clear();
+        }
         return size_accept(opt_stage);
     case 4:
         if (right || (top && x <= 36)) {

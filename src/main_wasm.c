@@ -1205,7 +1205,10 @@ static void present(void)
     }
     jw_ui_band_end(&vga, &ui);
     jw_ui_range_notch(&vga);
-    jw_ui_cursor(&vga, mouse_x, mouse_y);
+    /* ④作図時間・⑦画色 の欄のあいだ、本物は矢を消している（1885:5256(0)）。 */
+    if (!(JW_OPT_SETTING(&ui) && jw_optset_cursor_hidden(ui.opt_stage))) {
+        jw_ui_cursor(&vga, mouse_x, mouse_y);
+    }
     vga_render(&vga, pixels);
     jw_view_rgba(&vga, pixels, rgba);
 }
@@ -1480,8 +1483,8 @@ static void file_list(int for_save)
  * jw_ui_pick_kind. */
 static void file_pick(int kind)
 {
-    static const char *const EXT[8] = { "JWC", "JWC", "TXT", "BAT", "DXF",
-                                        "DXF", "TXT", "BAT" };
+    static const char *const EXT[9] = { "JWC", "JWC", "TXT", "BAT", "DXF",
+                                        "DXF", "TXT", "BAT", "JWF" };
 
     file_list_ext(0, EXT[kind]);
     jw_ui_pick_kind(&ui, kind);
@@ -3061,15 +3064,23 @@ static int set_after(int r, int stage, int x, int y)
         jw_optset_reset();
         return -2;
     }
+    if (r == JW_OS_ENV) {
+        /* ⑤環境FILE：ファイル選択（*.jwf）。 */
+        ui.opt_stage = JW_OPT_SET_ENV;
+        cmd.top_item = 0;
+        cmd.top_right = 0;
+        file_pick(JW_PICK_ENV);
+        sync_ui();
+        present();
+        return -1;
+    }
     ui.opt_stage = r == JW_OS_LEAVE ? 0 : stage;
     if (r == JW_OS_LEAVE) {
         jw_optset_reset();
     }
     cmd.top_item = 0;
     cmd.top_right = 0;
-    if (drawing) {
-        ui.work_seconds = drawing->work_seconds;
-    }
+    /* 左の盤の作業時間の棒は盤を描き直すまで古いまま（測定：optset_screens の time_5e）。 */
     sync_ui();
     present();
     return -1;

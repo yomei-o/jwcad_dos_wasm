@@ -60,3 +60,60 @@ col_15e|type s|type 6|type 7|type 1|type 5|key enter
 col_16e|type s|type 6|type 7|type 1|type 6|key enter
 col_e|type s|type 6|type 7|key enter
 col_x|type s|type 6|type 7|key esc
+col_3k_e|type s|type 6|type 7|type 3|key enter|type 9|key enter
+col_3k_ex|type s|type 6|type 7|type 3|key enter|type 9|key esc
+col_3k_exx|type s|type 6|type 7|type 3|key enter|type 9|key esc|key esc
+col_3_123|type s|type 6|type 7|type 3|key enter|type 1|type 2|type 3|type 7
+col_3_plus|type s|type 6|type 7|type 3|key enter|type 9|type +
+col_3_plus_x|type s|type 6|type 7|type 3|key enter|type 9|type +|key esc
+col_3_other|type s|type 6|type 7|type 3|key enter|type 4
+col_0k|type s|type 6|type 7|type 0|key enter|type 7
+col_7k|type s|type 6|type 7|type 7|key enter|type 1|type 1
+col_a|type s|type 6|type 7|type a
+col_click|type s|type 6|type 7|type 3|key enter|400 300 left
+col_click2|type s|type 6|type 7|type 3|400 300 left
+col_rclick|type s|type 6|type 7|type 3|400 300 right
+col_escclick|type s|type 6|type 7|20 8 left
+key_k_x_x|type s|type 6|type 3|type k|key esc|key esc
+key_32e_1|type s|type 6|type 3|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|key enter|type 1
+mem|type s|type 6|type 1
+mem_e|type s|type 6|type 1|key enter
+mem_ee|type s|type 6|type 1|key enter|key enter
+mem_eee|type s|type 6|type 1|key enter|key enter|key enter
+mem_eeee|type s|type 6|type 1|key enter|key enter|key enter|key enter
+mem_eeeex|type s|type 6|type 1|key enter|key enter|key enter|key enter|key esc
+mem_ex|type s|type 6|type 1|key enter|key esc
+mem_x|type s|type 6|type 1|key esc
+mem_5e|type s|type 6|type 1|type 5|key enter
+mem_100e|type s|type 6|type 1|type 100|key enter
+mem_100eeee|type s|type 6|type 1|type 100|key enter|key enter|key enter|key enter
+mem_100eeee1|type s|type 6|type 1|type 100|key enter|key enter|key enter|key enter|type 1
+mem_100eeee1_again|type s|type 6|type 1|type 100|key enter|key enter|key enter|key enter|type 1|type 1
+mem_100eeee1_again_e|type s|type 6|type 1|type 100|key enter|key enter|key enter|key enter|type 1|type 1|key enter|key enter|key enter|key enter
+mem_100eeee2|type s|type 6|type 1|type 100|key enter|key enter|key enter|key enter|type 2
+mem_c4|type s|type 6|type 1|400 250 left|400 250 left|400 250 left|400 250 left
+mem_c5|type s|type 6|type 1|400 250 left|400 250 left|400 250 left|400 250 left|400 250 left
+mem_c4t|type s|type 6|type 1|400 8 left|400 8 left|400 8 left|400 8 left
+mem_c4r|type s|type 6|type 1|400 250 right|400 250 right|400 250 right|400 250 right
+mem_eeeee_c|type s|type 6|type 1|key enter|key enter|key enter|key enter|400 250 left
+mem_eeee_item1|type s|type 6|type 1|key enter|key enter|key enter|key enter|130 8 left
+mem_eeee_item2|type s|type 6|type 1|key enter|key enter|key enter|key enter|270 8 left
+mem_a|type s|type 6|type 1|type a
+mem_12abc|type s|type 6|type 1|type 12|type c
+env|type s|type 6|type 5
+env_esc|type s|type 6|type 5|key esc
+env_bs|type s|type 6|type 5|key bs
+env_1|type s|type 6|type 5|type 1
+env_2|type s|type 6|type 5|type 2
+env_e|type s|type 6|type 5|key enter
+env_click_row|type s|type 6|type 5|200 120 left
+env_click_row2|type s|type 6|type 5|200 120 left|200 120 left
+env_click_item1|type s|type 6|type 5|130 8 left
+env_click_item2|type s|type 6|type 5|250 8 left
+env_click_esc|type s|type 6|type 5|20 8 left
+env_rclick|type s|type 6|type 5|200 120 right
+env_a|type s|type 6|type 5|type a
+env_1_esc|type s|type 6|type 5|type 1|key esc
+env_1_1|type s|type 6|type 5|type 1|type 1
+env_1_e|type s|type 6|type 5|type 1|key enter
+env_1_x|type s|type 6|type 5|type 1|type x
