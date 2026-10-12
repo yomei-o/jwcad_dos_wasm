@@ -343,6 +343,129 @@ static int layer_used(const Jwc *d, int k)
     return 0;
 }
 
+/* ---- モード 3 の真円（1e64 の 198b が作る A'・B'、5c55 が投影して描く）---- */
+typedef struct {
+    JwcArc a;                           /* A'：元の円弧 */
+    float z;                            /* B'.cy：高さ */
+    float cx, cy;                       /* C' の中心（recompute が決める） */
+    long tilt;                          /* C' の傾き */
+} Arc3;
+
+static Arc3 *v_arc;
+static long v_narc;
+static JwcArc *v_aout;                  /* 投影した円弧（描く） */
+static long v_naout;
+
+/* 1bb4:63ae：角度を 0〜360 度に（ちょうど 360 度は残す）。 */
+static long norm360(long v)
+{
+    const long full = 360L << 16;
+
+    while (v > full) v -= full;
+    while (v < 0) v += full;
+    return v;
+}
+
+/* 0def:2828：原点から (x,y) の向きを 16.16 の度で（0 以上 360 未満）。 */
+static long ang16o(double dx, double dy)
+{
+    long v;
+
+    if (dy == 0.0) return dx < 0.0 ? 180L << 16 : 0L;
+    if (dx == 0.0) return dy < 0.0 ? 270L << 16 : 90L << 16;
+    v = (long)(atan2(dy, dx) * 3754936.206 + 23592960.5);
+    if ((unsigned long)v >> 16 >= 360UL) v -= 360L << 16;
+    return v;
+}
+
+/* 1bb4:63fa：楕円（円）の記録を軸方向に (sx,sy) 倍した記録（中心は動かさない）。 */
+static void ell_scale(JwcArc *R, double sx, double sy)
+{
+    static const unsigned long long KB = 0x3e91df46a2529d39ull;
+    double K, a, b, tl, ct, st, Xp, Yp, A1r, A2r, s1, c1, s2, c2, m1, m2, p, q;
+    long A1, A2, mid, delta, flat;
+    const double axs = 0.0;
+
+    (void)axs;
+    memcpy(&K, &KB, 8);
+    if (fabs(sx) < 0.001 || fabs(sy) < 0.001) return;
+    if (sx == sy && 0.0 < sx) {
+        R->r = (float)((double)R->r * sx);
+    } else {
+        long s0 = R->start, e0 = R->end;
+        double a_sx, b_sy, a_sy, b_sx;
+
+        tl = (double)R->tilt * K;
+        ct = cos(tl);
+        a = (double)R->r;
+        b = (a * (double)(unsigned short)R->flatten) * 0.0001;
+        a_sx = a * sx;
+        b_sy = b * sy;
+        a_sy = a * sy;
+        b_sx = b * sx;
+        st = sin(tl);
+        Xp = b_sy + a_sx;
+        Yp = b_sx + a_sy;
+        A1 = ang16o((Xp * ct), (Yp * st));
+        A2 = ang16o((a_sx - b_sy) * ct, (a_sy - b_sx) * st);
+        mid = (A1 + A2) / 2;
+        delta = (A1 - A2) / 2;
+        A1r = (double)A1 * K;
+        s1 = sin(A1r);
+        c1 = cos(A1r);
+        if (fabs(c1) <= fabs(s1)) m1 = (((sy * a) + (sx * b)) / s1) * st;
+        else m1 = (Xp / c1) * ct;
+        A2r = (double)A2 * K;
+        s2 = sin(A2r);
+        c2 = cos(A2r);
+        if (fabs(c2) <= fabs(s2)) m2 = (((sy * a) - (sx * b)) / s2) * st;
+        else m2 = (((sx * a) - (sy * b)) / c2) * ct;
+        p = (m1 - m2) * 0.5;
+        q = (m2 + m1) * 0.5;
+        if (q < p) {
+            const double t = p;
+
+            p = q;
+            q = t;
+            mid -= 90L << 16;
+            delta -= 90L << 16;
+        }
+        R->tilt = norm360(mid);
+        s0 = norm360(delta + s0);
+        e0 = norm360(delta + e0);
+        if (q < 0.0) {
+            long ns, ne;
+
+            q = -q;
+            ne = norm360((180L << 16) - e0);
+            ns = norm360((180L << 16) - s0);
+            s0 = ne;
+            e0 = ns;
+        }
+        if (p < 0.0) {
+            long ns, ne;
+
+            p = -p;
+            ne = norm360(-e0);
+            ns = norm360(-s0);
+            s0 = ne;
+            e0 = ns;
+        }
+        R->start = s0;
+        R->end = e0;
+        R->r = (float)q;
+        flat = (long)((p / q) * 10000.0);
+        R->flatten = (short)(flat & 0xffff);
+    }
+    {
+        unsigned fl = (unsigned short)R->flatten;
+
+        if (fl < 0x64) fl = 0x64;
+        if (fl > 0x270d && fl < 0x2713) fl = 0x2710;
+        R->flatten = (short)fl;
+    }
+}
+
 /* 1c79：円弧の上の角度 t（16.16 の度）の点。 */
 static void arc_pt(const JwcArc *a, long t, float *px, float *py)
 {
@@ -362,7 +485,7 @@ static void arc_pt(const JwcArc *a, long t, float *px, float *py)
 }
 
 /* 1e64：高さのデータを作る。戻り＝線の数（本物は円弧の数も返す）。 */
-static long build(const Jwc *d, int unit)
+static long build(const Jwc *d, int unit, int mode)
 {
     float gh[16];
     int gk[16];
@@ -373,6 +496,9 @@ static long build(const Jwc *d, int unit)
     free(h_out);
     h_out = NULL;
     h_n = h_cap = 0;
+    free(v_arc);
+    v_arc = NULL;
+    v_narc = 0;
     h_f = 1.0f / (d->denom * paper_k(d));
     if (unit) h_f = (float)((double)h_f * 1000.0);
     for (g = 0; g < 16; g++) { gh[g] = 0.0f; gk[g] = 0; }
@@ -595,6 +721,14 @@ static long build(const Jwc *d, int unit)
                 hv[1] = 0.0;
                 hv[2] = (double)lh;
             }
+            if (mode == 3 && na < 2 && !E.elev) {      /* アイソメの真円（198b）：高さだけ付けて円弧のまま持つ */
+                v_arc = (Arc3 *)realloc(v_arc, (size_t)(v_narc + 1) * sizeof(Arc3));
+                memset(&v_arc[v_narc], 0, sizeof(Arc3));
+                v_arc[v_narc].a = *a;
+                v_arc[v_narc].z = (float)(((double)h_f * hv[1]) + E.zbase);
+                v_narc++;
+                continue;
+            }
             if (na >= 3) continue;                     /* 円データの追加円・螺旋は未実装 */
             memset(&r, 0, sizeof r);
             r.type = a->type;
@@ -726,6 +860,14 @@ static void recompute(void)
         if (v_vmax < s->cy0) v_vmax = s->cy0;
         if (v_vmin > s->cy1) v_vmin = s->cy1;
         if (v_vmax < s->cy1) v_vmax = s->cy1;
+    }
+    for (i = 0; i < v_narc; i++) {              /* 0x310df〜0x312e9：円弧の C' */
+        Arc3 *c = &v_arc[i];
+        const long dir = (long)(int)truncf(g_dir);
+
+        c->cx = (float)(fr_u((double)c->a.cx, (double)c->a.cy) + 250.0f);
+        c->cy = fr_v((double)c->a.cx, (double)c->a.cy);
+        c->tilt = norm360((long)((unsigned long)c->a.tilt - ((unsigned long)(dir & 0xffff) << 16)));
     }
 }
 
@@ -892,6 +1034,28 @@ static void project_all(const Jwc *d)
         o->pen = v_seg[i].pen;
         o->layer = (unsigned char)d->write_layer;
     }
+    free(v_aout);
+    v_aout = (JwcArc *)calloc((size_t)(v_narc ? v_narc : 1), sizeof(JwcArc));
+    v_naout = 0;
+    if (v_mode == 3) {                          /* 0x31ed0〜0x322f2：水平面の円を楕円に潰して描く */
+        for (i = 0; i < v_narc; i++) {
+            const Arc3 *c = &v_arc[i];
+            JwcArc R = c->a;
+            const double sy = -(double)fr_uy;
+
+            if (fabs(sy) < 0.001) continue;
+            R.cx = c->cx;
+            R.cy = c->cy;
+            R.tilt = c->tilt;
+            ell_scale(&R, 1.0, sy);
+            R.cy = v_yoff + fr_v((double)R.cy, (double)c->z);
+            R.layer = (unsigned char)d->write_layer;
+#ifdef O25_TRACE
+            printf("AR %.9g %.9g %.9g %d %ld %ld %ld\n", (double)R.cx, (double)R.cy, (double)R.r, (int)R.flatten, R.start, R.end, R.tilt);
+#endif
+            v_aout[v_naout++] = R;
+        }
+    }
 }
 
 /* ------------------------------------------------------------ 公開 */
@@ -899,7 +1063,7 @@ int jw_o25v_enter(const Jwc *d, int m, int unit)
 {
     v_halfW = 0.0f;
     v_halfH = 0.0f;
-    if (build(d, unit) <= 0) {
+    if (build(d, unit, m) + v_narc <= 0) {
         return 0;
     }
     mode_init(d, m, unit);
@@ -912,9 +1076,13 @@ void jw_o25v_free(void)
 {
     free(v_seg);
     free(v_out);
+    free(v_arc);
+    free(v_aout);
     v_seg = NULL;
     v_out = NULL;
-    v_nseg = v_nout = 0;
+    v_arc = NULL;
+    v_aout = NULL;
+    v_nseg = v_nout = v_narc = v_naout = 0;
 }
 
 void jw_o25v_draw(VGA *v, const Jwc *d, const JwView *w, int cross)
@@ -927,6 +1095,9 @@ void jw_o25v_draw(VGA *v, const Jwc *d, const JwView *w, int cross)
     v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
     for (i = 0; i < v_nout; i++) {
         jw_view_line(v, d, &v_out[i], w, 0);
+    }
+    for (i = 0; i < v_naout; i++) {
+        jw_view_arc(v, d, &v_aout[i], w, jw_view_pen_colour(v_aout[i].pen));
     }
     /* 視点のしるし（§2.3 (a)）：線種 9・色 2・排他的論理和の十字線（測定：v3 で 4 画素おきの赤、
      * 白と重なると水色）。縦線は x=視点、横線は y=Yoff+ez0。 */
@@ -1132,6 +1303,9 @@ long jw_o25v_commit(Jwc *d)
         t.rest[1] = 0x0f;               /* +0x13 は本物では未初期化のスタック（測定：o8_v3_run の保存結果は常に 0x0f） */
         if (t.pen < 0x5a && t.x0 == t.x1 && t.y0 == t.y1) continue;   /* 66b3：長さ 0 は足さない */
         jwc_put_line(d, &t);
+    }
+    for (i = 0; i < v_naout; i++) {
+        jwc_put_arc(d, &v_aout[i]);
     }
     return d->n_lines - before;
 }
