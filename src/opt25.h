@@ -20,7 +20,7 @@
 #define JW_OPT25_VIEW   65  /* 視点画面（①②③のどれか。o25_mode）                          */
 #define JW_OPT25_ASK    66  /* ①作図 の確認 レイヤ(g-l)に作図します |①実行(L)|②中止(R)|        */
 #define JW_OPT25_CHG    67  /* ②変更間隔 角度(ﾟ),移動(mm) = 入力欄 */
-#define JW_OPT25_LAST   79
+#define JW_OPT25_LAST   69  /* ⑤日影図の段は 70〜89（opthikage.h）なので 69 まで */
 #define JW_OPT25(s) ((s)->command == 29 && (s)->opt_stage >= JW_OPT25_MENU \
                      && (s)->opt_stage <= JW_OPT25_LAST)
 
