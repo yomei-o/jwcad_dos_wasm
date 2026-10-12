@@ -25,6 +25,7 @@
 #include "optplan.h"
 #include "optbatch.h"
 #include "optdata.h"
+#include "optset.h"
 #include "tategu.h"
 #include "view.h"
 
@@ -3047,6 +3048,33 @@ static int data_g0_key(int key)
     return -1;
 }
 
+/* ｵﾌﾟｼｮﾝ ⑥各設定（src/optset.c）が受けた鍵・押しのあとの後始末。
+ * 戻り値：-1 受けた／-2 受けない（命令の鍵・左の盤の押しとして先へ流す）。 */
+static int set_after(int r, int stage, int x, int y)
+{
+    if (x >= 0) {
+        mouse_x = x;
+        mouse_y = y;
+    }
+    if (r == JW_OS_NONE) {
+        ui.opt_stage = 0;
+        jw_optset_reset();
+        return -2;
+    }
+    ui.opt_stage = r == JW_OS_LEAVE ? 0 : stage;
+    if (r == JW_OS_LEAVE) {
+        jw_optset_reset();
+    }
+    cmd.top_item = 0;
+    cmd.top_right = 0;
+    if (drawing) {
+        ui.work_seconds = drawing->work_seconds;
+    }
+    sync_ui();
+    present();
+    return -1;
+}
+
 static int data_g0_click(int x, int y, int right)
 {
     if (ui.command != 29 || ui.opt_stage != JW_OPT_DATA_G0) {
@@ -3082,6 +3110,17 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 {
     const int pick = jw_ui_menu_hit(x, y);
     const int bar = jw_ui_bar_item(x, y);
+
+    /* ｵﾌﾟｼｮﾝ ⑥各設定。 */
+    if (JW_OPT_SETTING(&ui) && drawing) {
+        int st = ui.opt_stage;
+        const int r = jw_optset_click(drawing, &vga, x, y, right, &st);
+        const int z = set_after(r, st, x, y);
+
+        if (z != -2) {
+            return z;
+        }
+    }
 
     /* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理 G0。 */
     if (ui.command == 29 && ui.opt_stage == JW_OPT_DATA_G0) {
@@ -4473,6 +4512,13 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
         cmd.top_item = 0;
         cmd.top_right = 0;
+        if (ui.opt_stage == 0 && item == 6 && drawing) {
+            /* ⑥各設定：帯 |①ﾒﾓﾘｰ配分|…|⑦画色| へ（src/optset.c）。 */
+            int st = 0;
+
+            jw_optset_open(&st);
+            return set_after(JW_OS_TAKEN, st, x, y);
+        }
         if (ui.opt_stage == 0 && item >= 1 && item <= 3) {   /* ②断面・③立面 も同じ一覧画面（測定：probe_option_walk） */
             /* The screen is up; what is on it comes from src/item.h like
              * ②断面's and ③立面's. */
@@ -4967,6 +5013,16 @@ static int lc_msg_was;
 
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
+    /* ｵﾌﾟｼｮﾝ ⑥各設定。 */
+    if (JW_OPT_SETTING(&ui) && drawing) {
+        int st = ui.opt_stage;
+        const int r = jw_optset_key(drawing, &vga, key, &st);
+        const int z = set_after(r, st, -1, -1);
+
+        if (z != -2) {
+            return z;
+        }
+    }
     /* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理 G0。 */
     if (ui.command == 29 && ui.opt_stage == JW_OPT_DATA_G0) {
         const int r = data_g0_key(key);
@@ -6041,6 +6097,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     ui.stage = 0;
     ui.missed = 0;
     ui.opt_stage = 0;           /* ｵﾌﾟｼｮﾝ の道は命令を替えると捨てる（src/optbatch.c） */
+    jw_optset_reset();
     hand_abandon();
     jw_cmd_pick(&cmd, pick);
     /* 升の行は新しいコマンドでは消える（前のコマンドの top_item が残ると

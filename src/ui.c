@@ -24,6 +24,7 @@
 #include "optsub.h"
 #include "optbatch.h"
 #include "optdata.h"
+#include "optset.h"
 #include "item.h"
 #include "tategu.h"
 
@@ -91,7 +92,15 @@ static const char MENU[30][7] = {
 
 /* The key that picks each one, DGROUP 0x7cad: the fifteen of the right column
  * in capitals, then the fifteen of the left in small letters. */
-static const char MENU_KEY[31] = "CHXBFTVRWDENASQchxbftvrwdenasq";
+static char MENU_KEY[31] = "CHXBFTVRWDENASQchxbftvrwdenasq";
+
+/* ｵﾌﾟｼｮﾝ ⑥各設定 ③ｺﾏﾝﾄﾞｷｰ が命令の鍵を書き換える（src/optset.c）。 */
+void jw_ui_set_menu_key(int command, char key)
+{
+    if (command >= 1 && command <= 30) {
+        MENU_KEY[command - 1] = key;
+    }
+}
 
 int jw_ui_item_has(int command, int item, int right)
 {
@@ -1016,7 +1025,8 @@ static void pen_name(char *out, int pen, int line_type)
  * the width this table holds. */
 static double magnification(int paper)
 {
-    return paper >= 0 && paper <= 4 ? 170.0f / PAPER_MM[paper] : 0.0;
+    /* 画面の幅（mm）は DS:[0xc34]。初期 170、ｵﾌﾟｼｮﾝ ⑥各設定 ②画面ｻｲｽﾞ で変わる（src/optset.c）。 */
+    return paper >= 0 && paper <= 4 ? jw_optset_screen_mm() / PAPER_MM[paper] : 0.0;
 }
 
 void jw_ui_default(JwUi *s)
@@ -5298,6 +5308,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 68, 2, 6, 0, "  ");
                 jw_ui_text(v, 77, 2, 6, 0, "  ");
             }
+        }
+        /* ｵﾌﾟｼｮﾝ ⑥各設定（src/optset.c が字と絵を持つ）。 */
+        if (JW_OPT_SETTING(s)) {
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
+            jw_optset_text(v, NULL, s->opt_stage);
         }
         /* ④⑤ の段は上の行を jw_ui_data が自分で書く（小窓と一緒に）。 */
         if (JW_OPT_SUB(s)) {

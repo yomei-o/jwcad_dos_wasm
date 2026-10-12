@@ -1,0 +1,62 @@
+#名前|手順…（LIST=tools/cases/optset_screens.txt sh tools/optsubcheck.sh で本物と画面を比べる）
+#ｵﾌﾟｼｮﾝ ⑥各設定（src/optset.c、仕様 notes/spec-opt6.md）。1 手目 type s = ｵﾌﾟｼｮﾝ、type 6 = 各設定。
+band|type s|type 6
+band_esc|type s|type 6|key esc
+band_bs|type s|type 6|key bs
+band_d8|type s|type 6|type 8
+band_d0|type s|type 6|type 0
+band_escclick|type s|type 6|20 8 left
+drag|type s|type 6|type 6
+drag_12|type s|type 6|type 6|type 12
+drag_12bs|type s|type 6|type 6|type 12|key bs
+drag_12e|type s|type 6|type 6|type 12|key enter
+drag_12x|type s|type 6|type 6|type 12|key esc
+drag_m5|type s|type 6|type 6|type -5
+drag_exp|type s|type 6|type 6|type 1+2
+drag_a|type s|type 6|type 6|type a
+drag_q|type s|type 6|type 6|type q
+drag_comma|type s|type 6|type 6|type 1,2
+drag_bs|type s|type 6|type 6|key bs
+drag_e|type s|type 6|type 6|key enter
+drag_3e|type s|type 6|type 6|type 3|key enter
+drag_99999e|type s|type 6|type 6|type 99999|key enter
+drag_1c2e|type s|type 6|type 6|type 1,2|key enter
+drag_click|type s|type 6|type 6|type 12|400 250 left
+drag_click2|type s|type 6|type 6|type 12|400 8 left
+drag_dots|type s|type 6|type 6|type 1..2
+size|type s|type 6|type 2
+size_e|type s|type 6|type 2|key enter
+size_x|type s|type 6|type 2|key esc
+size_157e|type s|type 6|type 2|type 157|key enter
+size_5e|type s|type 6|type 2|type 5|key enter
+size_1000e|type s|type 6|type 2|type 1000|key enter
+size_1001e|type s|type 6|type 2|type 1001|key enter
+size_10e|type s|type 6|type 2|type 10|key enter
+size_9e|type s|type 6|type 2|type 9|key enter
+size_100e|type s|type 6|type 2|type 100|key enter
+time|type s|type 6|type 4
+time_1|type s|type 6|type 4|type 1
+time_12|type s|type 6|type 4|type 1|type 2
+time_e|type s|type 6|type 4|key enter
+time_x|type s|type 6|type 4|key esc
+time_5e|type s|type 6|type 4|type 5|key enter
+time_12e|type s|type 6|type 4|type 1|type 2|key enter
+time_click|type s|type 6|type 4|400 250 left
+time_rclick|type s|type 6|type 4|400 250 right
+time_escclick|type s|type 6|type 4|20 8 left
+time_bs|type s|type 6|type 4|key bs
+key|type s|type 6|type 3
+key_k|type s|type 6|type 3|type k
+key_km|type s|type 6|type 3|type k|type m
+key_e|type s|type 6|type 3|key enter
+key_x|type s|type 6|type 3|type k|key esc
+key_digit|type s|type 6|type 3|type 5
+col|type s|type 6|type 7
+col_3|type s|type 6|type 7|type 3
+col_3e|type s|type 6|type 7|type 3|key enter
+col_3k|type s|type 6|type 7|type 3|key enter|type 9
+col_9e|type s|type 6|type 7|type 9|key enter
+col_15e|type s|type 6|type 7|type 1|type 5|key enter
+col_16e|type s|type 6|type 7|type 1|type 6|key enter
+col_e|type s|type 6|type 7|key enter
+col_x|type s|type 6|type 7|key esc

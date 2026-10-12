@@ -25,6 +25,12 @@ cd "$(dirname "$0")/.."
 REAL=../dosv_emu_cpp/dosemu.exe
 [ -x "$REAL" ] || { echo "build dosv_emu_cpp first (sh build.sh there)" >&2; exit 2; }
 
+# 台本の中の "../jwcad_dos_wasm/" は、作業用コピー（git worktree）では別の場所を指して
+# しまうので、実行前にこのコピーからの相対の道へ書き換える。
+for a in "$@"; do
+    case "$a" in *.txt) [ -f "$a" ] && sed -i 's|\.\./jwcad_dos_wasm/||g' "$a" ;; esac
+done
+
 MYROOT=tmp/emuroot
 root=""
 script=""

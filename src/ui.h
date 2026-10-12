@@ -517,7 +517,7 @@ typedef struct {
 /* ④一括処理 ③データ整理（src/optdata.c）：G0 は項目の帯、R は範囲と確定（cmd.dr が持ち主）。 */
 #define JW_OPT_DATA_G0 40
 #define JW_OPT_DATA_R  41
-#define JW_OPT_DATA(s) ((s)->command == 29 && (s)->opt_stage >= JW_OPT_DATA_G0)
+#define JW_OPT_DATA(s) ((s)->command == 29 && (s)->opt_stage >= JW_OPT_DATA_G0 && (s)->opt_stage < 50)
 #define JW_OPT_SUB(s) ((s)->command == 29 && (s)->opt_stage >= JW_OPT_LAY_B1 && (s)->opt_stage < 30)
 /* JW_OPT_BASE and JW_OPT_WHERE are in src/optplan.h, beside the lines they
  * put up. */
@@ -809,6 +809,7 @@ void jw_ui_text(VGA *v, int col, int row, unsigned fg, unsigned bg,
  * the command number the original's own documentation uses -- USER_MNU.DAT
  * says "複写から測定が 1〜15、移動から入出力が16〜30". */
 const char *jw_ui_menu_label(int command);
+void jw_ui_set_menu_key(int command, char key);
 
 /* The one black pixel a range screen leaves at the counts box's corner.
  * Called last, after everything else has been drawn. */
