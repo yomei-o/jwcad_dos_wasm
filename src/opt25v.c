@@ -389,7 +389,7 @@ void jw_o25v_free(void)
     v_nseg = v_nout = 0;
 }
 
-void jw_o25v_draw(VGA *v, const Jwc *d, const JwView *w)
+void jw_o25v_draw(VGA *v, const Jwc *d, const JwView *w, int cross)
 {
     long i;
 
@@ -402,7 +402,7 @@ void jw_o25v_draw(VGA *v, const Jwc *d, const JwView *w)
     }
     /* 視点のしるし（§2.3 (a)）：線種 9・色 2・排他的論理和の十字線（測定：v3 で 4 画素おきの赤、
      * 白と重なると水色）。縦線は x=視点、横線は y=Yoff+ez0。 */
-    {
+    if (cross) {
         const float hw = 259.0f, hh = 223.0f;
         const float xr = (float)(v_exm - hw);
         const float yr = (float)((v_yoff - hh) + v_ez0);

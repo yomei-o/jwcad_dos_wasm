@@ -45,6 +45,7 @@ void jw_opt25_text(VGA *v, int opt_stage, int group);
 /* 入力欄の緑のカーソルの桁（無ければ -1）。 */
 int jw_opt25_cursor(void);
 int jw_opt25_cursor_char(void);
+int jw_opt25_vlab(void);
 
 /* 押した所に線が無かった（`読取可能データ無`）なら 1（読むと降りる）。 */
 int jw_opt25_missed(void);
@@ -61,7 +62,7 @@ void jw_opt25_reset(void);
 /* 視点画面（src/opt25v.c）。 */
 int jw_o25v_enter(const Jwc *d, int m, int unit);
 void jw_o25v_free(void);
-void jw_o25v_draw(VGA *v, const Jwc *d, const JwView *w);
+void jw_o25v_draw(VGA *v, const Jwc *d, const JwView *w, int cross);
 void jw_o25v_row2(VGA *v, const Jwc *d, int unit);
 int jw_o25v_item(const Jwc *d, int n);
 void jw_o25v_press(const Jwc *d, double px, double py);

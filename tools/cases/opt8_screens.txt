@@ -56,3 +56,42 @@ h4_again|type s|type 8|type 4|400 140 left|type 5|key enter|400 140 left
 v1|type s|type 8|type 1
 v2|type s|type 8|type 2
 v3|type s|type 8|type 3
+v1_k3|type s|type 8|type 1|type 3
+v1_k4|type s|type 8|type 1|type 4
+v1_k5|type s|type 8|type 1|type 5
+v1_k6|type s|type 8|type 1|type 6
+v1_k7|type s|type 8|type 1|type 7
+v1_k8|type s|type 8|type 1|type 8
+v1_k9|type s|type 8|type 1|type 9
+v1_k33|type s|type 8|type 1|type 3|type 3|type 3
+v1_k5x3|type s|type 8|type 1|type 5|type 5|type 5
+v1_k7x2|type s|type 8|type 1|type 7|type 7
+v1_click|type s|type 8|type 1|400 300 left
+v1_esc|type s|type 8|type 1|key esc
+v1_bs|type s|type 8|type 1|key bs
+v2_k3|type s|type 8|type 2|type 3
+v2_k4|type s|type 8|type 2|type 4
+v2_k5|type s|type 8|type 2|type 5
+v2_k6|type s|type 8|type 2|type 6
+v2_k7|type s|type 8|type 2|type 7
+v2_k8|type s|type 8|type 2|type 8
+v2_k9|type s|type 8|type 2|type 9
+v2_k33|type s|type 8|type 2|type 3|type 3|type 3
+v2_k5x3|type s|type 8|type 2|type 5|type 5|type 5
+v2_k7x2|type s|type 8|type 2|type 7|type 7
+v2_click|type s|type 8|type 2|400 300 left
+v2_esc|type s|type 8|type 2|key esc
+v2_bs|type s|type 8|type 2|key bs
+v3_k3|type s|type 8|type 3|type 3
+v3_k4|type s|type 8|type 3|type 4
+v3_k5|type s|type 8|type 3|type 5
+v3_k6|type s|type 8|type 3|type 6
+v3_k7|type s|type 8|type 3|type 7
+v3_k8|type s|type 8|type 3|type 8
+v3_k9|type s|type 8|type 3|type 9
+v3_k33|type s|type 8|type 3|type 3|type 3|type 3
+v3_k5x3|type s|type 8|type 3|type 5|type 5|type 5
+v3_k7x2|type s|type 8|type 3|type 7|type 7
+v3_click|type s|type 8|type 3|400 300 left
+v3_esc|type s|type 8|type 3|key esc
+v3_bs|type s|type 8|type 3|key bs
