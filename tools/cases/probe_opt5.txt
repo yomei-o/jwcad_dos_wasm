@@ -70,6 +70,13 @@ hk_w_pick|TEST7S|type s|type 5|type 5|465 420 left|key bs
 hk_w_pick2|TEST7S|type s|type 5|type 5|465 420 left|type 5|key esc|key bs
 hk_w_pick_dec|TEST7S|type s|type 5|type 5|465 420 left|type 5|type 1|key bs
 hk_w_ask|TEST7S|type s|type 5|type 5|380 420 left|key esc|key bs
+hk_ws2_a|TEST7S|type s|type 5|type 5|465 420 left|type 2|type 2|wait 3000000000|key bs
+hk_ws2_nowall|TEST7S|type s|type 5|type 2|type 2|wait 3000000000|key bs
+hk_ws2_b|TEST7S|type s|type 5|type 5|465 420 left|type 2|type 1|wait 3000000000|key bs
+hk_ws2_bot|TEST7S|type s|type 5|type 5|420 447 left|type 2|type 2|wait 3000000000|key bs
+hk_ws2_top|TEST7S|type s|type 5|type 5|420 396 left|type 2|type 2|wait 3000000000|key bs
+hk_ws2_left|TEST7S|type s|type 5|type 5|380 420 left|type 2|type 2|wait 3000000000|key bs
+hk_ws2_t10|TEST7S|type s|type 5|type 5|465 420 left|type 2|type 3|type 1|type 0|type .|type 5|key enter|wait 3000000000|key bs
 hk_del_old|SAMPLE0|type s|type 5|type 1|type 3|230 200 left|key bs
 hk_nth_top|SAMPLE0|type s|type 5|type 1|type 4|161 145 left|key bs
 hk_nth_bottom|SAMPLE0|type s|type 5|type 1|type 4|161 400 left|key bs

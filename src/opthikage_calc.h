@@ -31,4 +31,9 @@ int jw_hk_iso_prepare(Jwc *d, const HkCond *c, const char **err);
 void jw_hk_iso_corners(float p1x, float p1y, float p2x, float p2y, float *X, float *Y);
 int jw_hk_iso_frame(float *X, float *Y);
 
+/* ⑤壁面日影：壁面線の記録番号（0 始まり。無ければ −1）を渡す。計算の前に。 */
+void jw_hk_wall_set(const Jwc *d, long n);
+/* 直前の計算で作った「壁面自身の日影」の時間帯の文字（SJIS。無ければ空）。 */
+const char *jw_hk_wall_out(void);
+
 #endif

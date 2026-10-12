@@ -521,6 +521,8 @@ void jw_hk_page_key(int key, int stage)
 static int run_shadow(Jwc *d, double p, int *stage)
 {
     HkCond c;
+
+    jw_hk_wall_set(d, hk_wall);
     const char *err = NULL;
     int rc;
 
@@ -1423,6 +1425,12 @@ int jw_hk_key(Jwc *d, int key, int *stage)
         return JW_HK_TAKEN;
     }
     if (st == JW_OPT_HK_WL || st == JW_OPT_HK_WLA) {
+        if (key == 8 && st == JW_OPT_HK_WLA && d) {              /* [0x158]≠0：印を落として不採用 */
+            wall_mark(d, wall_ask_n, 0);
+            hk_wall = -1;
+            *stage = 0;
+            return JW_HK_CHANGED;
+        }
         if (key == 27 && d) {
             if (st == JW_OPT_HK_WLA) {
                 wall_mark(d, wall_ask_n, 0);

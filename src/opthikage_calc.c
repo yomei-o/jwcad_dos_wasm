@@ -33,6 +33,13 @@ static char errbuf[200];
 /* ------------------------------------------------------------------ 座標系 */
 /* root 1bb4:27ea・2981・2a18（optbatch.c の frame_* と同じ丸め）。 */
 static float fr_ox, fr_oy, fr_ux, fr_uy;
+static float fr_len;                    /* [0xc122]：座標系の軸の長さ（壁面線の長さ） */
+
+/* ⑤壁面日影：選んだ壁面線（記録の写し）。無ければ wl_on＝0。 */
+static int wl_on;
+static JwcLine wl_rec;
+static char wl_out[160];                /* 壁面自身の日影の文字（空なら無し） */
+static int wl_flag_11d5;                /* byte [0x11d5]：建物が壁面線の端に接している */
 
 static int frame_set(double x1, double y1, double x2, double y2)
 {
@@ -48,6 +55,7 @@ static int frame_set(double x1, double y1, double x2, double y2)
         return 0;
     }
     len = sqrt(dy * dy + dx * dx);
+    fr_len = (float)len;
     fr_ux = (float)(dx / len);
     fr_uy = (float)(dy / len);
     return 1;
@@ -147,6 +155,187 @@ static int fail(const char *msg)
     return -1;
 }
 
+/* root 1bb4:3cd1（optbatch.c と同じ。演算は 1 つずつ float に丸める）。A は基準側、B は点を測る側。 */
+static int isect(const JwcLine *A, const JwcLine *B, float *X, float *Y)
+{
+    const float dyA = A->y1 - A->y0;
+    const float dxA = A->x1 - A->x0;
+    const float dxB = B->x1 - B->x0;
+    const float dyB = B->y1 - B->y0;
+    const float p1 = (A->x1 - A->x0) * (B->y0 - A->y0);
+    const float p2 = (B->x0 - A->x0) * dyA;
+    const float c18 = p1 - p2;
+    const float q1 = (B->y1 - A->y0) * dxA;
+    const float q2 = (B->x1 - A->x0) * dyA;
+    const float c1c = q1 - q2;
+    float t, tx, ty;
+
+    if (c18 == 0.0f && c1c == 0.0f) {
+        *X = 0.0f;
+        *Y = 0.0f;
+        return 0;
+    }
+    if (c18 == c1c) {
+        *X = 10.0f;
+        *Y = 10.0f;
+        return 0;
+    }
+    {
+        const float d = fabsf(c18 - c1c);
+
+        if (d < 1.0f && fabsf(c18) > d * 1e10f) {
+            *X = 10.0f;
+            *Y = 10.0f;
+            return 0;
+        }
+    }
+    t = c18 / (c18 - c1c);
+    tx = t * dxB;
+    ty = t * dyB;
+    *X = tx + B->x0;
+    *Y = ty + B->y0;
+    if (A->x0 == A->x1) {
+        *X = A->x0;
+    }
+    if (A->y1 == A->y0) {
+        *Y = A->y0;
+    }
+    if (B->x0 == B->x1) {
+        *X = B->x0;
+    }
+    if (B->y1 == B->y0) {
+        *Y = B->y0;
+    }
+    return 1;
+}
+
+/* ⑤壁面日影：0x2b82b（data §6）。壁面線で建物の辺 a-b を切る。戻り：0＝通常の辺（*pa・*pb は書き換わりうる）、
+ * 1＝足さない、10＝壁面線が建物を通る。np は切った点を数える別のカウンタ。 */
+static int wall_clip(int *pa, int *pb, int *pnp)
+{
+    const int a = *pa, b = *pb;
+    int np = *pnp, old;
+    float va, vb, Xi, Yi, dx, dy, den, num;
+    JwcLine seg;
+
+    if (!frame_set(wl_rec.x0, wl_rec.y0, wl_rec.x1, wl_rec.y1)) {
+        return 1;
+    }
+    va = fr_v((double)PX[a], (double)PY[a]);
+    vb = fr_v((double)PX[b], (double)PY[b]);
+    if (va >= -0.01 && vb >= -0.01) {
+        GRP[a] = -2;
+        GRP[b] = -2;
+        return 1;
+    }
+    if (va < -0.01 && vb < -0.01) {
+        return 0;
+    }
+    np++;
+    *pnp = np;
+    old = (va >= -0.01) ? a : b;
+    if (va >= -0.01) {
+        *pa = np;
+    } else {
+        *pb = np;
+    }
+    GRP[np] = -1;
+    GRP[old] = -2;
+    LAY[np] = LAY[old];
+    SIDEF[np] = SIDEF[old];
+    memset(&seg, 0, sizeof seg);
+    seg.x0 = PX[a];
+    seg.y0 = PY[a];
+    seg.x1 = PX[b];
+    seg.y1 = PY[b];
+    {
+        JwcLine W;
+
+        memset(&W, 0, sizeof W);
+        W.x0 = wl_rec.x0;
+        W.y0 = wl_rec.y0;
+        W.x1 = wl_rec.x1;
+        W.y1 = wl_rec.y1;
+        if (isect(&W, &seg, &Xi, &Yi)) {
+            const float xlo = PX[a] < PX[b] ? PX[a] : PX[b], xhi = PX[a] < PX[b] ? PX[b] : PX[a];
+            const float ylo = PY[a] < PY[b] ? PY[a] : PY[b], yhi = PY[a] < PY[b] ? PY[b] : PY[a];
+
+            if (Xi >= xlo && Xi <= xhi && Yi >= ylo && Yi <= yhi) {
+                if (va > 0.01 || vb > 0.01) {
+                    const float u = fr_u((double)Xi, (double)Yi);
+
+                    if (u > 0.01 && (double)u < (double)fr_len - 0.01) {
+                        return 10;
+                    }
+                }
+                PX[np] = Xi;
+                PY[np] = Yi;
+                dx = (float)(PX[b] - PX[a]);
+                dy = (float)(PY[b] - PY[a]);
+                if (!(1.0f <= (float)(fabsf(dx) + fabsf(dy)))) {
+                    PH[np] = PH[old];
+                    PH2[np] = PH2[old];
+                    return 0;
+                }
+                if (fabsf(dx) <= fabsf(dy)) {
+                    den = dy;
+                    num = (float)(Yi - PY[a]);
+                } else {
+                    den = dx;
+                    num = (float)(Xi - PX[a]);
+                }
+                {
+                    const float za = PH[a];
+                    float zn = (float)((float)((float)((double)(float)(PH[b] - za) / (double)den) * num) + za);
+
+                    if (zn < 0.0f) {
+                        zn = 0.0f;
+                    }
+                    PH[np] = zn;
+                }
+                {
+                    const float za = PH2[a];
+                    float zn = (float)((float)((float)((double)(float)(PH2[b] - za) / (double)den) * num) + za);
+
+                    if (zn < 0.0f) {
+                        zn = 0.0f;
+                    }
+                    PH2[np] = zn;
+                }
+                return 0;
+            }
+        }
+    }
+    PX[np] = PX[old];
+    PY[np] = PY[old];
+    PH[np] = PH[old];
+    PH2[np] = PH2[old];
+    return 0;
+}
+
+/* 0x2aea1：太陽が壁面の裏側にあるかの符号（data §3）。 */
+static int wall_sun(int16_t t, const HkCond *c)
+{
+    const double phi = (double)(float)c->lat * 0.017453292519943295;
+    const double delta = (double)(float)c->decl * 0.017453292519943295;
+    const double sp = sin(phi), cp = cos(phi), sd = sin(delta), cd = cos(delta);
+    const double w = (double)t * 7.272205e-05;
+    const double S = ((cos(w) * cd) * cp) + (sd * sp);
+    const double C = sqrt(1.0 - S * S);
+    const double sinAz = (sin(w) / C) * cd;
+    const double cosAz = ((S * sp) - sd) / (C * cp);
+    const float sx = (float)(sinAz * 100.0), cx = (float)(cosAz * 100.0);
+    const float v = (float)((float)(PX[607] * cx) - (float)(PY[607] * sx));
+
+    if ((double)v < 0.0) {
+        return -1;
+    }
+    if ((double)v <= 0.001) {
+        return 0;
+    }
+    return 1;
+}
+
 /* data §7：図面（線・文字）から点・辺・建物の表を作る。戻り：建物の数、失敗は -1。 */
 static int gather(Jwc *d, const HkCond *c, Gather *g)
 {
@@ -157,7 +346,7 @@ static int gather(Jwc *d, const HkCond *c, Gather *g)
     int np = 0, ne = 0, i, j, k, cnt;
     float zmax = 0.0f, umax = 0.0f, umin = 0.0f, vmax = 0.0f, vmin = 0.0f;
     int16_t lab[NP_MAX];
-    int dirty = 0;
+    int dirty = 0, np0 = 0;
 
     /* 7.2 レイヤの基準高さ（メモ欄の `#lv`）。 */
     for (j = 0; j < 16; j++) {
@@ -217,6 +406,10 @@ static int gather(Jwc *d, const HkCond *c, Gather *g)
     /* 7.4 線 → 辺 */
     ne = 0;
     cnt = 0;
+    np0 = np;
+    if (wl_on) {
+        frame_set(wl_rec.x0, wl_rec.y0, wl_rec.x1, wl_rec.y1);
+    }
     for (li = 0; li < d->n_lines; li++) {
         const JwcLine *L = &d->lines[li];
         int a = 0, b = 0;
@@ -243,6 +436,19 @@ static int gather(Jwc *d, const HkCond *c, Gather *g)
         }
         if (a == 0 && b == 0) {
             continue;
+        }
+        if (wl_on && a > 0 && b > 0) {
+            int ia = a, ib = b;
+            const int rr = wall_clip(&ia, &ib, &np0);
+
+            a = ia;
+            b = ib;
+            if (rr >= 10) {
+                return fail(HK_E_THRU);
+            }
+            if (rr > 0) {
+                continue;
+            }
         }
         if (a > 0 && b > 0 && a != b) {
             ne++;
@@ -294,6 +500,85 @@ static int gather(Jwc *d, const HkCond *c, Gather *g)
     }
     (void)lab;
 
+    /* 7.5 壁面で切った点の後始末 */
+    wl_flag_11d5 = 0;
+    if (wl_on && np < np0) {
+        int ncomp = 0, found = 0, changed = 0, first = 1, e, c1;
+
+        for (i = 1; i <= np0; i++) {
+            lab[i] = 0;
+        }
+        for (;;) {
+            for (e = first; e <= ne; e++) {
+                const int a = EA[e], b = EB[e];
+
+                if (!found && lab[a] == 0) {
+                    found = 1;
+                    ncomp++;
+                    lab[a] = (int16_t)ncomp;
+                    first = e;
+                }
+                if ((lab[a] != 0 && lab[b] == 0) || (lab[a] == 0 && lab[b] != 0)) {
+                    changed = 1;
+                    lab[a] = lab[b] = (int16_t)ncomp;
+                }
+            }
+            if (changed) {
+                changed = 0;
+                continue;
+            }
+            if (found) {
+                found = 0;
+                continue;
+            }
+            break;
+        }
+        for (c1 = 1; c1 <= ncomp; c1++) {
+            float lo = 9999.0f, hi = -9999.0f;
+            int pa = 0, pb = 0;
+
+            for (;;) {
+                float best = 9999.0f;
+
+                pb = 0;
+                for (j = np + 1; j <= np0; j++) {
+                    if (lab[j] == c1 && GRP[j] == -1) {
+                        const float u = fr_u((double)PX[j], (double)PY[j]);
+
+                        if (u < best) {
+                            best = u;
+                            pb = j;
+                        }
+                    }
+                }
+                if (pb > 0) {
+                    if (best < lo) {
+                        lo = best;
+                    }
+                    if (best > hi) {
+                        hi = best;
+                    }
+                    GRP[pb] = 0;
+                    if (pa > 0 && (PX[pa] != PX[pb] || PY[pa] != PY[pb])) {
+                        ne++;
+                        EA[ne] = (int16_t)pa;
+                        EB[ne] = (int16_t)pb;
+                    }
+                    pa = pb;
+                    continue;
+                }
+                if (lo < -0.01f && (double)hi > (double)fr_len + 0.01) {
+                    return fail(HK_E_DIV);
+                }
+                if (fabs((double)lo) < 0.1 || fabs((double)lo - (double)fr_len) < 0.1
+                    || fabs((double)hi) < 0.1 || fabs((double)hi - (double)fr_len) < 0.1) {
+                    wl_flag_11d5 = 1;
+                }
+                break;
+            }
+        }
+        np = np0;
+    }
     /* 7.6 使われなかった高さの文字を消す */
     cnt = 0;
     for (i = np; i >= 1; i--) {
@@ -333,6 +618,9 @@ static int gather(Jwc *d, const HkCond *c, Gather *g)
             }
             PH[np] = PH2[i];
             SIDEF[np] = 1;
+            if (wl_on && GRP[i] == -2) {
+                continue;
+            }
             ne++;
             EA[ne] = (int16_t)i;
             EB[ne] = (int16_t)np;
@@ -404,6 +692,78 @@ static int gather(Jwc *d, const HkCond *c, Gather *g)
         }
         if (PH[i] > zmax) {
             zmax = PH[i];
+        }
+    }
+    /* (D) 壁面線のスロット（604〜609）と、壁面自身の日影の時間帯の文字 */
+    wl_out[0] = 0;
+    if (wl_on) {
+        float len;
+        const int16_t T = c->time915 ? 10800 : 14400;
+        int rA, rB, m1 = 20000, m2 = 20000;
+        int16_t t;
+        char buf[80], head[40];
+
+        PX[604] = fr_u((double)wl_rec.x0, (double)wl_rec.y0);
+        PY[604] = fr_v((double)wl_rec.x0, (double)wl_rec.y0);
+        PX[605] = fr_u((double)wl_rec.x1, (double)wl_rec.y1);
+        PY[605] = fr_v((double)wl_rec.x1, (double)wl_rec.y1);
+        PX[606] = (float)(PX[605] - PX[604]);
+        PY[606] = (float)(PY[605] - PY[604]);
+        len = (float)sqrt((double)(float)((float)(PY[606] * PY[606]) + (float)(PX[606] * PX[606])));
+        PX[607] = (float)(PX[606] / len);
+        PY[607] = (float)(PY[606] / len);
+        PX[608] = (float)((float)(PY[607] * -100.0f) + PX[604]);
+        PY[608] = (float)((float)(PX[607] * 100.0f) + PY[604]);
+        PX[609] = (float)((float)((float)(PX[607] * len) - (float)(PY[607] * 100.0f)) + PX[604]);
+        PY[609] = (float)((float)((float)(PX[607] * 100.0f) + (float)(PY[607] * len)) + PY[604]);
+        rA = wall_sun((int16_t)-T, c);
+        rB = wall_sun(T, c);
+        if (rA > 0) {
+            m1 = 20000;
+        } else {
+            for (t = (int16_t)-T; t <= T; t = (int16_t)(t + 60)) {
+                if (wall_sun(t, c) > 0) {
+                    break;
+                }
+                m1 = t / 60;
+            }
+            if (T / 60 <= m1) {
+                rB = 20000;
+            }
+        }
+        if (rB > 0) {
+            m2 = 20000;
+        } else {
+            for (t = T; t >= -T; t = (int16_t)(t - 60)) {
+                if (wall_sun(t, c) > 0) {
+                    break;
+                }
+                m2 = t / 60;
+            }
+        }
+        strcpy(head, HK_WLB);
+        strcat(head, HK_WJIS);
+        strcat(head, HK_WNICH);
+        wl_out[0] = 0;
+        if (m1 < 20000) {
+            const int hh = (m1 + 720) / 60, mm = (m1 + 720) % 60;
+
+            strcpy(wl_out, head);
+            sprintf(buf, "(%2d:%2d)\x81\x60(%2d:%2d)", c->time915 ? 9 : 8, 0, hh, mm);
+            strcat(wl_out, buf);
+        }
+        if (m2 < 20000) {
+            const int hh = (m2 + 720) / 60, mm = (m2 + 720) % 60;
+
+            if (wl_out[0] == 0) {
+                strcpy(wl_out, head);
+            }
+            sprintf(buf, "(%2d:%2d)\x81\x60(%2d:%2d)", hh, mm, c->time915 ? 15 : 16, 0);
+            strcat(wl_out, " ");
+            strcat(wl_out, buf);
+        }
+        if (wl_out[0]) {
+            strcat(wl_out, HK_WX1);
         }
     }
     /* (E) 倍率 */
@@ -947,6 +1307,89 @@ static void put_label(double hour, float lx1, float ly1, float lx2, float ly2)
     jwc_add_text(d, x0, y0, x1, y1, buf, 3, cur_layer);
 }
 
+/* 0x2c248：影の点を壁面の面（壁面線の左）へ折り返す。点 (x,y)、影のずれ (Xs,Ys)。戻りは 0（1 は範囲外など）。
+ * *dist は壁面線とのへだたり（線の長さを掛けた符号つきの値）。dist > 1.0 のときだけ (*xo,*yo) を作り直す。 */
+static float clip_dx = 0.5f, clip_dy = 0.5f;    /* [0x7582]・[0x7586]：②では 0.5、③では格子の幅 */
+
+static int wall_proj(float x, float y, float Xs, float Ys, float *xo, float *yo, float *dist)
+{
+    JwcLine W, seg;
+    float xi, yi, t, u, x1, y1;
+    double dd;
+
+    *xo = x;
+    *yo = y;
+    dd = (double)(float)((float)((float)(y - PY[604]) * PX[606]) - (float)((float)(x - PX[604]) * PY[606]));
+    *dist = (float)dd;
+    if (!(dd > 1.0)) {
+        return 0;
+    }
+    x1 = (float)((float)(Xs * -100.0f) + x);
+    y1 = (float)((float)(Ys * -100.0f) + y);
+    memset(&W, 0, sizeof W);
+    W.x0 = PX[604];
+    W.y0 = PY[604];
+    W.x1 = PX[605];
+    W.y1 = PY[605];
+    memset(&seg, 0, sizeof seg);
+    seg.x0 = x;
+    seg.y0 = y;
+    seg.x1 = x1;
+    seg.y1 = y1;
+    if (!isect(&W, &seg, &xi, &yi)) {
+        return 1;
+    }
+    if (2000.0f < xi || -2000.0f > xi || 2000.0f < yi || !(-1000.0f <= yi)) {
+        return 1;
+    }
+    if (fabsf(Ys) >= fabsf(Xs)) {
+        t = (float)(fabsf((float)(y - yi)) / fabsf(Ys));
+    } else {
+        t = (float)((float)fabsf((float)(x - xi)) / fabsf(Xs));
+    }
+    u = (float)((float)((float)(yi - PY[604]) * PY[607]) + (float)((float)(xi - PX[604]) * PX[607]));
+    *xo = (float)((float)((float)(u * PX[607]) - (float)(PY[607] * t)) + PX[604]);
+    *yo = (float)((float)((float)(PY[607] * u) + (float)(PX[607] * t)) + PY[604]);
+    return 0;
+}
+
+/* 0x2daab：線 (x0,y0)-(x1,y1) を、(ax,ay)→(bx,by) の線で切る。戻り 1＝描く、0＝捨てる。 */
+static int wall_clip_line(int mode, float ax, float ay, float bx, float by, double *x0, double *y0, double *x1, double *y1)
+{
+    float thr = 100.0f;
+    const double dxl = (double)(float)(bx - ax), dyl = (double)(float)(by - ay);
+    float c0, c1, t, xc, yc;
+
+    if (wl_flag_11d5 && mode > 0) {
+        thr = (float)(200.0f * (clip_dy >= clip_dx ? clip_dy : clip_dx));
+    }
+    c0 = (float)((*y0 - (double)ay) * dxl - (*x0 - (double)ax) * dyl);
+    c1 = (float)((*y1 - (double)ay) * dxl - (*x1 - (double)ax) * dyl);
+    if (!(thr < c0) && !(thr < c1)) {
+        return 0;
+    }
+    if (thr < c0 && thr < c1) {
+        return 1;
+    }
+    t = (float)((double)c0 / (double)(float)(c0 - c1));
+    if ((double)t < 0.0 || (double)t > 1.0) {
+        return 1;
+    }
+    xc = (float)((*x1 - *x0) * (double)t + *x0);
+    yc = (float)((*y1 - *y0) * (double)t + *y0);
+    if (thr < c0) {
+        *x1 = (double)xc;
+        *y1 = (double)yc;
+    } else {
+        *x0 = (double)xc;
+        *y0 = (double)yc;
+    }
+    if (*x0 == *x1 && *y0 == *y1) {
+        return 0;
+    }
+    return 1;
+}
+
 /* 2dddf：線を 1 本足す。戻り 1＝足した、0＝足さない。座標は真北の座標系 (u,v)。 */
 static int emit_line(int w, int *conn, double x0, double y0, double x1, double y1)
 {
@@ -959,6 +1402,17 @@ static int emit_line(int w, int *conn, double x0, double y0, double x1, double y
     }
     if (x0 == x1 && y0 == y1) {
         return 0;
+    }
+    if (wl_on) {
+        if (!wall_clip_line(0, PX[604], PY[604], PX[605], PY[605], &x0, &y0, &x1, &y1)) {
+            return 0;
+        }
+        if (!wall_clip_line(1, PX[608], PY[608], PX[604], PY[604], &x0, &y0, &x1, &y1)) {
+            return 0;
+        }
+        if (!wall_clip_line(1, PX[605], PY[605], PX[609], PY[609], &x0, &y0, &x1, &y1)) {
+            return 0;
+        }
     }
     xa = fr_X(x0, y0);
     ya = fr_Y(x0, y0);
@@ -975,7 +1429,11 @@ static int emit_line(int w, int *conn, double x0, double y0, double x1, double y
     rec.rest[1] = 0x32;                 /* 測定のみ：本物は初期化しない 3 バイト。保存で 0x32 */
     jwc_put_line(d, &rec);
     d->lines[d->n_lines - 1].rest[2] |= 0x80;
-    d->lines[d->n_lines - 1].rest[3] |= 0x40;
+    if (wl_on) {
+        d->lines[d->n_lines - 1].rest[3] &= (unsigned char)~0x40u;
+    } else {
+        d->lines[d->n_lines - 1].rest[3] |= 0x40;
+    }
     (*conn)++;
     if (*conn == label_no) {
         put_label((double)cur_hour, xa, ya, xb, yb);
@@ -1050,6 +1508,7 @@ static void mark_other_groups(int r, int D, int Aprev, int Bcur, int ip, int ic)
 }
 
 static int raster_add(float x1, float y1, float x2, float y2);
+static void IG_inc(int i);
 
 /* ④指定点：影の外周の辺ごとに、各点の巻き数を足す（2e4d4、calc-b 4.2）。 */
 static float WPU[64], WPV[64];
@@ -1094,6 +1553,30 @@ static int shadow_main(int w, double X, double Y, int m, int n, int D, double C)
     const float sc = (float)(1.0 / C);
     const int ip = 602, ic = 603;
     int i, r, s, seg = 0, conn = 0;
+    const float sxf = (float)X, syf = (float)Y;
+    float wdist = 0.0f, wxs = 0.0f, wys = 0.0f;
+
+    if (wl_on) {
+        /* 壁面：影が壁面に当たらない向きなら、何も描かずに戻る（02c581〜）。 */
+        if (!(X == 0.0 && Y == 0.0)) {
+            const float ys = (float)(Y * 100.0);
+            const float d1 = (float)((double)(float)(PX[607] * ys) - (double)(float)((X * 100.0) * (double)PY[607]));
+
+            if (!((double)d1 > 0.001)) {
+                if (w < 0) {
+                    for (i = 1; i <= w_n; i++) {
+                        WCNT[i] = 0x2af8;
+                    }
+                }
+                if (w == 0) {
+                    for (i = 1; i <= 0x7918; i++) {
+                        IG_inc(i);
+                    }
+                }
+                return 1;
+            }
+        }
+    }
 
     for (i = 1; i <= n; i++) {
         int32_t L = 0;
@@ -1135,6 +1618,11 @@ static int shadow_main(int w, double X, double Y, int m, int n, int D, double C)
         SY[ic] = SY[K];
         x1f = (float)((double)SX[ic] * (double)sc);
         y1f = (float)((double)SY[ic] * (double)sc);
+        wxs = x1f;
+        wys = y1f;
+        if (wl_on) {
+            wall_proj(x1f, y1f, sxf, syf, &wxs, &wys, &wdist);
+        }
         for (;;) {
             int P2, Q2, st2;
 
@@ -1155,19 +1643,66 @@ static int shadow_main(int w, double X, double Y, int m, int n, int D, double C)
             next_edge(P2, Q2, st2, A, B, E, stv, &A, &B, &E, &stv, s, m + 1);
             x1f = (float)((double)SX[ic] * (double)sc);
             y1f = (float)((double)SY[ic] * (double)sc);
-            if (w < 0) {
-                pt_winding(x0f, y0f, x1f, y1f);
-            }
-            if (w == 0) {
-                raster_add(x0f, y0f, x1f, y1f);
-            }
-            if (w > 0) {
-                if (PH[Aprev] > 0.01 || PH[Bcur] > 0.01) {
-                    if (emit_line(w, &conn, (double)x0f, (double)y0f, (double)x1f, (double)y1f) == 0) {
-                        conn = 0;
+            {
+                float sx0 = x0f, sy0 = y0f, sx1 = x1f, sy1 = y1f, nx = x1f, ny = y1f;
+                int clipped = 0;
+
+                if (wl_on) {
+                    const float pd = wdist;
+
+                    sx0 = wxs;
+                    sy0 = wys;
+                    wall_proj(x1f, y1f, sxf, syf, &nx, &ny, &wdist);
+                    sx1 = nx;
+                    sy1 = ny;
+                    if ((pd > 1.0f && wdist < -1.0f) || (pd < -1.0f && wdist > 1.0f)) {
+                        JwcLine W, sg;
+                        float xi, yi;
+
+                        memset(&W, 0, sizeof W);
+                        W.x0 = PX[604];
+                        W.y0 = PY[604];
+                        W.x1 = PX[605];
+                        W.y1 = PY[605];
+                        memset(&sg, 0, sizeof sg);
+                        sg.x0 = x0f;
+                        sg.y0 = y0f;
+                        sg.x1 = x1f;
+                        sg.y1 = y1f;
+                        if (isect(&W, &sg, &xi, &yi)) {
+                            clipped = 1;
+                            sx1 = xi;
+                            sy1 = yi;
+                        }
                     }
-                } else {
-                    conn = 0;
+                    wxs = nx;
+                    wys = ny;
+                }
+                for (;;) {
+                    if (w < 0) {
+                        pt_winding(sx0, sy0, sx1, sy1);
+                    }
+                    if (w == 0) {
+                        raster_add(sx0, sy0, sx1, sy1);
+                    }
+                    if (w > 0) {
+                        if (PH[Aprev] > 0.01 || PH[Bcur] > 0.01) {
+                            if (emit_line(w, &conn, (double)sx0, (double)sy0, (double)sx1, (double)sy1) == 0) {
+                                conn = 0;
+                            }
+                        } else {
+                            conn = 0;
+                        }
+                    }
+                    if (wl_on && clipped) {
+                        clipped = 0;
+                        sx0 = sx1;
+                        sy0 = sy1;
+                        sx1 = nx;
+                        sy1 = ny;
+                        continue;
+                    }
+                    break;
                 }
             }
             if (r < D) {
@@ -1191,6 +1726,22 @@ static int shadow_main(int w, double X, double Y, int m, int n, int D, double C)
         }
     }
     return 1;
+}
+
+/* ⑤壁面日影：選んだ壁面線を渡す（n＜0 で解除）。 */
+void jw_hk_wall_set(const Jwc *d, long n)
+{
+    if (d && n >= 0 && n < d->n_lines) {
+        wl_on = 1;
+        wl_rec = d->lines[n];
+    } else {
+        wl_on = 0;
+    }
+}
+
+const char *jw_hk_wall_out(void)
+{
+    return wl_on ? wl_out : "";
 }
 
 /* ------------------------------------------------------------ ②の入口 */
@@ -1239,7 +1790,7 @@ int jw_hk_run_shadow(Jwc *d, const HkCond *c, double p, const char **err)
         sun_coeffs(c->lat, c->decl, &sun);
         sun_shadow(t, &sun, &sx, &sy);
         w = (t % 3600 == 0) ? 1 : 2;
-        label_no = hour > 12.0f ? 3 : 2;
+        label_no = wl_on ? 1 : (hour > 12.0f ? 3 : 2);
         rc = shadow_main(w, (double)sx, (double)sy, g.ne, g.np, g.nblk, (double)g.scale);
         if (d->n_lines > n0 + 1) {
             d->lines[n0].rest[2] = (unsigned char)((d->lines[n0].rest[2] | 0x40) & 0x7f);
@@ -1415,6 +1966,11 @@ static char I_errtxt[64];
 static int16_t tr16(double v)
 {
     return (int16_t)(long)v;
+}
+
+static void IG_inc(int i)
+{
+    IG[i]++;
 }
 
 /* 2e1fb：影の外周の辺を格子に足す（mode 0）。 */
