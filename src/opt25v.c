@@ -343,6 +343,24 @@ static int layer_used(const Jwc *d, int k)
     return 0;
 }
 
+/* 1c79：円弧の上の角度 t（16.16 の度）の点。 */
+static void arc_pt(const JwcArc *a, long t, float *px, float *py)
+{
+    static const unsigned long long KB = 0x3e91df46a2529d39ull;   /* [0xaa28]：π/180/65536 */
+    double K, tr, tilt, fl, A, B, ct, st;
+
+    memcpy(&K, &KB, 8);
+    tr = (double)t * K;
+    tilt = (double)a->tilt * K;
+    fl = (double)(unsigned short)a->flatten * 0.0001;
+    A = (double)a->r * cos(tr);
+    B = (fl * (double)a->r) * sin(tr);
+    ct = cos(tilt);
+    st = sin(tilt);
+    *px = (float)((A * ct - st * B) + (double)a->cx);
+    *py = (float)((B * ct + st * A) + (double)a->cy);
+}
+
 /* 1e64：高さのデータを作る。戻り＝線の数（本物は円弧の数も返す）。 */
 static long build(const Jwc *d, int unit)
 {
@@ -557,6 +575,63 @@ static long build(const Jwc *d, int unit)
                     emit_line(&vl, &E, (double)(float)((double)h_f * hv1[1]),
                               (double)(float)((double)h_f * dd1));
                 }
+            }
+        }
+        /* 円・円弧（1e64 0x2e1e1〜0x2f742）。モード 1・2 は折れ線にして線の経路へ（モード 3 の真円は未実装）。 */
+        for (i = 0; i < d->n_arcs; i++) {
+            const JwcArc *a = &d->arcs[i];
+            double hv[12];
+            int na, found;
+            long start, end, step, sweep, N, dth, t, j;
+            float px, py, qx, qy;
+            JwcLine r;
+            double z1v, z2v;
+
+            if (a->pen >= 0x5a || a->layer != k || a->type == 9) continue;
+            found = read_h(d, k, (double)a->cx, (double)a->cy, &na, hv);
+            if (!found && lhflag) {
+                found = 1;
+                na = 2;
+                hv[1] = 0.0;
+                hv[2] = (double)lh;
+            }
+            if (na >= 3) continue;                     /* 円データの追加円・螺旋は未実装 */
+            memset(&r, 0, sizeof r);
+            r.type = a->type;
+            r.pen = a->pen;
+            r.layer = a->layer;
+            step = ((long)(int)fabsf(g_div) << 16) | 1;
+            start = a->start;
+            end = a->end;
+            if (!(end > start)) end += 0x168L << 16;
+            sweep = end - start;
+            N = sweep / step + 1;
+            dth = sweep / N;
+            z1v = (double)(float)((double)h_f * hv[1]);
+            z2v = (double)(float)((double)h_f * hv[2]);
+            t = start;
+            arc_pt(a, t, &px, &py);
+            if (na >= 2 && a->start != a->end) {
+                r.x0 = r.x1 = px;
+                r.y0 = r.y1 = py;
+                emit_line(&r, &E, z1v, z2v);
+            }
+            for (j = 1; j <= N; j++) {
+                t += dth;
+                arc_pt(a, t, &qx, &qy);
+                r.x0 = px;
+                r.y0 = py;
+                r.x1 = qx;
+                r.y1 = qy;
+                if (g_div > 0.0f) emit_line(&r, &E, z1v, z1v);
+                if (na >= 2) {
+                    if (g_div > 0.0f) emit_line(&r, &E, z2v, z2v);
+                    r.x0 = r.x1 = qx;
+                    r.y0 = r.y1 = qy;
+                    emit_line(&r, &E, z1v, z2v);
+                }
+                px = qx;
+                py = qy;
             }
         }
         free(consumed);
