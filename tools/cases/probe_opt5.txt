@@ -45,6 +45,12 @@ hk_s4_many|TEST1|type s|type 5|type 4|150 200 left|250 200 left|350 200 left|450
 hk_s4_twice|TEST1|type s|type 5|type 4|300 300 left|type 1|500 440 left|400 300 left|type 1|500 400 left|key bs
 hk_s4_esc|TEST1|type s|type 5|type 4|300 300 left|400 300 left|key esc|type 1|500 440 left|key bs
 hk_s4_test5|TEST5|type s|type 5|type 4|300 300 left|400 300 left|type 1|500 440 left|key bs
+hk_s3i_a|TEST1|type s|type 5|type 3|type 1|type 4|type 9|key bs
+hk_s3i_b|TEST1|type s|type 5|type 3|type 2|type 4|type 9|key bs
+hk_s3i_c|TEST1|type s|type 5|type 3|type 1|type 1|type 9|key bs
+hk_s3i_d|TEST1|type s|type 5|type 3|type 1|type 6|type 9|key bs
+hk_s3i_e|TEST5|type s|type 5|type 3|type 1|type 4|type 9|key bs
+hk_s3i_f|TEST1|type s|type 5|type 3|type 1|type 8|type 4|type 9|key bs
 hk_del_old|SAMPLE0|type s|type 5|type 1|type 3|230 200 left|key bs
 hk_nth_top|SAMPLE0|type s|type 5|type 1|type 4|161 145 left|key bs
 hk_nth_bottom|SAMPLE0|type s|type 5|type 1|type 4|161 400 left|key bs

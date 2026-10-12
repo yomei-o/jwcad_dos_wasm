@@ -1049,6 +1049,8 @@ static void mark_other_groups(int r, int D, int Aprev, int Bcur, int ip, int ic)
     }
 }
 
+static int raster_add(float x1, float y1, float x2, float y2);
+
 /* ④指定点：影の外周の辺ごとに、各点の巻き数を足す（2e4d4、calc-b 4.2）。 */
 static float WPU[64], WPV[64];
 static int WCNT[64], w_n;
@@ -1155,6 +1157,9 @@ static int shadow_main(int w, double X, double Y, int m, int n, int D, double C)
             y1f = (float)((double)SY[ic] * (double)sc);
             if (w < 0) {
                 pt_winding(x0f, y0f, x1f, y1f);
+            }
+            if (w == 0) {
+                raster_add(x0f, y0f, x1f, y1f);
             }
             if (w > 0) {
                 if (PH[Aprev] > 0.01 || PH[Bcur] > 0.01) {
@@ -1388,4 +1393,647 @@ int jw_hk_run_points(Jwc *d, const HkCond *c, int base, int n, const float *xs, 
         }
     }
     return 1;
+}
+
+/* ================================================================== ③等時間図 */
+/* ovl34 3ab8:4451（file-linear 0x2efd1）と 2ae02（等時間線の追跡）。写し元は
+ * notes/spec-opt5-calc-b.md §4・§5 と lift（tmp/lift/trace_raw.txt・m4451.txt）。
+ * 浮動小数点：f32 のメモリ演算は 1 つずつ float に丸め、スタック演算（717d 等）と f64 メモリ演算は double のまま。
+ * compare A:B のあとの jcc は「B cc A」と読む。 */
+#define ISO_GRID_N 31300
+static int16_t IG[ISO_GRID_N];          /* [0xb48c]：格子の値 */
+static int16_t IBEF[600];               /* [0xbef2]：行の頭の添字 */
+static int16_t IPEND[600];              /* [0xb37a]：行ごとの保留の交点 */
+static float I_xmin, I_xmax, I_ymin, I_ymax;   /* [0xb494]・[0xb5a6]・[0xb49e]・[0xb5ae] */
+static float I_dx, I_dy;                /* [0x7582]・[0x7586] */
+static int I_nx, I_ny;                  /* [0xc396]・[0xc3b8] */
+static int I_dt;                        /* [0xc11c] */
+static int I_valid;
+static float I_err;                     /* 誤差（m）：行 1 に出す */
+static char I_errtxt[64];
+
+static int16_t tr16(double v)
+{
+    return (int16_t)(long)v;
+}
+
+/* 2e1fb：影の外周の辺を格子に足す（mode 0）。 */
+static int raster_add(float x1, float y1, float x2, float y2)
+{
+    int down;
+    int16_t r_lo, r_hi, r;
+    float s, c0, step, col;
+    double s_d;
+
+    if (y2 <= y1) {
+        down = -1;
+        r_lo = tr16((float)((float)((float)(y2 - I_ymin) / I_dy) + 1.0f));
+        if (r_lo < 1) {
+            r_lo = 1;
+        }
+        r_hi = tr16((float)((float)(y1 - I_ymin) / I_dy));
+    } else {
+        down = 0;
+        r_lo = tr16((float)((float)((float)(y1 - I_ymin) / I_dy) + 1.0f));
+        if (r_lo < 1) {
+            r_lo = 1;
+        }
+        r_hi = tr16((float)((float)(y2 - I_ymin) / I_dy));
+    }
+    if (r_hi > I_ny) {
+        r_hi = (int16_t)I_ny;
+    }
+    if (r_hi < r_lo) {
+        return 0;
+    }
+    s_d = (double)(float)(x2 - x1) / (double)(float)(y2 - y1);
+    s = (float)s_d;
+    {
+        const float t1 = (float)(I_ymin - y1);
+        const float t2 = (float)(s_d * (double)t1 - (double)I_xmin);
+
+        c0 = (float)((float)((float)(t2 + x1)) / I_dx);
+    }
+    step = (float)((float)(s / I_dx) * I_dy);
+    col = (float)((float)((float)(int16_t)(r_lo - 1) * step) + c0);
+    for (r = r_lo; r <= r_hi; r++) {
+        int16_t c, p;
+
+        col = (float)(step + col);
+        c = tr16(col);
+        if (c < 0) {
+            c = 0;
+        }
+        if (c > I_nx) {
+            c = (int16_t)I_nx;
+        }
+        p = IPEND[r];
+        if (p < 0) {
+            IPEND[r] = c;
+            continue;
+        }
+        if (p == c) {
+            IPEND[r] = -9;
+            continue;
+        }
+        if (p < c) {
+            int16_t j;
+
+            for (j = (int16_t)(IBEF[r] + p + 1); j <= (int16_t)(IBEF[r] + c); j++) {
+                IG[j]++;
+            }
+        } else if (down != 0) {
+            int16_t j;
+
+            for (j = (int16_t)(IBEF[r] + c); j <= (int16_t)(IBEF[r] + p); j++) {
+                IG[j]--;
+            }
+        } else {
+            int16_t j;
+
+            for (j = (int16_t)(IBEF[r] + c); j <= (int16_t)(IBEF[r] + p); j++) {
+                IG[j]++;
+            }
+        }
+        IPEND[r] = -9;
+    }
+    return 1;
+}
+
+/* 2eec1：建物の内側と縁に印（10001）。 */
+static void iso_classify(void)
+{
+    int r, c;
+
+    for (r = 1; r <= I_ny; r++) {
+        for (c = 1; c <= I_nx; c++) {
+            const int i = IBEF[r] + c;
+
+            if (IG[i] != 0) {
+                continue;
+            }
+            if (I_nx > c && IG[i + 1] == 1) {
+                IG[i] = 2;
+            }
+            if (c > 1 && IG[i - 1] == 1) {
+                IG[i] = 2;
+            }
+            if (r > 1) {
+                const int v = IG[i - I_nx];
+
+                if (v == 1 || v == 2) {
+                    IG[i] = 3;
+                }
+            }
+        }
+    }
+    for (r = 1; r <= I_ny; r++) {
+        for (c = 1; c <= I_nx; c++) {
+            const int i = IBEF[r] + c;
+
+            if (IG[i] != 0) {
+                IG[i] = 0x2711;
+            }
+        }
+    }
+}
+
+/* 2ac8c／2ad14：格子の 2 点のあいだの位置（u／v）。 */
+static float iso_pos(double a, double b, double thr, int16_t icell, int16_t vA, float d, float vmin)
+{
+    const double frac = (thr - (double)vA) / (b - (double)vA);
+    const double first = (frac * (double)d) * a;
+    const float t = (float)((float)((double)icell * (double)d) + vmin);
+
+    return (float)(first + (double)t);
+}
+
+static int16_t ig_get(int16_t col, int16_t row)
+{
+    return IG[(int16_t)(IBEF[row] + col)];
+}
+
+static int16_t iabs16(int16_t v)
+{
+    return v < 0 ? (int16_t)-v : v;
+}
+
+static int16_t ig_mark(int16_t col, int16_t row)
+{
+    const int16_t i = (int16_t)(IBEF[row] + col);
+    const int16_t v = IG[i];
+
+    IG[i] = (int16_t)-iabs16(v);
+    return v;
+}
+
+/* 2e67a：等時間線のラベル（回した文字）。lx1,ly1〜lx2,ly2 は線の記録の端。 */
+static void put_label_iso(double level, const char *suffix, float lx1, float ly1, float lx2, float ly2)
+{
+    Jwc *d = cur_d;
+    char buf[160];
+    float width, dx, dy, ux, uy, a, b, x0, y0, w2, x1, y1;
+    double len;
+    const float b4a2 = paper_b4a2(d);
+
+    sprintf(buf, "%.1f", floor(level * 10.0 + 0.5) / 10.0);
+    width = (float)jwc_ed_text_length(d, buf, 3, 0);
+    strcat(buf, suffix);
+    dx = lx2 - lx1;
+    dy = ly2 - ly1;
+    len = sqrt((double)(float)((float)(dy * dy) + (float)(dx * dx)));
+    ux = (float)((double)dx / len);
+    uy = (float)((double)dy / len);
+    a = (float)((len - (double)width) * 0.5);
+    b = (float)(0.5 / (double)b4a2);
+    w2 = (float)jwc_ed_text_length(d, buf, 3, 0);
+    {
+        const float wa = (float)(w2 + a);
+
+        x0 = (float)((float)((float)(a * ux) - (float)(b * uy)) + lx1);
+        y0 = (float)((float)((float)(a * uy) + (float)(b * ux)) + ly1);
+        x1 = (float)((float)((float)(wa * ux) - (float)(b * uy)) + lx1);
+        y1 = (float)((float)((float)(wa * uy) + (float)(b * ux)) + ly1);
+    }
+    jwc_add_text(d, x0, y0, x1, y1, buf, 3, cur_layer);
+}
+
+static void iso_label_out(double level, const char *suffix, long idx)
+{
+    const Jwc *d = cur_d;
+
+    if (idx < 0 || idx >= d->n_lines) {
+        return;
+    }
+    put_label_iso(level, suffix, d->lines[idx].x0, d->lines[idx].y0, d->lines[idx].x1, d->lines[idx].y1);
+}
+
+/* 2ae02：しきい値 level（時間）の等時間線をたどる。 */
+static int iso_trace(double level, const char *suffix)
+{
+    const int16_t nx = (int16_t)I_nx, ny = (int16_t)I_ny;
+    const float thr = (float)((3600.0 / (double)(int16_t)I_dt) * level - 0.1);
+    const int16_t v6c = 10000;
+    int16_t rmax[5], rstart[5], roff[5], cmax[5], cstart[5], coff[5];
+    int16_t b3a = 0, b54 = 0, b52 = 0, b60 = 0, b92 = 0, b9e = 0, b84 = 0, b90 = 0, bc4 = 0, ba8 = 0;
+    int16_t b24 = 0, b2a = 0, b28 = 0, b3c = 0, b78, b26 = 0, v86 = -1000;
+    float f2e = 0.0f, f82 = 0.0f, f8e = 0.0f, f9a = 0.0f, fa6 = 0.0f;
+    long be9e = -1;
+    int ret;
+
+    rmax[1] = ny;     rmax[2] = ny;     rmax[3] = (int16_t)(ny - 1); rmax[4] = (int16_t)(ny - 1);
+    rstart[1] = 2;    rstart[2] = ny;   rstart[3] = 1;               rstart[4] = 1;
+    roff[1] = -1;     roff[2] = 0;      roff[3] = 1;                 roff[4] = 0;
+    cmax[1] = 1;      cmax[2] = nx;     cmax[3] = nx;                cmax[4] = (int16_t)(nx - 1);
+    cstart[1] = 1;    cstart[2] = 2;    cstart[3] = nx;              cstart[4] = 1;
+    coff[1] = 0;      coff[2] = -1;     coff[3] = 0;                 coff[4] = 1;
+
+#define TRACK(rowv) do { \
+        const float ac = (float)(rowv); \
+        if (!((double)v86 >= (double)ac)) { \
+            v86 = tr16(ac); \
+            be9e = cur_d->n_lines - 1; \
+        } \
+    } while (0)
+#define EMIT_AND_TRACK() do { \
+        ret = emit_line(b26, &conn9c, (double)f82, (double)f8e, (double)f9a, (double)fa6); \
+        if (ret) { TRACK(b54); } \
+        f82 = f9a; \
+        f8e = fa6; \
+    } while (0)
+    int conn9c = 0;
+
+    label_no = -1;
+    b78 = 1;
+L_2bc75:
+    if (b78 > 4) {
+        goto L_done;
+    }
+    b2a = rstart[b78];
+    goto L_2bc34;
+L_2bc31:
+    b2a++;
+L_2bc34:
+    if (rmax[b78] < b2a) {
+        goto L_2bc72;
+    }
+    b3c = (int16_t)(b2a + roff[b78]);
+    b24 = cstart[b78];
+    goto L_2b9d7;
+L_2bc72:
+    b78++;
+    goto L_2bc75;
+L_2b9d4:
+    b24++;
+L_2b9d7:
+    if (cmax[b78] < b24) {
+        goto L_2bc31;
+    }
+    b92 = ig_get(b24, b2a);
+    b28 = (int16_t)(coff[b78] + b24);
+    b9e = ig_get(b28, b3c);
+    {
+        const float c6 = (float)((double)iabs16(b9e) - (double)thr);
+        const float c8 = (float)((double)iabs16(b92) - (double)thr);
+
+        if (!((double)c6 * (double)c8 < 0.0)) {
+            goto L_2b9d4;
+        }
+    }
+    if (!(b92 > 0 || b9e > 0)) {
+        goto L_2b9d4;
+    }
+    b54 = b2a;
+    b52 = b28;
+    b60 = b3c;
+    b3a = b24;
+    b92 = iabs16(ig_get(b3a, b54));
+    b84 = (int16_t)(b28 - b3a);
+    b90 = (int16_t)(b3c - b2a);
+    b9e = iabs16(ig_get(b52, b60));
+    f82 = iso_pos((double)b84, (double)b9e, (double)thr, b3a, b92, I_dx, I_xmin);
+    f8e = iso_pos((double)(float)b90, (double)b9e, (double)thr, b54, b92, I_dy, I_ymin);
+    goto L_2bbb7;
+
+L_2af08:
+    b26 = 0;
+    if (conn9c > 20) {
+        iso_label_out(level, suffix, be9e);
+    }
+    conn9c = 0;
+    be9e = -1;
+    v86 = -1000;
+    goto L_2afbc;
+
+L_2afbc:
+    {
+        const int16_t s1 = (int16_t)(bc4 + b9e), s2 = (int16_t)(ba8 + b92);
+        const int16_t cc = s1 >= s2 ? s1 : s2;
+        int16_t t;
+
+        f2e = (float)((double)cc * 0.5);
+        t = b3a; b3a = b52; b52 = t;
+        t = b54; b54 = b60; b60 = t;
+    }
+    b92 = iabs16(ig_get(b3a, b54));
+    b84 = (int16_t)(b52 - b3a);
+    b90 = (int16_t)(b60 - b54);
+    b9e = iabs16(ig_get(b52, b60));
+    {
+        const float c1 = (float)((double)b9e - (double)thr);
+        const float c2 = (float)((double)f2e - (double)thr);
+
+        if (!((double)c1 * (double)c2 < 0.0)) {
+            goto L_2b608;
+        }
+    }
+L_2b09f:
+    b3a = b52;
+    b54 = b60;
+    b92 = iabs16(ig_get(b3a, b54));
+    b60 = (int16_t)(b60 - b84);
+    b52 = (int16_t)(b52 + b90);
+    b9e = iabs16(ig_get(b52, b60));
+    b84 = (int16_t)(b52 - b3a);
+    b90 = (int16_t)(b60 - b54);
+    {
+        const int16_t si = b84, di = b90;
+        const float f68 = (float)((double)(int16_t)(di - si) * 0.5);
+
+        f9a = iso_pos((double)(int16_t)(di + si) * 0.5, (double)f2e, (double)thr, b3a, b92, I_dx, I_xmin);
+        fa6 = iso_pos((double)f68, (double)f2e, (double)thr, b54, b92, I_dy, I_ymin);
+    }
+    EMIT_AND_TRACK();
+    {
+        const float c1 = (float)((double)b9e - (double)thr);
+        const float c2 = (float)((double)b92 - (double)thr);
+
+        if ((double)c1 * (double)c2 < 0.0) {
+            goto L_2b390;
+        }
+    }
+    goto L_2b09f;
+
+L_2b390:
+    ig_mark(b3a, b54);
+    ig_mark(b52, b60);
+    f9a = iso_pos((double)b84, (double)b9e, (double)thr, b3a, b92, I_dx, I_xmin);
+    {
+        const float f68 = (float)b90;
+
+        fa6 = iso_pos((double)f68, (double)b9e, (double)thr, b54, b92, I_dy, I_ymin);
+    }
+    EMIT_AND_TRACK();
+    {
+        const int16_t col = (int16_t)(b3a - b90), row = (int16_t)(b84 + b54);
+
+        if (col < 1 || col > nx || row < 1 || row > ny) {
+            goto L_2b925;
+        }
+    }
+    if (b3a == b24 && b54 == b2a && b52 == b28 && b60 == b3c) {
+        goto L_2b925;
+    }
+    goto L_2bbb7;
+
+L_2b608:
+    {
+        const float f68 = (float)((double)(int16_t)(b90 - b84) * 0.5);
+
+        f9a = iso_pos((double)(int16_t)(b90 + b84) * 0.5, (double)f2e, (double)thr, b3a, b92, I_dx, I_xmin);
+        fa6 = iso_pos((double)f68, (double)f2e, (double)thr, b54, b92, I_dy, I_ymin);
+    }
+    EMIT_AND_TRACK();
+    b52 = b3a;
+    b60 = b54;
+    b54 = (int16_t)(b54 - b84);
+    b3a = (int16_t)(b3a + b90);
+    b92 = iabs16(ig_get(b3a, b54));
+    b84 = (int16_t)(b52 - b3a);
+    b90 = (int16_t)(b60 - b54);
+    b9e = iabs16(ig_get(b52, b60));
+    {
+        const float c1 = (float)((double)b9e - (double)thr);
+        const float c2 = (float)((double)b92 - (double)thr);
+
+        if ((double)c1 * (double)c2 < 0.0) {
+            goto L_2b390;
+        }
+    }
+    goto L_2b608;
+
+L_2bbb7:
+    {
+        const int16_t colx = (int16_t)(b3a - b90);
+
+        ba8 = iabs16(ig_get((int16_t)(colx + b84), (int16_t)(b90 + b84 + b54)));
+        bc4 = iabs16(ig_get(colx, (int16_t)(b84 + b54)));
+    }
+    if (v6c > b92 && v6c > b9e && v6c > ba8 && v6c > bc4) {
+        b26 = 1;
+        goto L_2afbc;
+    }
+    goto L_2af08;
+
+L_2b925:
+    if (conn9c > 10) {
+        iso_label_out(level, suffix, be9e);
+        conn9c = 0;
+        be9e = -1;
+        v86 = -1000;
+    }
+    goto L_2b9d4;
+
+L_done:
+    {
+        int i;
+
+        for (i = 1; i <= 0x7918; i++) {
+            IG[i] = iabs16(IG[i]);
+        }
+    }
+#undef TRACK
+#undef EMIT_AND_TRACK
+    return 1;
+}
+
+/* 4451 の前半：格子の大きさを決め、影の外周を時刻ごとに足す。m＝1 高速・2 標準・3 指定範囲（interval は 1〜4）。
+ * cx・cy は m==3 のときの長方形の 4 隅（図面の座標）。戻り：1＝できた、−1＝不備（*err）、−2＝線が多すぎる。 */
+int jw_hk_iso_calc(Jwc *d, const HkCond *c, int m, int interval, const float *cx, const float *cy, const char **err)
+{
+    Gather g;
+    Sun sun;
+    int nb, k, r;
+    float X[4], Y[4], lim, ratio, uext, vext, maxd;
+    int16_t T, t;
+    const float b4a2 = paper_b4a2(d);
+
+    cur_d = d;
+    cur_c = c;
+    cur_layer = (unsigned char)d->write_layer;
+    *err = NULL;
+    I_valid = 0;
+    memset(&g, 0, sizeof g);
+    nb = gather(d, c, &g);
+    if (nb <= 0) {
+        *err = errbuf;
+        return -1;
+    }
+    if (m == 3 && cx && cy) {
+        for (k = 0; k < 4; k++) {
+            X[k] = cx[k];
+            Y[k] = cy[k];
+        }
+    } else {
+        const float W = (float)(479 - 32), H = (float)(639 - 121);
+
+        X[0] = 0.0f; Y[0] = W;
+        X[1] = H;    Y[1] = W;
+        X[2] = 0.0f; Y[2] = 10.0f;
+        X[3] = H;    Y[3] = 10.0f;
+        if (c->decl > 10.0) {
+            Y[2] = 0.0f;
+            Y[3] = 0.0f;
+        }
+    }
+    I_xmin = 8999999488.0f;
+    I_xmax = -8999999488.0f;
+    I_ymin = 8999999488.0f;
+    I_ymax = -8999999488.0f;
+    for (k = 0; k < 4; k++) {
+        const float u = fr_u((double)X[k], (double)Y[k]);
+        const float v = fr_v((double)X[k], (double)Y[k]);
+
+        if (!(u >= I_xmin)) {
+            I_xmin = u;
+        }
+        if (u > I_xmax) {
+            I_xmax = u;
+        }
+        if (!(v >= I_ymin)) {
+            I_ymin = v;
+        }
+        if (v > I_ymax) {
+            I_ymax = v;
+        }
+    }
+    if (m == 1 || m == 2) {
+        I_ymin = c->decl > 5.0 ? -5.0f : 5.0f;
+    }
+    if (!((float)(I_xmax - I_xmin) >= 50.0f)) {
+        I_xmax = (float)(50.0f + I_xmin);
+    }
+    if (!((float)(I_ymax - I_ymin) >= 50.0f)) {
+        I_ymax = (float)(50.0f + I_ymin);
+    }
+    uext = (float)(I_xmax - I_xmin);
+    vext = (float)(I_ymax - I_ymin);
+    ratio = (float)((double)vext / (double)uext);
+    if (!((double)ratio >= 0.5)) {
+        ratio = 0.5f;
+    }
+    if (!(2.0f >= ratio)) {
+        ratio = 2.0f;
+    }
+    I_nx = tr16(sqrt(30000.0 / (double)ratio));
+    I_ny = tr16((float)((float)I_nx * ratio));
+    while ((int16_t)((I_nx + 1) * I_ny) > 30000) {
+        I_nx--;
+        I_ny--;
+    }
+    I_dx = (float)((double)uext / (double)I_nx);
+    I_dy = (float)((double)vext / (double)I_ny);
+    lim = 10.0f;
+    if (m == 1) {
+        lim = 9.0f;
+    }
+    if (m == 2) {
+        lim = 3.0f;
+    }
+    if (m == 3) {
+        lim = 1.0f;
+        if (interval == 2) {
+            lim = 0.75f;
+        }
+        if (interval == 3) {
+            lim = 0.5f;
+        }
+        if (interval == 4) {
+            lim = 0.1f;
+        }
+    }
+    if (!(lim <= I_dx)) {
+        I_dx = lim;
+        I_nx = tr16((double)uext / (double)lim);
+    }
+    if (!(lim <= I_dy)) {
+        I_dy = lim;
+        I_ny = tr16((double)vext / (double)lim);
+    }
+    I_xmax = (float)((float)((float)I_nx * I_dx) + I_xmin);
+    I_ymax = (float)((float)((float)I_ny * I_dy) + I_ymin);
+    if (I_nx < 1 || I_ny < 1 || I_nx > 500 || I_ny > 500) {
+        *err = HK_E_RANGE;
+        return -1;
+    }
+    /* 格子の準備 */
+    for (r = 1; r <= I_ny; r++) {
+        IPEND[r] = -9;
+    }
+    for (r = 1; r <= I_ny; r++) {
+        IBEF[r] = (int16_t)((r - 1) * (I_nx + 1));
+    }
+    for (k = 1; k <= 0x7918; k++) {
+        IG[k] = 0;
+    }
+    label_no = -1;
+    r = shadow_main(0, 0.0, 0.0, g.ne, g.np, g.nblk, (double)g.scale);
+    if (r < 0) {
+        if (r == -2) {
+            strcpy(errbuf, HK_E_BAD);
+            *err = errbuf;
+        }
+        return r == -2 ? -2 : -1;
+    }
+    iso_classify();
+    I_dt = 180;
+    if (m == 2) {
+        I_dt = 60;
+    }
+    if (m == 3) {
+        I_dt = interval == 2 ? 10 : interval == 3 ? 4 : interval == 4 ? 2 : 20;
+    }
+    T = c->time915 ? 10800 : 14400;
+    sun_coeffs(c->lat, c->decl, &sun);
+    for (t = (int16_t)((I_dt >> 1) - T); t <= T; t = (int16_t)(t + I_dt)) {
+        float sx, sy;
+        int rr;
+
+        for (r = 1; r <= I_ny; r++) {
+            IPEND[r] = -9;
+        }
+        sun_shadow(t, &sun, &sx, &sy);
+        rr = shadow_main(0, (double)sx, (double)sy, g.ne, g.np, g.nblk, (double)g.scale);
+        if (rr < 0) {
+            if (rr == -2) {
+                strcpy(errbuf, HK_E_BAD);
+                *err = errbuf;
+            }
+            return rr == -2 ? -2 : -1;
+        }
+    }
+    maxd = I_dx >= I_dy ? I_dx : I_dy;
+    I_err = (float)(((double)d->denom * (double)b4a2 * (double)maxd) * 0.001);
+    sprintf(I_errtxt, " \x8c\xeb\x8d\xb7\x81\x7d%0.2fm", ((double)d->denom * (double)b4a2 * (double)maxd) * 0.001);
+    I_valid = 1;
+    return 1;
+}
+
+/* 等時間線を 1 本の時間について描く（2ae02 と、4451 のあとしまつ）。show_err は [0x7638]。 */
+int jw_hk_iso_draw(Jwc *d, double level, int show_err)
+{
+    const long n0 = d->n_lines;
+    char suffix[120];
+
+    if (!I_valid) {
+        return 0;
+    }
+    cur_d = d;
+    cur_layer = (unsigned char)d->write_layer;
+    suffix[0] = 0;
+    if (show_err) {
+        strcpy(suffix, "\x8e\x9e\x8a\xd4 ");
+        strcat(suffix, I_errtxt);
+    }
+    iso_trace(level, suffix);
+    if (d->n_lines > n0 + 1) {
+        d->lines[n0].rest[2] = (unsigned char)((d->lines[n0].rest[2] | 0x40) & 0x7f);
+        d->lines[d->n_lines - 1].rest[2] |= 0x40;
+    }
+    return 1;
+}
+
+const char *jw_hk_iso_errtxt(void)
+{
+    return I_errtxt;
 }

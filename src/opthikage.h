@@ -23,7 +23,9 @@
 #define JW_OPT_HK_TM  79        /* ②③指定時間の数値欄 */
 #define JW_OPT_HK_PT  80        /* ④指定点の入力 */
 #define JW_OPT_HK_RES 81        /* ④結果表示位置 */
-#define JW_OPT_HK(s)  ((s) >= JW_OPT_HK_BLD && (s) <= JW_OPT_HK_RES)
+#define JW_OPT_HK_IS  82        /* ③日影時間の帯（1.5〜5.0・任意・誤差・終了） */
+#define JW_OPT_HK_ISF 83        /* ③任意の時間の数値欄 */
+#define JW_OPT_HK(s)  ((s) >= JW_OPT_HK_BLD && (s) <= JW_OPT_HK_ISF)
 
 #define JW_HK_NONE    0         /* この道のものではない */
 #define JW_HK_TAKEN   1         /* 受けた（画面は描き直す） */

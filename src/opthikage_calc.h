@@ -20,4 +20,10 @@ int jw_hk_run_shadow(Jwc *d, const HkCond *c, double p, const char **err);
 int jw_hk_run_points(Jwc *d, const HkCond *c, int base, int n, const float *xs, const float *ys,
                      float rx, float ry, const char **err);
 
+/* ③等時間図の計算（格子に影の回数を足す）。m＝1 高速・2 標準・3 指定範囲。 */
+int jw_hk_iso_calc(Jwc *d, const HkCond *c, int m, int interval, const float *cx, const float *cy, const char **err);
+/* 計算済みの格子から、時間 level の等時間線とラベルを図面へ描く。 */
+int jw_hk_iso_draw(Jwc *d, double level, int show_err);
+const char *jw_hk_iso_errtxt(void);
+
 #endif

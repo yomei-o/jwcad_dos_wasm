@@ -3165,6 +3165,14 @@ static int hk_item(int n)
         hk_after(JW_HK_TAKEN, -1, 0, 0);
         return -1;
     }
+    if (ui.opt_stage == JW_OPT_HK_IS) {
+        int st = ui.opt_stage;
+        const int r = jw_hk_key(drawing, '0' + n, &st);
+
+        ui.opt_stage = st;
+        hk_after(r, -1, 0, 0);
+        return -1;
+    }
     if (ui.opt_stage == JW_OPT_HK_DLG) {
         int st = ui.opt_stage;
 

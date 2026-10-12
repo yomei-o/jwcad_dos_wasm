@@ -76,6 +76,8 @@ void jw_hk_entry(Jwc *d)
 }
 
 static int hk_base;                     /* [0x11e]：④の指定点の通し番号の基点 */
+static int hk_iso_err = 1;              /* [0x7638]：ラベルに「時間 誤差…」を付ける */
+static long hk_iso_l0, hk_iso_t0;       /* 直前に等時間線を引く前の線・文字の数（ESC で戻す） */
 static int pt_n;                        /* 足した指定点の数 */
 static float pt_x[64], pt_y[64];
 
@@ -193,6 +195,26 @@ void jw_hk_text(VGA *v, int stage)
     case JW_OPT_HK_RES:
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
         jw_ui_text(v, 8, 1, 7, 0, HK_RESP);
+        return;
+    case JW_OPT_HK_IS:
+        strcpy(buf, HK_ISA);
+        for (i = 0; i < 6; i++) {
+            static const char *VAL[6] = { "1.5 |", "2.0 |", "2.5 |", "3.0 |", "4.0 |", "5.0 |" };
+
+            strcat(buf, VAL[i]);
+        }
+        strcat(buf, HK_ISB);
+        jw_ui_text(v, 8, 1, 7, 0, buf);
+        break;
+    case JW_OPT_HK_ISF:
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, HK_ISF);
+        jw_ui_text(v, 25, 1, 7, 0, hk_buf);
+        for (i = 7; i <= 15; i++) {
+            const int x0 = 8 * (24 + hk_n);
+
+            jw_line(v, x0, i, x0 + 7, i, 4, ROP_REPLACE, JW_STYLE_SOLID);
+        }
         return;
     case JW_OPT_HK_TM:
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
@@ -349,12 +371,52 @@ static int run_shadow(Jwc *d, double p, int *stage)
     return JW_HK_CHANGED;
 }
 
+static int iso_draw(Jwc *d, double level)
+{
+    hk_iso_l0 = d->n_lines;
+    hk_iso_t0 = d->n_texts;
+    jwc_ink_hold(d, 1);
+    jw_hk_iso_draw(d, level, hk_iso_err);
+    jwc_ink_hold(d, 0);
+    jwc_ink_clear(d);
+    return JW_HK_CHANGED;
+}
+
+/* ③等時間図：格子を作って日影時間の帯へ。 */
+static int iso_start(Jwc *d, int m, int *stage)
+{
+    HkCond c;
+    const char *err = NULL;
+    int rc;
+
+    memset(&c, 0, sizeof c);
+    c.lat = hk_lat;
+    c.decl = hk_decl;
+    c.height = hk_height;
+    c.time915 = hk_time;
+    rc = jw_hk_iso_calc(d, &c, m, 1, NULL, NULL, &err);
+    if (rc < 0) {
+        if (err) {
+            hk_topmsg = err;
+        }
+        *stage = 0;
+        return JW_HK_CHANGED;
+    }
+    hk_iso_l0 = d->n_lines;
+    hk_iso_t0 = d->n_texts;
+    *stage = JW_OPT_HK_IS;
+    return JW_HK_CHANGED;
+}
+
 int jw_hk_page_run(Jwc *d, int n, int *stage)
 {
     hk_topmsg = NULL;
     hk_remnant = 0;
     if (*stage == JW_OPT_HK_P2 && d && (n == 1 || n == 2)) {
         return run_shadow(d, n == 1 ? -1.0 : 1.0, stage);
+    }
+    if (*stage == JW_OPT_HK_P3 && d && (n == 1 || n == 2)) {
+        return iso_start(d, n, stage);
     }
     if (*stage == JW_OPT_HK_P2 && d && n == 3) {
         hk_buf[0] = 0;
@@ -964,6 +1026,70 @@ int jw_hk_key(Jwc *d, int key, int *stage)
 {
     int st = *stage;
 
+    if (st == JW_OPT_HK_ISF) {
+        if (key == 27) {
+            *stage = JW_OPT_HK_IS;
+            return JW_HK_TAKEN;
+        }
+        if (key == 13 || key == 10) {
+            const double v = atof(hk_buf);
+
+            hk_buf[0] = 0;
+            hk_n = 0;
+            if (v >= 1.0 && v <= 6.0 && d) {
+                *stage = JW_OPT_HK_IS;
+                return iso_draw(d, (double)(float)v);
+            }
+            return JW_HK_TAKEN;
+        }
+        if (key == 8 || key == 127) {
+            if (hk_n > 0) {
+                hk_buf[--hk_n] = 0;
+            }
+            return JW_HK_TAKEN;
+        }
+        if (((key >= '0' && key <= '9') || key == '.') && hk_n < 30) {
+            hk_buf[hk_n++] = (char)key;
+            hk_buf[hk_n] = 0;
+        }
+        return JW_HK_TAKEN;
+    }
+    if (st == JW_OPT_HK_IS) {
+        hk_nmsg = 0;
+        if (key >= '1' && key <= '6' && d) {
+            const int k = key - '0';
+            const float lv = k < 4 ? (float)((double)k * 0.5 + 1.0) : (float)(k - 1);
+
+            return iso_draw(d, (double)lv);
+        }
+        if (key == '7') {
+            hk_buf[0] = 0;
+            hk_n = 0;
+            *stage = JW_OPT_HK_ISF;
+            return JW_HK_CHANGED;
+        }
+        if (key == '8') {
+            hk_iso_err = !hk_iso_err;
+            return JW_HK_TAKEN;
+        }
+        if (key == '9') {
+            *stage = JW_OPT_HK_P3;
+            return JW_HK_TAKEN;
+        }
+        if (key == 27 && d) {
+            jwc_ink_hold(d, 1);
+            while (d->n_texts > hk_iso_t0) {
+                jwc_remove_text(d, d->n_texts - 1);
+            }
+            while (d->n_lines > hk_iso_l0) {
+                jwc_remove_line(d, d->n_lines - 1);
+            }
+            jwc_ink_hold(d, 0);
+            jwc_ink_clear(d);
+            return JW_HK_CHANGED;
+        }
+        return JW_HK_TAKEN;
+    }
     if (st == JW_OPT_HK_PT || st == JW_OPT_HK_RES) {
         hk_nmsg = 0;
         if (key == 27 && d) {
