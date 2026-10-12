@@ -12,4 +12,17 @@ hk_in_dup|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|ty
 hk_chg|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|key bs|type 2|161 145 left|move 30 300|type 2|type 0|key enter|key bs
 hk_chg_none|SAMPLE0|type s|type 5|type 1|type 2|161 145 left|move 30 300|type 2|type 0|key enter|key bs
 hk_in_layer|SAMPLE0|type s|type 5|type 1|type 1|260 140 left|key bs
+hk_del|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|597 145 right|key bs|type 3|161 145 left|key bs
+hk_del_pick|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|597 145 right|key bs|type 3|170 145 left|key bs
+hk_del_two|SAMPLE0|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|597 145 right|key bs|type 3|161 145 left|597 145 left|key bs
+hk_del_old|SAMPLE0|type s|type 5|type 1|type 3|230 200 left|key bs
+hk_nth_top|SAMPLE0|type s|type 5|type 1|type 4|161 145 left|key bs
+hk_nth_bottom|SAMPLE0|type s|type 5|type 1|type 4|161 400 left|key bs
+hk_nth_horiz|SAMPLE0|type s|type 5|type 1|type 4|200 419 left|key bs
+hk_nth_horiz2|SAMPLE0|type s|type 5|type 1|type 4|560 419 left|key bs
+hk_nth_twice|SAMPLE0|type s|type 5|type 1|type 4|161 145 left|597 400 left|key bs
+hk_nth_diag|SAMPLE6|type s|type 5|type 1|type 4|563 332 left|key bs
+hk_nth_diag2|SAMPLE6|type s|type 5|type 1|type 4|313 296 left|key bs
+hk_nth_s3|SAMPLE3|type s|type 5|type 1|type 4|262 266 left|key bs
+hk_nth_old|SAMPLE3|type s|type 5|type 1|type 4|300 300 left|300 340 left|key bs
 hk_in_bottom|SAMPLE0|type s|type 5|type 1|type 1|161 400 left|move 30 300|type 5|key enter|key bs

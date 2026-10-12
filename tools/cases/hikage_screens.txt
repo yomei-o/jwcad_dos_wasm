@@ -34,5 +34,19 @@ in1_esc|type s|type 5|type 1|type 1|key esc
 in2_esc|type s|type 5|type 1|type 2|key esc
 in1_enter|type s|type 5|type 1|type 1|key enter
 in1_digit|type s|type 5|type 1|type 1|type 5
+del|type s|type 5|type 1|type 3
+del_bs|type s|type 5|type 1|type 3|key bs
+del_miss|type s|type 5|type 1|type 3|400 300 left
+del_txt|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|key bs|type 3|161 145 left
+del_txt2|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|key bs|type 3|163 145 left
+del_txt3|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|key bs|type 3|170 145 left
+del_txt4|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|key bs|type 3|161 160 left
+del_txt5|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|key bs|type 3|161 135 left
+del_old|type s|type 5|type 1|type 3|230 200 left
+nth|type s|type 5|type 1|type 4
+nth_bs|type s|type 5|type 1|type 4|key bs
+nth_miss|type s|type 5|type 1|type 4|400 300 left
+nth_top|type s|type 5|type 1|type 4|161 145 left
+nth_horiz|type s|type 5|type 1|type 4|200 419 left
 in_dup2|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|161 150 left|400 300 left
 in_dup|type s|type 5|type 1|type 1|161 145 left|move 30 300|type 1|type 0|key enter|161 150 left
