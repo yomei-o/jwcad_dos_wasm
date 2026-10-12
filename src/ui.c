@@ -23,6 +23,7 @@
 #include "optplan.h"
 #include "optsub.h"
 #include "optbatch.h"
+#include "optdata.h"
 #include "item.h"
 #include "tategu.h"
 
@@ -575,7 +576,8 @@ void jw_ui_band_last(VGA *v, const JwUi *s)
                    "\x5b" "\x83" "\x5e" "\x96" "\xb3");
     }
     /* 面取 ④一括処理 の追加・除外の行：外した押しは `読取可能データ無`（測定：chamfer_s0_c4）。 */
-    if (s->command == 8 && s->chb && s->stage == 3 && s->missed) {
+    if (((s->command == 8 && s->chb) || (s->command == 29 && s->dr))
+        && s->stage == 3 && s->missed) {
         jw_ui_text(v, 32, 2, 7, 0,
                    "\x07" "\x93" "\xc7" "\x8e" "\xe6" "\x89"
                    "\xc2" "\x94" "\x5c" "\x83" "\x66" "\x81"
@@ -587,7 +589,8 @@ void jw_ui_band_last(VGA *v, const JwUi *s)
     }
     /* 範囲の始点を持ったあとの `書込 レイヤ／線種色／文字種 のみ選択` の札（行 2 の桁 60、白地）。 */
     if (s->range_opt && s->stage == 1
-        && (s->command == 1 || s->command == 16 || s->command == 17 || s->command == 25)) {
+        && (s->command == 1 || s->command == 16 || s->command == 17 || s->command == 25
+            || (s->command == 29 && s->dr))) {
         jw_ui_text(v, 60, 2, 0, 7, s->range_opt == 1 ? "\x8f\x91\x8d\x9e \x83\x8c\x83\x43\x83\x84 \x82\xcc\x82\xdd\x91\x49\x91\xf0"
                                    : s->range_opt == 2 ? "\x8f\x91\x8d\x9e \x90\xfc\x8e\xed\x90\x46 \x82\xcc\x82\xdd\x91\x49\x91\xf0"
                                    : "\x8f\x91\x8d\x9e \x95\xb6\x8e\x9a\x8e\xed \x82\xcc\x82\xdd\x91\x49\x91\xf0");
@@ -3820,6 +3823,8 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             jw_ui_text(v, 22, 1, 7, 0, t);
         }
         fill(v, 168 + s->typed_n * 8, 7, 175 + s->typed_n * 8, 15, 4);
+    } else if (s->command == 29 && s->dr) {
+        jw_optdata_range(v, s);
     } else if (s->command == 8 && s->chb) {
         /* 面取 の一括処理の行（本物の桁を測った：probe_chamfer の各段）。 */
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
@@ -5254,8 +5259,15 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          *                   and ` 内法 ` at 55, and two pairs of spaces in
          *                   colour 6 at 68 and 77
          */
+        /* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理 G0（項目の帯、src/optdata.c）。 */
+        if (s->command == 29 && s->opt_stage == JW_OPT_DATA_G0) {
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
+            jw_optdata_g0(v);
+        }
         /* ｵﾌﾟｼｮﾝ ④一括処理 ①②の行（src/optbatch.c が字を持つ）。 */
-        if (s->command == 29 && s->opt_stage >= JW_OPT_BATCH) {
+        if (s->command == 29 && s->opt_stage >= JW_OPT_BATCH
+            && s->opt_stage < JW_OPT_DATA_G0) {
             fill(v, 0, 0, 639, 15, 0);
             top_clear();
             jw_optbatch_text(v, s->opt_stage);

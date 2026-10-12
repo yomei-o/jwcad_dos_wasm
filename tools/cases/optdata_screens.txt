@@ -1,0 +1,55 @@
+#名前|手順…（tools/optsubcheck.sh で本物と画面を比べる。LIST=tools/cases/optdata_screens.txt）
+# ④一括処理 ③データ整理：G0・範囲・確定の画面
+g0|type s|type 4|type 3
+g0_esc|type s|type 4|type 3|key esc
+g0_bs|type s|type 4|type 3|key bs
+r1|type s|type 4|type 3|type 1
+r2|type s|type 4|type 3|type 2
+r3|type s|type 4|type 3|type 3
+r4|type s|type 4|type 3|type 4
+r1_esc|type s|type 4|type 3|type 1|key esc
+r1_bs|type s|type 4|type 3|type 1|key bs
+r1_p1|type s|type 4|type 3|type 1|150 120 left
+r1_p1_rt|type s|type 4|type 3|type 1|150 120 right
+r1_p1_esc|type s|type 4|type 3|type 1|150 120 left|key esc
+r1_p1_bs|type s|type 4|type 3|type 1|150 120 left|key bs
+r1_add|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 left
+r1_add_esc|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 left|key esc
+r1_add_ok|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 left|type 1
+r1_c|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right
+r1_c_esc|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|key esc
+r1_c_stop|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|type 2
+r2_c|type s|type 4|type 3|type 2|150 120 left|move 260 200|260 200 right
+r3_c|type s|type 4|type 3|type 3|150 120 left|move 260 200|260 200 right
+r4_p1|type s|type 4|type 3|type 4|150 120 left
+r4_add|type s|type 4|type 3|type 4|150 120 left|move 260 200|260 200 left
+r4_c|type s|type 4|type 3|type 4|150 120 left|move 260 200|260 200 right
+g0_click1|type s|type 4|type 3|100 8 left
+g0_click2|type s|type 4|type 3|300 8 left
+g0_area_l|type s|type 4|type 3|400 300 left
+g0_area_r|type s|type 4|type 3|400 300 right
+x_prev|type s|type 4|type 3|type 1|type 1
+x_prev_ok|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|key esc|type 1
+x_prev_c|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|key esc|type 1|type 1
+x_l1|type s|type 4|type 3|type 1|150 120 left|type 1
+x_l2|type s|type 4|type 3|type 1|150 120 left|type 2
+x_m4_l1|type s|type 4|type 3|type 4|150 120 left|type 1
+x_m4_l2|type s|type 4|type 3|type 4|150 120 left|type 2
+x_m4_prev|type s|type 4|type 3|type 4|type 1
+x_m4_add_ok|type s|type 4|type 3|type 4|150 120 left|move 260 200|260 200 left|type 1
+x_m4_esc|type s|type 4|type 3|type 4|key esc
+x_rt_first|type s|type 4|type 3|type 1|150 120 right|move 260 200|260 200 right
+x_c_press|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|400 300 left
+x_c_press_r|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|400 300 right
+x_c_bs|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|key bs
+x_c_enter|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|key enter
+x_add_bs|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 left|key bs
+x_add_press|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 left|300 150 left
+x_add_enter|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 left|key enter
+x_run|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|type 1
+x_run2|type s|type 4|type 3|type 2|150 120 left|move 260 200|260 200 right|type 1
+x_run3|type s|type 4|type 3|type 3|150 120 left|move 260 200|260 200 right|type 1
+x_run4|type s|type 4|type 3|type 4|150 120 left|move 260 200|260 200 right|type 1
+x_run_bs|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|type 1|key bs
+x_prev_add|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|key esc|type 1|300 250 left
+x_prev_mv|type s|type 4|type 3|type 1|150 120 left|move 260 200|260 200 right|key esc|type 1|move 300 250

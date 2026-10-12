@@ -1297,7 +1297,7 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
         return;
     }
     if (JW_RANGE(c) && (!c->zukei || (c->command == 27 && c->zukei == JW_ZUKEI_RANGE))
-        && c->pressed == 2
+        && c->pressed == 2 && !c->dr_prev
         && c->stage == 3) {
         int qx, qy;
 
@@ -2538,6 +2538,10 @@ static int wholly_outside(const JwCmd *c, double ax, double ay,
  * the left one 89, which is the two lines without text 0. */
 static int takes_text(const JwCmd *c)
 {
+    /* ｵﾌﾟｼｮﾝ ③データ整理：同一文字整理だけが文字、あとは線･円（点も、下の印の節）。 */
+    if (c->command == 29 && c->dr) {
+        return c->dr == 4;
+    }
     /* ①範囲内消去 and ②範囲外消去 never ask; ③指定範囲, 複写 and 図形 ①登録
      * do, and the answer is which button took the first point.  図形's own
      * line says so -- `(L)線･円  (R)線･円･文字` -- and HELP 図 形 その1/4
@@ -2597,7 +2601,7 @@ static int arc_in_range(const JwCmd *c, const JwcArc *a)
  * the box test until then. */
 static int picked_line(const JwCmd *c, const Jwc *d, long k)
 {
-    if (c->command == 28 || c->command == 13) {
+    if (c->command == 28 || c->command == 13 || (c->command == 29 && c->dr == 4)) {
         return 0;               /* 文編集 ⑤位置整理 は文字だけ */
     }
     if (c->sel_line) {
@@ -2639,7 +2643,7 @@ static int henkei_kind(const JwCmd *c, double ax, double ay,
 
 static int picked_arc(const JwCmd *c, const Jwc *d, long k)
 {
-    if (c->command == 28 || c->command == 13) {
+    if (c->command == 28 || c->command == 13 || (c->command == 29 && c->dr == 4)) {
         return 0;
     }
     if (c->sel_arc) {
@@ -5291,6 +5295,19 @@ static int cmd_top(JwCmd *c, Jwc *d, int item)
         c->cleared = 0;
         return 1;
     }
+    /* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理（src/optdata.c）：確定の段 `重複線整理  |① 実行(L)|② 中止(R)|`
+     * の ① は実行（main_wasm.c が dr_go を拾う）、② は中止（G0 の帯へ。decomp ovl17 3ab8:566c
+     * dis 0x30501／0x3037e）。範囲の段の項目は下の汎用の道。 */
+    if (c->command == 29 && c->dr && c->pressed == 2 && c->stage == 2) {
+        if (item == 1) {
+            c->dr_go = 1;
+        } else if (item == 2) {
+            c->dr = 0;
+            c->pressed = 0;
+            c->stage = 0;
+        }
+        return 1;
+    }
     if (c->command == 8 && c->chb) {
         /* 範囲の段では ①レイヤ ②線種色（未移植）。確定の段は下で。 */
         if (!(c->pressed == 2 && c->stage == 2)) {
@@ -6869,9 +6886,13 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
 
     /* 範囲の始点を持ったあとの (1)レイヤ・(2)線種色・(3)文字種 は `書込 … のみ選択` の札を出し入れする
      * （測定：move_s1_c1／erase_s1_c1・c2 の `type N`。帯はそのまま。文字種は消去だけの項目）。 */
-    if ((JW_MOVE_CMD(c->command) || c->command == 25 || c->command == 17) && c->pressed == 1
+    if ((JW_MOVE_CMD(c->command) || c->command == 25 || c->command == 17
+         || (c->command == 29 && c->dr)) && c->pressed == 1
         && !right && item >= 1 && item <= (c->command == 25 ? 3 : 2)) {
-        c->range_opt = c->range_opt == item ? 0 : item;
+        /* ③データ整理 の同一文字整理は ②文字種（札は 3）。測定：optdata_screens の x_m4_l2。 */
+        const int opt = c->command == 29 && c->dr == 4 && item == 2 ? 3 : item;
+
+        c->range_opt = c->range_opt == opt ? 0 : opt;
         c->top_item = 0;
         c->top_right = 0;
         return 1;
@@ -6879,6 +6900,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
     /* 複写・移動 の始点の行の ①前範囲（測定：move_s0_c1 の `type 1`）：前の範囲を取って
      * 追加･除外 の段へ。前の範囲が無ければ空の範囲で、そのまま押しで線を足せる。 */
     if ((JW_MOVE_CMD(c->command) || (c->command == 24 && (c->lc_range || c->top_item == 3))
+         || (c->command == 29 && c->dr)
          || (c->command == 25 && c->span) || (c->command == 17 && c->hen_dbl)
          || (c->command == 27 && c->zukei == JW_ZUKEI_RANGE))
         && item == 1 && !right && !c->pressed && d && c->stage == 0) {
@@ -6899,6 +6921,7 @@ int jw_cmd_top(JwCmd *c, Jwc *d, int item, int right)
         }
         c->pressed = 2;
         c->stage = 3;
+        c->dr_prev = c->command == 29;
         c->n_flip = 0;
         c->n0_lines = d->n_lines;
         c->n0_arcs = d->n_arcs;
@@ -9865,6 +9888,11 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         c->pressed = 0;
         c->stage = c->fix_done ? 2 : 0;
         c->moved = 0;
+        return 1;
+    }
+    if (key == 27 && c->command == 29 && c->dr && !c->pressed) {
+        c->dr = 0;              /* 整理範囲の始点で [ESC]：G0 の帯へ（decomp dis 0x30441、測定で確認） */
+        c->stage = 0;
         return 1;
     }
     if (key == 27 && c->command == 8 && c->chb && !c->pressed) {
@@ -15544,7 +15572,7 @@ int jw_cmd_press(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy, int right)
     const int fix_done = c->fix_done;
     const double x0 = c->x0, y0 = c->y0, x1 = c->x1, y1 = c->y1;
     const int was_moved = c->moved || sx != c->press_x || sy != c->press_y;
-    const int r = press_body(c, d, w, sx, sy, right);
+    const int r = (c->dr_prev &= c->pressed != 0, press_body(c, d, w, sx, sy, right));
 
     /* 始点を持ったまま読取が外れた押しでは、仮の線と 長= は消えない（測定：
      * func_all plus_s0_c2 の右押し）。 */
@@ -20606,10 +20634,23 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         return 1;
     }
     /* 線変更 ①指定範囲内変更 の追加・除外の行で右を押しても何も起こらず、札も消える（測定：linechg_s0_c1）。 */
-    if (((c->command == 24 && c->lc_range && !c->lc_attr) || (c->command == 8 && c->chb))
+    if (((c->command == 24 && c->lc_range && !c->lc_attr) || (c->command == 8 && c->chb)
+         || (c->command == 29 && c->dr))
         && c->pressed == 2 && c->stage == 3 && right) {
         c->missed = 0;
         return 0;
+    }
+    /* ｵﾌﾟｼｮﾝ ③データ整理 の確定の段：図面の押しは左＝①実行、右＝②中止
+     * （decomp ovl17 3ab8:566c dis 0x3044b〜：2cb4 が押しのボタンを返す。測定：x_c_press・x_c_press_r）。 */
+    if (c->command == 29 && c->dr && c->pressed == 2 && c->stage == 2) {
+        if (right) {
+            c->dr = 0;
+            c->pressed = 0;
+            c->stage = 0;
+        } else {
+            c->dr_go = 1;
+        }
+        return 1;
     }
     if (JW_RANGE(c)) {
         /* 消去: the first press takes a corner of the range and the second,
@@ -20937,7 +20978,8 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             c->x1 = x;
             c->y1 = y;
             c->pressed = 2;
-            if (JW_MOVE_CMD(c->command) || c->command == 24 || c->command == 27) {
+            if (JW_MOVE_CMD(c->command) || c->command == 24 || c->command == 27
+                || c->command == 29) {
                 prev_range[0] = c->x0;
                 prev_range[1] = c->y0;
                 prev_range[2] = c->x1;
@@ -20959,7 +21001,7 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
             /* 複写・移動も右で閉じると範囲確定して ①ﾏｳｽ位置 へ（測定：移動を
              * 右で閉じて二点で動かし [ESC] で戻すと、y に float の丸めが残る）。 */
             c->stage = (right && (c->command == 25 || c->command == 8
-                                  || c->command == 28
+                                  || c->command == 28 || c->command == 29
                                   || c->command == 13)) ? 2
                      : (right && JW_MOVE_CMD(c->command)) ? 4 : 3;
             return 1;

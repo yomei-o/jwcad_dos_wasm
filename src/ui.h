@@ -376,6 +376,7 @@ typedef struct {
     int ld_ask;
     int te_sub, te_bh, te_bv, te_panel, te_esc, te_plain, te6_layer, te6_hv, te5;
     int te5_ask;
+    int dr;                     /* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理の範囲（cmd.dr） */
     float te_off_h[3], te_off_v[3]; /* 文字基準点 の ③横位置・⑤縦位置（ずれ位置 mm） */
     int te_off_ask;
     int fep;
@@ -513,6 +514,10 @@ typedef struct {
 #define JW_OPT_GRP_G2  22
 #define JW_OPT_GRP_G2S 23
 /* ④⑤ のどれかの段にいるか（上の行と作図範囲が 16 枚の小窓になる）。 */
+/* ④一括処理 ③データ整理（src/optdata.c）：G0 は項目の帯、R は範囲と確定（cmd.dr が持ち主）。 */
+#define JW_OPT_DATA_G0 40
+#define JW_OPT_DATA_R  41
+#define JW_OPT_DATA(s) ((s)->command == 29 && (s)->opt_stage >= JW_OPT_DATA_G0)
 #define JW_OPT_SUB(s) ((s)->command == 29 && (s)->opt_stage >= JW_OPT_LAY_B1 && (s)->opt_stage < 30)
 /* JW_OPT_BASE and JW_OPT_WHERE are in src/optplan.h, beside the lines they
  * put up. */

@@ -24,6 +24,7 @@
 #include "draw.h"
 #include "optplan.h"
 #include "optbatch.h"
+#include "optdata.h"
 #include "tategu.h"
 #include "view.h"
 
@@ -414,8 +415,47 @@ static void place_kigou(const JwKigouSym *sym, double px, double py,
     }
 }
 
+/* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理（src/optdata.c）。範囲・確定の道は cmd.dr が持ち、終わったら
+ * G0 の帯へ戻る：dr_go が立てば実行してから、dr が 0 に落ちれば（[ESC]・中止）そのまま。 */
+static int data_in_r;           /* 範囲・確定の道にいる（ui.opt_stage は jw_ui_from が空にする） */
+
+static void data_hook(void)
+{
+    if (ui.command != 29 || cmd.command != 29) {
+        data_in_r = 0;
+    }
+    if (data_in_r && ui.opt_stage == 0) {
+        ui.opt_stage = JW_OPT_DATA_R;
+    }
+    if (cmd.dr) {
+        data_in_r = 1;
+        if (ui.opt_stage == 0) {
+            ui.opt_stage = JW_OPT_DATA_R;
+        }
+    }
+    if (ui.command != 29 || ui.opt_stage != JW_OPT_DATA_R) {
+        return;
+    }
+    if (cmd.dr_go && drawing) {
+        jw_optdata_run(drawing, cmd.dr);
+        cmd.dr_go = 0;
+        cmd.dr = 0;
+        ui.n_lines = drawing->n_lines;
+        ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+    }
+    if (!cmd.dr) {
+        data_in_r = 0;
+        ui.opt_stage = JW_OPT_DATA_G0;
+        cmd.pressed = 0;
+        cmd.stage = 0;
+        cmd.top_item = 0;
+        cmd.top_right = 0;
+    }
+}
+
 static void sync_ui(void)
 {
+    data_hook();
     /* The chrome draws the menu row the pointer rests on inverted, so it has
      * to know where the pointer is. */
     ui.mouse_x = mouse_x;
@@ -569,6 +609,7 @@ static void sync_ui(void)
     ui.te6_layer = cmd.te6_layer;
     ui.te6_hv = cmd.te6_hv;
     ui.te5 = cmd.te5;
+    ui.dr = cmd.dr;
     ui.te5_ask = cmd.te5_ask;
     ui.fep = cmd.fep;
     ui.tx_plain = cmd.tx_plain;
@@ -1094,7 +1135,8 @@ static void present(void)
             jw_cmd_zukei_left(&zukei_left, &vga, drawing, &view);
         }
         jw_cmd_after(&cmd, &vga, drawing, &view);
-        if (ui.command == 29 && ui.opt_stage >= JW_OPT_BATCH) {
+        if (ui.command == 29 && ui.opt_stage >= JW_OPT_BATCH
+            && ui.opt_stage < JW_OPT_DATA_G0) {
             jw_optbatch_overlay(&vga, drawing, &view, ui.opt_stage, mouse_x, mouse_y);
         }
         /* **記号の仮の印は最後**です。帯の下に描き直した線より先に
@@ -2959,10 +3001,96 @@ static int opt_sub_click(int x, int y, int right)
     return -1;
 }
 
+/* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理 G0（項目の帯）。decomp ovl17 3ab8:566c dis 0x30357〜0x3043f：
+ * BS は小帯へ、[ESC] は何もしない（帯を描き直す）、項目 1〜4 か図面の押し（左＝①・右＝②）で範囲へ。 */
+static void data_enter_r(int mode)
+{
+    cmd.dr = mode;
+    cmd.dr_go = 0;
+    cmd.pressed = 0;
+    cmd.stage = 0;
+    cmd.n_flip = 0;
+    cmd.cleared = 0;
+    cmd.top_item = 0;
+    cmd.top_right = 0;
+    ui.opt_stage = JW_OPT_DATA_R;
+    sync_ui();
+    present();
+}
+
+static int data_g0_key(int key)
+{
+    if (!ui.command || ui.command != 29 || ui.opt_stage != JW_OPT_DATA_G0) {
+        return -2;
+    }
+    if (key == 27) {
+        sync_ui();
+        present();
+        return -1;
+    }
+    if (key == 8) {
+        ui.opt_stage = 0;
+        cmd.top_item = 4;
+        cmd.top_right = 0;
+        sync_ui();
+        present();
+        return -1;
+    }
+    if (key >= '1' && key <= '4') {
+        data_enter_r(key - '0');
+        return -1;
+    }
+    if (key >= 0 && key < 256 && jw_ui_key_command(key)) {
+        ui.opt_stage = 0;
+        return -2;
+    }
+    return -1;
+}
+
+static int data_g0_click(int x, int y, int right)
+{
+    if (ui.command != 29 || ui.opt_stage != JW_OPT_DATA_G0) {
+        return -2;
+    }
+    if (jw_ui_menu_hit(x, y)) {
+        ui.opt_stage = 0;
+        return -2;
+    }
+    mouse_x = x;
+    mouse_y = y;
+    if (y >= 0 && y <= 15) {
+        const int item = jw_ui_top_item(x, y);
+
+        if (item >= 1 && item <= 4) {
+            data_enter_r(item);
+        } else {
+            sync_ui();
+            present();
+        }
+        return -1;
+    }
+    if (x >= AREA_X0 && y >= AREA_Y0) {
+        data_enter_r(right ? 2 : 1);        /* 図面の押し：左＝重複線整理、右＝連結･重複線整理 */
+        return -1;
+    }
+    sync_ui();
+    present();
+    return -1;
+}
+
 EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 {
     const int pick = jw_ui_menu_hit(x, y);
     const int bar = jw_ui_bar_item(x, y);
+
+    /* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理 G0。 */
+    if (ui.command == 29 && ui.opt_stage == JW_OPT_DATA_G0) {
+        const int r = data_g0_click(x, y, right);
+
+        if (r != -2) {
+            return r;
+        }
+    }
 
     /* ｵﾌﾟｼｮﾝ ④ﾚｲﾔ整理・⑤ｸﾞﾙｰﾌﾟ整理 の中の押し。 */
     if (JW_OPT_SUB(&ui)) {
@@ -3007,7 +3135,8 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
     /* ｵﾌﾟｼｮﾝ ④一括処理 ①直線伸縮・②直線部分消（src/optbatch.c）。 */
     if (ui.command == 29 && drawing
-        && (ui.opt_stage >= JW_OPT_BATCH || (ui.opt_stage == 0 && ui.top_item == 4))) {
+        && ((ui.opt_stage >= JW_OPT_BATCH && ui.opt_stage < JW_OPT_DATA_G0)
+            || (ui.opt_stage == 0 && ui.top_item == 4))) {
         int leave = 0, miss = 0;
         const int r = jw_optbatch_click(drawing, &view, x, y, right, ui.top_item,
                                         jw_ui_top_item(x, y), AREA_X0, AREA_Y0,
@@ -4312,6 +4441,19 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
      * ④ と ⑤。ほかの升（①②③）は別の担当で、下の道のまま。 */
     if (ui.command == 29 && ui.opt_stage == 0 && ui.top_item == 4
         && y >= 0 && y <= 15 && drawing
+        && jw_ui_top_item(x, y) == 3) {
+        /* ③データ整理：G0 の帯へ（src/optdata.c）。 */
+        mouse_x = x;
+        mouse_y = y;
+        cmd.top_item = 0;
+        cmd.top_right = 0;
+        ui.opt_stage = JW_OPT_DATA_G0;
+        sync_ui();
+        present();
+        return -1;
+    }
+    if (ui.command == 29 && ui.opt_stage == 0 && ui.top_item == 4
+        && y >= 0 && y <= 15 && drawing
         && (jw_ui_top_item(x, y) == 4 || jw_ui_top_item(x, y) == 5)) {
         const int five = jw_ui_top_item(x, y) == 5;
 
@@ -4324,7 +4466,8 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     }
     /* ｵﾌﾟｼｮﾝ's top line.  ①建具平面 puts up the library's sixteen shapes;
      * the rest are not built yet and leave the line as it was. */
-    if (ui.command == 29 && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
+    if (ui.command == 29 && y >= 0 && y <= 15 && jw_ui_top_item(x, y)
+        && ui.opt_stage < JW_OPT_DATA_G0) {
         const int item = jw_ui_top_item(x, y);
 
         cmd.top_item = 0;
@@ -4823,6 +4966,14 @@ static int lc_msg_was;
 
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
+    /* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理 G0。 */
+    if (ui.command == 29 && ui.opt_stage == JW_OPT_DATA_G0) {
+        const int r = data_g0_key(key);
+
+        if (r != -2) {
+            return r;
+        }
+    }
     /* ｵﾌﾟｼｮﾝ ④ﾚｲﾔ整理・⑤ｸﾞﾙｰﾌﾟ整理 の中の鍵。 */
     if (JW_OPT_SUB(&ui)) {
         const int r = opt_sub_key(key);
@@ -4832,7 +4983,8 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
         }
     }
     /* ｵﾌﾟｼｮﾝ ④一括処理 の [ESC]・[BS]・[Enter]（src/optbatch.c）。 */
-    if (ui.command == 29 && drawing && ui.opt_stage >= JW_OPT_BATCH) {
+    if (ui.command == 29 && drawing && ui.opt_stage >= JW_OPT_BATCH
+        && ui.opt_stage < JW_OPT_DATA_G0) {
         int leave = 0;
         const int r = jw_optbatch_key(drawing, key, &ui.opt_stage, &leave);
 
@@ -5769,6 +5921,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
          || (cmd.command == 25 && cmd.span))
         && !cmd.typing && !cmd.typing_text
         && (cmd.pressed == 0 || cmd.pressed == 2) && !cmd.te5
+        && !(cmd.command == 29 && cmd.dr && cmd.stage == 2)   /* ③データ整理の確定では [Enter] は何もしない（測定：x_c_enter） */
         && !(JW_MOVE_CMD(cmd.command) && cmd.stage >= 4)
         && !(cmd.command == 27 && cmd.top_item == 4)) {      /* 複写・移動 の 位置を聞く段などでは [Enter] は何もしない（測定：escfz_c_2） */
         key = '1';
