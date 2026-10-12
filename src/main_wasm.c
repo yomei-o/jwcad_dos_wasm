@@ -23,6 +23,7 @@
 #include "dxf.h"
 #include "draw.h"
 #include "optplan.h"
+#include "optbatch.h"
 #include "tategu.h"
 #include "view.h"
 
@@ -1093,6 +1094,9 @@ static void present(void)
             jw_cmd_zukei_left(&zukei_left, &vga, drawing, &view);
         }
         jw_cmd_after(&cmd, &vga, drawing, &view);
+        if (ui.command == 29 && ui.opt_stage >= JW_OPT_BATCH) {
+            jw_optbatch_overlay(&vga, drawing, &view, ui.opt_stage, mouse_x, mouse_y);
+        }
         /* **記号の仮の印は最後**です。帯の下に描き直した線より先に
          * 置くと、重なった所の排他的論理和がひっくり返ります
          * （「建具記号 (AW)」で y=157 の 3 画素）。 */
@@ -2567,6 +2571,24 @@ static void opt_refresh(void)
     present();
 }
 
+/* src/optbatch.c が受けた押し・鍵のあとの後始末：帯の行・数え箱・画面。 */
+static void batch_after(int r, int leave, int miss, int x, int y)
+{
+    cmd.missed = miss;
+    cmd.top_item = leave ? 4 : 0;
+    cmd.top_right = 0;
+    if (x >= 0) {
+        mouse_x = x;
+        mouse_y = y;
+    }
+    if (r == JW_OB_CHANGED && drawing) {
+        ui.n_lines = drawing->n_lines;
+        ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+    }
+    sync_ui();
+    present();
+}
+
 static void opt_enter(int stage)
 {
     ui.opt_stage = stage;
@@ -2981,6 +3003,21 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         sync_ui();
         present();
         return -1;
+    }
+
+    /* ｵﾌﾟｼｮﾝ ④一括処理 ①直線伸縮・②直線部分消（src/optbatch.c）。 */
+    if (ui.command == 29 && drawing
+        && (ui.opt_stage >= JW_OPT_BATCH || (ui.opt_stage == 0 && ui.top_item == 4))) {
+        int leave = 0, miss = 0;
+        const int r = jw_optbatch_click(drawing, &view, x, y, right, ui.top_item,
+                                        jw_ui_top_item(x, y), AREA_X0, AREA_Y0,
+                                        AREA_X1, AREA_Y1, &ui.opt_stage,
+                                        &leave, &miss);
+
+        if (r) {
+            batch_after(r, leave, miss, x, y);
+            return -1;
+        }
     }
 
     /* [f2] の拾い場。押した文字の数が欄に入ります。**読めるのは
@@ -4794,6 +4831,16 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
             return r;
         }
     }
+    /* ｵﾌﾟｼｮﾝ ④一括処理 の [ESC]・[BS]・[Enter]（src/optbatch.c）。 */
+    if (ui.command == 29 && drawing && ui.opt_stage >= JW_OPT_BATCH) {
+        int leave = 0;
+        const int r = jw_optbatch_key(drawing, key, &ui.opt_stage, &leave);
+
+        if (r) {
+            batch_after(r, leave, 0, -1, -1);
+            return -1;
+        }
+    }
     /* 線変更：押したあとの最初の鍵で `線`／`円` の札が消える（測定：linechg_s1_c4〜c9）。 */
     if (cmd.command == 24 && cmd.hit_kind && !cmd.lc_keyed) {
         cmd.lc_keyed = 1;
@@ -5839,6 +5886,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     ui.guide = 0;
     ui.stage = 0;
     ui.missed = 0;
+    ui.opt_stage = 0;           /* ｵﾌﾟｼｮﾝ の道は命令を替えると捨てる（src/optbatch.c） */
     hand_abandon();
     jw_cmd_pick(&cmd, pick);
     /* 升の行は新しいコマンドでは消える（前のコマンドの top_item が残ると

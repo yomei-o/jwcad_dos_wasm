@@ -513,7 +513,7 @@ typedef struct {
 #define JW_OPT_GRP_G2  22
 #define JW_OPT_GRP_G2S 23
 /* ④⑤ のどれかの段にいるか（上の行と作図範囲が 16 枚の小窓になる）。 */
-#define JW_OPT_SUB(s) ((s)->command == 29 && (s)->opt_stage >= JW_OPT_LAY_B1)
+#define JW_OPT_SUB(s) ((s)->command == 29 && (s)->opt_stage >= JW_OPT_LAY_B1 && (s)->opt_stage < 30)
 /* JW_OPT_BASE and JW_OPT_WHERE are in src/optplan.h, beside the lines they
  * put up. */
 

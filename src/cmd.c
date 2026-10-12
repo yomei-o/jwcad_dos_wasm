@@ -2066,6 +2066,13 @@ long jw_cmd_text_at(const Jwc *d, const JwView *w, int sx, int sy)
     return -1;
 }
 
+/* near_mark が見つけた「いちばん近い線」と、その隔たり・円弧の隔たりの最小。本物の探索
+ * 573f は印を付ける同じ隔たり（軸方向の差。垂線ではない）で、strictly 近いものを選ぶ
+ * （0x17c7b `compare [bp-0xc] : [bp-8]; ja`）。ｵﾌﾟｼｮﾝ ④一括処理（src/optbatch.c）が
+ * jw_cmd_pick_line で読む。 */
+static long nm_line;
+static float nm_line_dist, nm_arc_dist;      /* 円弧の隔たりは今は使わない（線があれば線） */
+
 /* **読取の探索が近い線に付ける印**（rest[2] の bit 0）。本物は 11f2:573f
  * （ルート 0x1765f）で矢の周りの四角 [矢 ± 範囲]（範囲 = [0x92e0] /
  * [0xc3c]、紙の上の 8 ドット）に外枠がかかる線を回り、線の長いほうの
@@ -2080,6 +2087,8 @@ static void near_mark(Jwc *m, const JwView *w, int sx, int sy)
     float r, fx, fy;
     long k;
 
+    nm_line = -1;
+    nm_line_dist = nm_arc_dist = 1e30f;
     jw_cmd_at(w, sx, sy, &cx, &cy);
     fx = (float)cx;
     fy = (float)cy;
@@ -2109,6 +2118,10 @@ static void near_mark(Jwc *m, const JwView *w, int sx, int sy)
         }
         if (dist <= r) {
             l->rest[2] |= 1u;
+            if (dist < nm_line_dist) {
+                nm_line_dist = dist;
+                nm_line = k;
+            }
         }
     }
     /* 円弧も同じ探索の中で（0x17d15〜0x181e7）：外枠 [中心 ± 半径] が矢の
@@ -2121,7 +2134,11 @@ static void near_mark(Jwc *m, const JwView *w, int sx, int sy)
         double dx, dy, dist;
 
         if (a->pen >= 0x5a || !in_reach_layer(m, a->layer)
-            || a->flatten != 10000 || a->tilt != 0) {
+            || a->flatten != 10000
+            /* 傾き（tilt）は、丸い円（始角 = 終角）なら見た目に関係ないので印を付ける
+             * （測定：optbatch の obf_SAMPLE1_11_0。SAMPLE1 の半径 1.74 の小円 2 つは
+             * tilt = 270 度だが、本物は近くの押しで rest[2] の bit0 を立てた）。 */
+            || (a->tilt != 0 && a->start != a->end)) {
             continue;
         }
         if (fx - r > a->cx + a->r || fy - r > a->cy + a->r
@@ -2150,6 +2167,9 @@ static void near_mark(Jwc *m, const JwView *w, int sx, int sy)
             }
         }
         a->rest[2] |= 1u;
+        if ((float)dist < nm_arc_dist) {
+            nm_arc_dist = (float)dist;
+        }
     }
 }
 
@@ -2169,6 +2189,26 @@ static long pick_line(Jwc *m, const JwView *w, int sx, int sy)
     }
     near_mark(m, w, sx, sy);
     return jw_cmd_line_at(m, w, sx, sy);
+}
+
+/* ｵﾌﾟｼｮﾝ ④一括処理（src/optbatch.c）が使う 11f2:5670 の入口。印の付け直しは pick_line と同じで、
+ * 選ぶ線は jw_cmd_line_at（垂線の隔たり）ではなく本物の探索 573f の隔たり（near_mark が
+ * 印を付けるのと同じ軸方向の差）で最も近いもの。線が 1 本でも届けば、円弧がどれだけ近くても
+ * 線を返す（0x18362：線の番号が 0 でなければそれ、なければ円弧の番号＝負）。円弧だけなら
+ * -1（本物は負の値）。測定：SAMPLE6 の 45 度の線が、端の外 5 の押しで、水平の線（隔たり 0.15）より遠い
+ * （0.18）と本物が見る（垂線だと逆になる）。 */
+long jw_cmd_pick_line(Jwc *m, const JwView *w, int sx, int sy)
+{
+    long k;
+
+    for (k = 0; k < m->n_lines; k++) {
+        m->lines[k].rest[2] &= (unsigned char)~1u;
+    }
+    for (k = 0; k < m->n_arcs; k++) {
+        m->arcs[k].rest[2] &= (unsigned char)~1u;
+    }
+    near_mark(m, w, sx, sy);
+    return nm_line;
 }
 
 /* Where a press says its point is, before any snap: the left button takes the
