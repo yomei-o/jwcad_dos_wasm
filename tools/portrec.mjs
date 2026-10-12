@@ -42,6 +42,10 @@ for (const step of steps) {
     M._jw_mouse(x, y);
     M._jw_click(x, y, w[2] === 'right' ? 1 : 0);
 }
+/* DUMP_FILE=jw_key.000 DUMP_TO=x なら、そのファイルを module のディスクから取り出す（ｵﾌﾟｼｮﾝ ⑥各設定 が書くもの）。 */
+if (process.env.DUMP_FILE) {
+    writeFileSync(process.env.DUMP_TO, Buffer.from(M.FS.readFile(process.env.DUMP_FILE)));
+}
 M._jw_save();
 const p = M._jw_saved(), len = M._jw_saved_size();
 const out = Buffer.from(M.HEAPU8.buffer, p, len);

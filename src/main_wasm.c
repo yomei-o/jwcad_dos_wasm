@@ -24,8 +24,11 @@
 #include "draw.h"
 #include "optplan.h"
 #include "optbatch.h"
+#include "opt25.h"
 #include "optdata.h"
+#include "optset.h"
 #include "opthikage.h"
+#include "optenv.h"
 #include "tategu.h"
 #include "view.h"
 
@@ -46,6 +49,10 @@
 #define AREA_Y0 17
 #define AREA_X1 638
 #define AREA_Y1 462
+
+/* ｵﾌﾟｼｮﾝ ⑥各設定の帯のあいだに左の盤（ペン・レイヤ…）を押すと、盤を閉じたあと各設定の帯に戻る
+ * （本物は帯の入力の中で盤を扱って 2a18 が戻るだけ。移植は盤が JwUi を作り直すので覚えておく）。 */
+static int set_return_stage;
 
 static VGA vga;
 static JwView view;
@@ -928,6 +935,9 @@ static int panel_up(void)
     if (JW_OPT_SUB(&ui)) {
         return 1;
     }
+    if (ui.command == 29 && jw_opt25_covers(ui.opt_stage)) {
+        return 1;                       /* ⑧2.5D の視点画面（src/opt25.c） */
+    }
     return 0;
 }
 
@@ -1122,6 +1132,8 @@ static void present(void)
     memcpy(ui.dim_typed, dim_typed, sizeof ui.dim_typed);
     if (!drawing) {
         memset(vga.plane, 0, sizeof vga.plane);
+    } else if (ui.command == 29 && jw_opt25_covers(ui.opt_stage)) {
+        memset(vga.plane, 0, sizeof vga.plane);       /* 2.5D の視点画面は図面を出さない */
     } else {
         jw_view_draw(&vga, drawing, &view);
         jw_cmd_before(&cmd, &vga, drawing, &view);
@@ -1212,6 +1224,9 @@ static void present(void)
          * the whole of TEST1 registered and then ②読込 pressed, the string
          * the registered line crosses is on top again (7 pixels). */
         zukei_left_on = 0;
+        if (ui.command == 29 && jw_opt25_covers(ui.opt_stage) && drawing) {
+            jw_opt25_overlay(&vga, drawing, &view, ui.opt_stage);
+        }
     }
     /* the line a half-finished command drags, then the pointer -- both
      * exclusive-or, and both after everything else */
@@ -1227,7 +1242,10 @@ static void present(void)
     }
     jw_ui_band_end(&vga, &ui);
     jw_ui_range_notch(&vga);
-    jw_ui_cursor(&vga, mouse_x, mouse_y);
+    /* ④作図時間・⑦画色 の欄のあいだ、本物は矢を消している（1885:5256(0)）。 */
+    if (!(JW_OPT_SETTING(&ui) && jw_optset_cursor_hidden(ui.opt_stage))) {
+        jw_ui_cursor(&vga, mouse_x, mouse_y);
+    }
     vga_render(&vga, pixels);
     jw_view_rgba(&vga, pixels, rgba);
 }
@@ -1502,8 +1520,8 @@ static void file_list(int for_save)
  * jw_ui_pick_kind. */
 static void file_pick(int kind)
 {
-    static const char *const EXT[8] = { "JWC", "JWC", "TXT", "BAT", "DXF",
-                                        "DXF", "TXT", "BAT" };
+    static const char *const EXT[9] = { "JWC", "JWC", "TXT", "BAT", "DXF",
+                                        "DXF", "TXT", "BAT", "JWF" };
 
     file_list_ext(0, EXT[kind]);
     jw_ui_pick_kind(&ui, kind);
@@ -2260,7 +2278,15 @@ EMSCRIPTEN_KEEPALIVE void jw_mouse(int x, int y)
          * 「いまの命令」は起動したときから 入出力（30）で、盤を閉じると
          * その上の行 `|①ファイル(L)|②プロッタ(R)|…` を出し、メニューの
          * 入出力 も黄色くなります（測定：線色の盤を開いて閉じただけ）。 */
-        if (!ui.command) {
+        if (!ui.command && set_return_stage) {
+            ui.command = 29;
+            ui.guide = 0;
+            jw_cmd_pick(&cmd, 29);
+            ui.stage = 0;
+            ui.io_stage = 0;
+            ui.opt_stage = set_return_stage;
+            set_return_stage = 0;
+        } else if (!ui.command) {
             ui.command = 30;
             ui.guide = 0;
             jw_cmd_pick(&cmd, 30);
@@ -2647,6 +2673,27 @@ static void batch_after(int r, int leave, int miss, int x, int y)
         mouse_y = y;
     }
     if (r == JW_OB_CHANGED && drawing) {
+        ui.n_lines = drawing->n_lines;
+        ui.n_arcs = drawing->n_arcs + drawing->n_texts;
+    }
+    sync_ui();
+    present();
+}
+
+/* src/opt25.c が受けた押し・鍵のあとの後始末：帯の行・数え箱・画面。 */
+static void o25_after(int r, int leave, int x, int y)
+{
+    cmd.missed = jw_opt25_missed();
+    cmd.top_item = 0;
+    cmd.top_right = 0;
+    if (leave) {
+        ui.opt_stage = 0;
+    }
+    if (x >= 0) {
+        mouse_x = x;
+        mouse_y = y;
+    }
+    if (r == JW_O25_CHANGED && drawing) {
         ui.n_lines = drawing->n_lines;
         ui.n_arcs = drawing->n_arcs + drawing->n_texts;
     }
@@ -3070,6 +3117,84 @@ static int data_g0_key(int key)
     return -1;
 }
 
+/* ｵﾌﾟｼｮﾝ ⑥各設定（src/optset.c）が受けた鍵・押しのあとの後始末。
+ * 戻り値：-1 受けた／-2 受けない（命令の鍵・左の盤の押しとして先へ流す）。 */
+static JwEnvState env_state;
+
+/* ⑤環境FILE：選んだ *.jwf を読む（src/optenv.c）。 */
+static void env_load(void)
+{
+    char stem[9];
+    char path[256];
+    int k;
+
+    if (ui.file_n > 0 && drawing) {
+        memcpy(stem, ui.file_name[ui.file_sel], 8);
+        stem[8] = 0;
+        for (k = 7; k >= 0 && stem[k] == ' '; k--) stem[k] = 0;
+        sprintf(path, "%s/%s.JWF", JW_DIR, stem);
+        jw_optenv_load(drawing, path, &env_state);
+        opt_refresh();                          /* 左の盤のレイヤの釦・名前を読み直す */
+    }
+    ui.io_stage = 0;
+    jw_ui_pick_kind(&ui, JW_PICK_IO);
+}
+
+static int set_after(int r, int stage, int x, int y)
+{
+    if (r == JW_OS_ENVLOAD) {
+        int st = stage;
+
+        env_load();
+        jw_optset_env_done(&st);
+        r = JW_OS_TAKEN;
+        stage = st;
+    }
+    if (ui.io_stage == JW_IO_LOAD && stage != JW_OPT_SET_ENV && ui.command == 29) {
+        ui.io_stage = 0;
+        jw_ui_pick_kind(&ui, JW_PICK_IO);
+    }
+    if (x >= 0) {
+        mouse_x = x;
+        mouse_y = y;
+    }
+    if (r == JW_OS_PASS) {
+        set_return_stage = ui.opt_stage;
+        return -2;
+    }
+    if (r == JW_OS_NONE) {
+        if (ui.io_stage == JW_IO_LOAD && ui.command == 29) {
+            ui.io_stage = 0;
+            jw_ui_pick_kind(&ui, JW_PICK_IO);
+        }
+        ui.file_drive_env = 0;
+        ui.opt_stage = 0;
+        jw_optset_reset();
+        return -2;
+    }
+    if (r == JW_OS_ENV) {
+        /* ⑤環境FILE：ファイル選択（*.jwf）。 */
+        ui.opt_stage = JW_OPT_SET_ENV;
+        cmd.top_item = 0;
+        cmd.top_right = 0;
+        file_pick(JW_PICK_ENV);
+        sync_ui();
+        present();
+        return -1;
+    }
+    ui.opt_stage = r == JW_OS_LEAVE ? 0 : stage;
+    if (r == JW_OS_LEAVE) {
+        jw_optset_reset();
+    }
+    cmd.top_item = 0;
+    cmd.top_right = 0;
+    ui.file_drive_env = ui.opt_stage == JW_OPT_SET_ENV ? jw_optset_env_drive() : 0;
+    /* 左の盤の作業時間の棒は盤を描き直すまで古いまま（測定：optset_screens の time_5e）。 */
+    sync_ui();
+    present();
+    return -1;
+}
+
 static int data_g0_click(int x, int y, int right)
 {
     if (ui.command != 29 || ui.opt_stage != JW_OPT_DATA_G0) {
@@ -3341,6 +3466,35 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
     const int pick = jw_ui_menu_hit(x, y);
     const int bar = jw_ui_bar_item(x, y);
 
+    /* ｵﾌﾟｼｮﾝ ⑥各設定 ⑤環境FILE の一覧の押し：選んだ行をもう一度押すと読む（入出力の読込の一覧と同じ）。 */
+    if (ui.command == 29 && ui.opt_stage == JW_OPT_SET_ENV && x >= 128 && y >= 112 && drawing) {
+        const int row = y / 16 - 7;
+
+        mouse_x = x;
+        mouse_y = y;
+        if (row >= 0 && row < JW_FILE_ROWS && ui.file_top + row < ui.file_n) {
+            int st = ui.opt_stage;
+
+            if (ui.file_top + row == ui.file_sel) {
+                return set_after(JW_OS_ENVLOAD, st, x, y);
+            }
+            ui.file_sel = ui.file_top + row;
+        }
+        sync_ui();
+        present();
+        return -1;
+    }
+    /* ｵﾌﾟｼｮﾝ ⑥各設定。 */
+    if (JW_OPT_SETTING(&ui) && drawing) {
+        int st = ui.opt_stage;
+        const int r = jw_optset_click(drawing, &vga, x, y, right, &st);
+        const int z = set_after(r, st, x, y);
+
+        if (z != -2) {
+            return z;
+        }
+    }
+
     /* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理 G0。 */
     if (ui.command == 29 && ui.opt_stage == JW_OPT_DATA_G0) {
         const int r = data_g0_click(x, y, right);
@@ -3391,6 +3545,21 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         return -1;
     }
 
+    /* ｵﾌﾟｼｮﾝ ⑧2.5D（src/opt25.c）。 */
+    if (ui.command == 29 && drawing && JW_OPT25(&ui)) {
+        int leave = 0;
+        const int r = jw_opt25_click(drawing, &view, x, y, right,
+                                     y >= 0 && y <= 15 ? jw_ui_top_item(x, y) : 0,
+                                     &ui.opt_stage, &leave);
+
+        if (r) {
+            if (y >= 0 && y <= 15 && !leave) {
+                /* 項目の行の押しでは、矢は押した所のまま */
+            }
+            o25_after(r, leave, x, y);
+            return -1;
+        }
+    }
     /* ｵﾌﾟｼｮﾝ ④一括処理 ①直線伸縮・②直線部分消（src/optbatch.c）。 */
     if (ui.command == 29 && drawing
         && ((ui.opt_stage >= JW_OPT_BATCH && ui.opt_stage < JW_OPT_DATA_G0)
@@ -4731,6 +4900,21 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 
         cmd.top_item = 0;
         cmd.top_right = 0;
+        if (ui.opt_stage == 0 && item == 8 && drawing) {     /* ⑧2.5D（src/opt25.c） */
+            jw_opt25_open(drawing, &ui.opt_stage);
+            mouse_x = x;
+            mouse_y = y;
+            sync_ui();
+            present();
+            return -1;
+        }
+        if (ui.opt_stage == 0 && item == 6 && drawing) {
+            /* ⑥各設定：帯 |①ﾒﾓﾘｰ配分|…|⑦画色| へ（src/optset.c）。 */
+            int st = 0;
+
+            jw_optset_open(&st);
+            return set_after(JW_OS_TAKEN, st, x, y);
+        }
         if (ui.opt_stage == 0 && item >= 1 && item <= 3) {   /* ②断面・③立面 も同じ一覧画面（測定：probe_option_walk） */
             /* The screen is up; what is on it comes from src/item.h like
              * ②断面's and ③立面's. */
@@ -5233,6 +5417,16 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
             return r;
         }
     }
+    /* ｵﾌﾟｼｮﾝ ⑥各設定。 */
+    if (JW_OPT_SETTING(&ui) && drawing) {
+        int st = ui.opt_stage;
+        const int r = jw_optset_key(drawing, &vga, key, &st);
+        const int z = set_after(r, st, -1, -1);
+
+        if (z != -2) {
+            return z;
+        }
+    }
     /* ｵﾌﾟｼｮﾝ ④一括処理 ③データ整理 G0。 */
     if (ui.command == 29 && ui.opt_stage == JW_OPT_DATA_G0) {
         const int r = data_g0_key(key);
@@ -5247,6 +5441,17 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 
         if (r != -2) {
             return r;
+        }
+    }
+    /* ｵﾌﾟｼｮﾝ ⑧2.5D の鍵（src/opt25.c）。 */
+    if (ui.command == 29 && drawing && JW_OPT25(&ui)
+        && !(ui.opt_stage == JW_OPT25_MENU && key >= '1' && key <= '6')) {
+        int leave = 0;
+        const int r = jw_opt25_key(drawing, key, &ui.opt_stage, &leave);
+
+        if (r) {
+            o25_after(r, leave, -1, -1);
+            return -1;
         }
     }
     /* ｵﾌﾟｼｮﾝ ④一括処理 の [ESC]・[BS]・[Enter]（src/optbatch.c）。 */
@@ -6307,6 +6512,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     ui.stage = 0;
     ui.missed = 0;
     ui.opt_stage = 0;           /* ｵﾌﾟｼｮﾝ の道は命令を替えると捨てる（src/optbatch.c） */
+    jw_optset_reset();
     hand_abandon();
     jw_cmd_pick(&cmd, pick);
     /* 升の行は新しいコマンドでは消える（前のコマンドの top_item が残ると

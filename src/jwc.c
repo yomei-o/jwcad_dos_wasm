@@ -881,6 +881,20 @@ unsigned char *jwc_bytes(const Jwc *d, long *out_len, const char **why)
     sprintf(line, "%ld,%ld,%d,%d", d->n_lines, d->n_arcs, d->n_texts,
             d->n_points);
     keep_fields(line, sizeof line, src, 4, "518");
+    /* この行の 18 番は作業時間（秒）。ｵﾌﾟｼｮﾝ ⑥各設定 ④作図時間 が変える（本物は保存のとき
+     * time() - [0xc134] を書く）。変わっていなければ読んだままを書く。 */
+    {
+        const char *f = field(line, 18);
+
+        if (f && strtol(f, NULL, 10) != d->work_seconds) {
+            const char *end = strchr(f, ',');
+            char tmp[TEXT_LINE * 2];
+
+            snprintf(tmp, sizeof tmp, "%.*s%ld%s", (int)(f - line), line, d->work_seconds,
+                     end ? end : "");
+            snprintf(line, sizeof line, "%s", tmp);
+        }
+    }
     put_header(out + TEXT_LINE, line);
 
     /* the string pool's length, which is the offset half of the second of the

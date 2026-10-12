@@ -22,9 +22,11 @@
 #include "zukei.h"
 #include "optplan.h"
 #include "optsub.h"
+#include "opt25.h"
 #include "optbatch.h"
 #include "optdata.h"
 #include "opthikage.h"
+#include "optset.h"
 #include "item.h"
 #include "tategu.h"
 
@@ -92,7 +94,15 @@ static const char MENU[30][7] = {
 
 /* The key that picks each one, DGROUP 0x7cad: the fifteen of the right column
  * in capitals, then the fifteen of the left in small letters. */
-static const char MENU_KEY[31] = "CHXBFTVRWDENASQchxbftvrwdenasq";
+static char MENU_KEY[31] = "CHXBFTVRWDENASQchxbftvrwdenasq";
+
+/* ｵﾌﾟｼｮﾝ ⑥各設定 ③ｺﾏﾝﾄﾞｷｰ が命令の鍵を書き換える（src/optset.c）。 */
+void jw_ui_set_menu_key(int command, char key)
+{
+    if (command >= 1 && command <= 30) {
+        MENU_KEY[command - 1] = key;
+    }
+}
 
 int jw_ui_item_has(int command, int item, int right)
 {
@@ -436,6 +446,11 @@ void jw_ui_pick_kind(JwUi *s, int kind)
         s->file_bar = JW_PICK_CHILD_BAR;
         s->file_path = "path=A:" "\x5c" "*.bat";
         s->file_word = " " "\x8a\x4f\x95\x94\x95\xcf\x8c\x60" "    ";
+        break;
+    case JW_PICK_ENV:
+        s->file_bar = JW_FILE_BAR;
+        s->file_path = "path=A:" "\x5c" "*.jwf";
+        s->file_word = " " "\x8a\xc2\x8b\xab" "    ";
         break;
     case JW_PICK_CHILD:
         s->file_bar = JW_PICK_CHILD_BAR;
@@ -1017,7 +1032,8 @@ static void pen_name(char *out, int pen, int line_type)
  * the width this table holds. */
 static double magnification(int paper)
 {
-    return paper >= 0 && paper <= 4 ? 170.0f / PAPER_MM[paper] : 0.0;
+    /* 画面の幅（mm）は DS:[0xc34]。初期 170、ｵﾌﾟｼｮﾝ ⑥各設定 ②画面ｻｲｽﾞ で変わる（src/optset.c）。 */
+    return paper >= 0 && paper <= 4 ? jw_optset_screen_mm() / PAPER_MM[paper] : 0.0;
 }
 
 void jw_ui_default(JwUi *s)
@@ -4473,6 +4489,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 8, 1, 7, 0,
                            " " "\x81\x9f\x83" "t" "\x83" "@" "\x83" "C"
                            "\x83\x8b\x96\xbc\x93\xfc\x97\xcd");
+            } else if (s->file_drive_env == 2) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]");
+                jw_ui_text(v, 8, 1, 7, 0, JW_DRIVE_BAR);
+            } else if (s->file_drive_env == 3) {
+                jw_ui_text(v, 1, 1, 7, 0, "[ESC]" "\x83h\x83\x89\x83" "C\x83u\x96\xbc\x93\xfc\x97\xcd\x81@");
+                fill(v, 21 * 8, 7, 21 * 8 + 7, 15, 4);
             } else if (saving) {
                 jw_ui_text(v, 1, 1, 6, 0xffffu, JW_SAVE_BAR);
             } else {
@@ -5120,6 +5142,10 @@ void jw_ui_draw(VGA *v, const JwUi *s)
          * what is under it: SAMPLE0's frame runs down x 161 from y 139 to
          * y 419 and the original shows it again only from y 299.  The strip
          * along the bottom of the screen goes with it. */
+        /* ｵﾌﾟｼｮﾝ ⑧ ④の高さ･奥行の入力欄：下の帯と枠は消える（測定：h4_line）。 */
+        if (s->command == 29 && s->opt_stage == JW_OPT25_HT_IN) {
+            fill(v, 0, 464, 639, 479, 0);
+        }
         if ((s->command == 13 || s->command == 28) && s->top_item == 4) {
             fill(v, 0, 464, 639, 479, 0);
             fill(v, 147, 87, 612, 298, 0);
@@ -5275,6 +5301,32 @@ void jw_ui_draw(VGA *v, const JwUi *s)
             top_clear();
             jw_optdata_g0(v);
         }
+        /* ｵﾌﾟｼｮﾝ ⑧2.5D（src/opt25.c が字を持つ）。 */
+        if (JW_OPT25(s)) {
+            int c;
+
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
+            if (s->opt_stage == JW_OPT25_VIEW && jw_opt25_vlab()) {
+                fill(v, 1, 17, 120, 47, 4);           /* 行 2・3 の左を緑で塗る（1def:0000、色 4） */
+            }
+            jw_opt25_text(v, s->opt_stage, s->layer & 255);
+            c = jw_opt25_cursor();
+            if (c >= 0) {
+                const int ch = jw_opt25_cursor_char();
+
+                fill(v, c * 8, 7, c * 8 + 7, 15, 4);
+                if (ch) {
+                    char one[2];
+
+                    one[0] = (char)ch;
+                    one[1] = 0;
+                    v->clip_y0 = 7;
+                    jw_ui_text(v, c + 1, 1, 3, 2, one);   /* 洋紅（パレット 3） */
+                    v->clip_y0 = 0;
+                }
+            }
+        }
         /* ｵﾌﾟｼｮﾝ ④一括処理 ①②の行（src/optbatch.c が字を持つ）。 */
         if (s->command == 29 && s->opt_stage >= JW_OPT_BATCH
             && s->opt_stage < JW_OPT_DATA_G0) {
@@ -5308,6 +5360,12 @@ void jw_ui_draw(VGA *v, const JwUi *s)
                 jw_ui_text(v, 68, 2, 6, 0, "  ");
                 jw_ui_text(v, 77, 2, 6, 0, "  ");
             }
+        }
+        /* ｵﾌﾟｼｮﾝ ⑥各設定（src/optset.c が字と絵を持つ）。 */
+        if (JW_OPT_SETTING(s)) {
+            fill(v, 0, 0, 639, 15, 0);
+            top_clear();
+            jw_optset_text(v, NULL, s->opt_stage);
         }
         /* ④⑤ の段は上の行を jw_ui_data が自分で書く（小窓と一緒に）。 */
         if (JW_OPT_SUB(s)) {
