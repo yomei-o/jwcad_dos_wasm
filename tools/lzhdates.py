@@ -66,7 +66,7 @@ if __name__ == '__main__':
         for n, Y, M, D, h, m, sec in rows:
             # The drawings, and the one `*.bat` ｵﾌﾟｼｮﾝ ⑦外部処理 lists --
             # its screen shows `98/10/17 02:22` for JW_SAMPL.BAT.
-            if not n.upper().endswith(('.JWC', '.BAT')):
+            if not n.upper().endswith(('.JWC', '.BAT', '.JWF')):
                 continue
             stamp = ((((Y - 1980) << 9) | (M << 5) | D) << 16) \
                     | ((h << 11) | (m << 5) | (sec // 2))
