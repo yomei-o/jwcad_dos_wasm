@@ -22,7 +22,7 @@ hk_dlg_lat|SAMPLE0|type s|type 5|type 3|type 4|type 3|type 4|type 1|type .|type 
 hk_s1_test1|TEST1|type s|type 5|type 2|type 1|key bs
 hk_s2_test1|TEST1|type s|type 5|type 2|type 2|key bs
 hk_s2_test2|TEST2|type s|type 5|type 2|type 2|key bs
-hk_s2_test3|TEST3|type s|type 5|type 2|type 2|key bs
+hk_s2_test3|TEST3S|type s|type 5|type 2|type 2|key bs
 hk_s2_test4|TEST4|type s|type 5|type 2|type 2|key bs
 hk_s2_test5|TEST5|type s|type 5|type 2|type 2|key bs
 hk_s2_sample3|SAMPLE3|type s|type 5|type 2|type 2|key bs
@@ -58,14 +58,18 @@ hk_s3i_j|TEST1|type s|type 5|type 3|type 1|type 2|type 3|type 5|type 6|type 9|ke
 hk_s3r_a|TEST1|type s|type 5|type 3|type 3|200 150 left|450 380 left|type 1|wait 4000000000|type 4|type 9|key bs
 hk_s3r_b|TEST5|type s|type 5|type 3|type 3|150 200 left|400 350 left|type 1|wait 4000000000|type 4|type 9|key bs
 hk_s3x_test2|TEST2|type s|type 5|type 3|type 1|type 4|type 9|key bs
-hk_s3x_test3|TEST3|type s|type 5|type 3|type 1|type 4|type 9|key bs
+hk_s3x_test3|TEST3S|type s|type 5|type 3|type 1|type 4|type 9|key bs
 hk_s3x_test4|TEST4|type s|type 5|type 3|type 1|type 4|type 9|key bs
 hk_s3x_sample3|SAMPLE3|type s|type 5|type 3|type 1|type 4|type 9|key bs
 hk_s4x_sample3|SAMPLE3|type s|type 5|type 4|300 300 left|400 250 left|type 1|500 440 left|key bs
 hk_s4x_test2|TEST2|type s|type 5|type 4|300 300 left|400 250 left|type 1|500 440 left|key bs
-hk_s3y_p2|TEST3|type s|type 5|type 3|key bs
-hk_s3y_dlg|TEST3|type s|type 5|type 3|type 4|type 1|key bs
-hk_s3z_p1|TEST3|type s|type 5|key bs
+hk_s3y_p2|TEST3S|type s|type 5|type 3|key bs
+hk_s3y_dlg|TEST3S|type s|type 5|type 3|type 4|type 1|key bs
+hk_s3z_p1|TEST3S|type s|type 5|key bs
+hk_w_pick|TEST7S|type s|type 5|type 5|465 420 left|key bs
+hk_w_pick2|TEST7S|type s|type 5|type 5|465 420 left|type 5|key esc|key bs
+hk_w_pick_dec|TEST7S|type s|type 5|type 5|465 420 left|type 5|type 1|key bs
+hk_w_ask|TEST7S|type s|type 5|type 5|380 420 left|key esc|key bs
 hk_del_old|SAMPLE0|type s|type 5|type 1|type 3|230 200 left|key bs
 hk_nth_top|SAMPLE0|type s|type 5|type 1|type 4|161 145 left|key bs
 hk_nth_bottom|SAMPLE0|type s|type 5|type 1|type 4|161 400 left|key bs

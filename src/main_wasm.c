@@ -1156,6 +1156,9 @@ static void present(void)
         if (ui.command == 29 && ui.opt_stage == JW_OPT_HK_IS) {
             jw_hk_iso_overlay(&vga, drawing, &view);
         }
+        if (ui.command == 29 && (JW_OPT_HK(ui.opt_stage) || (ui.opt_stage == 0 && ui.top_item == 5))) {
+            jw_hk_wall_overlay(&vga, drawing, &view);
+        }
         if (ui.command == 29 && ui.opt_stage >= JW_OPT_HK_IS && ui.opt_stage <= JW_OPT_HK_RGI) {
             jw_hk_rg_overlay(&vga, drawing, &view, ui.opt_stage, mouse_x, mouse_y);
         }
@@ -3117,6 +3120,7 @@ static void hk_goto(int stage)
 /* ⑤日影図の受けたあとの後始末：数え箱・帯・画面。 */
 static void hk_after(int r, int x, int y, int miss)
 {
+    jw_hk_top_hide(0);
     cmd.missed = miss;
     cmd.top_item = ui.opt_stage ? 0 : 5;
     cmd.top_right = 0;
@@ -3171,7 +3175,8 @@ static int hk_item(int n)
         hk_after(JW_HK_TAKEN, -1, 0, 0);
         return -1;
     }
-    if (ui.opt_stage == JW_OPT_HK_IS || ui.opt_stage == JW_OPT_HK_IC || ui.opt_stage == JW_OPT_HK_RGI) {
+    if (ui.opt_stage == JW_OPT_HK_IS || ui.opt_stage == JW_OPT_HK_IC || ui.opt_stage == JW_OPT_HK_RGI
+        || ui.opt_stage == JW_OPT_HK_WL) {
         int st = ui.opt_stage;
         const int r = jw_hk_key(drawing, '0' + n, &st);
 
@@ -3192,6 +3197,9 @@ static int hk_item(int n)
         return -1;
     }
     if (jw_hk_enter(n)) {
+        if (jw_hk_enter(n) == JW_OPT_HK_WL) {
+            jw_hk_wall_enter(drawing);
+        }
         hk_goto(jw_hk_enter(n));
         return -1;
     }
@@ -3205,6 +3213,11 @@ static int hk_key(int key)
     }
     if (jw_hk_top_msg()) {
         jw_hk_clear_msg();
+        sync_ui();
+        present();
+    }
+    if (ui.opt_stage == 0 && key == 8) {
+        jw_hk_top_hide(1);
         sync_ui();
         present();
     }
@@ -3275,8 +3288,21 @@ static int hk_click(int x, int y, int right)
         }
         return -2;
     }
+    if (y >= 0 && y <= 15 && x < 48
+        && (ui.opt_stage == JW_OPT_HK_WL || ui.opt_stage == JW_OPT_HK_WLA || ui.opt_stage == JW_OPT_HK_RG1
+            || ui.opt_stage == JW_OPT_HK_RG2 || ui.opt_stage == JW_OPT_HK_RGI)) {
+        int st = ui.opt_stage;
+        const int r = jw_hk_key(drawing, 27, &st);   /* 帯の [ESC] を押すのは ESC の鍵と同じ */
+
+        ui.opt_stage = st;
+        mouse_x = x;
+        mouse_y = y;
+        hk_after(r, x, y, 0);
+        return -1;
+    }
     if ((ui.opt_stage == JW_OPT_HK_DLG || ui.opt_stage == JW_OPT_HK_IS || ui.opt_stage == JW_OPT_HK_IC
-         || ui.opt_stage == JW_OPT_HK_PT || ui.opt_stage == JW_OPT_HK_RGI) && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
+         || ui.opt_stage == JW_OPT_HK_PT || ui.opt_stage == JW_OPT_HK_RGI || ui.opt_stage == JW_OPT_HK_WL)
+        && y >= 0 && y <= 15 && jw_ui_top_item(x, y)) {
         mouse_x = x;
         mouse_y = y;
         return hk_item(jw_ui_top_item(x, y));

@@ -1,11 +1,16 @@
-#名前|手順…（DRAWING=TEST7 LIST=tools/cases/hikage_wall_screens.txt sh tools/optsubcheck.sh。⑤壁面日影の壁面線の指示。TEST7：建物 x 340〜451・y 20.8〜86.8 の右の辺が (572,376)〜(572,442)）
+#名前|手順…（BOOT=300000000 WAIT=100000000 DRAWING=TEST7 LIST=tools/cases/hikage_wall_screens.txt sh tools/optsubcheck.sh。⑤壁面日影の壁面線の指示。TEST7：建物（記録 x 340〜451・y 20.8〜86.8、読むと ×518/678）の右の辺が画面 (465,396)〜(465,447)）
 w_top|type s|type 5
 w_5|type s|type 5|type 5
 w_5_esc|type s|type 5|type 5|key esc
 w_5_bs|type s|type 5|type 5|key bs
 w_5_miss|type s|type 5|type 5|600 100 left
-w_5_pick|type s|type 5|type 5|572 410 left
-w_5_pick_bs|type s|type 5|type 5|572 410 left|key bs
-w_5_pick_2|type s|type 5|type 5|572 410 left|type 2
-w_5_pick_5|type s|type 5|type 5|572 410 left|type 5
-w_5_pick_5b|type s|type 5|type 5|572 410 left|type 5|key esc
+w_5_pick|type s|type 5|type 5|465 420 left
+w_5_pick_bs|type s|type 5|type 5|465 420 left|key bs
+w_5_pick_2|type s|type 5|type 5|465 420 left|type 2
+w_5_pick_5|type s|type 5|type 5|465 420 left|type 5
+w_5_pick_5b|type s|type 5|type 5|465 420 left|type 5|key esc
+w_5_escclick|type s|type 5|type 5|20 8 left
+w_ask|type s|type 5|type 5|380 420 left
+w_ask_esc|type s|type 5|type 5|380 420 left|key esc
+w_ask_pick|type s|type 5|type 5|380 420 left|420 300 left
+w_ask_pick2|type s|type 5|type 5|380 420 left|300 300 left

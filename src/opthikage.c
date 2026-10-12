@@ -70,21 +70,14 @@ void jw_hk_entry(Jwc *d)
     for (k = 0; k < d->n_points; k++) {
         d->points[k].rest[2] &= (unsigned char)~0x02u;
     }
-    /* 本物は入るとき、横書きの文字の終点を長さから作り直す（測定：TEST3 の 2 つの文字の x1 が float 1 ビット動く）。 */
-    for (k = 0; k < d->n_texts; k++) {
-        JwcText *T = &d->texts[k];
-
-        if (T->y1 == T->y0 && T->x1 > T->x0 && T->size < 0x5a && T->text) {
-            const double ln = jwc_ed_text_length(d, T->text, T->size, 0);
-
-            T->x1 = (float)(ln + (double)T->x0);
-        }
-    }
     for (k = 0; k < d->n_texts; k++) {
         d->texts[k].rest[2] &= (unsigned char)~0x02u;
     }
 }
 
+static int msg_top2;                    /* 壁面線：建物が無い（行 2 に言葉） */
+static int hk_toplabel_hide;            /* 上の帯：壁面日影の札は BS で消える */
+static long hk_wall = -1;                /* ⑤壁面日影で選んだ壁面線（線の番号。無ければ −1） */
 static int hk_base;                     /* [0x11e]：④の指定点の通し番号の基点 */
 static int hk_iso_err = 1;              /* [0x7638]：ラベルに「時間 誤差…」を付ける */
 static int iso_m;                       /* ③の方式：1 高速・2 標準・3 指定範囲 */
@@ -228,6 +221,18 @@ void jw_hk_text(VGA *v, int stage)
     case JW_OPT_HK_IC:
         jw_ui_text(v, 8, 1, 7, 0, HK_ICA);
         return;
+    case JW_OPT_HK_WL:
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        strcpy(buf, HK_WL);
+        if (hk_wall >= 0) {
+            strcat(buf, HK_WLX);
+        }
+        jw_ui_text(v, 8, 1, 7, 0, buf);
+        return;
+    case JW_OPT_HK_WLA:
+        jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
+        jw_ui_text(v, 8, 1, 7, 0, HK_WLA);
+        return;
     case JW_OPT_HK_RG1:
         jw_ui_text(v, 1, 1, 7, 0, "[ESC]  ");
         jw_ui_text(v, 8, 1, 7, 0, HK_RG1);
@@ -301,6 +306,9 @@ void jw_hk_text(VGA *v, int stage)
         }
         strcpy(hk_pagecond, buf);
         hk_pagecol = col;
+    }
+    if (hk_wall >= 0 && stage >= JW_OPT_HK_P2 && stage <= JW_OPT_HK_P4) {
+        jw_ui_text(v, 71, 3, 2, 0xffffu, HK_WLB);
     }
     for (i = 0; i < hk_nmsg; i++) {
         jw_ui_text(v, hk_msg[i].col, hk_msg[i].row, 7, 0, hk_msg[i].text);
@@ -443,8 +451,48 @@ void jw_hk_rg_overlay(VGA *v, const Jwc *d, const JwView *w, int stage, int mous
     }
 }
 
+long jw_hk_wall(void)
+{
+    return hk_wall;
+}
+
+void jw_hk_top_hide(int on)
+{
+    hk_toplabel_hide = on;
+}
+
+/* 選んだ壁面線（印の付いた線）をペン 7 で重ねる（7a6:033b）。 */
+void jw_hk_wall_overlay(VGA *v, const Jwc *d, const JwView *w)
+{
+    long k;
+    const int cx0 = v->clip_x0, cy0 = v->clip_y0, cx1 = v->clip_x1, cy1 = v->clip_y1;
+
+    if (!d) {
+        return;
+    }
+    v->clip_x0 = w->x0 > 0 ? w->x0 : 0;
+    v->clip_y0 = w->y0 > 0 ? w->y0 : 0;
+    v->clip_x1 = w->x1 < v->width - 1 ? w->x1 : v->width - 1;
+    v->clip_y1 = w->y1 < v->height - 1 ? w->y1 : v->height - 1;
+    for (k = 0; k < d->n_lines; k++) {
+        if (d->lines[k].rest[2] & 0x02) {
+            JwcLine t = d->lines[k];
+
+            t.pen = 7;
+            jw_view_line(v, d, &t, w, 0);
+        }
+    }
+    v->clip_x0 = cx0;
+    v->clip_y0 = cy0;
+    v->clip_x1 = cx1;
+    v->clip_y1 = cy1;
+}
+
 void jw_hk_top_text(VGA *v)
 {
+    if (hk_wall >= 0 && !hk_toplabel_hide) {
+        jw_ui_text(v, 71, 2, 2, 0xffffu, HK_WLB);
+    }
     if (hk_topmsg) {
         jw_ui_text(v, 20, 3, 7, 0, hk_topmsg);
     }
@@ -454,6 +502,9 @@ int jw_hk_enter(int n)
 {
     hk_topmsg = NULL;
     hk_esc = 0;
+    if (n == 5) {
+        return JW_OPT_HK_WL;
+    }
     return n >= 1 && n <= 4 ? JW_OPT_HK_BLD + n - 1 : 0;
 }
 
@@ -831,6 +882,125 @@ static int north(Jwc *d, const JwView *w, int x, int y, int *missed, int *stage)
     return JW_HK_CHANGED;
 }
 
+/* ---------------------------------------------------------------- ⑤壁面線 */
+static void wall_mark(Jwc *d, long n, int on)
+{
+    if (d && n >= 0 && n < d->n_lines) {
+        if (on) {
+            d->lines[n].rest[2] |= 0x02;
+        } else {
+            d->lines[n].rest[2] &= (unsigned char)~0x02u;
+        }
+    }
+}
+
+void jw_hk_wall_enter(Jwc *d)
+{
+    wall_mark(d, hk_wall, 0);
+}
+
+static float wall_v(double x, double y)
+{
+    return (float)((y - fr_oy) * fr_ux - (x - fr_ox) * fr_uy);
+}
+
+static void wall_swap(Jwc *d, long n)
+{
+    JwcLine *L = &d->lines[n];
+    float t;
+
+    t = L->x0; L->x0 = L->x1; L->x1 = t;
+    t = L->y0; L->y0 = L->y1; L->y1 = t;
+}
+
+static long wall_ask_n = -1;
+
+/* wall_check（0x2b17a）：壁面線 n の向きを決める。戻り 0＝採用、1＝やめる、2＝作図する方向を聞く。 */
+static int wall_check(Jwc *d, long n)
+{
+    const JwcLine *L = &d->lines[n];
+    long k;
+    int side = 0;
+
+    if (!frame_set(L->x0, L->y0, L->x1, L->y1)) {
+        return 1;
+    }
+    for (k = 0; k < d->n_texts; k++) {
+        const JwcText *t = &d->texts[k];
+        float v;
+
+        if (t->size >= 0x5a || !(t->rest[2] & 0x80)
+            || !((d->layer_edit[t->layer & 255] & 1) && (d->group_edit[(t->layer >> 4) & 15] & 1))) {
+            continue;
+        }
+        v = wall_v(t->x0, t->y0);
+        if (!(fabs((double)v) >= 0.1)) {
+            continue;
+        }
+        if (side == 0) {
+            side = v > 0.0f ? 1 : -1;
+        } else if ((side > 0 && v < 0.0f) || (side < 0 && v > 0.0f)) {
+            return 2;
+        }
+    }
+    if (side == 0) {
+        msg_top2 = 1;
+        return 1;
+    }
+    if (side > 0) {
+        wall_swap(d, n);
+    }
+    return 0;
+}
+
+static int wall_click(Jwc *d, const JwView *w, int x, int y, int *stage, int *missed)
+{
+    long n;
+
+    if (*stage == JW_OPT_HK_WLA) {
+        double px, py;
+
+        jw_cmd_at(w, x, y, &px, &py);
+        {
+            const JwcLine *L = &d->lines[wall_ask_n];
+
+            frame_set(L->x0, L->y0, L->x1, L->y1);
+        }
+        if (wall_v(px, py) < 0.0f) {
+            wall_swap(d, wall_ask_n);
+        }
+        hk_wall = wall_ask_n;
+        wall_mark(d, hk_wall, 1);
+        *stage = 0;
+        return JW_HK_CHANGED;
+    }
+    n = jw_cmd_pick_line(d, w, x, y);
+    if (n < 0) {
+        *missed = 1;
+        return JW_HK_TAKEN;
+    }
+    if (d->lines[n].x0 == d->lines[n].x1 && d->lines[n].y0 == d->lines[n].y1) {
+        return JW_HK_TAKEN;
+    }
+    wall_mark(d, hk_wall, 0);
+    hk_wall = -1;
+    switch (wall_check(d, n)) {
+    case 0:
+        hk_wall = n;
+        wall_mark(d, n, 1);
+        *stage = 0;
+        return JW_HK_CHANGED;
+    case 2:
+        wall_ask_n = n;
+        wall_mark(d, n, 1);
+        *stage = JW_OPT_HK_WLA;
+        return JW_HK_CHANGED;
+    default:
+        *stage = 0;
+        return JW_HK_CHANGED;
+    }
+}
+
 /* ---------------------------------------------------------------- ① の押し */
 /* pick（0x2de89）：線を拾って、近い端を原点・もう一端へ軸を取る。戻り 1＝続ける、0＝メッセージ／何も無し。 */
 static int pick(Jwc *d, const JwView *w, int x, int y, int *missed)
@@ -1126,6 +1296,11 @@ int jw_hk_click(Jwc *d, const JwView *w, int x, int y, int right,
     if (st == JW_OPT_HK_IC && d && y > 15 && x >= area_x0 && x <= area_x1 && y >= area_y0 && y <= area_y1) {
         return jw_hk_key(d, right ? '2' : '1', stage);
     }
+    if ((st == JW_OPT_HK_WL || st == JW_OPT_HK_WLA) && d && y > 15
+        && x >= area_x0 && x <= area_x1 && y >= area_y0 && y <= area_y1) {
+        hk_nmsg = 0;
+        return wall_click(d, w, x, y, stage, missed);
+    }
     if ((st == JW_OPT_HK_RG1 || st == JW_OPT_HK_RG2 || st == JW_OPT_HK_RGI) && d && y > 15
         && x >= area_x0 && x <= area_x1 && y >= area_y0 && y <= area_y1) {
         double px, py;
@@ -1244,6 +1419,24 @@ int jw_hk_key(Jwc *d, int key, int *stage)
         if (((key >= '0' && key <= '9') || key == '.') && hk_n < 30) {
             hk_buf[hk_n++] = (char)key;
             hk_buf[hk_n] = 0;
+        }
+        return JW_HK_TAKEN;
+    }
+    if (st == JW_OPT_HK_WL || st == JW_OPT_HK_WLA) {
+        if (key == 27 && d) {
+            if (st == JW_OPT_HK_WLA) {
+                wall_mark(d, wall_ask_n, 0);
+                hk_wall = -1;
+            } else {
+                wall_mark(d, hk_wall, 1);
+            }
+            *stage = 0;
+            return JW_HK_CHANGED;
+        }
+        if (key == '1' && st == JW_OPT_HK_WL && hk_wall >= 0 && d) {
+            hk_wall = -1;
+            *stage = 0;
+            return JW_HK_CHANGED;
         }
         return JW_HK_TAKEN;
     }
