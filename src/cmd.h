@@ -931,6 +931,17 @@ typedef struct {
     long rr_marker;
     int rr_undo_e1, rr_undo_e2;
     JwcLine rr_e1u, rr_e2;
+    /* ２線 連続基準線（終点の行で LL）：段を積む。いまの段の前の段の組 ch_H は図面に足さずに持ち、
+     * 次の LL か確定で、新しい線との交点まで伸縮して足す（ovl17 0x2c5ef〜、notes/spec-2sen-rr.md §5）。 */
+    int dl_ch_n, ch_held;
+    double ch_H[2][4];
+    struct {
+        long base;
+        double x0, y0;
+        int held;
+        double H[2][4];
+        int flushed;
+    } ch_st[20];
     /* 面取's chamfer length, in paper millimetres.  The top line offers it as
      * `③寸法= 30.000` and starts there. */
     double gap_chamfer;

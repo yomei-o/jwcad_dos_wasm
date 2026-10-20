@@ -622,6 +622,7 @@ static double shown_angle(double x1, double y1, double x2, double y2)
 
 static void two_lines(JwCmd *c, Jwc *d);
 static void two_lines_x(JwCmd *c, Jwc *d, long k2, double vp2);
+static int ch_push(JwCmd *c, Jwc *d, const JwView *w, long k, int sx, int sy);
 static int pt2_make(JwCmd *c, Jwc *d);
 static int cross_at(const JwcLine *a, const JwcLine *b, double *x, double *y);
 static void ld_cut(JwCmd *c, Jwc *d, float u0, float u1);
@@ -1726,6 +1727,13 @@ void jw_cmd_band(const JwCmd *c, const Jwc *d, VGA *v, const JwView *w,
             at_screen(w, e[0], e[1], &x0, &y0);
             at_screen(w, e[2], e[3], &x1, &y1);
             jw_line_clipped(v, x0, y0, x1, y1, 2, 0x18, JW_STYLE_SOLID);
+            if (t.ch_held) {
+                /* 連続基準線：持っている前の段の組も、この段の線との交点まで同じ色で出る（測定）。 */
+                int hx0, hy0;
+
+                at_screen(w, t.ch_H[i][0], t.ch_H[i][1], &hx0, &hy0);
+                jw_line_clipped(v, hx0, hy0, x0, y0, 2, 0x18, JW_STYLE_SOLID);
+            }
         }
     } else if (c->command == 11) {
         /* The centre **unrounded**.  A point taken by a read is rarely on a
@@ -9578,6 +9586,24 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     /* ２線 の終点指示（段 2）の [ESC] は始点指示（段 1）へ戻り、始点を捨てる（測定：double_s0_c1）。 */
     if (key == 27 && c->command == 9 && !c->typing && c->stage == 2 && !c->dl_wait
         && !c->pending && c->pick_a >= 0) {
+        if (c->dl_ch_n > 0 && !c->rr1) {
+            /* 連続基準線の段を戻す：その段へ入るときに足した線を消し、前の段の終点の行へ（0x2c2cf〜）。 */
+            const int top = c->dl_ch_n - 1;
+            int i;
+
+            for (i = 0; i < c->ch_st[top].flushed && d->n_lines > 0; i++) {
+                jwc_remove_line(d, d->n_lines - 1);
+            }
+            c->pick_a = c->ch_st[top].base;
+            c->x0 = c->ch_st[top].x0;
+            c->y0 = c->ch_st[top].y0;
+            c->ch_held = c->ch_st[top].held;
+            memcpy(c->ch_H, c->ch_st[top].H, sizeof c->ch_H);
+            c->dl_ch_n = top;
+            c->missed = 0;
+            c->moved = 0;
+            return 1;
+        }
         if (c->rr1) {
             /* 始線 RR の途中：E1 を末尾へ戻し、基準線は持ったまま始点の行へ（ovl17 0x2c2cf〜）。 */
             if (jwc_add_line(d, c->rr_e1.x0, c->rr_e1.y0, c->rr_e1.x1, c->rr_e1.y1,
@@ -11625,7 +11651,22 @@ int jw_cmd_two_line(const JwCmd *c, const Jwc *d, int i, double *e)
     e[1] = oy + t0 * dy;
     e[2] = ox + t1 * dx;
     e[3] = oy + t1 * dy;
-    if (c->rr1) {
+    if (c->ch_held) {
+        /* 連続基準線：組は前の段の組の線と、この段の線の交点から始まる。 */
+        double cx, cy, rox, roy, rnx, rny, rper;
+        JwcLine hl;
+
+        memset(&hl, 0, sizeof hl);
+        hl.x0 = (float)c->ch_H[i][0];
+        hl.y0 = (float)c->ch_H[i][1];
+        hl.x1 = (float)c->ch_H[i][2];
+        hl.y1 = (float)c->ch_H[i][3];
+        if (rr_frame(c, d, &rox, &roy, &rnx, &rny, &rper)
+            && rr_cross(&hl, rox, roy, rnx, rny, g, &cx, &cy)) {
+            e[0] = cx;
+            e[1] = cy;
+        }
+    } else if (c->rr1) {
         /* 始線 RR：組は E1 と各線の交点から始まる。 */
         double cx, cy, rox, roy, rnx, rny, rper;
 
@@ -11698,6 +11739,23 @@ static void rr_pieces(JwCmd *c, Jwc *d, const JwcLine *e, double vp)
     }
 }
 
+/* 持っていた前の段の組を、いまの段の線との交点（c0）まで伸縮して図面へ足す。 */
+static int ch_flush(JwCmd *c, Jwc *d, const double corner[2][2])
+{
+    int i, n = 0;
+
+    for (i = 0; i < 2; i++) {
+        if (jwc_add_line(d, (float)c->ch_H[i][0], (float)c->ch_H[i][1],
+                         (float)corner[i][0], (float)corner[i][1],
+                         (unsigned char)d->line_type, (unsigned char)d->pen,
+                         (unsigned char)(d->write_layer))) {
+            d->lines[d->n_lines - 1].rest[1] = 0;
+            n++;
+        }
+    }
+    return n;
+}
+
 /* 組を足す。k2>=0 は終線 RR（その線 E2 の交点で組を止め、E2 を抜いて破片を足す）。
  * 始線 RR の E1（c->rr1）の破片は組より先。 */
 static void two_lines_x(JwCmd *c, Jwc *d, long k2, double vp2)
@@ -11720,6 +11778,19 @@ static void two_lines_x(JwCmd *c, Jwc *d, long k2, double vp2)
         c->rr_undo_e1 = 1;
         c->rr_e1u = c->rr_e1;
         rr_pieces(c, d, &c->rr_e1, c->rr_vp);
+    }
+    if (c->ch_held) {
+        /* 連続基準線の最後の段：前の段の組を足してから、この段の組。 */
+        double corner[2][2], e[4];
+
+        for (i = 0; i < 2; i++) {
+            if (!jw_cmd_two_line(c, d, i, e)) {
+                return;
+            }
+            corner[i][0] = e[0];
+            corner[i][1] = e[1];
+        }
+        ch_flush(c, d, corner);
     }
     for (i = 0; i < 2; i++) {
         double e[4];
@@ -11745,6 +11816,8 @@ static void two_lines_x(JwCmd *c, Jwc *d, long k2, double vp2)
         }
     }
     c->rr1 = 0;
+    c->dl_ch_n = 0;
+    c->ch_held = 0;
     if (use2) {
         jwc_remove_line(d, k2);
         if (k2 < c->pick_a) {
@@ -11768,6 +11841,65 @@ static void two_lines_x(JwCmd *c, Jwc *d, long k2, double vp2)
 static void two_lines(JwCmd *c, Jwc *d)
 {
     two_lines_x(c, d, -1, 0.0);
+}
+
+/* ２線 連続基準線：終点の行で LL を押した位置の線 k を新しい基準線にして段を積む。
+ * いまの段の組（終点まで）は図面に足さず持ち、その前の段の組はここで足す。新しい段の
+ * 始点は新旧の基準線の交点（notes/spec-2sen-rr.md §5）。 */
+static int ch_push(JwCmd *c, Jwc *d, const JwView *w, long k, int sx, int sy)
+{
+    double px, py, e[2][4], corner[2][2], X, Y;
+    double ax, ay, bx, by, cx, cy, ex, ey, den, t;
+    int i;
+    const JwcLine *la, *lb;
+    typeof(c->ch_st[0]) *st;
+
+    if (k < 0 || k >= d->n_lines || k == c->pick_a || c->dl_ch_n >= 19 || c->rr1
+        || c->pick_a < 0 || c->pick_a >= d->n_lines) {
+        return 0;
+    }
+    la = &d->lines[c->pick_a];
+    lb = &d->lines[k];
+    ax = la->x0; ay = la->y0;
+    bx = (double)la->x1 - la->x0; by = (double)la->y1 - la->y0;
+    cx = lb->x0; cy = lb->y0;
+    ex = (double)lb->x1 - lb->x0; ey = (double)lb->y1 - lb->y0;
+    den = bx * ey - by * ex;
+    if (fabs(den) <= 1e-9 * sqrt(bx * bx + by * by) * sqrt(ex * ex + ey * ey)) {
+        return 0;               /* 平行：交点が無い */
+    }
+    t = ((cx - ax) * ey - (cy - ay) * ex) / den;
+    X = ax + t * bx;
+    Y = ay + t * by;
+    jw_cmd_at(w, sx, sy, &px, &py);
+    c->x1 = px;
+    c->y1 = py;
+    for (i = 0; i < 2; i++) {
+        if (!jw_cmd_two_line(c, d, i, e[i])) {
+            return 0;
+        }
+    }
+    st = &c->ch_st[c->dl_ch_n];
+    st->base = c->pick_a;
+    st->x0 = c->x0;
+    st->y0 = c->y0;
+    st->held = c->ch_held;
+    memcpy(st->H, c->ch_H, sizeof st->H);
+    st->flushed = 0;
+    if (c->ch_held) {
+        for (i = 0; i < 2; i++) {
+            corner[i][0] = e[i][0];
+            corner[i][1] = e[i][1];
+        }
+        st->flushed = ch_flush(c, d, corner);
+    }
+    memcpy(c->ch_H, e, sizeof c->ch_H);
+    c->ch_held = 1;
+    c->dl_ch_n++;
+    c->pick_a = k;
+    c->x0 = X;
+    c->y0 = Y;
+    return 1;
 }
 
 /* 面取【角面】: cut the corner off two lines and join the ends.
@@ -20304,7 +20436,9 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
 
                 c->dl_wait = 0;
                 c->stage = c->dl_phase ? 2 : 1;     /* 同じ点をもう一度訊く */
-                if (k >= 0) {
+                if (k >= 0 && c->dl_phase) {
+                    c->missed = !ch_push(c, d, w, k, sx, sy);   /* 連続基準線 */
+                } else if (k >= 0) {
                     c->pick_a = k;
                     c->missed = 0;
                 } else {
