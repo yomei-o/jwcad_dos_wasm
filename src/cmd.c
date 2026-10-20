@@ -5418,12 +5418,13 @@ range_items:
     }
     if (c->command == 5 && item == 1
         && (c->stage == 0 || c->stage == 3 || c->stage == 6)) {
+        c->off_from3 = c->stage == 3;
         c->stage = 4;
         c->pick = -1;
         return 0;
     }
     if (c->command == 5 && c->stage == 3) {
-        const double units = c->gap * c->per_mm;
+        const double units = c->gap / (double)(float)(1.0 / c->per_mm);   /* 実機は 紙/図の比（float）で割る（測定：escfz_F_80 の 1ULP） */
         double ax, ay, bx, by;
 
         if (item != 2) {
@@ -7130,7 +7131,7 @@ static int offset_ends(const JwCmd *c, const JwView *w, int sx, int sy,
         side[0] = nx;
         side[1] = ny;
     }
-    units = c->gap * c->per_mm;
+    units = c->gap / (double)(float)(1.0 / c->per_mm);   /* 実機は 紙/図の比（float）で割る（測定：escfz_F_80 の 1ULP） */
     *ax = c->lx0 + nx * units;
     *ay = c->ly0 + ny * units;
     *bx = c->lx1 + nx * units;
@@ -9417,7 +9418,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     /* ①間隔取得 の `基準線 マウス指示`（段 4）の [ESC] は段 0 の `線指示 …` へ
      * （decomp 照合済み（調査担当が dis で確認）：escfz_F_79）。 */
     if (key == 27 && c->command == 5 && !c->typing && c->stage == 4 && !c->pressed) {
-        c->stage = 0;
+        /* 段 3 から開いたなら段 3 へ戻る（測定：複線で一本置いて ①→[ESC]→[ESC] は置いた線を戻す）。 */
+        c->stage = c->off_from3 ? 3 : 0;
+        c->off_from3 = 0;
         c->pick = -1;
         c->moved = 0;
         return 1;

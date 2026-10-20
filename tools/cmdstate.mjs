@@ -32,5 +32,5 @@ for (const step of steps) {
         lastPress = [x, y];
     }
     if (process.env.RESEND && lastPress && M._jw_mouse_x() === lastPress[0] && M._jw_mouse_y() === lastPress[1]) M._jw_mouse(lastPress[0], lastPress[1]);
-    console.log(step.padEnd(16), M.UTF8ToString(M._jw_cmd_state()));
+    console.log(step.padEnd(16), process.env.NL ? "n=" + M._jw_count(0) + " " : "", M.UTF8ToString(M._jw_cmd_state()));
 }

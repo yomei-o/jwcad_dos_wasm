@@ -925,6 +925,7 @@ typedef struct {
     /* ２線 RR（包絡処理、notes/spec-2sen-rr.md）：始線 RR で拾った線 E1（図面から抜いて持つ）と
      * 押した点の v、E1 を抜いたあとの線の数（`書込中の線です` の境）。終線 RR で拾った E2 は
      * 取り消しのために持つ。 */
+    int off_from3;      /* 複線 ①間隔取得 を段 3（一本置いた所）から開いた */
     int rr1;
     JwcLine rr_e1;
     double rr_vp;
