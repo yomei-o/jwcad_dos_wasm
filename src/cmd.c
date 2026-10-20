@@ -9590,8 +9590,9 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->moved = 0;
             return 1;
         }
+        /* 基準線は持ったまま（ovl17 0x2c2f8→0x2b535。測定：始点を採って [ESC] のあとの
+         * 始点・終点の押しは同じ基準線の組になる）。 */
         c->stage = 1;
-        c->pick_a = -1;
         c->missed = 0;
         c->moved = 0;
         return 1;
