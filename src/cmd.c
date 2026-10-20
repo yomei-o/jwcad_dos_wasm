@@ -7870,6 +7870,18 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     if (c->command == 2 || c->command == 3) {
         c->line_esc_back = 0;
     }
+    /* □ ③平行 の基準線待ちの [ESC] は ③ を抜けるだけ（始点を持っていたらその終点指示へ）。
+     * 最後の四角は消えない（測定：drawfuzz dfz_B_4 の型、始点→③→[ESC] 2 回で四角が残る）。 */
+    if (key == 27 && c->command == 4 && c->box_refask && !c->typing) {
+        c->box_refask = 0;
+        if (c->ref_hold) {
+            c->ref_hold = 0;
+            c->pressed = 1;
+            c->stage = 1;
+        }
+        c->missed = 0;
+        return 1;
+    }
     /* □：始点を捨てて描いたあとの行に戻ったところで、もう一度 [ESC] なら
      * 最後の四角を取り消して、その始点を持った `終点指示` へ戻る（測定：
      * func_all box_plain）。 */
