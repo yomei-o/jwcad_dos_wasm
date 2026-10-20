@@ -37,6 +37,11 @@ int main(void)
     is("118 back", jw_help_prev(118), 106);
     is("125 back", jw_help_prev(125), 122);
     is("135 back", jw_help_prev(135), 125);
+    is("138 back", jw_help_prev(138), 135);
+    is("142 back", jw_help_prev(142), 138);
+    is("148 back", jw_help_prev(148), 142);
+    is("150 back", jw_help_prev(150), 149);
+    is("157 back", jw_help_prev(157), 156);
     is("107 back", jw_help_prev(107), 106);
     is("159 next", jw_help_next(159), 0);
     is("3", jw_help_key(5, '3'), 106);

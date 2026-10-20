@@ -69,11 +69,11 @@ static const unsigned char first_of[31] = {
 
 /* Where a "chapter" starts: Previous stops at these.  Taken from the page
  * headings (1/N, or no count); the ones from 102 on were walked in the original
- * (102, 105, 106, 118, 122, 125, 135), the later ones are by the headings. */
+ * (walked back from 159: 148, 142, 138, 135, 125, 122, ...; 150/155/157 are not stops). */
 static const unsigned char chapter[] = {
     1, 5, 7, 9, 10, 12, 13, 14, 17, 20, 21, 23, 24, 30, 35, 39, 43, 49, 52, 57,
     58, 60, 62, 66, 68, 70, 77, 81, 85, 102, 105, 106, 118, 122, 125, 135, 138,
-    142, 148, 150, 155, 157
+    142, 148
 };
 
 int jw_help_first(int command, int calc)
