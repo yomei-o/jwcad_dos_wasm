@@ -20076,7 +20076,23 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
         }
         /* 押しは位置を置くだけ。読みは矢が離れたとき（jw_cmd_track）。 */
         if (c->dl_wait) {
-            return 1;               /* 同位置の再押しは 基準線変更(LL)／包絡(RR)：未実装 */
+            /* 同位置の再押し：左は 基準線変更(LL)（その位置の線を新しい基準線にして
+             * いま訊いている点（始点か終点）をもう一度訊く。線が無ければ基準線はそのまま、`読取可能データ無`）。右は
+             * 包絡(RR)：未実装。 */
+            if (c->dl_wait == 1 && !right) {
+                const long k = pick_line(d, w, sx, sy);
+
+                c->dl_wait = 0;
+                c->stage = c->dl_phase ? 2 : 1;     /* 同じ点をもう一度訊く */
+                if (k >= 0) {
+                    c->pick_a = k;
+                    c->missed = 0;
+                } else {
+                    c->missed = 1;
+                }
+                c->moved = 1;
+            }
+            return 1;
         }
         c->dl_wait = right ? 2 : 1;
         c->dl_sx = sx;
