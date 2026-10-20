@@ -10,6 +10,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+void jw_cmd_release(JwCmd *c, Jwc *d)
+{
+    if (c && d && c->command == 9 && c->rr1) {
+        if (jwc_add_line(d, c->rr_e1.x0, c->rr_e1.y0, c->rr_e1.x1, c->rr_e1.y1,
+                         c->rr_e1.type, c->rr_e1.pen, c->rr_e1.layer)) {
+            d->lines[d->n_lines - 1] = c->rr_e1; d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~1u;
+        }
+        c->rr1 = 0;
+    }
+}
+
 void jw_cmd_pick(JwCmd *c, int command)
 {
     /* ＋・／ の長さと角度は**命令を選び直しても残ります**。本物は DGROUP の
@@ -610,6 +621,7 @@ static double shown_angle(double x1, double y1, double x2, double y2)
 }
 
 static void two_lines(JwCmd *c, Jwc *d);
+static void two_lines_x(JwCmd *c, Jwc *d, long k2, double vp2);
 static int pt2_make(JwCmd *c, Jwc *d);
 static int cross_at(const JwcLine *a, const JwcLine *b, double *x, double *y);
 static void ld_cut(JwCmd *c, Jwc *d, float u0, float u1);
@@ -742,6 +754,7 @@ void jw_cmd_track(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy)
                 c->x0 = px;
                 c->y0 = py;
                 c->stage = 2;
+                c->rr_marker = d->n_lines;
             } else {
                 c->x1 = px;
                 c->y1 = py;
@@ -9565,6 +9578,18 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
     /* ２線 の終点指示（段 2）の [ESC] は始点指示（段 1）へ戻り、始点を捨てる（測定：double_s0_c1）。 */
     if (key == 27 && c->command == 9 && !c->typing && c->stage == 2 && !c->dl_wait
         && !c->pending && c->pick_a >= 0) {
+        if (c->rr1) {
+            /* 始線 RR の途中：E1 を末尾へ戻し、基準線は持ったまま始点の行へ（ovl17 0x2c2cf〜）。 */
+            if (jwc_add_line(d, c->rr_e1.x0, c->rr_e1.y0, c->rr_e1.x1, c->rr_e1.y1,
+                             c->rr_e1.type, c->rr_e1.pen, c->rr_e1.layer)) {
+                d->lines[d->n_lines - 1] = c->rr_e1; d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~1u;
+            }
+            c->rr1 = 0;
+            c->stage = 1;
+            c->missed = 0;
+            c->moved = 0;
+            return 1;
+        }
         c->stage = 1;
         c->pick_a = -1;
         c->missed = 0;
@@ -9582,6 +9607,20 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
         }
         /* 全面は描き直さない：消した線の跡は黒の穴になる（decomp 21f2:6859、画面 double_plain 13 手目） */
         c->dl_undo_n = 0;
+        if (c->rr_undo_e2) {
+            /* 終線 RR で抜いた E2 は末尾へ戻る。 */
+            if (jwc_add_line(d, c->rr_e2.x0, c->rr_e2.y0, c->rr_e2.x1, c->rr_e2.y1,
+                             c->rr_e2.type, c->rr_e2.pen, c->rr_e2.layer)) {
+                d->lines[d->n_lines - 1] = c->rr_e2; d->lines[d->n_lines - 1].rest[2] &= (unsigned char)~1u;
+            }
+            c->rr_undo_e2 = 0;
+        }
+        if (c->rr_undo_e1) {
+            /* 始線 RR の組を取り消すと、E1 を持った終点の行に戻る。 */
+            c->rr1 = 1;
+            c->rr_e1 = c->rr_e1u;
+            c->rr_undo_e1 = 0;
+        }
         c->x0 = c->dl_undo_x;
         c->y0 = c->dl_undo_y;
         c->stage = 2;
@@ -11487,6 +11526,69 @@ static void divide_points(JwCmd *c, Jwc *d)
 /* Where the i-th of the pair runs.  Returns 0 when there is no pair to draw.
  * Both the preview (colour 2, while the pointer is still on the end) and the
  * lines themselves come out of this, so the two cannot drift apart. */
+/* ２線 RR（始線・終線 包絡処理、notes/spec-2sen-rr.md）。座標系は基準線の上：
+ * 原点＝基準線の始め、v＝法線 n（２本の線の 1 本目の側が +）、2 本の線は v=+gA と v=-gB。 */
+static int rr_frame(const JwCmd *c, const Jwc *d, double *ox, double *oy,
+                    double *nx, double *ny, double *per)
+{
+    const JwcLine *l;
+    double dx, dy, n;
+
+    if (!d || c->pick_a < 0 || c->pick_a >= d->n_lines) {
+        return 0;
+    }
+    *per = d->unit_mm > 0.0f ? d->unit_mm / d->denom : 1.0;
+    l = &d->lines[c->pick_a];
+    dx = l->x1 - l->x0;
+    dy = l->y1 - l->y0;
+    n = sqrt(dx * dx + dy * dy);
+    if (n <= 0.0) {
+        return 0;
+    }
+    dx /= n;
+    dy /= n;
+    *nx = -dy;
+    *ny = dx;
+    if (*ny < 0.0 || (*ny == 0.0 && *nx < 0.0)) {
+        *nx = -*nx;
+        *ny = -*ny;
+    }
+    *ox = l->x0;
+    *oy = l->y0;
+    return 1;
+}
+
+/* 引く向きが基準線の向き（n の左 = u）の後ろ向きなら、左右が入れ替わる（ovl17 0x2c582〜：
+ * 矢の u が始点の u より小さければ u 軸を反転する。測定：基準線の上を左へ引くと 1 本目は反対側）。 */
+static int two_flip(const JwCmd *c, const Jwc *d)
+{
+    double ox, oy, nx, ny, per;
+
+    if (!rr_frame(c, d, &ox, &oy, &nx, &ny, &per)) {
+        return 0;
+    }
+    return ((c->x1 - ox) * ny - (c->y1 - oy) * nx)
+         < ((c->x0 - ox) * ny - (c->y0 - oy) * nx);
+}
+
+/* E の延長と v=g の線の交点（平行なら 0）。 */
+static int rr_cross(const JwcLine *e, double ox, double oy, double nx, double ny,
+                    double g, double *x, double *y)
+{
+    const double ex = (double)e->x1 - e->x0, ey = (double)e->y1 - e->y0;
+    const double len = sqrt(ex * ex + ey * ey);
+    const double dn = ex * nx + ey * ny;
+    double s;
+
+    if (len <= 0.0 || fabs(dn) <= 1e-9 * len) {
+        return 0;
+    }
+    s = (g - (((double)e->x0 - ox) * nx + ((double)e->y0 - oy) * ny)) / dn;
+    *x = e->x0 + s * ex;
+    *y = e->y0 + s * ey;
+    return 1;
+}
+
 int jw_cmd_two_line(const JwCmd *c, const Jwc *d, int i, double *e)
 {
     const JwcLine *l;
@@ -11515,39 +11617,156 @@ int jw_cmd_two_line(const JwCmd *c, const Jwc *d, int i, double *e)
     /* How far along the base each point is; both offsets use the same pair. */
     t0 = (c->x0 - l->x0) * dx + (c->y0 - l->y0) * dy;
     t1 = (c->x1 - l->x0) * dx + (c->y1 - l->y0) * dy;
-    g = (i ? -1.0 : 1.0) * c->gap_two[i] * per;
+    g = (two_flip(c, d) ? -1.0 : 1.0) * (i ? -1.0 : 1.0) * (double)(float)(c->gap_two[i] * per);
     ox = l->x0 + g * nx;
     oy = l->y0 + g * ny;
     e[0] = ox + t0 * dx;
     e[1] = oy + t0 * dy;
     e[2] = ox + t1 * dx;
     e[3] = oy + t1 * dy;
+    if (c->rr1) {
+        /* 始線 RR：組は E1 と各線の交点から始まる。 */
+        double cx, cy, rox, roy, rnx, rny, rper;
+
+        if (rr_frame(c, d, &rox, &roy, &rnx, &rny, &rper)
+            && rr_cross(&c->rr_e1, rox, roy, rnx, rny,
+                        g, &cx, &cy)) {
+            e[0] = cx;
+            e[1] = cy;
+        }
+    }
     return 1;
 }
 
-static void two_lines(JwCmd *c, Jwc *d)
+/* E の破片を足す（写すのは種類・ペン・レイヤと A/B/C の印、座標だけ替える）。 */
+static void rr_add(Jwc *d, const JwcLine *e, double x0, double y0, double x1, double y1)
+{
+    if (jwc_add_line(d, (float)x0, (float)y0, (float)x1, (float)y1,
+                     e->type, e->pen, e->layer)) {
+        JwcLine *n = &d->lines[d->n_lines - 1];
+
+        n->rest[1] = e->rest[1];
+        n->rest[3] = e->rest[3];
+    }
+}
+
+/* 包絡：E は図面から抜いてある。押した点の v が帯の中なら 2 本の線の間の 1 本、外なら
+ * 帯の外の破片（ovl17 0x2c49b〜 / 0x2d7ac〜、notes/spec-2sen-rr.md §3）。 */
+static void rr_pieces(JwCmd *c, Jwc *d, const JwcLine *e, double vp)
+{
+    double ox, oy, nx, ny, per, ia[2], ib[2], p0[2], p1[2], v0, v1, gA, gB;
+    int outside;
+    const double sg = two_flip(c, d) ? -1.0 : 1.0;
+
+    if (!rr_frame(c, d, &ox, &oy, &nx, &ny, &per)) {
+        return;
+    }
+    gA = (double)(float)(c->gap_two[0] * per);
+    gB = (double)(float)(c->gap_two[1] * per);
+    if (!rr_cross(e, ox, oy, nx, ny, sg * gA, &ia[0], &ia[1])
+        || !rr_cross(e, ox, oy, nx, ny, -sg * gB, &ib[0], &ib[1])) {
+        rr_add(d, e, e->x0, e->y0, e->x1, e->y1);
+        return;
+    }
+    p0[0] = e->x0; p0[1] = e->y0;
+    p1[0] = e->x1; p1[1] = e->y1;
+    v0 = sg * ((p0[0] - ox) * nx + (p0[1] - oy) * ny);
+    v1 = sg * ((p1[0] - ox) * nx + (p1[1] - oy) * ny);
+    if (v0 > v1) {
+        double t, u;
+
+        t = p0[0]; p0[0] = p1[0]; p1[0] = t;
+        u = p0[1]; p0[1] = p1[1]; p1[1] = u;
+        t = v0; v0 = v1; v1 = t;
+    }
+    outside = (vp < gA && vp < -gB) || (vp > gA && vp > -gB);
+    if (!outside) {
+        rr_add(d, e, ia[0], ia[1], ib[0], ib[1]);
+    } else {
+        const double lo = gA + gB >= 0.0 ? -gB : gA;
+        const double hi = gA + gB >= 0.0 ? gA : -gB;
+        const double *ilo = gA + gB >= 0.0 ? ib : ia;
+        const double *ihi = gA + gB >= 0.0 ? ia : ib;
+
+        if (v0 < lo) {
+            rr_add(d, e, p0[0], p0[1], ilo[0], ilo[1]);
+        }
+        if (v1 > hi) {
+            rr_add(d, e, ihi[0], ihi[1], p1[0], p1[1]);
+        }
+    }
+}
+
+/* 組を足す。k2>=0 は終線 RR（その線 E2 の交点で組を止め、E2 を抜いて破片を足す）。
+ * 始線 RR の E1（c->rr1）の破片は組より先。 */
+static void two_lines_x(JwCmd *c, Jwc *d, long k2, double vp2)
 {
     int i;
-    const long n0 = d->n_lines;
+    long n0 = d->n_lines;
+    double ox, oy, nx, ny, per, x2[2][2];
+    JwcLine e2;
+    int use2 = 0;
 
+    c->rr_undo_e1 = c->rr_undo_e2 = 0;
+    if (k2 >= 0 && k2 < d->n_lines && rr_frame(c, d, &ox, &oy, &nx, &ny, &per)) {
+        e2 = d->lines[k2];
+        const double sg = two_flip(c, d) ? -1.0 : 1.0;
+
+        use2 = rr_cross(&e2, ox, oy, nx, ny, sg * c->gap_two[0] * per, &x2[0][0], &x2[0][1])
+            && rr_cross(&e2, ox, oy, nx, ny, -sg * c->gap_two[1] * per, &x2[1][0], &x2[1][1]);
+    }
+    if (c->rr1) {
+        c->rr_undo_e1 = 1;
+        c->rr_e1u = c->rr_e1;
+        rr_pieces(c, d, &c->rr_e1, c->rr_vp);
+    }
     for (i = 0; i < 2; i++) {
         double e[4];
 
         if (!jw_cmd_two_line(c, d, i, e)) {
             return;
         }
+        if (use2) {
+            e[2] = x2[i][0];
+            e[3] = x2[i][1];
+        }
         if (jwc_add_line(d, (float)e[0], (float)e[1], (float)e[2], (float)e[3],
                          (unsigned char)d->line_type, (unsigned char)d->pen,
                          (unsigned char)(d->write_layer))) {
             /* 0 in the byte a drawn line carries 3 in, like 面取's. */
             d->lines[d->n_lines - 1].rest[1] = 0;
+            if (c->rr1) {
+                /* 始線 RR の組は E1 の A/B/C を受け継ぐ（実機の測定：41 00 00。ovl17 0x2d117 は
+                 * 作業の記録 [bp-0x64c] を写し、始線 RR のときそれは E1 の写し）。 */
+                d->lines[d->n_lines - 1].rest[1] = c->rr_e1.rest[1];
+                d->lines[d->n_lines - 1].rest[3] = c->rr_e1.rest[3];
+            }
         }
+    }
+    c->rr1 = 0;
+    if (use2) {
+        jwc_remove_line(d, k2);
+        if (k2 < c->pick_a) {
+            c->pick_a--;
+        }
+        if (k2 < c->n0_lines) {
+            c->n0_lines--;
+        }
+        n0--;
+        c->rr_undo_e2 = 1;
+        c->rr_e2 = e2;
+        rr_pieces(c, d, &e2, vp2);
     }
     /* 取り消し（何も持っていないときの [ESC]）：この組を抜いて、この組の
      * 始点を持った `○終点指示 … ●連続` に戻ります（測定）。 */
     c->dl_undo_n = (int)(d->n_lines - n0);
     c->dl_undo_x = c->x0;
     c->dl_undo_y = c->y0;
+}
+
+static void two_lines(JwCmd *c, Jwc *d)
+{
+    two_lines_x(c, d, -1, 0.0);
 }
 
 /* 面取【角面】: cut the corner off two lines and join the ends.
@@ -20091,6 +20310,45 @@ static int press_body(JwCmd *c, Jwc *d, const JwView *w, int sx, int sy,
                     c->missed = 1;
                 }
                 c->moved = 1;
+            } else if (c->dl_wait == 2 && right) {
+                /* 包絡(RR)：始点の段なら始線 E1、終点の段なら終線 E2（notes/spec-2sen-rr.md）。 */
+                const long k = pick_line(d, w, sx, sy);
+                double px, py, ox, oy, nx, ny, per, vp;
+
+                c->dl_wait = 0;
+                c->stage = c->dl_phase ? 2 : 1;
+                c->moved = 1;
+                if (k < 0 || k == c->pick_a || (!c->dl_phase && c->rr1)
+                    || (c->dl_phase && k >= c->rr_marker)
+                    || !rr_frame(c, d, &ox, &oy, &nx, &ny, &per)) {
+                    c->missed = 1;
+                    return 1;
+                }
+                jw_cmd_at(w, sx, sy, &px, &py);
+                vp = (px - ox) * nx + (py - oy) * ny;
+                c->missed = 0;
+                if (!c->dl_phase) {
+                    c->rr_e1 = d->lines[k];
+                    c->rr_vp = vp;
+                    jwc_remove_line(d, k);
+                    if (k < c->pick_a) {
+                        c->pick_a--;
+                    }
+                    if (k < c->n0_lines) {
+                        c->n0_lines--;
+                    }
+                    c->rr1 = 1;
+                    c->rr_marker = d->n_lines;
+                    c->x0 = px;
+                    c->y0 = py;
+                    c->stage = 2;
+                } else {
+                    c->x1 = px;
+                    c->y1 = py;
+                    two_lines_x(c, d, k, vp);
+                    c->stage = 3;
+                    c->dl_nopre = 0;
+                }
             }
             return 1;
         }

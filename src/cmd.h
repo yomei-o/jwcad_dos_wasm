@@ -922,6 +922,15 @@ typedef struct {
     int dl_wait, dl_phase, dl_sx, dl_sy;
     int pg_item;                /* 多角形：項目の行で項目を選んだ（1 以上） */
     int dl_nopre;               /* 読みが外れたあとの押しでは仮の二本が消える（測定のみ） */
+    /* ２線 RR（包絡処理、notes/spec-2sen-rr.md）：始線 RR で拾った線 E1（図面から抜いて持つ）と
+     * 押した点の v、E1 を抜いたあとの線の数（`書込中の線です` の境）。終線 RR で拾った E2 は
+     * 取り消しのために持つ。 */
+    int rr1;
+    JwcLine rr_e1;
+    double rr_vp;
+    long rr_marker;
+    int rr_undo_e1, rr_undo_e2;
+    JwcLine rr_e1u, rr_e2;
     /* 面取's chamfer length, in paper millimetres.  The top line offers it as
      * `③寸法= 30.000` and starts there. */
     double gap_chamfer;
@@ -996,6 +1005,8 @@ typedef struct {
  * The struct must be zeroed before the first call: it owns a little memory --
  * what 複写 and 移動 picked out of a range -- and this frees what was there. */
 void jw_cmd_pick(JwCmd *c, int command);
+/* ２線 RR の途中で抜いた線 E1 を図面へ戻す（命令を替える前に呼ぶ）。 */
+void jw_cmd_release(JwCmd *c, Jwc *d);
 int jw_cmd_div4_prev(void);
 double jw_cmd_pt2_last(void);
 

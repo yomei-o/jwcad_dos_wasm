@@ -4147,6 +4147,7 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
         ui.command = pick;
         ui.guide = 0;
         hand_abandon();
+        jw_cmd_release(&cmd, drawing);
         jw_cmd_pick(&cmd, pick);
         cmd.chamfer = chamfer;
         ui.stage = 0;
@@ -6586,6 +6587,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
     ui.opt_stage = 0;           /* ｵﾌﾟｼｮﾝ の道は命令を替えると捨てる（src/optbatch.c） */
     jw_optset_reset();
     hand_abandon();
+    jw_cmd_release(&cmd, drawing);
     jw_cmd_pick(&cmd, pick);
     /* 升の行は新しいコマンドでは消える（前のコマンドの top_item が残ると
      * 別のコマンドの src/item.h の行が出る。測定：文字 ③ のあと `AB` で
