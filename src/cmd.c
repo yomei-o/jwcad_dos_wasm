@@ -11696,6 +11696,10 @@ int jw_cmd_two_line(const JwCmd *c, const Jwc *d, int i, double *e)
             e[1] = cy;
         }
     }
+    /* 始点と終点が基準線の上で同じ所に落ちる組は引かれない（測定：dfz_W_0）。 */
+    if ((float)e[0] == (float)e[2] && (float)e[1] == (float)e[3]) {
+        return 0;
+    }
     return 1;
 }
 
