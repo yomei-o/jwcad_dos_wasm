@@ -132,8 +132,8 @@
      once does not go and look again -- a push lands and the page is still
      the old one, which is what happened on 2026-09-21.  The stamp below is
      written by tools/build_wasm.sh on every build. -->
-<script>const JW_BUILD = '20261013084157';</script>
-<script src="jwcad.js?v=20261013084157"></script>
+<script>const JW_BUILD = '20261020200346';</script>
+<script src="jwcad.js?v=20261020200346"></script>
 <script>
 /* What each of the drawings that ship calls itself.  Not our words: every
    .JWC carries its 図面名 at offset 40 of the header, and this is that
@@ -523,6 +523,12 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'Backspace') code = 8;
   else if (e.key === 'Escape') code = 27;
   else if (/^F[1-5]$/.test(e.key)) code = 0x101 + (+e.key[1] - 1);
+  else if (Module._jw_help_up()) {
+    /* HELP is showing: the keys that turn its pages (src/help.h). */
+    const HELP_KEYS = { ArrowUp: 0x120, ArrowDown: 0x121, ArrowLeft: 0x122, ArrowRight: 0x123,
+                        PageUp: 0x124, PageDown: 0x125, Home: 0x126, End: 0x127 };
+    code = HELP_KEYS[e.key] || 0;
+  }
   if (!code) return;
   const cmd = Module._jw_key(code);
   if (cmd) {

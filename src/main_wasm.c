@@ -33,6 +33,7 @@
 #include "view.h"
 
 #include "dates.h"
+#include "help.h"
 
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
@@ -104,6 +105,8 @@ EMSCRIPTEN_KEEPALIVE unsigned char *jw_framebuffer(void) { return rgba; }
 EMSCRIPTEN_KEEPALIVE const char *jw_status(void) { return status; }
 
 static void present(void);
+/* The HELP page that is up (src/help.c), or -1.  Pressed from the bottom strip. */
+static int help_page = -1;
 /* 寸法設定 の ペン は図面ごとに保存されています（盤行の 7 番・8 番）。
  * SAMPLE0 は 1、SAMPLE2 と SAMPLE3 は 2 で、盤を開かずに寸法を引いても
  * 本物はその値で引きます（SAMPLE2 の 3 本は `01 02 ...`）。 */
@@ -1242,6 +1245,9 @@ static void present(void)
     }
     jw_ui_band_end(&vga, &ui);
     jw_ui_range_notch(&vga);
+    if (help_page >= 0) {
+        jw_help_draw(&vga, help_page);
+    }
     /* ④作図時間・⑦画色 の欄のあいだ、本物は矢を消している（1885:5256(0)）。 */
     if (!(JW_OPT_SETTING(&ui) && jw_optset_cursor_hidden(ui.opt_stage))) {
         jw_ui_cursor(&vga, mouse_x, mouse_y);
@@ -3454,6 +3460,41 @@ static int hk_click(int x, int y, int right)
 
 EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
 {
+    /* HELP.  The top row and the page itself answer; anything else -- the menu,
+     * the strip, a key -- leaves HELP and is done as usual (measured on the
+     * original: a press on 複写 closes HELP and picks 複写). */
+    if (help_page >= 0) {
+        const int hit = jw_help_top_hit(x, y);
+        const int bar_hit = jw_ui_bar_item(x, y);
+
+        if (hit == 6 || bar_hit == JW_BAR_HELP) {
+            help_page = -1;
+            mouse_x = x;
+            mouse_y = y;
+            present();
+            return -1;
+        }
+        if (hit) {
+            help_page = hit == 1 ? jw_help_next(help_page)
+                      : hit == 2 ? jw_help_prev(help_page)
+                      : hit == 3 ? 106 : hit == 4 ? 118 : 122;
+            mouse_x = x;
+            mouse_y = y;
+            present();
+            return -1;
+        }
+        if (y >= 17 && y <= 462 && x >= 122 && x <= 638) {
+            help_page = right ? jw_help_prev(help_page) : jw_help_next(help_page);
+            mouse_x = x;
+            mouse_y = y;
+            present();
+            return -1;
+        }
+        if (y < 17) {
+            return -1;
+        }
+        help_page = -1;
+    }
     /* ｵﾌﾟｼｮﾝ ⑤日影図。 */
     if (ui.command == 29 && (JW_OPT_HK(ui.opt_stage) || (ui.opt_stage == 0 && ui.top_item == 5))) {
         const int r = hk_click(x, y, right);
@@ -3740,6 +3781,10 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
             }
             ui.zoom_stage = 1;
             ui.guide = 0;   /* 起動の案内は消えます */
+        } else if (bar == JW_BAR_HELP) {
+            if (jw_help_ready()) {
+                help_page = jw_help_first(ui.command, ui.calc);
+            }
         } else if (bar == JW_BAR_SCALE) {
             ui.zoom_stage = 3;
             ui.guide = 0;
@@ -5407,8 +5452,35 @@ EMSCRIPTEN_KEEPALIVE int jw_click(int x, int y, int right)
  * original does with them here; anything else is ignored for now. */
 static int lc_msg_was;
 
+/* Is HELP showing?  The page sends it the arrow, PageUp/PageDown, Home and End keys
+ * only then, so they do not reach anything else. */
+EMSCRIPTEN_KEEPALIVE int jw_help_up(void)
+{
+    return help_page >= 0;
+}
+
 EMSCRIPTEN_KEEPALIVE int jw_key(int key)
 {
+    /* HELP: the page keys.  A menu key leaves HELP and picks its command. */
+    if (help_page >= 0) {
+        const int r = jw_help_key(help_page, key);
+
+        if (r >= 0) {
+            help_page = r;
+            present();
+            return -1;
+        }
+        if (r == -2) {
+            help_page = -1;
+            present();
+            return -1;
+        }
+        if (key >= 0 && key < 256 && jw_ui_key_command(key)) {
+            help_page = -1;
+        } else {
+            return -1;
+        }
+    }
     /* ｵﾌﾟｼｮﾝ ⑤日影図。 */
     {
         const int r = hk_key(key);
