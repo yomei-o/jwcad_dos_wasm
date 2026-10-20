@@ -8515,6 +8515,13 @@ int jw_cmd_key(JwCmd *c, Jwc *d, int key)
             c->pg_item = 0;
             return 1;
         }
+        if (c->pg1 == 4 && (key == 13 || key == 10)) {
+            /* C の指示の段の [Enter] は、押した位置なしで多角形を作る（測定：drawfuzz dfz6_b_0。
+             * 頂点は A→B の左側＝v が 0 以上の側）。 */
+            pg1_make(c, d, c->pg1_ax + (c->pg1_by - c->pg1_ay), c->pg1_ay - (c->pg1_bx - c->pg1_ax));
+            c->pg1 = 1;
+            return 1;
+        }
         if (c->pg1 == 3) {
             if (key == 13 || key == 10) {
                 return pg1_accept(c, d, 0);
