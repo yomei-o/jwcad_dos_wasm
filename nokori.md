@@ -185,3 +185,10 @@ henkei_s0_c4(6px)・tangent_s1_c4(29px)・chamfer 等の端の画素・dim_val_b
 検査：画面は `sh tools/optsubcheck.sh [名前]`（`LIST=tools/cases/<名前>_screens.txt` で一覧を替える。⑥=optset_screens、⑧=opt8_screens・opt8_data_screens、③=optdata_screens）、
 保存結果は `FUNCID_PREFIX=x sh tools/funccases.sh tools/cases/probe_opt4_*.txt`（probe_opt6・probe_opt8 も）。
 **orig/ に AUTO.JWC・JW_FILE0.000 などの余計なファイルがあると実機のファイル一覧が変わって画面が合わなくなる**（⑤環境FILE で発覚。gitignore 済みなので退避する）。
+
+## 乱数手順の突き合わせ（2026-10-21、シード 8001・8002）
+- 16 命令 128 件（8001）：一致 102・差 9・空振り 17。11 命令 66 件（8002）：一致 33・差 11・空振り 22。座標・個数の差は直した：
+  ２線の長さ 0 の組（W_0）、複線 ①間隔 の [ESC] で段 3 へ戻る・間隔を float の比で割る（F_2、escfz_F_80 の 1ULP）、部分消去 始点の段の [Enter]＝(400,200)（D_0）。
+- 残る座標差（深い状態機械・未解決）：複線の遠すぎる複写を実機は拒否して段 3 へ（F_6、notes/spec-fukusen-range.md：decomp に範囲検査が見つからず、y=1884 は拒否・x=-1146 は受理）、
+  □/多角形系 dfz_d_3、変形 h_3（実機は二度目以降の押しで刻印しない場合がある）・h_5、文編集 a_0・a_1（日付 ⑥）。
+- 残りの差はほとんどが rest の印だけ（B 類・ユーザー指示で後回し）。
