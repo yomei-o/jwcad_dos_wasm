@@ -6437,7 +6437,7 @@ EMSCRIPTEN_KEEPALIVE int jw_key(int key)
      * 測定：functest dfz_D_23 と kk_k1〜k4、線 (598,*) を `300 350 left`（始点）のあとの
      * [Enter] が y=200 を終点にして 200〜350 を消す。前は「始点で切る」にしていたが、
      * D_1 の始点が偶然 y=200 だっただけだった。decomp 未確認。 */
-    if ((key == 13 || key == 10) && cmd.command == 10 && cmd.stage == 3 && !cmd.typing
+    if ((key == 13 || key == 10) && cmd.command == 10 && (cmd.stage == 2 || cmd.stage == 3) && !cmd.typing
         && !cmd.typing_text && drawing) {
         const int changed = jw_cmd_press(&cmd, drawing, &view, 400, 200, 0);
 
